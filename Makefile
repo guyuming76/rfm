@@ -51,10 +51,13 @@ install: all
 	@echo installing executable file to ${DESTDIR}${PREFIX}/bin
 	@mkdir -p ${PREFIX}/bin
 	@cp -f rfm ${PREFIX}/bin
+	@cp -f scripts/RefreshImage.sh ${PREFIX}/bin
 	@chmod 755 ${PREFIX}/bin/rfm
+	@chmod +x ${PREFIX}/bin/RefreshImage.sh
 
 uninstall:
 	@echo removing executable file from ${PREFIX}/bin
 	@rm -f ${PREFIX}/bin/rfm
+	@rm -f ${PREFIX}/bin/RefreshImage.sh
 
 .PHONY: all options clean install uninstall

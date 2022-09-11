@@ -23,7 +23,8 @@ static const char *play_audio[] = { "/usr/bin/mpv", "--player-operation-mode=pse
 static const char *av_info[]    = { "/usr/bin/mediainfo", "-f", NULL };
 static const char *textEdit[]   = { "/usr/bin/gedit", "--new-window", NULL };
 static const char *mupdf[]      = { "/usr/bin/evince", NULL };
-static const char *show_image[] = { "/usr/bin/eog", NULL };
+//static const char *show_image[] = { "/usr/bin/eog", NULL };
+static const char *show_image[] = { "/usr/local/bin/RefreshImage.sh", NULL };
 static const char *soffice[]    = { "/usr/bin/soffice", NULL };
 static const char *extract_archive[] = { "/usr/local/bin/extractArchive.sh", NULL };
 static const char *create_archive[]  = { "/usr/local/bin/createArchive.sh", NULL };
