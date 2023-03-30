@@ -99,6 +99,7 @@ typedef struct {
    GUnixMountMonitor *rfm_mountMonitor;   /* Reference for monitor mount events */
    gint        showMimeType;              /* Display detected mime type on stdout when a file is right-clicked: toggled via -i option */
    guint       delayedRefresh_GSourceID;  /* Main loop source ID for fill_store() delayed refresh timer */
+   gboolean  readFromPipe;  /* if true, means to fill store with data from something like  ls |xargs rfm -p, or locate blablablaa |xargs rfm -p, instead of from a directory*/
 } RFM_ctx;
 
 typedef struct {  /* Update free_fileAttributes() and malloc_fileAttributes() if new items are added */
@@ -182,6 +183,9 @@ static GtkIconTheme *icon_theme;
 static GHashTable *thumb_hash=NULL; /* Thumbnails in the current view */
 
 static GtkListStore *store=NULL;
+
+static int cmd_argc; /* store args from main into global so that i don't have to change existing function parameter to pass arguments*/
+static char **cmd_argv;
 
 /* Functions */
 static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer rfmCtx);
@@ -888,7 +892,11 @@ static RFM_FileAttributes *get_file_info(const gchar *name, guint64 mtimeThresho
 
    if (fileAttributes==NULL)
       return NULL;
-   fileAttributes->path=g_build_filename(rfm_curPath, name, NULL);
+   if (name[0]=='/') {
+     fileAttributes->path = g_build_filename(name, NULL); /* Absolute path from pipeline*/
+   } else {
+     fileAttributes->path = g_build_filename(rfm_curPath, name, NULL);
+   }
    attibuteList=g_strdup_printf("%s,%s,%s,%s",G_FILE_ATTRIBUTE_STANDARD_TYPE, G_FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE, G_FILE_ATTRIBUTE_TIME_MODIFIED, G_FILE_ATTRIBUTE_STANDARD_IS_SYMLINK); 
    file=g_file_new_for_path(fileAttributes->path);
    info=g_file_query_info(file, attibuteList, G_FILE_QUERY_INFO_NONE, NULL, NULL);
@@ -1060,6 +1068,34 @@ static gboolean readDirItem(GDir *dir) {
    return FALSE;
 }
 
+static gboolean readItemsFromPipe(int argc, char *argv[], char *cwd) {
+	   const gchar *name=NULL;
+	   time_t mtimeThreshold=time(NULL)-RFM_MTIME_OFFSET;
+	   RFM_FileAttributes *fileAttributes;
+	   GHashTable *mount_hash=get_mount_points();
+
+	   for (int i = 2; i < argc; i++) {
+	     name=argv[i];
+	     if (name[0] != '/') {
+	       //set_rfm_curPath(cwd);
+	       //set_rfm_curPath deals with inotify, which i don't understand quite well, for example, if i only pass one png file with rfm -p, six thumbnails can be displayed because inotify handler will call fill_store more than once.
+	       /*shall we set_rfm_path to original value after current function?*/
+	       die("rfm: currently, with -p parameter, we only accept absolute path in filename!\n");
+	     }
+	     fileAttributes = get_file_info(name, mtimeThreshold, mount_hash);
+	     if (fileAttributes != NULL)
+	       rfm_fileAttributeList =
+		 g_list_prepend(rfm_fileAttributeList, fileAttributes);
+	   }
+
+	   updateIconView();
+	   if (rfm_do_thumbs == 1 &&
+	       g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR))
+	     do_thumbnails();
+
+  return TRUE;
+}
+
 /* store hold references to rfm_fileAttributeList: these two must be freed together */
 static void clear_store(void)
 {
@@ -1071,6 +1107,13 @@ static void clear_store(void)
 
 static void fill_store(RFM_ctx *rfmCtx)
 {
+  char cwd[1024]; /* Could use MAX_PATH here from limits.h, but still not guaranteed to be max */
+  if (rfmCtx->readFromPipe) {
+    if (getcwd(cwd, sizeof(cwd)) != NULL) {/* i don't think the way initDir variable works with rfm -c -d parameter is good, maybe i shall change it to default to cwd */
+	   readItemsFromPipe(cmd_argc, cmd_argv,cwd);
+         }
+   } else {
+
    GDir *dir=NULL;
 
    rfm_stop_all(rfmCtx);
@@ -1080,6 +1123,7 @@ static void fill_store(RFM_ctx *rfmCtx)
    dir=g_dir_open(rfm_curPath, 0, NULL);
    if (!dir) return;
    rfm_readDirSheduler=g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, (GSourceFunc)readDirItem, dir, (GDestroyNotify)g_dir_close);
+   }
 }
 
 static gint sort_func(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, gpointer user_data)
@@ -2419,8 +2463,16 @@ int main(int argc, char *argv[])
       case 'v':
          die("%s-%s, Copyright (C) Rodney Padgett, see LICENSE for details\n", PROG_NAME, VERSION);
          break;
+      case 'p':
+	 rfmCtx->readFromPipe=1;
+	 cmd_argc=argc;
+	 int argvsize=sizeof(char *)*argc;
+         cmd_argv=malloc(argvsize);
+	 memcpy(cmd_argv,argv,argvsize);
+         break;
+	 
       default:
-         die("Usage: %s [-c || -d <full path to directory> || -i || -v]\n", PROG_NAME);
+         die("Usage: %s [-c || -d <full path to directory> || -i || -v || -p]\n", PROG_NAME);
       }
    }
    if (setup(initDir, rfmCtx)==0)
