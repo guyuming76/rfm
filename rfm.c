@@ -800,6 +800,9 @@ static gboolean mkThumb()
       thumb=thumbnailers[thumbData->t_idx].func(thumbData->path, thumbData->thumb_size);
    if (thumb!=NULL) {
       rfm_saveThumbnail(thumb, thumbData);
+#ifdef DebugPrintf
+      printf("thumbnail save:%s\n",thumbData->thumb_name);
+#endif
       g_object_unref(thumb);
    }
    if (rfm_thumbQueue->next!=NULL) {   /* More items in queue */
@@ -988,10 +991,17 @@ static void do_thumbnails(void)
       thumbData=get_thumbData(&iter); /* Returns NULL if thumbnail not handled */
       if (thumbData!=NULL) {
          /* Try to load any existing thumbnail */
-         if (load_thumbnail(thumbData->thumb_name)==0) /* Success: thumbnail exists in cache and is valid */
-            free_thumbQueueData(thumbData);
-         else  /* Thumbnail doesn't exist or is out of date */
-            rfm_thumbQueue=g_list_append(rfm_thumbQueue, thumbData);
+         if (load_thumbnail(thumbData->thumb_name) == 0) { /* Success: thumbnail exists in cache and is valid */
+#ifdef DebugPrintf
+	   printf("thumbnail exists: %s , %s\n",thumbData->path,thumbData->thumb_name);
+#endif
+           free_thumbQueueData(thumbData);
+         } else { /* Thumbnail doesn't exist or is out of date */
+           rfm_thumbQueue = g_list_append(rfm_thumbQueue, thumbData);
+#ifdef DebugPrintf
+	   printf("thumbnail creation enqueued: %s\n",thumbData->path);
+#endif
+         }
       }
       valid=gtk_tree_model_iter_next(GTK_TREE_MODEL(store), &iter);
    }
@@ -1038,7 +1048,9 @@ static void updateIconView()
                           COL_MTIME, fileAttributes->file_mtime,
                           COL_ATTR, fileAttributes,
                           -1);
-
+#ifdef DebugPrintf
+      printf("Inserted into store:%s\n",fileAttributes->display_name);
+#endif
       if (rfm_prePath!=NULL && g_strcmp0(rfm_prePath, fileAttributes->path)==0) {
          treePath=gtk_tree_model_get_path(GTK_TREE_MODEL(store), &iter);
          gtk_icon_view_select_path(GTK_ICON_VIEW(icon_view), treePath);
@@ -1091,11 +1103,13 @@ static gboolean readItemsFromPipe() {
 	       die("ERROR: currently, with -p parameter, we only accept absolute path in filename!\n",PROG_NAME);
 	     }
 	     fileAttributes = get_file_info(name, mtimeThreshold, mount_hash);
-	     if (fileAttributes != NULL)
-	       rfm_fileAttributeList =
-		 g_list_prepend(rfm_fileAttributeList, fileAttributes);
-	   }
-
+             if (fileAttributes != NULL) {
+               rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
+#ifdef DebugPrintf
+               printf("append into rfm_fileAttributeList:%s\n", name);
+#endif
+             }
+           }
 	   updateIconView();
 	   if (rfm_do_thumbs == 1 &&
 	       g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR))
@@ -2106,13 +2120,14 @@ static GtkWidget *add_iconview(GtkWidget *rfm_main_box, RFM_ctx *rfmCtx)
    gtk_container_add(GTK_CONTAINER(sw), icon_view);
    gtk_widget_grab_focus(icon_view);
 
-   //uncomment to debug
-   /* printf("gtk_icon_view_get_column_spacing:%d\n",gtk_icon_view_get_column_spacing((GtkIconView *)icon_view)); */
-   /* printf("gtk_icon_view_get_item_padding:%d\n",gtk_icon_view_get_item_padding((GtkIconView *)icon_view)); */
-   /* printf("gtk_icon_view_get_spacing:%d\n",gtk_icon_view_get_spacing((GtkIconView *)icon_view)); */
-   /* printf("gtk_icon_view_get_item_width:%d\n",gtk_icon_view_get_item_width((GtkIconView *)icon_view)); */
-   /* printf("gtk_icon_view_get_margin:%d\n",gtk_icon_view_get_margin((GtkIconView *)icon_view)); */
-
+#ifdef DebugPrintf
+   printf("gtk_icon_view_get_column_spacing:%d\n",gtk_icon_view_get_column_spacing((GtkIconView *)icon_view));
+   printf("gtk_icon_view_get_item_padding:%d\n",gtk_icon_view_get_item_padding((GtkIconView *)icon_view));
+   printf("gtk_icon_view_get_spacing:%d\n",gtk_icon_view_get_spacing((GtkIconView *)icon_view));
+   printf("gtk_icon_view_get_item_width:%d\n",gtk_icon_view_get_item_width((GtkIconView *)icon_view));
+   printf("gtk_icon_view_get_margin:%d\n",gtk_icon_view_get_margin((GtkIconView *)icon_view));
+#endif
+   
    if (rfmCtx->readFromPipe) {
      gtk_icon_view_set_item_width((GtkIconView *)icon_view,
                                   RFM_THUMBNAIL_LARGE_SIZE);
