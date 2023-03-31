@@ -187,6 +187,7 @@ static GtkListStore *store=NULL;
 
 static int cmd_argc; /* store args from main into global so that i don't have to change existing function parameter to pass arguments*/
 static char **cmd_argv;
+static GList *PictureFullNamesFromStdin=NULL;
 
 /* Functions */
 static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer rfmCtx);
@@ -1089,31 +1090,26 @@ static gboolean readDirItem(GDir *dir) {
 }
 
 static gboolean readItemsFromPipe() {
-	   const gchar *name=NULL;
-	   time_t mtimeThreshold=time(NULL)-RFM_MTIME_OFFSET;
-	   RFM_FileAttributes *fileAttributes;
-	   GHashTable *mount_hash=get_mount_points();
+  time_t mtimeThreshold=time(NULL)-RFM_MTIME_OFFSET;
+  RFM_FileAttributes *fileAttributes;
+  GHashTable *mount_hash=get_mount_points();
 
-	   for (int i = 2; i < cmd_argc; i++) {
-	     name=cmd_argv[i];
-	     if (name[0] != '/') {
-	       //set_rfm_curPath(cwd);
-	       //set_rfm_curPath deals with inotify, which i don't understand quite well, for example, if i only pass one png file with rfm -p, six thumbnails can be displayed because inotify handler will call fill_store more than once.
-	       /*shall we set_rfm_path to original value after current function?*/
-	       die("ERROR: currently, with -p parameter, we only accept absolute path in filename!\n",PROG_NAME);
-	     }
-	     fileAttributes = get_file_info(name, mtimeThreshold, mount_hash);
-             if (fileAttributes != NULL) {
-               rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
+  GList *name=g_list_first(PictureFullNamesFromStdin);
+  while (name!=NULL){
+    fileAttributes = get_file_info(name->data, mtimeThreshold, mount_hash);
+    if (fileAttributes != NULL) {
+      rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
 #ifdef DebugPrintf
-               printf("append into rfm_fileAttributeList:%s\n", name);
+      printf("appended into rfm_fileAttributeList:%s\n", (char*)name->data);
 #endif
-             }
-           }
-	   updateIconView();
-	   if (rfm_do_thumbs == 1 &&
-	       g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR))
-	     do_thumbnails();
+    }
+    name=g_list_next(name);
+  }
+
+  updateIconView();
+  if (rfm_do_thumbs == 1 &&
+      g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR))
+  do_thumbnails();
 
   return TRUE;
 }
@@ -2508,6 +2504,25 @@ int main(int argc, char *argv[])
 	 int argvsize=sizeof(char *)*argc;
          cmd_argv=malloc(argvsize);
 	 memcpy(cmd_argv,argv,argvsize);
+
+	 /*with cmd_argv, i don't know how to deal with filename space, event with xargs -0 , so i switch to read line from stdin and give up xargs*/
+         int name_size=sizeof(gchar) * 1024;
+         gchar *name=malloc(name_size);
+         while (fgets(name, name_size, stdin) != NULL) {
+	   if (name[0] != '/') {
+	       die("ERROR: currently, with -p parameter, we only accept absolute path in filename!\n",PROG_NAME);
+	   }
+	   name[strcspn(name, "\n")] = 0; //name[strlen(name)] = '\0'; //manual set the last char to NULL to eliminate the trailing \n from fgets
+	   PictureFullNamesFromStdin=g_list_prepend(PictureFullNamesFromStdin, name);
+#ifdef DebugPrintf
+           printf("appended into PictureFullNamesFromStdin:%s\n", name);
+	   name=malloc(name_size);
+#endif
+         }
+         if (PictureFullNamesFromStdin != NULL) {
+           PictureFullNamesFromStdin = g_list_reverse(PictureFullNamesFromStdin);
+         }
+
          break;
 	 
       default:
