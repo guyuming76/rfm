@@ -832,7 +832,7 @@ static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter)
       return NULL;  /* Don't show thumbnails for files types with no thumbnailer */
    }
 
-   if (cmd_argv[1][1] == 'p') {
+   if (cmd_argv && cmd_argv[1][1] == 'p') {
      thumbData->thumb_size = RFM_THUMBNAIL_SIZE * 2;
    } else {
      thumbData->thumb_size = RFM_THUMBNAIL_SIZE;
