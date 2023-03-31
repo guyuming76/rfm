@@ -44,6 +44,7 @@ typedef struct {
    guint64 mtime_file;
    gint t_idx;
    pid_t rfm_pid;
+   gint thumb_size; 
 } RFM_ThumbQueueData;
 
 typedef struct {
@@ -794,9 +795,9 @@ static gboolean mkThumb()
 
    thumbData=(RFM_ThumbQueueData*)rfm_thumbQueue->data;
    if (thumbnailers[thumbData->t_idx].func==NULL)
-      thumb=gdk_pixbuf_new_from_file_at_scale(thumbData->path, RFM_THUMBNAIL_SIZE, RFM_THUMBNAIL_SIZE, TRUE, NULL);
+      thumb=gdk_pixbuf_new_from_file_at_scale(thumbData->path, thumbData->thumb_size, thumbData->thumb_size, TRUE, NULL);
    else
-      thumb=thumbnailers[thumbData->t_idx].func(thumbData->path, RFM_THUMBNAIL_SIZE);
+      thumb=thumbnailers[thumbData->t_idx].func(thumbData->path, thumbData->thumb_size);
    if (thumb!=NULL) {
       rfm_saveThumbnail(thumb, thumbData);
       g_object_unref(thumb);
@@ -831,12 +832,19 @@ static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter)
       return NULL;  /* Don't show thumbnails for files types with no thumbnailer */
    }
 
+   if (cmd_argv[1][1] == 'p') {
+     thumbData->thumb_size = RFM_THUMBNAIL_SIZE * 2;
+   } else {
+     thumbData->thumb_size = RFM_THUMBNAIL_SIZE;
+   }
    thumbData->path=g_strdup(fileAttributes->path);
    thumbData->mtime_file=fileAttributes->file_mtime;
    thumbData->uri=g_filename_to_uri(thumbData->path, NULL, NULL);
    thumbData->md5=g_compute_checksum_for_string(G_CHECKSUM_MD5, thumbData->uri, -1);
-   thumbData->thumb_name=g_strdup_printf("%s.png", thumbData->md5);
+   thumbData->thumb_name=g_strdup_printf("%s-%d.png", thumbData->md5, thumbData->thumb_size);
    thumbData->rfm_pid=getpid();  /* pid is used to generate a unique temporary thumbnail name */
+
+   
 
    /* Map thumb path to model reference for inotify */
    treePath=gtk_tree_model_get_path(GTK_TREE_MODEL(store), iter);
@@ -1068,19 +1076,19 @@ static gboolean readDirItem(GDir *dir) {
    return FALSE;
 }
 
-static gboolean readItemsFromPipe(int argc, char *argv[], char *cwd) {
+static gboolean readItemsFromPipe() {
 	   const gchar *name=NULL;
 	   time_t mtimeThreshold=time(NULL)-RFM_MTIME_OFFSET;
 	   RFM_FileAttributes *fileAttributes;
 	   GHashTable *mount_hash=get_mount_points();
 
-	   for (int i = 2; i < argc; i++) {
-	     name=argv[i];
+	   for (int i = 2; i < cmd_argc; i++) {
+	     name=cmd_argv[i];
 	     if (name[0] != '/') {
 	       //set_rfm_curPath(cwd);
 	       //set_rfm_curPath deals with inotify, which i don't understand quite well, for example, if i only pass one png file with rfm -p, six thumbnails can be displayed because inotify handler will call fill_store more than once.
 	       /*shall we set_rfm_path to original value after current function?*/
-	       die("rfm: currently, with -p parameter, we only accept absolute path in filename!\n");
+	       die("ERROR: currently, with -p parameter, we only accept absolute path in filename!\n",PROG_NAME);
 	     }
 	     fileAttributes = get_file_info(name, mtimeThreshold, mount_hash);
 	     if (fileAttributes != NULL)
@@ -1107,23 +1115,19 @@ static void clear_store(void)
 
 static void fill_store(RFM_ctx *rfmCtx)
 {
-  char cwd[1024]; /* Could use MAX_PATH here from limits.h, but still not guaranteed to be max */
-  if (rfmCtx->readFromPipe) {
-    if (getcwd(cwd, sizeof(cwd)) != NULL) {/* i don't think the way initDir variable works with rfm -c -d parameter is good, maybe i shall change it to default to cwd */
-	   readItemsFromPipe(cmd_argc, cmd_argv,cwd);
-         }
-   } else {
-
-   GDir *dir=NULL;
-
    rfm_stop_all(rfmCtx);
    clear_store();
    gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(store), rfmCtx->rfm_sortColumn, GTK_SORT_ASCENDING);
 
-   dir=g_dir_open(rfm_curPath, 0, NULL);
-   if (!dir) return;
-   rfm_readDirSheduler=g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, (GSourceFunc)readDirItem, dir, (GDestroyNotify)g_dir_close);
-   }
+  if (rfmCtx->readFromPipe) {
+    readItemsFromPipe();
+
+  } else {
+    GDir *dir=NULL;
+    dir=g_dir_open(rfm_curPath, 0, NULL);
+    if (!dir) return;
+    rfm_readDirSheduler=g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, (GSourceFunc)readDirItem, dir, (GDestroyNotify)g_dir_close);
+  }
 }
 
 static gint sort_func(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, gpointer user_data)
@@ -2008,17 +2012,19 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
    gtk_toolbar_set_style(GTK_TOOLBAR(tool_bar), GTK_TOOLBAR_ICONS);
    gtk_box_pack_start(GTK_BOX(rfm_main_box), tool_bar, FALSE, FALSE, 0);
 
-   buttonImage=gtk_image_new_from_pixbuf(defaultPixbufs->up);
-   up_button=gtk_tool_button_new(buttonImage,"Up");
-   gtk_tool_item_set_is_important(up_button, TRUE);
-   gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), up_button, -1);
-   g_signal_connect(up_button, "clicked", G_CALLBACK(up_clicked), NULL);
+   if (!rfmCtx->readFromPipe) {
+     buttonImage = gtk_image_new_from_pixbuf(defaultPixbufs->up);
+     up_button = gtk_tool_button_new(buttonImage, "Up");
+     gtk_tool_item_set_is_important(up_button, TRUE);
+     gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), up_button, -1);
+     g_signal_connect(up_button, "clicked", G_CALLBACK(up_clicked), NULL);
 
-   buttonImage=gtk_image_new_from_pixbuf(defaultPixbufs->home);
-   home_button=gtk_tool_button_new(buttonImage,"Home");
-   gtk_tool_item_set_is_important(home_button, TRUE);
-   gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), home_button, -1);
-   g_signal_connect(home_button, "clicked", G_CALLBACK(home_clicked), NULL);
+     buttonImage = gtk_image_new_from_pixbuf(defaultPixbufs->home);
+     home_button = gtk_tool_button_new(buttonImage, "Home");
+     gtk_tool_item_set_is_important(home_button, TRUE);
+     gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), home_button, -1);
+     g_signal_connect(home_button, "clicked", G_CALLBACK(home_clicked), NULL);
+   }
 
    buttonImage=gtk_image_new_from_pixbuf(defaultPixbufs->stop);
    stop_button=gtk_tool_button_new(buttonImage, "Stop");
@@ -2034,15 +2040,18 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
 
    separatorItem=gtk_separator_tool_item_new();
    gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), separatorItem, -1);
-   for(i=0;i<G_N_ELEMENTS(tool_buttons);i++) {
-      GdkPixbuf *buttonIcon;
-      buttonIcon=gtk_icon_theme_load_icon(icon_theme, tool_buttons[i].buttonIcon, RFM_TOOL_SIZE, 0, NULL);
-      buttonImage=gtk_image_new_from_pixbuf(buttonIcon);
-      g_object_unref(buttonIcon);
 
-      userButton=gtk_tool_button_new(buttonImage, tool_buttons[i].buttonName);
-      gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), userButton, -1);
-      g_signal_connect(userButton, "clicked", G_CALLBACK(exec_user_tool), &tool_buttons[i]);
+   if (!rfmCtx->readFromPipe){
+     for (i = 0; i < G_N_ELEMENTS(tool_buttons); i++) {
+       GdkPixbuf *buttonIcon;
+       buttonIcon=gtk_icon_theme_load_icon(icon_theme, tool_buttons[i].buttonIcon, RFM_TOOL_SIZE, 0, NULL);
+       buttonImage=gtk_image_new_from_pixbuf(buttonIcon);
+       g_object_unref(buttonIcon);
+
+       userButton=gtk_tool_button_new(buttonImage, tool_buttons[i].buttonName);
+       gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), userButton, -1);
+       g_signal_connect(userButton, "clicked", G_CALLBACK(exec_user_tool),&tool_buttons[i]);
+     }
    }
    separatorItem=gtk_separator_tool_item_new();
    gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), separatorItem, -1);
@@ -2082,10 +2091,13 @@ static GtkWidget *add_iconview(GtkWidget *rfm_main_box, RFM_ctx *rfmCtx)
    g_signal_connect(icon_view, "drag-begin", G_CALLBACK(drag_local_handl), rfmCtx);
    g_signal_connect(icon_view, "drag-end", G_CALLBACK(drag_local_handl), rfmCtx);
 
-   /* Destination DnD signals */
-   g_signal_connect(icon_view, "drag-drop", G_CALLBACK(drag_drop_handl), rfmCtx);
-   g_signal_connect(icon_view, "drag-data-received", G_CALLBACK(drag_data_received_handl), NULL);
-   g_signal_connect(icon_view, "drag-motion", G_CALLBACK(drag_motion_handl), rfmCtx);
+   if (!rfmCtx->readFromPipe) {
+
+     /* Destination DnD signals */
+     g_signal_connect(icon_view, "drag-drop", G_CALLBACK(drag_drop_handl),rfmCtx);
+     g_signal_connect(icon_view, "drag-data-received",G_CALLBACK(drag_data_received_handl), NULL);
+     g_signal_connect(icon_view, "drag-motion", G_CALLBACK(drag_motion_handl),rfmCtx);
+   }
 
 //   g_signal_connect (icon_view, "selection-changed", G_CALLBACK (selection_changed), rfmCtx);
    g_signal_connect(icon_view, "button-press-event", G_CALLBACK(icon_view_button_press), rfmCtx);
