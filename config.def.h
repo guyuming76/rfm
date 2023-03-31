@@ -6,6 +6,7 @@
 #define RFM_TOOL_SIZE 22
 #define RFM_ICON_SIZE 48
 #define RFM_THUMBNAIL_SIZE 128 /* Maximum size for thumb dir normal is 128 */
+#define RFM_THUMBNAIL_LARGE_SIZE  RFM_THUMBNAIL_SIZE * 2
 #define RFM_MX_MSGBOX_CHARS 1500 /* Maximum chars for RFM_EXEC_SYNC_MARKUP output; messages exceeding this will be displayed using RFM_EXEC_SYNC_TEXT_BOX mode */
 #define RFM_MX_ARGS 128 /* Maximum allowed number of command line arguments in action commands below */
 #define RFM_MOUNT_MEDIA_PATH "/run/media" /* Where specified mount handler mounts filesystems (e.g. udisksctl mount) */

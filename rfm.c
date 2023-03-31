@@ -833,7 +833,7 @@ static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter)
    }
 
    if (cmd_argv && cmd_argv[1][1] == 'p') {
-     thumbData->thumb_size = RFM_THUMBNAIL_SIZE * 2;
+     thumbData->thumb_size = RFM_THUMBNAIL_LARGE_SIZE;
    } else {
      thumbData->thumb_size = RFM_THUMBNAIL_SIZE;
    }
@@ -2105,7 +2105,19 @@ static GtkWidget *add_iconview(GtkWidget *rfm_main_box, RFM_ctx *rfmCtx)
    
    gtk_container_add(GTK_CONTAINER(sw), icon_view);
    gtk_widget_grab_focus(icon_view);
-   
+
+   //uncomment to debug
+   /* printf("gtk_icon_view_get_column_spacing:%d\n",gtk_icon_view_get_column_spacing((GtkIconView *)icon_view)); */
+   /* printf("gtk_icon_view_get_item_padding:%d\n",gtk_icon_view_get_item_padding((GtkIconView *)icon_view)); */
+   /* printf("gtk_icon_view_get_spacing:%d\n",gtk_icon_view_get_spacing((GtkIconView *)icon_view)); */
+   /* printf("gtk_icon_view_get_item_width:%d\n",gtk_icon_view_get_item_width((GtkIconView *)icon_view)); */
+   /* printf("gtk_icon_view_get_margin:%d\n",gtk_icon_view_get_margin((GtkIconView *)icon_view)); */
+
+   if (rfmCtx->readFromPipe) {
+     gtk_icon_view_set_item_width((GtkIconView *)icon_view,
+                                  RFM_THUMBNAIL_LARGE_SIZE);
+   }
+
    return icon_view;
 }
 
