@@ -1,3 +1,16 @@
+
+在rfm的基础上，我作了定制，使用参数-p,接收管道输入文件名， 比如命令：
+
+`locate 菱锰|grep .jpg|rfm -p`
+
+[接收管道输入的图片文件名，以大图标查看图片](20230401_12h02m34s_grim.png)
+
+在config.def.h, config.h里配置使用IMV软件看图
+
+[回车键用IMV查看完整图片](20230401_11h33m26s_grim.png)
+
+
+
 rfm - rods file manager
 =======================
 
