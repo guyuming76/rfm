@@ -1105,6 +1105,7 @@ static gboolean readItemsFromPipe() {
     }
     name=g_list_next(name);
   }
+  rfm_fileAttributeList=g_list_reverse(rfm_fileAttributeList);
 
   updateIconView();
   if (rfm_do_thumbs == 1 &&
@@ -1127,16 +1128,16 @@ static void fill_store(RFM_ctx *rfmCtx)
 {
    rfm_stop_all(rfmCtx);
    clear_store();
-   gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(store), rfmCtx->rfm_sortColumn, GTK_SORT_ASCENDING);
 
-  if (rfmCtx->readFromPipe) {
+   if (rfmCtx->readFromPipe) {
     readItemsFromPipe();
 
-  } else {
-    GDir *dir=NULL;
-    dir=g_dir_open(rfm_curPath, 0, NULL);
-    if (!dir) return;
-    rfm_readDirSheduler=g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, (GSourceFunc)readDirItem, dir, (GDestroyNotify)g_dir_close);
+   } else {
+     gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(store), rfmCtx->rfm_sortColumn, GTK_SORT_ASCENDING);
+     GDir *dir=NULL;
+     dir=g_dir_open(rfm_curPath, 0, NULL);
+     if (!dir) return;
+     rfm_readDirSheduler=g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, (GSourceFunc)readDirItem, dir, (GDestroyNotify)g_dir_close);
   }
 }
 
@@ -1155,19 +1156,6 @@ static gint sort_func(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, gpoin
    else  rv=strcmp(fileAttributesA->file_name, fileAttributesB->file_name);
 
    return rv;
-}
-
-static GtkListStore *create_store(void)
-{
-   GtkListStore *store=gtk_list_store_new(NUM_COLS,
-                              G_TYPE_STRING,    /* Displayed name */
-                              GDK_TYPE_PIXBUF,  /* Displayed icon */
-                              G_TYPE_UINT64,    /* File mtime: time_t is currently 32 bit signed */
-                              G_TYPE_POINTER);  /* RFM_FileAttributes */
-
-   gtk_tree_sortable_set_default_sort_func(GTK_TREE_SORTABLE(store), sort_func, NULL, NULL);
-
-   return store;
 }
 
 static void set_rfm_curPath(gchar* path)
@@ -2125,6 +2113,7 @@ static GtkWidget *add_iconview(GtkWidget *rfm_main_box, RFM_ctx *rfmCtx)
 #endif
    
    if (rfmCtx->readFromPipe) {
+     /*a single cell will be too wide if width is set automatically, one cell can take a whole row, don't know why*/
      gtk_icon_view_set_item_width((GtkIconView *)icon_view,
                                   RFM_THUMBNAIL_LARGE_SIZE);
    }
@@ -2384,7 +2373,15 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
    g_object_set_data_full(G_OBJECT(window),"rfm_dnd_menu",dndMenu,(GDestroyNotify)g_free);
    g_object_set_data_full(G_OBJECT(window),"rfm_root_menu",rootMenu,(GDestroyNotify)g_free);
    g_object_set_data_full(G_OBJECT(window),"rfm_default_pixbufs",defaultPixbufs,(GDestroyNotify)free_default_pixbufs);
-   store=create_store();
+
+   store=gtk_list_store_new(NUM_COLS,
+                              G_TYPE_STRING,    /* Displayed name */
+                              GDK_TYPE_PIXBUF,  /* Displayed icon */
+                              G_TYPE_UINT64,    /* File mtime: time_t is currently 32 bit signed */
+                              G_TYPE_POINTER);  /* RFM_FileAttributes */
+   if (!rfmCtx->readFromPipe)
+     gtk_tree_sortable_set_default_sort_func(GTK_TREE_SORTABLE(store), sort_func, NULL, NULL);
+
    add_toolbar(rfm_main_box, defaultPixbufs, rfmCtx);
    icon_view=add_iconview(rfm_main_box, rfmCtx);
 
@@ -2512,12 +2509,18 @@ int main(int argc, char *argv[])
 	   if (name[0] != '/') {
 	       die("ERROR: currently, with -p parameter, we only accept absolute path in filename!\n",PROG_NAME);
 	   }
+	   printf("%s",name);
+	   /* locate something|grep .jpg|rfm -p &           is ok
+           with
+	   locate something|grep .jpg|rfm -p & exit      , the command window will close, but then, when i press enter on a thumbnail to open IMV, it always open a new IMV instead of using an existing one. So, i must keep the command window open. Since the command window is open, i can just print the filenames so that user can see the contents of stdin*/
+	   
+	   
 	   name[strcspn(name, "\n")] = 0; //name[strlen(name)] = '\0'; //manual set the last char to NULL to eliminate the trailing \n from fgets
 	   PictureFullNamesFromStdin=g_list_prepend(PictureFullNamesFromStdin, name);
 #ifdef DebugPrintf
            printf("appended into PictureFullNamesFromStdin:%s\n", name);
-	   name=malloc(name_size);
 #endif
+	   name=malloc(name_size);
          }
          if (PictureFullNamesFromStdin != NULL) {
            PictureFullNamesFromStdin = g_list_reverse(PictureFullNamesFromStdin);
