@@ -177,7 +177,11 @@ static gchar *rfm_prePath=NULL;  /* Previous directory: only set when up button 
 static GtkToolItem *up_button;
 static GtkToolItem *home_button;
 static GtkToolItem *stop_button;
+static GtkToolItem *refresh_button;;
 static GtkToolItem *info_button;
+static GtkToolItem *PageUp_button;
+static GtkToolItem *PageDown_button;
+static GtkAccelGroup *agMain;
 
 static GtkIconTheme *icon_theme;
 
@@ -188,6 +192,7 @@ static GtkListStore *store=NULL;
 static int cmd_argc; /* store args from main into global so that i don't have to change existing function parameter to pass arguments*/
 static char **cmd_argv;
 static GList *PictureFullNamesFromStdin=NULL;
+static GList *CurrentPage;
 
 /* Functions */
 static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer rfmCtx);
@@ -1089,13 +1094,34 @@ static gboolean readDirItem(GDir *dir) {
    return FALSE;
 }
 
+static void TurnPage(RFM_ctx *rfmCtx, gboolean next) {
+  GList *name =CurrentPage;
+  gint i=0;
+  while (name != NULL && i < PageSize) {
+    if (next)
+      name=g_list_next(name);
+    else
+      name=g_list_previous(name);
+    i++;
+  }
+  if (name != NULL && name!=CurrentPage) {
+    CurrentPage = name;
+    fill_store(rfmCtx);
+  }
+}
+
+static void NextPage(GtkToolItem *item, RFM_ctx *rfmCtx) { TurnPage(rfmCtx, TRUE); }
+
+static void PreviousPage(GtkToolItem *item, RFM_ctx *rfmCtx) { TurnPage(rfmCtx, FALSE); }
+
 static gboolean readItemsFromPipe() {
   time_t mtimeThreshold=time(NULL)-RFM_MTIME_OFFSET;
   RFM_FileAttributes *fileAttributes;
   GHashTable *mount_hash=get_mount_points();
 
-  GList *name=g_list_first(PictureFullNamesFromStdin);
-  while (name!=NULL){
+  gint i=0;
+  GList *name=CurrentPage;
+  while (name!=NULL && i<PageSize){
     fileAttributes = get_file_info(name->data, mtimeThreshold, mount_hash);
     if (fileAttributes != NULL) {
       rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
@@ -1104,6 +1130,7 @@ static gboolean readItemsFromPipe() {
 #endif
     }
     name=g_list_next(name);
+    i++;
   }
   rfm_fileAttributeList=g_list_reverse(rfm_fileAttributeList);
 
@@ -2000,7 +2027,6 @@ static gboolean icon_view_button_press(GtkWidget *widget, GdkEvent *event, RFM_c
 static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixbufs, RFM_ctx *rfmCtx)
 {
    GtkWidget *tool_bar;
-   GtkToolItem *refresh_button;
    GtkToolItem *userButton;
    GtkToolItem *separatorItem;
    GtkWidget *buttonImage=NULL; /* Temp store for button image; gtk_tool_button_new() appears to take the reference */
@@ -2035,6 +2061,23 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
    gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), refresh_button, -1);
    g_signal_connect(refresh_button, "clicked", G_CALLBACK(refresh_clicked), rfmCtx);
    g_signal_connect(refresh_button, "button-press-event", G_CALLBACK(refresh_other), rfmCtx);
+
+   if (rfmCtx->readFromPipe) {
+     PageUp_button=gtk_tool_button_new(NULL, "PageUp");
+     gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), PageUp_button, -1);
+     g_signal_connect(PageUp_button, "clicked", G_CALLBACK(PreviousPage), rfmCtx);
+
+     PageDown_button=gtk_tool_button_new(NULL, "PageDown");
+     gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), PageDown_button, -1);
+     g_signal_connect(PageDown_button, "clicked", G_CALLBACK(NextPage), rfmCtx);
+
+     agMain = gtk_accel_group_new();
+     gtk_window_add_accel_group(GTK_WINDOW(window), agMain);
+     gtk_widget_add_accelerator(GTK_WIDGET(PageUp_button), "clicked", agMain,GDK_KEY_Page_Up,GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
+     gtk_widget_add_accelerator(GTK_WIDGET(PageDown_button), "clicked", agMain,GDK_KEY_Page_Down,GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
+     gtk_tool_item_set_tooltip_text(PageUp_button,"Ctrl+PgUp");
+     gtk_tool_item_set_tooltip_text(PageDown_button,"Ctrl+PgDn");
+   }
 
    separatorItem=gtk_separator_tool_item_new();
    gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), separatorItem, -1);
@@ -2524,7 +2567,9 @@ int main(int argc, char *argv[])
          }
          if (PictureFullNamesFromStdin != NULL) {
            PictureFullNamesFromStdin = g_list_reverse(PictureFullNamesFromStdin);
+	   PictureFullNamesFromStdin = g_list_first(PictureFullNamesFromStdin);
          }
+	 CurrentPage=PictureFullNamesFromStdin;
 
          break;
 	 
