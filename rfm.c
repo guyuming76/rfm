@@ -30,6 +30,8 @@
 #define PIPE_SZ 65535      /* Kernel pipe size */
 #define RFM_N_BUILT_IN 3   /* Number of built in actions */
 
+#define PIPELINE_ABSOLUTE_PATH_MODE cmd_argv && cmd_argv[1][1] == 'p'
+
 typedef struct {
    gchar *thumbRoot;
    gchar *thumbSub;
@@ -842,7 +844,7 @@ static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter)
       return NULL;  /* Don't show thumbnails for files types with no thumbnailer */
    }
 
-   if (cmd_argv && cmd_argv[1][1] == 'p') {
+   if (PIPELINE_ABSOLUTE_PATH_MODE) {
      thumbData->thumb_size = RFM_THUMBNAIL_LARGE_SIZE;
    } else {
      thumbData->thumb_size = RFM_THUMBNAIL_SIZE;
@@ -1773,8 +1775,12 @@ static void file_menu_rm(GtkWidget *menuitem, gpointer user_data)
    }
    g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
    if (fileList!=NULL) {
-      if (response_id!=GTK_RESPONSE_CANCEL)
-         exec_run_action(run_actions[2].runCmdName, fileList, i, run_actions[2].runOpts, NULL);
+     if (response_id != GTK_RESPONSE_CANCEL) {
+       exec_run_action(run_actions[2].runCmdName, fileList, i, run_actions[2].runOpts, NULL);
+       if (((RFM_ctx *)user_data)->readFromPipe) {
+	 fill_store((RFM_ctx *)user_data);
+       }
+     }
       g_list_free(fileList); /* Do not free list elements: owned by GList rfm_fileAttributeList */
    }
 }
@@ -1808,8 +1814,7 @@ static void file_menu_exec(GtkMenuItem *menuitem, RFM_RunActions *selectedAction
  * the corresponding index in the run_actions_array.
  * Items are shown or hidden in popup_file_menu() depending on the selected files mime types.
  */
-static RFM_fileMenu *setup_file_menu(void)
-{
+static RFM_fileMenu *setup_file_menu(RFM_ctx * rfmCtx){
    gint i;
    RFM_fileMenu *fileMenu=NULL;
 
@@ -1836,7 +1841,7 @@ static RFM_fileMenu *setup_file_menu(void)
    fileMenu->action[2]=gtk_menu_item_new_with_label(run_actions[2].runName);
    gtk_widget_show(fileMenu->action[2]);
    gtk_menu_shell_append(GTK_MENU_SHELL(fileMenu->menu), fileMenu->action[2]);
-   g_signal_connect(fileMenu->action[2], "activate", G_CALLBACK(file_menu_rm), NULL);
+   g_signal_connect(fileMenu->action[2], "activate", G_CALLBACK(file_menu_rm), rfmCtx);
 
    fileMenu->separator[1]=gtk_separator_menu_item_new();
    gtk_widget_show(fileMenu->separator[1]);
@@ -2409,7 +2414,7 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
       icon_theme=gtk_icon_theme_get_default();
    #endif
 
-   fileMenu=setup_file_menu(); /* TODO: WARNING: This can return NULL! */
+   fileMenu=setup_file_menu(rfmCtx); /* TODO: WARNING: This can return NULL! */
    dndMenu=setup_dnd_menu();
    rootMenu=setup_root_menu();
    defaultPixbufs=load_default_pixbufs(); /* TODO: WARNING: This can return NULL! */
