@@ -1,9 +1,6 @@
 /* Config file for rfm
  */
 
-
-#define PageSize 20 /*in -p mode,number of thumbnails to show one time*/
-
 /*#define RFM_ICON_THEME "elementary"*/
 /*#define RFM_SINGLE_CLICK "True"*/
 #define RFM_TOOL_SIZE 22

@@ -193,6 +193,7 @@ static int cmd_argc; /* store args from main into global so that i don't have to
 static char **cmd_argv;
 static GList *PictureFullNamesFromStdin=NULL;
 static GList *CurrentPage;
+static gint PageSize=20;
 
 /* Functions */
 static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer rfmCtx);
@@ -2545,6 +2546,10 @@ int main(int argc, char *argv[])
          cmd_argv=malloc(argvsize);
 	 memcpy(cmd_argv,argv,argvsize);
 
+	 char *pagesize=argv[1]+2;
+	 int ps=atoi(pagesize);
+	 if (ps!=0) PageSize=ps;
+
 	 /*with cmd_argv, i don't know how to deal with filename space, event with xargs -0 , so i switch to read line from stdin and give up xargs*/
          int name_size=sizeof(gchar) * 1024;
          gchar *name=malloc(name_size);
@@ -2574,7 +2579,7 @@ int main(int argc, char *argv[])
          break;
 	 
       default:
-         die("Usage: %s [-c || -d <full path to directory> || -i || -v || -p]\n", PROG_NAME);
+         die("Usage: %s [-c || -d <full path to directory> || -i || -v || -p || -p<custom pagesize such as 50>\n", PROG_NAME);
       }
    }
    if (setup(initDir, rfmCtx)==0)
