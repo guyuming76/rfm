@@ -30,8 +30,6 @@
 #define PIPE_SZ 65535      /* Kernel pipe size */
 #define RFM_N_BUILT_IN 3   /* Number of built in actions */
 
-#define PIPELINE_ABSOLUTE_PATH_MODE cmd_argv && cmd_argv[1][1] == 'p'
-
 typedef struct {
    gchar *thumbRoot;
    gchar *thumbSub;
@@ -104,7 +102,6 @@ typedef struct {
    GUnixMountMonitor *rfm_mountMonitor;   /* Reference for monitor mount events */
    gint        showMimeType;              /* Display detected mime type on stdout when a file is right-clicked: toggled via -i option */
    guint       delayedRefresh_GSourceID;  /* Main loop source ID for fill_store() delayed refresh timer */
-   gboolean  readFromPipe;  /* if true, means to fill store with data from something like  ls |xargs rfm -p, or locate blablablaa |xargs rfm -p, instead of from a directory*/
 } RFM_ctx;
 
 typedef struct {  /* Update free_fileAttributes() and malloc_fileAttributes() if new items are added */
@@ -195,6 +192,7 @@ static GtkListStore *store=NULL;
 
 static int cmd_argc; /* store args from main into global so that i don't have to change existing function parameter to pass arguments*/
 static char **cmd_argv;
+static gboolean readFromPipe=FALSE;  /* if true, means to fill store with data from something like  ls |xargs rfm -p, or locate blablablaa |xargs rfm -p, instead of from a directory*/
 static GList *PictureFullNamesFromStdin=NULL;
 static GList *CurrentPage;
 static gint PageSize=20;
@@ -862,7 +860,7 @@ static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter)
       return NULL;  /* Don't show thumbnails for files types with no thumbnailer */
    }
 
-   if (PIPELINE_ABSOLUTE_PATH_MODE) {
+   if (readFromPipe) {
      thumbData->thumb_size = RFM_THUMBNAIL_LARGE_SIZE;
    } else {
      thumbData->thumb_size = RFM_THUMBNAIL_SIZE;
@@ -1177,7 +1175,7 @@ static void fill_store(RFM_ctx *rfmCtx)
    rfm_stop_all(rfmCtx);
    clear_store();
 
-   if (rfmCtx->readFromPipe) {
+   if (readFromPipe) {
     readItemsFromPipe();
 
    } else {
@@ -1402,7 +1400,7 @@ static void cp_mv_file(RFM_ctx * doMove, GList *fileList)
 
    if (selected_files!=NULL) {
       if (response_id!=GTK_RESPONSE_CANCEL) {
-	if (doMove==NULL || !doMove->readFromPipe) /*for copy, the source iconview won't change, we don't need to refresh with fill_store, for move with inotify hander on source iconview, we also don't need to refresh manually*/
+	if (doMove==NULL || !readFromPipe) /*for copy, the source iconview won't change, we don't need to refresh with fill_store, for move with inotify hander on source iconview, we also don't need to refresh manually*/
             exec_run_action(run_actions[0].runCmdName, selected_files, i, run_actions[0].runOpts, dest_path);
          else {
 	    exec_run_action_internal(run_actions[1].runCmdName, selected_files, i, run_actions[1].runOpts, dest_path,FALSE,fill_store,doMove);
@@ -1805,7 +1803,7 @@ static void file_menu_rm(GtkWidget *menuitem, gpointer user_data)
    g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
    if (fileList!=NULL) {
      if (response_id != GTK_RESPONSE_CANCEL) {
-       if (((RFM_ctx *)user_data)->readFromPipe) {
+       if (readFromPipe) {
          exec_run_action_internal(run_actions[2].runCmdName, fileList, i, run_actions[2].runOpts, NULL,FALSE,fill_store,user_data);
        } else {
 	 exec_run_action(run_actions[2].runCmdName, fileList, i, run_actions[2].runOpts, NULL);
@@ -2072,7 +2070,7 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
    gtk_toolbar_set_style(GTK_TOOLBAR(tool_bar), GTK_TOOLBAR_ICONS);
    gtk_box_pack_start(GTK_BOX(rfm_main_box), tool_bar, FALSE, FALSE, 0);
 
-   if (!rfmCtx->readFromPipe) {
+   if (!readFromPipe) {
      buttonImage = gtk_image_new_from_pixbuf(defaultPixbufs->up);
      up_button = gtk_tool_button_new(buttonImage, "Up");
      gtk_tool_item_set_is_important(up_button, TRUE);
@@ -2098,7 +2096,7 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
    g_signal_connect(refresh_button, "clicked", G_CALLBACK(refresh_clicked), rfmCtx);
    g_signal_connect(refresh_button, "button-press-event", G_CALLBACK(refresh_other), rfmCtx);
 
-   if (rfmCtx->readFromPipe) {
+   if (readFromPipe) {
      PageUp_button=gtk_tool_button_new(NULL, "PageUp");
      gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), PageUp_button, -1);
      g_signal_connect(PageUp_button, "clicked", G_CALLBACK(PreviousPage), rfmCtx);
@@ -2118,7 +2116,7 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
    separatorItem=gtk_separator_tool_item_new();
    gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), separatorItem, -1);
 
-   if (!rfmCtx->readFromPipe){
+   if (!readFromPipe){
      for (i = 0; i < G_N_ELEMENTS(tool_buttons); i++) {
        GdkPixbuf *buttonIcon;
        buttonIcon=gtk_icon_theme_load_icon(icon_theme, tool_buttons[i].buttonIcon, RFM_TOOL_SIZE, 0, NULL);
@@ -2168,7 +2166,7 @@ static GtkWidget *add_iconview(GtkWidget *rfm_main_box, RFM_ctx *rfmCtx)
    g_signal_connect(icon_view, "drag-begin", G_CALLBACK(drag_local_handl), rfmCtx);
    g_signal_connect(icon_view, "drag-end", G_CALLBACK(drag_local_handl), rfmCtx);
 
-   if (!rfmCtx->readFromPipe) {
+   if (!readFromPipe) {
 
      /* Destination DnD signals */
      g_signal_connect(icon_view, "drag-drop", G_CALLBACK(drag_drop_handl),rfmCtx);
@@ -2191,7 +2189,7 @@ static GtkWidget *add_iconview(GtkWidget *rfm_main_box, RFM_ctx *rfmCtx)
    printf("gtk_icon_view_get_margin:%d\n",gtk_icon_view_get_margin((GtkIconView *)icon_view));
 #endif
    
-   if (rfmCtx->readFromPipe) {
+   if (readFromPipe) {
      /*a single cell will be too wide if width is set automatically, one cell can take a whole row, don't know why*/
      gtk_icon_view_set_item_width((GtkIconView *)icon_view,
                                   RFM_THUMBNAIL_LARGE_SIZE);
@@ -2458,7 +2456,7 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
                               GDK_TYPE_PIXBUF,  /* Displayed icon */
                               G_TYPE_UINT64,    /* File mtime: time_t is currently 32 bit signed */
                               G_TYPE_POINTER);  /* RFM_FileAttributes */
-   if (!rfmCtx->readFromPipe)
+   if (!readFromPipe)
      gtk_tree_sortable_set_default_sort_func(GTK_TREE_SORTABLE(store), sort_func, NULL, NULL);
 
    add_toolbar(rfm_main_box, defaultPixbufs, rfmCtx);
@@ -2466,7 +2464,7 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
 
    g_signal_connect(window,"destroy", G_CALLBACK(cleanup), rfmCtx);
 
-   if (!rfmCtx->readFromPipe) {
+   if (!readFromPipe) {
      if (initDir == NULL)
        set_rfm_curPath(rfm_homePath);
      else
@@ -2577,7 +2575,7 @@ int main(int argc, char *argv[])
          die("%s-%s, Copyright (C) Rodney Padgett, see LICENSE for details\n", PROG_NAME, VERSION);
          break;
       case 'p':
-	 rfmCtx->readFromPipe=1;
+	 readFromPipe=1;
 	 cmd_argc=argc;
 	 int argvsize=sizeof(char *)*argc;
          cmd_argv=malloc(argvsize);
