@@ -2466,10 +2466,12 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
 
    g_signal_connect(window,"destroy", G_CALLBACK(cleanup), rfmCtx);
 
-   if (initDir==NULL)
-         set_rfm_curPath(rfm_homePath);
-   else
-      set_rfm_curPath(initDir);
+   if (!rfmCtx->readFromPipe) {
+     if (initDir == NULL)
+       set_rfm_curPath(rfm_homePath);
+     else
+       set_rfm_curPath(initDir);
+   }
 
    fill_store(rfmCtx);
    gtk_widget_show_all(window);
