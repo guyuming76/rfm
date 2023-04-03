@@ -1209,21 +1209,26 @@ static void set_rfm_curPath(gchar* path)
    char *msg;
    int rfm_new_wd;
 
-   rfm_new_wd=inotify_add_watch(rfm_inotify_fd, path, INOTIFY_MASK);
-   if (rfm_new_wd < 0) {
-      perror("RFM: set_rfm_curPath(): inotify_add_watch()");
-      msg=g_strdup_printf("%s:\n\nCan't enter directory!", path);
-      show_msgbox(msg, "Warning", GTK_MESSAGE_WARNING);
-      g_free(msg);
-   }
-   else {
-      inotify_rm_watch(rfm_inotify_fd, rfm_curPath_wd);
-      rfm_curPath_wd=rfm_new_wd;
-      g_free(rfm_curPath);
-      rfm_curPath=g_strdup(path);
-      gtk_window_set_title (GTK_WINDOW (window), rfm_curPath);
-      gtk_widget_set_sensitive(GTK_WIDGET(up_button), strcmp(rfm_curPath, G_DIR_SEPARATOR_S) != 0);
-      gtk_widget_set_sensitive(GTK_WIDGET(home_button), strcmp(rfm_curPath, rfm_homePath) != 0);
+   if (readFromPipe) {
+     rfm_curPath = g_strdup(path);
+   }else{
+     rfm_new_wd=inotify_add_watch(rfm_inotify_fd, path, INOTIFY_MASK);
+     if (rfm_new_wd < 0) {
+       perror("RFM: set_rfm_curPath(): inotify_add_watch()");
+       msg=g_strdup_printf("%s:\n\nCan't enter directory!", path);
+       show_msgbox(msg, "Warning", GTK_MESSAGE_WARNING);
+       g_free(msg);
+     } else {
+       inotify_rm_watch(rfm_inotify_fd, rfm_curPath_wd);
+       rfm_curPath_wd = rfm_new_wd;
+       g_free(rfm_curPath);
+       rfm_curPath = g_strdup(path);
+       gtk_window_set_title(GTK_WINDOW(window), rfm_curPath);
+       gtk_widget_set_sensitive(GTK_WIDGET(up_button),
+				strcmp(rfm_curPath, G_DIR_SEPARATOR_S) != 0);
+       gtk_widget_set_sensitive(GTK_WIDGET(home_button),
+				strcmp(rfm_curPath, rfm_homePath) != 0);
+     }
    }
 }
 
@@ -2464,12 +2469,12 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
 
    g_signal_connect(window,"destroy", G_CALLBACK(cleanup), rfmCtx);
 
-   if (!readFromPipe) {
-     if (initDir == NULL)
-       set_rfm_curPath(rfm_homePath);
-     else
-       set_rfm_curPath(initDir);
-   }
+
+   if (initDir == NULL)
+     set_rfm_curPath(rfm_homePath);
+   else
+     set_rfm_curPath(initDir);
+
 
    fill_store(rfmCtx);
    gtk_widget_show_all(window);
@@ -2580,6 +2585,11 @@ int main(int argc, char *argv[])
 	 int argvsize=sizeof(char *)*argc;
          cmd_argv=malloc(argvsize);
 	 memcpy(cmd_argv,argv,argvsize);
+
+         if (getcwd(cwd, sizeof(cwd)) != NULL) /* getcwd returns NULL if cwd[] not big enough! */
+            initDir=cwd;
+         else
+            die("ERROR: %s: getcwd() failed.\n", PROG_NAME);
 
 	 char *pagesize=argv[1] + 2 * sizeof(char);
 	 int ps=atoi(pagesize);
