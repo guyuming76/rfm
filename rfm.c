@@ -73,6 +73,8 @@ typedef struct {
    char *stdOut;
    char *stdErr;
    int   status;
+  void (*customCallBackFunc)(gpointer);
+  gpointer customCallbackUserData;
 } RFM_ChildAttribs;
 
 typedef struct {
@@ -267,11 +269,13 @@ static gboolean child_supervisor(gpointer user_data)
    show_child_output(child_attribs);
 
    rfm_childList=g_list_remove(rfm_childList, child_attribs);
-   free_child_attribs(child_attribs);
-   
+
    if (rfm_childList==NULL)
       gtk_widget_set_sensitive(GTK_WIDGET(info_button), FALSE);
 
+   (child_attribs->customCallBackFunc)(child_attribs->customCallbackUserData);
+
+   free_child_attribs(child_attribs);
    return FALSE;
 }
 
@@ -561,7 +565,7 @@ static void show_text(gchar *text, gchar *title, gint type)
    gtk_widget_grab_focus(search_entry);
 }
 
-static gint cp_mv_check_path(char *src_path, char *dest_path, gpointer copy)
+static gint cp_mv_check_path(char *src_path, char *dest_path, gpointer move)
 {
    gchar *src_basename=g_path_get_basename(src_path);
    gchar *dest_basename=g_path_get_basename(dest_path);
@@ -605,7 +609,7 @@ static gint cp_mv_check_path(char *src_path, char *dest_path, gpointer copy)
          dialog_label=g_strdup_printf("%s item <b>%s</b> exists in the destination path.\nOverwrite (net size change = %lli bytes)?\n",prefixString,dest_basename,size_diff);
       }
 
-      if (copy!=NULL)
+      if (move==NULL)
          dialog_title=g_strdup_printf("Copy %s",src_basename);
       else
          dialog_title=g_strdup_printf("Move %s",src_basename);
@@ -618,7 +622,7 @@ static gint cp_mv_check_path(char *src_path, char *dest_path, gpointer copy)
    return response_id;
 }
 
-static gboolean exec_with_stdOut(gchar **v, gint run_opts)
+static gboolean exec_with_stdOut(gchar **v, gint run_opts,void(*callbackfunc)(gpointer callbackfuncUserData), gpointer callbackfuncUserData)
 {
    gboolean rv=FALSE;
    RFM_ChildAttribs *child_attribs=NULL;
@@ -640,6 +644,9 @@ static gboolean exec_with_stdOut(gchar **v, gint run_opts)
          child_attribs->stdOut=NULL;
          child_attribs->stdErr=NULL;
          child_attribs->status=-1;  /* -1 indicates child is running; set to wait wstatus on exit */
+
+	 child_attribs->customCallBackFunc=callbackfunc;
+	 child_attribs->customCallbackUserData=callbackfuncUserData;
  
          g_timeout_add(100, (GSourceFunc)child_supervisor, (void*)child_attribs);
          g_child_watch_add(child_attribs->pid, (GChildWatchFunc)exec_child_handler, child_attribs);
@@ -687,18 +694,25 @@ static gchar **build_cmd_vector(const char **cmd, GList *file_list, long n_args,
    return v;
 }
 
-static void exec_run_action(const char **action, GList *file_list, long n_args, int run_opts, char *dest_path)
+static void exec_run_action_internal(const char **action, GList *file_list, long n_args, int run_opts, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData)
 {
    gchar **v=NULL;
 
    v=build_cmd_vector(action, file_list, n_args, dest_path);
    if (v != NULL) {
       if (run_opts==RFM_EXEC_NONE) {
-         if (!g_spawn_async(rfm_curPath, v, NULL, 0, NULL, NULL, NULL, NULL))
-            g_warning("exec_run_action: %s failed to execute. Check run_actions[] in config.h!",v[0]);
+        if (async) {
+          if (!g_spawn_async(rfm_curPath, v, NULL, 0, NULL, NULL, NULL, NULL))
+            g_warning("exec_run_action: %s failed to execute. Check run_actions[] in config.h!", v[0]);
+	  //TODO: implement callbackfunc invoke here
+        } else {
+          if (!g_spawn_sync(rfm_curPath, v, NULL, 0, NULL, NULL, NULL, NULL,NULL,NULL))
+            g_warning("exec_run_action: %s failed to execute. Check run_actions[] in config.h!", v[0]);
+	  (*callbackfunc)(callbackfuncUserData);
+         }
       }
       else {
-         if (!exec_with_stdOut(v, run_opts))
+	if (!exec_with_stdOut(v, run_opts,callbackfunc,callbackfuncUserData))
             g_warning("exec_run_action: %s failed to execute. Check run_actions[] in config.h!",v[0]);
       }
       free(v);
@@ -706,6 +720,10 @@ static void exec_run_action(const char **action, GList *file_list, long n_args, 
    else
       g_warning("exec_run_action: %s failed to execute: build_cmd_vector() returned NULL.",action[0]);
 }
+
+static void exec_run_action(const char **action, GList *file_list, long n_args, int run_opts, char *dest_path)
+{ exec_run_action_internal(action,file_list,n_args,run_opts,dest_path,TRUE,NULL,NULL);}
+
 
 /* Load and update a thumbnail from disk cache: key is the md5 hash of the required thumbnail */
 static int load_thumbnail(gchar *key)
@@ -1355,7 +1373,8 @@ static void exec_user_tool(GtkToolItem *item, RFM_ToolButtons *tool)
       tool->func(tool->args);
 }
 
-static void cp_mv_file(gpointer doCopy, GList *fileList)
+static void cp_mv_file(RFM_ctx * doMove, GList *fileList)
+/*there used to be a parameter call doCopy here, when doCopy==NULL, means move. But now, i need to pass rfmCtx here, and only when we do move, we need rfmCtx, so, i pass rfmCtx into doMove when move, and NULL when copy*/
 {
    GList *listElement=NULL;
    gint response_id=GTK_RESPONSE_CANCEL;
@@ -1371,7 +1390,7 @@ static void cp_mv_file(gpointer doCopy, GList *fileList)
    i=0;
    while (listElement!=NULL) {
       if (response_id!=GTK_RESPONSE_ACCEPT)
-         response_id=cp_mv_check_path(listElement->data, dest_path, doCopy);
+	response_id=cp_mv_check_path(listElement->data, dest_path, doMove); 
       if (response_id==GTK_RESPONSE_YES || response_id==GTK_RESPONSE_ACCEPT) {
          selected_files=g_list_append(selected_files, g_strdup(listElement->data));
          i++;
@@ -1383,21 +1402,26 @@ static void cp_mv_file(gpointer doCopy, GList *fileList)
 
    if (selected_files!=NULL) {
       if (response_id!=GTK_RESPONSE_CANCEL) {
-         if (doCopy!=NULL)
+	if (doMove==NULL || !doMove->readFromPipe) /*for copy, the source iconview won't change, we don't need to refresh with fill_store, for move with inotify hander on source iconview, we also don't need to refresh manually*/
             exec_run_action(run_actions[0].runCmdName, selected_files, i, run_actions[0].runOpts, dest_path);
-         else
-            exec_run_action(run_actions[1].runCmdName, selected_files, i, run_actions[1].runOpts, dest_path);
+         else {
+	    exec_run_action_internal(run_actions[1].runCmdName, selected_files, i, run_actions[1].runOpts, dest_path,FALSE,fill_store,doMove);
+         }
       }
       g_list_free_full(selected_files, (GDestroyNotify)g_free);
    }
    g_free(dest_path);
 }
 
-static void dnd_menu_cp_mv(GtkWidget *menuitem, gpointer doCopy)
+static void dnd_menu_cp_mv(GtkWidget *menuitem, gpointer rfmCtx)
 {
    RFM_dndMenu *dndMenu=g_object_get_data(G_OBJECT(window),"rfm_dnd_menu");
 
-   cp_mv_file(doCopy, dndMenu->dropData);
+   if (menuitem == dndMenu->copy) {
+     cp_mv_file(NULL, dndMenu->dropData);
+   } else {
+     cp_mv_file(rfmCtx, dndMenu->dropData);
+   }
 }
 
 static GList *uriListToGList(gchar *uri_list[])
@@ -1691,7 +1715,7 @@ static void copy_curPath_to_clipboard(GtkWidget *menuitem, gpointer user_data)
    gtk_clipboard_set_text(clipboard, rfm_curPath, -1);
 }
 
-static void file_menu_cp_mv(GtkWidget *menuitem, gpointer doCopy)
+static void file_menu_cp_mv(GtkWidget *menuitem, gpointer rfmCtx)
 {
    gchar *dest_path;
    gchar *src_name=NULL;
@@ -1700,6 +1724,8 @@ static void file_menu_cp_mv(GtkWidget *menuitem, gpointer doCopy)
    GList *selectionList=gtk_icon_view_get_selected_items(GTK_ICON_VIEW(icon_view));
    GList *fileList=NULL;
    RFM_FileAttributes *fileAttributes;
+   RFM_fileMenu *fileMenu=g_object_get_data(G_OBJECT(window),"rfm_file_menu");
+   gboolean cp=(menuitem==fileMenu->action[0]);
 
    listElement=g_list_first(selectionList);
    gtk_tree_model_get_iter(GTK_TREE_MODEL (store), &iter, listElement->data);
@@ -1709,7 +1735,7 @@ static void file_menu_cp_mv(GtkWidget *menuitem, gpointer doCopy)
 
    fileList=g_list_append(fileList, fileAttributes->path);
    listElement=g_list_next(listElement);
-   if (doCopy!=NULL) /* For multiple files src_name will be NULL and only a dirbox will show */
+   if (cp) /* For multiple files src_name will be NULL and only a dirbox will show */
       dest_path=show_file_dialog("Copy File", "\n<b><span size=\"large\">Copy To:</span></b>\n", src_name, fileAttributes->pixbuf);
    else
       dest_path=show_file_dialog("Move File", "\n<b><span size=\"large\">Move To:</span></b>\n", src_name, fileAttributes->pixbuf);
@@ -1722,7 +1748,10 @@ static void file_menu_cp_mv(GtkWidget *menuitem, gpointer doCopy)
          fileList=g_list_append(fileList, fileAttributes->path);
          listElement=g_list_next(listElement);
       }
-      cp_mv_file(doCopy, fileList);
+      if(cp)
+	cp_mv_file(NULL, fileList);
+      else
+	cp_mv_file(rfmCtx,fileList);
       listElement=g_list_first(fileList);
       g_free(listElement->data); /* Free the destination obtained from show_file_dialog() */
    }
@@ -1776,9 +1805,10 @@ static void file_menu_rm(GtkWidget *menuitem, gpointer user_data)
    g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
    if (fileList!=NULL) {
      if (response_id != GTK_RESPONSE_CANCEL) {
-       exec_run_action(run_actions[2].runCmdName, fileList, i, run_actions[2].runOpts, NULL);
        if (((RFM_ctx *)user_data)->readFromPipe) {
-	 fill_store((RFM_ctx *)user_data);
+         exec_run_action_internal(run_actions[2].runCmdName, fileList, i, run_actions[2].runOpts, NULL,FALSE,fill_store,user_data);
+       } else {
+	 exec_run_action(run_actions[2].runCmdName, fileList, i, run_actions[2].runOpts, NULL);
        }
      }
       g_list_free(fileList); /* Do not free list elements: owned by GList rfm_fileAttributeList */
@@ -1830,8 +1860,8 @@ static RFM_fileMenu *setup_file_menu(RFM_ctx * rfmCtx){
       gtk_widget_show(fileMenu->action[i]);
       gtk_menu_shell_append(GTK_MENU_SHELL(fileMenu->menu), fileMenu->action[i]);
    }
-   g_signal_connect(fileMenu->action[0], "activate", G_CALLBACK (file_menu_cp_mv), fileMenu->action[0]);   /* Copy item */
-   g_signal_connect(fileMenu->action[1], "activate", G_CALLBACK (file_menu_cp_mv), NULL);                  /* Move item */
+   g_signal_connect(fileMenu->action[0], "activate", G_CALLBACK (file_menu_cp_mv), rfmCtx);   /* Copy item */
+   g_signal_connect(fileMenu->action[1], "activate", G_CALLBACK (file_menu_cp_mv), rfmCtx);                  /* Move item */
 
    /* Built in actions */
    fileMenu->separator[0]=gtk_separator_menu_item_new();
@@ -1928,7 +1958,7 @@ static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx)
    return TRUE;
 }   
 
-static RFM_dndMenu *setup_dnd_menu(void)
+static RFM_dndMenu *setup_dnd_menu(RFM_ctx * rfmCtx)
 {
    RFM_dndMenu *dndMenu=NULL;
    if(!(dndMenu=calloc(1, sizeof(RFM_dndMenu))))
@@ -1940,12 +1970,12 @@ static RFM_dndMenu *setup_dnd_menu(void)
    dndMenu->copy=gtk_menu_item_new_with_label("Copy");
    gtk_widget_show(dndMenu->copy);
    gtk_menu_shell_append(GTK_MENU_SHELL (dndMenu->menu),dndMenu->copy);
-   g_signal_connect(dndMenu->copy, "activate", G_CALLBACK (dnd_menu_cp_mv), dndMenu->copy);
+   g_signal_connect(dndMenu->copy, "activate", G_CALLBACK (dnd_menu_cp_mv), rfmCtx);
 
    dndMenu->move=gtk_menu_item_new_with_label("Move");
    gtk_widget_show(dndMenu->move);
    gtk_menu_shell_append(GTK_MENU_SHELL (dndMenu->menu), dndMenu->move);
-   g_signal_connect(dndMenu->move, "activate", G_CALLBACK (dnd_menu_cp_mv), NULL);
+   g_signal_connect(dndMenu->move, "activate", G_CALLBACK (dnd_menu_cp_mv), rfmCtx);
    
    dndMenu->dropData=NULL;
    return dndMenu;
@@ -2415,7 +2445,7 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
    #endif
 
    fileMenu=setup_file_menu(rfmCtx); /* TODO: WARNING: This can return NULL! */
-   dndMenu=setup_dnd_menu();
+   dndMenu=setup_dnd_menu(rfmCtx);
    rootMenu=setup_root_menu();
    defaultPixbufs=load_default_pixbufs(); /* TODO: WARNING: This can return NULL! */
    g_object_set_data(G_OBJECT(window),"rfm_file_menu",fileMenu);
@@ -2551,7 +2581,7 @@ int main(int argc, char *argv[])
          cmd_argv=malloc(argvsize);
 	 memcpy(cmd_argv,argv,argvsize);
 
-	 char *pagesize=argv[1]+2;
+	 char *pagesize=argv[1] + 2 * sizeof(char);
 	 int ps=atoi(pagesize);
 	 if (ps!=0) PageSize=ps;
 
