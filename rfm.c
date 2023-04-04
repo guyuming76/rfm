@@ -271,7 +271,8 @@ static gboolean child_supervisor(gpointer user_data)
    if (rfm_childList==NULL)
       gtk_widget_set_sensitive(GTK_WIDGET(info_button), FALSE);
 
-   (child_attribs->customCallBackFunc)(child_attribs->customCallbackUserData);
+   if((child_attribs->customCallBackFunc)!=NULL)
+     (child_attribs->customCallBackFunc)(child_attribs->customCallbackUserData);
 
    free_child_attribs(child_attribs);
    return FALSE;
@@ -698,6 +699,10 @@ static void exec_run_action_internal(const char **action, GList *file_list, long
 
    v=build_cmd_vector(action, file_list, n_args, dest_path);
    if (v != NULL) {
+     for (int i=0;v[i];i++)
+        printf("%s ",v[i]);
+     printf("\n");
+      
       if (run_opts==RFM_EXEC_NONE) {
         if (async) {
           if (!g_spawn_async(rfm_curPath, v, NULL, 0, NULL, NULL, NULL, NULL))
