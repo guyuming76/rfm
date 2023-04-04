@@ -130,6 +130,7 @@ typedef struct {
    GdkPixbuf *home;
    GdkPixbuf *stop;
    GdkPixbuf *refresh;
+   GdkPixbuf *menu;
    GdkPixbuf *info;
 } RFM_defaultPixbufs;
 
@@ -403,6 +404,7 @@ static RFM_defaultPixbufs *load_default_pixbufs(void)
    defaultPixbufs->home=gtk_icon_theme_load_icon(icon_theme, "go-home", RFM_TOOL_SIZE, 0, NULL);
    defaultPixbufs->stop=gtk_icon_theme_load_icon(icon_theme, "process-stop", RFM_TOOL_SIZE, 0, NULL);
    defaultPixbufs->refresh=gtk_icon_theme_load_icon(icon_theme, "view-refresh", RFM_TOOL_SIZE, 0, NULL);
+   defaultPixbufs->menu=gtk_icon_theme_load_icon(icon_theme, "open-menu", RFM_TOOL_SIZE, 0, NULL);
    defaultPixbufs->info=gtk_icon_theme_load_icon(icon_theme, "dialog-information", RFM_TOOL_SIZE, 0, NULL);
 
    if (defaultPixbufs->up==NULL) defaultPixbufs->up=gdk_pixbuf_new_from_xpm_data(RFM_icon_up);
@@ -2156,8 +2158,11 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
    separatorItem=gtk_separator_tool_item_new();
    gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), separatorItem, -1);
 
-   buttonImage=gtk_image_new_from_pixbuf(gtk_icon_theme_load_icon(icon_theme, "open-menu", RFM_TOOL_SIZE, 0, NULL));
-   menu_button=gtk_tool_button_new(buttonImage, "Menu");
+   if (defaultPixbufs->menu==NULL)
+     buttonImage=NULL;
+   else
+     buttonImage = gtk_image_new_from_pixbuf(defaultPixbufs->menu);
+   menu_button = gtk_tool_button_new(buttonImage, "Menu");
    gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), menu_button, -1);
    g_signal_connect(menu_button, "clicked", G_CALLBACK(tool_menu_clicked), rfmCtx);
    gtk_widget_add_accelerator(GTK_WIDGET(menu_button), "clicked", agMain,GDK_KEY_Menu,GDK_META_MASK, GTK_ACCEL_VISIBLE);
@@ -2422,6 +2427,7 @@ static void free_default_pixbufs(RFM_defaultPixbufs *defaultPixbufs)
    g_object_unref(defaultPixbufs->home);
    g_object_unref(defaultPixbufs->stop);
    g_object_unref(defaultPixbufs->refresh);
+   if (defaultPixbufs->menu!=NULL) g_object_unref(defaultPixbufs->menu);
    g_object_unref(defaultPixbufs->info);
    g_free(defaultPixbufs);
 }
