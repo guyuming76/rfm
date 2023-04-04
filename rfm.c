@@ -2075,18 +2075,24 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
    gtk_toolbar_set_style(GTK_TOOLBAR(tool_bar), GTK_TOOLBAR_ICONS);
    gtk_box_pack_start(GTK_BOX(rfm_main_box), tool_bar, FALSE, FALSE, 0);
 
+   agMain = gtk_accel_group_new();
+   gtk_window_add_accel_group(GTK_WINDOW(window), agMain);
+   
    if (!readFromPipe) {
      buttonImage = gtk_image_new_from_pixbuf(defaultPixbufs->up);
      up_button = gtk_tool_button_new(buttonImage, "Up");
      gtk_tool_item_set_is_important(up_button, TRUE);
      gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), up_button, -1);
      g_signal_connect(up_button, "clicked", G_CALLBACK(up_clicked), NULL);
+     gtk_widget_add_accelerator(GTK_WIDGET(up_button), "clicked", agMain,GDK_KEY_Up, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
+
 
      buttonImage = gtk_image_new_from_pixbuf(defaultPixbufs->home);
      home_button = gtk_tool_button_new(buttonImage, "Home");
      gtk_tool_item_set_is_important(home_button, TRUE);
      gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), home_button, -1);
      g_signal_connect(home_button, "clicked", G_CALLBACK(home_clicked), NULL);
+     gtk_widget_add_accelerator(GTK_WIDGET(home_button), "clicked", agMain,GDK_KEY_Home, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
    }
 
    buttonImage=gtk_image_new_from_pixbuf(defaultPixbufs->stop);
@@ -2110,8 +2116,6 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
      gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), PageDown_button, -1);
      g_signal_connect(PageDown_button, "clicked", G_CALLBACK(NextPage), rfmCtx);
 
-     agMain = gtk_accel_group_new();
-     gtk_window_add_accel_group(GTK_WINDOW(window), agMain);
      gtk_widget_add_accelerator(GTK_WIDGET(PageUp_button), "clicked", agMain,GDK_KEY_Page_Up,GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
      gtk_widget_add_accelerator(GTK_WIDGET(PageDown_button), "clicked", agMain,GDK_KEY_Page_Down,GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
      gtk_tool_item_set_tooltip_text(PageUp_button,"Ctrl+PgUp");
