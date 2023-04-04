@@ -869,7 +869,7 @@ static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter)
    thumbData->mtime_file=fileAttributes->file_mtime;
    thumbData->uri=g_filename_to_uri(thumbData->path, NULL, NULL);
    thumbData->md5=g_compute_checksum_for_string(G_CHECKSUM_MD5, thumbData->uri, -1);
-   thumbData->thumb_name=g_strdup_printf("%s-%d.png", thumbData->md5, thumbData->thumb_size);
+   thumbData->thumb_name=g_strdup_printf("%s.png", thumbData->md5);
    thumbData->rfm_pid=getpid();  /* pid is used to generate a unique temporary thumbnail name */
 
    
@@ -2427,7 +2427,11 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
    gtk_container_add(GTK_CONTAINER(window), rfm_main_box);
 
    rfm_homePath=g_strdup(g_get_home_dir());
-   rfm_thumbDir=g_build_filename(g_get_user_cache_dir(), "thumbnails", "normal", NULL);
+   
+   if (readFromPipe)
+     rfm_thumbDir=g_build_filename(g_get_user_cache_dir(), "thumbnails", "large", NULL);
+   else
+     rfm_thumbDir=g_build_filename(g_get_user_cache_dir(), "thumbnails", "normal", NULL);
 
    thumb_hash=g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)gtk_tree_row_reference_free);
 
