@@ -179,6 +179,7 @@ static GtkToolItem *up_button;
 static GtkToolItem *home_button;
 static GtkToolItem *stop_button;
 static GtkToolItem *refresh_button;;
+static GtkToolItem *menu_button;
 static GtkToolItem *info_button;
 static GtkToolItem *PageUp_button;
 static GtkToolItem *PageDown_button;
@@ -2013,6 +2014,14 @@ static RFM_rootMenu *setup_root_menu(void)
    return rootMenu;
 }
 
+static gboolean icon_view_key_press(GtkWidget *widget, GdkEvent *event,RFM_ctx *rfmCtx) {
+  GdkEventKey *ek=(GdkEventKey *)event;
+  if (ek->keyval==GDK_KEY_Menu)
+    return popup_file_menu(event, rfmCtx);
+  else
+    return FALSE;
+}
+
 static gboolean icon_view_button_press(GtkWidget *widget, GdkEvent *event, RFM_ctx *rfmCtx)
 {
    GtkTreePath *tree_path=NULL;
@@ -2148,9 +2157,11 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
    gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), separatorItem, -1);
 
    buttonImage=gtk_image_new_from_pixbuf(gtk_icon_theme_load_icon(icon_theme, "open-menu", RFM_TOOL_SIZE, 0, NULL));
-   userButton=gtk_tool_button_new(buttonImage, "Menu");
-   gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), userButton, -1);
-   g_signal_connect(userButton, "clicked", G_CALLBACK(tool_menu_clicked), rfmCtx);
+   menu_button=gtk_tool_button_new(buttonImage, "Menu");
+   gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), menu_button, -1);
+   g_signal_connect(menu_button, "clicked", G_CALLBACK(tool_menu_clicked), rfmCtx);
+   gtk_widget_add_accelerator(GTK_WIDGET(menu_button), "clicked", agMain,GDK_KEY_Menu,GDK_META_MASK, GTK_ACCEL_VISIBLE);
+   gtk_tool_item_set_tooltip_text(menu_button,"Alt+Menu");
 
    buttonImage=gtk_image_new_from_pixbuf(defaultPixbufs->info);
    info_button=gtk_tool_button_new(buttonImage,"Info");
@@ -2192,6 +2203,7 @@ static GtkWidget *add_iconview(GtkWidget *rfm_main_box, RFM_ctx *rfmCtx)
 
 //   g_signal_connect (icon_view, "selection-changed", G_CALLBACK (selection_changed), rfmCtx);
    g_signal_connect(icon_view, "button-press-event", G_CALLBACK(icon_view_button_press), rfmCtx);
+   g_signal_connect(icon_view, "key-press-event", G_CALLBACK(icon_view_key_press), rfmCtx);
    g_signal_connect(icon_view, "item-activated", G_CALLBACK(item_activated), NULL);
    
    gtk_container_add(GTK_CONTAINER(sw), icon_view);
