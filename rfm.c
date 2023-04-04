@@ -2084,7 +2084,8 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
      gtk_tool_item_set_is_important(up_button, TRUE);
      gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), up_button, -1);
      g_signal_connect(up_button, "clicked", G_CALLBACK(up_clicked), NULL);
-     gtk_widget_add_accelerator(GTK_WIDGET(up_button), "clicked", agMain,GDK_KEY_Up, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
+     gtk_widget_add_accelerator(GTK_WIDGET(up_button), "clicked", agMain,GDK_KEY_Up, GDK_META_MASK, GTK_ACCEL_VISIBLE);
+     gtk_tool_item_set_tooltip_text(up_button,"Alt+up arrow");
 
 
      buttonImage = gtk_image_new_from_pixbuf(defaultPixbufs->home);
@@ -2092,7 +2093,8 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
      gtk_tool_item_set_is_important(home_button, TRUE);
      gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), home_button, -1);
      g_signal_connect(home_button, "clicked", G_CALLBACK(home_clicked), NULL);
-     gtk_widget_add_accelerator(GTK_WIDGET(home_button), "clicked", agMain,GDK_KEY_Home, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
+     gtk_widget_add_accelerator(GTK_WIDGET(home_button), "clicked", agMain,GDK_KEY_Home, GDK_META_MASK, GTK_ACCEL_VISIBLE);
+     gtk_tool_item_set_tooltip_text(home_button,"Alt+Home");
    }
 
    buttonImage=gtk_image_new_from_pixbuf(defaultPixbufs->stop);
@@ -2116,10 +2118,10 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
      gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), PageDown_button, -1);
      g_signal_connect(PageDown_button, "clicked", G_CALLBACK(NextPage), rfmCtx);
 
-     gtk_widget_add_accelerator(GTK_WIDGET(PageUp_button), "clicked", agMain,GDK_KEY_Page_Up,GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
-     gtk_widget_add_accelerator(GTK_WIDGET(PageDown_button), "clicked", agMain,GDK_KEY_Page_Down,GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
-     gtk_tool_item_set_tooltip_text(PageUp_button,"Ctrl+PgUp");
-     gtk_tool_item_set_tooltip_text(PageDown_button,"Ctrl+PgDn");
+     gtk_widget_add_accelerator(GTK_WIDGET(PageUp_button), "clicked", agMain,GDK_KEY_Page_Up,GDK_META_MASK, GTK_ACCEL_VISIBLE);
+     gtk_widget_add_accelerator(GTK_WIDGET(PageDown_button), "clicked", agMain,GDK_KEY_Page_Down,GDK_META_MASK, GTK_ACCEL_VISIBLE);
+     gtk_tool_item_set_tooltip_text(PageUp_button,"Alt+PgUp");
+     gtk_tool_item_set_tooltip_text(PageDown_button,"Alt+PgDn");
    }
 
    separatorItem=gtk_separator_tool_item_new();
