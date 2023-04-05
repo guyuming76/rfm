@@ -192,8 +192,6 @@ static GHashTable *thumb_hash=NULL; /* Thumbnails in the current view */
 
 static GtkListStore *store=NULL;
 
-static int cmd_argc; /* store args from main into global so that i don't have to change existing function parameter to pass arguments*/
-static char **cmd_argv;
 static gboolean readFromPipe=FALSE;  /* if true, means to fill store with data from something like  ls |xargs rfm -p, or locate blablablaa |xargs rfm -p, instead of from a directory*/
 static GList *PictureFullNamesFromStdin=NULL;
 static GList *CurrentPage;
@@ -2616,11 +2614,6 @@ int main(int argc, char *argv[])
          break;
       case 'p':
 	 readFromPipe=1;
-	 cmd_argc=argc;
-	 int argvsize=sizeof(char *)*argc;
-         cmd_argv=malloc(argvsize);
-	 memcpy(cmd_argv,argv,argvsize);
-
          if (getcwd(cwd, sizeof(cwd)) != NULL) /* getcwd returns NULL if cwd[] not big enough! */
             initDir=cwd;
          else
