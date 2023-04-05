@@ -2565,7 +2565,6 @@ static void die(const char *errstr, ...) {
 
 int main(int argc, char *argv[])
 {
-   int i=0;
    char *initDir=NULL;
    struct stat statbuf;
    char cwd[1024]; /* Could use MAX_PATH here from limits.h, but still not guaranteed to be max */
@@ -2584,8 +2583,9 @@ int main(int argc, char *argv[])
    else
       rfm_do_thumbs=1;
 
-   if (argc >1 && argv[1][0]=='-') {
-      switch (argv[1][1]) {
+   int c=1;
+   while (c<argc  && argv[c][0]=='-') {
+      switch (argv[c][1]) {
       case 'c':
          if (getcwd(cwd, sizeof(cwd)) != NULL) /* getcwd returns NULL if cwd[] not big enough! */
             initDir=cwd;
@@ -2593,18 +2593,20 @@ int main(int argc, char *argv[])
             die("ERROR: %s: getcwd() failed.\n", PROG_NAME);
          break;
       case 'd':
-         if (argc !=3 || argv[argc-1][0]!='/')
+	 if (argc<=(c+1) || argv[c+1][0]!='/')
             die("ERROR: %s: A full path is required for the -d option.\n", PROG_NAME);
-         i=strlen(argv[2])-1;
-         if (i!=0 && argv[2][i]=='/')
-            argv[2][i]='\0';
-         if (strstr(argv[2],"/.")!=NULL)
+         int i=strlen(argv[c+1])-1;
+         if (i!=0 && argv[c+1][i]=='/')
+            argv[c+1][i]='\0';
+         if (strstr(argv[c+1],"/.")!=NULL)
             die("ERROR: %s: Hidden files are not supported.\n", PROG_NAME);
          
-         if (stat(argv[2],&statbuf)!=0) die("ERROR: %s: Can't stat %s\n", PROG_NAME, argv[2]);
-         if (! S_ISDIR(statbuf.st_mode) || access(argv[2], R_OK | X_OK)!=0)
-            die("ERROR: %s: Can't enter %s\n", PROG_NAME, argv[2]);
-         initDir=argv[2];
+         if (stat(argv[c+1],&statbuf)!=0) die("ERROR: %s: Can't stat %s\n", PROG_NAME, argv[c+1]);
+         if (! S_ISDIR(statbuf.st_mode) || access(argv[c+1], R_OK | X_OK)!=0)
+            die("ERROR: %s: Can't enter %s\n", PROG_NAME, argv[c+1]);
+         initDir=argv[c+1];
+	 c++;
+
          break;
       case 'i':
             rfmCtx->showMimeType=1;
@@ -2624,7 +2626,7 @@ int main(int argc, char *argv[])
          else
             die("ERROR: %s: getcwd() failed.\n", PROG_NAME);
 
-	 char *pagesize=argv[1] + 2 * sizeof(char);
+	 char *pagesize=argv[c] + 2 * sizeof(char);
 	 int ps=atoi(pagesize);
 	 if (ps!=0) PageSize=ps;
 
@@ -2650,16 +2652,19 @@ int main(int argc, char *argv[])
          }
          if (PictureFullNamesFromStdin != NULL) {
            PictureFullNamesFromStdin = g_list_reverse(PictureFullNamesFromStdin);
-	   PictureFullNamesFromStdin = g_list_first(PictureFullNamesFromStdin);
+           PictureFullNamesFromStdin = g_list_first(PictureFullNamesFromStdin);
          }
-	 CurrentPage=PictureFullNamesFromStdin;
+         CurrentPage=PictureFullNamesFromStdin;
 
          break;
-	 
+
       default:
-         die("Usage: %s [-c || -d <full path to directory> || -i || -v || -p || -p<custom pagesize such as 50>\n", PROG_NAME);
+         die("Usage: %s [-c] [-d <full path to directory>] [-i] [-v] [-p || -p<custom pagesize such as 50>]\n", PROG_NAME);
       }
+
+      c++;
    }
+   
    if (setup(initDir, rfmCtx)==0)
       gtk_main();
    else
