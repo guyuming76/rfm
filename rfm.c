@@ -116,6 +116,9 @@ typedef struct {  /* Update free_fileAttributes() and malloc_fileAttributes() if
    gboolean is_symlink;
    guint64 file_mtime;
    gchar *icon_name;
+
+   gchar *owner;
+   gchar *group;
 } RFM_FileAttributes;
 
 typedef struct {
@@ -139,6 +142,8 @@ enum {
    COL_PIXBUF,
    COL_MTIME,
    COL_ATTR,
+   COL_OWNER,
+   COL_GROUP,
    NUM_COLS
 };
 
@@ -157,7 +162,7 @@ static GtkTargetEntry target_entry[] = {
 static GtkTargetList *target_list;
 
 static GtkWidget *window=NULL;      /* Main window */
-static GtkWidget *icon_view;
+static GtkWidget *icon_or_tree_view;
 
 static gchar *rfm_homePath;         /* Users home dir */
 static gchar *rfm_thumbDir;         /* Users thumbnail directory */
@@ -191,6 +196,7 @@ static GtkIconTheme *icon_theme;
 static GHashTable *thumb_hash=NULL; /* Thumbnails in the current view */
 
 static GtkListStore *store=NULL;
+static gboolean treeview=FALSE;
 
 static gboolean readFromPipe=FALSE;  /* if true, means to fill store with data from something like  ls |xargs rfm -p, or locate blablablaa |xargs rfm -p, instead of from a directory*/
 static GList *PictureFullNamesFromStdin=NULL;
@@ -923,7 +929,7 @@ static RFM_FileAttributes *get_file_info(const gchar *name, guint64 mtimeThresho
 {
    GFile *file=NULL;
    GFileInfo *info=NULL;
-   gchar *attibuteList;
+   gchar *attibuteList="*";
    GFileType fileType;
    RFM_defaultPixbufs *defaultPixbufs=g_object_get_data(G_OBJECT(window),"rfm_default_pixbufs");
    gchar *mime_type=NULL;
@@ -939,10 +945,10 @@ static RFM_FileAttributes *get_file_info(const gchar *name, guint64 mtimeThresho
    } else {
      fileAttributes->path = g_build_filename(rfm_curPath, name, NULL);
    }
-   attibuteList=g_strdup_printf("%s,%s,%s,%s",G_FILE_ATTRIBUTE_STANDARD_TYPE, G_FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE, G_FILE_ATTRIBUTE_TIME_MODIFIED, G_FILE_ATTRIBUTE_STANDARD_IS_SYMLINK); 
+   //attibuteList=g_strdup_printf("%s,%s,%s,%s",G_FILE_ATTRIBUTE_STANDARD_TYPE, G_FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE, G_FILE_ATTRIBUTE_TIME_MODIFIED, G_FILE_ATTRIBUTE_STANDARD_IS_SYMLINK);
    file=g_file_new_for_path(fileAttributes->path);
    info=g_file_query_info(file, attibuteList, G_FILE_QUERY_INFO_NONE, NULL, NULL);
-   g_free(attibuteList);
+   //g_free(attibuteList);
    g_object_unref(file); file=NULL;
 
    if (info == NULL ) {
@@ -1007,6 +1013,10 @@ static RFM_FileAttributes *get_file_info(const gchar *name, guint64 mtimeThresho
          fileAttributes->pixbuf=g_object_ref(defaultPixbufs->broken);
       break;
    }
+
+   fileAttributes->owner = g_file_info_get_attribute_as_string(info, G_FILE_ATTRIBUTE_OWNER_USER);
+   fileAttributes->group = g_file_info_get_attribute_as_string(info, G_FILE_ATTRIBUTE_OWNER_GROUP);
+
    g_object_unref(info); info=NULL;
    return fileAttributes;
 }
@@ -1078,14 +1088,21 @@ static void updateIconView()
                           COL_PIXBUF, fileAttributes->pixbuf,
                           COL_MTIME, fileAttributes->file_mtime,
                           COL_ATTR, fileAttributes,
+                          COL_OWNER,fileAttributes->owner,
+			  COL_GROUP,fileAttributes->group,
                           -1);
 #ifdef DebugPrintf
       printf("Inserted into store:%s\n",fileAttributes->display_name);
 #endif
       if (rfm_prePath!=NULL && g_strcmp0(rfm_prePath, fileAttributes->path)==0) {
          treePath=gtk_tree_model_get_path(GTK_TREE_MODEL(store), &iter);
-         gtk_icon_view_select_path(GTK_ICON_VIEW(icon_view), treePath);
-         gtk_icon_view_scroll_to_path(GTK_ICON_VIEW(icon_view), treePath, TRUE, 1.0, 1.0);
+         if (treeview) {
+	   gtk_tree_view_set_cursor(GTK_TREE_VIEW(icon_or_tree_view),treePath,NULL,FALSE);
+           gtk_tree_view_scroll_to_cell(GTK_TREE_VIEW(icon_or_tree_view),treePath,NULL,FALSE,0,0);
+         } else {
+           gtk_icon_view_select_path(GTK_ICON_VIEW(icon_or_tree_view), treePath);
+           gtk_icon_view_scroll_to_path(GTK_ICON_VIEW(icon_or_tree_view), treePath,TRUE, 1.0, 1.0);
+         }
          gtk_tree_path_free(treePath);
          g_free(rfm_prePath);
          rfm_prePath=NULL; /* No need to check any more paths once found */
@@ -1238,7 +1255,8 @@ static void set_rfm_curPath(gchar* path)
    }
 }
 
-static void item_activated(GtkIconView *icon_view, GtkTreePath *tree_path, gpointer user_data)
+
+static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointer user_data)
 {
    GtkTreeIter iter;
    long int i;
@@ -1275,13 +1293,30 @@ static void item_activated(GtkIconView *icon_view, GtkTreePath *tree_path, gpoin
       set_rfm_curPath(fileAttributes->path);
 }
 
+static void row_activated(GtkTreeView *tree_view, GtkTreePath *tree_path,GtkTreeViewColumn *col, gpointer user_data)
+{
+  item_activated(GTK_WIDGET(tree_view),tree_path,user_data);
+}
+
+
+/*Helper function to get selected items from iconview or treeview*/
+static GList* get_view_selection_list(GtkWidget * view, gboolean treeview, GtkTreeModel ** model)
+{
+   if (treeview) {
+     return gtk_tree_selection_get_selected_rows(gtk_tree_view_get_selection(GTK_TREE_VIEW(view)), model);
+   } else {
+     return gtk_icon_view_get_selected_items(GTK_ICON_VIEW(view));
+   }
+}
+
+
 static gchar **selection_list_to_uri(GtkWidget *widget, RFM_ctx *rfmCtx)
 {
    gchar **uriList;
    guint32 i=0;
    GtkTreeIter iter;
    GList *listElement;
-   GList *selectionList=gtk_icon_view_get_selected_items(GTK_ICON_VIEW(widget));
+   GList *selectionList=get_view_selection_list(widget,treeview,&store);
    RFM_FileAttributes *fileAttributes;
 
    uriList=malloc((1+g_list_length(selectionList))*sizeof(gchar *));
@@ -1471,6 +1506,16 @@ static GList *uriListToGList(gchar *uri_list[])
    return NULL;
 }
 
+/* Helper function to get treepath from treeview or iconview. This return value needs to be freed */
+static void get_path_at_view_pos(GtkWidget* view, gboolean treeview,gint x,gint y, GtkTreePath ** retval)
+{
+  if (treeview) {
+    gtk_tree_view_get_path_at_pos(GTK_TREE_VIEW(view), x, y, retval, NULL, NULL,NULL);
+  } else
+    *retval = gtk_icon_view_get_path_at_pos(GTK_ICON_VIEW(view), x, y);
+}
+
+
 /* Receive data after requesting send from drag_drop_handl */
 static void drag_data_received_handl(GtkWidget *widget, GdkDragContext *context, gint x, gint y, GtkSelectionData *selection_data, guint target_type, guint time, RFM_ctx *rfmCtx)
 {
@@ -1498,8 +1543,12 @@ static void drag_data_received_handl(GtkWidget *widget, GdkDragContext *context,
    }
 
    /* Setup destination */
-   gtk_icon_view_convert_widget_to_bin_window_coords(GTK_ICON_VIEW(widget), x, y, &bx, &by);
-   tree_path=gtk_icon_view_get_path_at_pos(GTK_ICON_VIEW(widget), bx, by);
+   if (treeview)
+     gtk_tree_view_convert_widget_to_bin_window_coords(GTK_TREE_VIEW(widget), x, y, &bx, &by);
+   else
+     gtk_icon_view_convert_widget_to_bin_window_coords(GTK_ICON_VIEW(widget), x, y, &bx, &by);
+   get_path_at_view_pos(widget,treeview,bx,by,&tree_path);
+   
    if (tree_path!=NULL) {
       gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, tree_path);
       gtk_tree_model_get(GTK_TREE_MODEL(store), &iter, COL_ATTR, &fileAttributes, -1);
@@ -1548,6 +1597,13 @@ static void drag_data_received_handl(GtkWidget *widget, GdkDragContext *context,
    show_msgbox("Only URI lists of local files accepted\n", "Error", GTK_MESSAGE_ERROR);
 }
 
+static gboolean path_is_selected(GtkWidget *widget, gboolean treeview, GtkTreePath *path) {
+  if (treeview)
+    return gtk_tree_selection_path_is_selected(gtk_tree_view_get_selection(GTK_TREE_VIEW(widget)), path);
+  else
+    return gtk_icon_view_path_is_selected(GTK_ICON_VIEW(widget), path);
+}
+
 /* Called when item is dragged over iconview */
 static gboolean drag_motion_handl(GtkWidget *widget, GdkDragContext *context, gint x, gint y, guint time, RFM_ctx *rfmCtx)
 {
@@ -1557,18 +1613,28 @@ static gboolean drag_motion_handl(GtkWidget *widget, GdkDragContext *context, gi
    gint bx,by;
    RFM_FileAttributes *fileAttributes;
 
-   gtk_icon_view_convert_widget_to_bin_window_coords(GTK_ICON_VIEW(widget), x, y, &bx, &by);
-   tree_path = gtk_icon_view_get_path_at_pos(GTK_ICON_VIEW(widget), bx, by);
+   if (treeview)
+     gtk_tree_view_convert_widget_to_bin_window_coords(GTK_TREE_VIEW(widget), x, y, &bx, &by);
+   else
+     gtk_icon_view_convert_widget_to_bin_window_coords(GTK_ICON_VIEW(widget), x, y, &bx, &by);
+   get_path_at_view_pos(widget, treeview, bx, by, &tree_path);
+  
    if (tree_path!=NULL) {
       /* Don't drop on self */
-      if (! gtk_icon_view_path_is_selected(GTK_ICON_VIEW(widget), tree_path)) {
+     if (! path_is_selected(widget, treeview, tree_path)) {
          gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, tree_path);
          gtk_tree_model_get(GTK_TREE_MODEL (store), &iter, COL_ATTR, &fileAttributes, -1);
          is_dir=fileAttributes->is_dir;
          if (is_dir)
-            gtk_icon_view_set_drag_dest_item (GTK_ICON_VIEW(widget), tree_path, GTK_ICON_VIEW_DROP_INTO);
+	   if (treeview)
+	      gtk_tree_view_set_drag_dest_row(GTK_TREE_VIEW(widget), tree_path, GTK_TREE_VIEW_DROP_INTO_OR_AFTER);
+	   else
+              gtk_icon_view_set_drag_dest_item (GTK_ICON_VIEW(widget), tree_path, GTK_ICON_VIEW_DROP_INTO);
          else
-            gtk_icon_view_set_drag_dest_item (GTK_ICON_VIEW(widget), NULL, GTK_ICON_VIEW_DROP_INTO);
+	    if(treeview)
+	      gtk_tree_view_set_drag_dest_row(GTK_TREE_VIEW(widget), NULL, GTK_TREE_VIEW_DROP_INTO_OR_AFTER);
+	    else
+              gtk_icon_view_set_drag_dest_item (GTK_ICON_VIEW(widget), NULL, GTK_ICON_VIEW_DROP_INTO);
       }
       gtk_tree_path_free(tree_path);
    }
@@ -1724,18 +1790,19 @@ static void copy_curPath_to_clipboard(GtkWidget *menuitem, gpointer user_data)
    gtk_clipboard_set_text(clipboard, rfm_curPath, -1);
 }
 
+
 static void file_menu_cp_mv(GtkWidget *menuitem, gpointer rfmCtx)
 {
    gchar *dest_path;
    gchar *src_name=NULL;
    GtkTreeIter iter;
    GList *listElement;
-   GList *selectionList=gtk_icon_view_get_selected_items(GTK_ICON_VIEW(icon_view));
+   GList *selectionList=get_view_selection_list(icon_or_tree_view, treeview, &store);
    GList *fileList=NULL;
    RFM_FileAttributes *fileAttributes;
    RFM_fileMenu *fileMenu=g_object_get_data(G_OBJECT(window),"rfm_file_menu");
    gboolean cp=(menuitem==fileMenu->action[0]);
-
+  
    listElement=g_list_first(selectionList);
    gtk_tree_model_get_iter(GTK_TREE_MODEL (store), &iter, listElement->data);
    gtk_tree_model_get(GTK_TREE_MODEL (store), &iter, COL_ATTR, &fileAttributes, -1);
@@ -1779,7 +1846,7 @@ static void file_menu_rm(GtkWidget *menuitem, gpointer user_data)
    gboolean delete_to_last=FALSE;
    GList *fileList=NULL;
    gint i=0;
-   GList *selectionList=gtk_icon_view_get_selected_items(GTK_ICON_VIEW(icon_view));
+   GList *selectionList=get_view_selection_list(icon_or_tree_view,treeview,&store);
    RFM_FileAttributes *fileAttributes;
    
    listElement=g_list_first(selectionList);
@@ -1829,7 +1896,7 @@ static void file_menu_exec(GtkMenuItem *menuitem, RFM_RunActions *selectedAction
    GtkTreeIter iter;
    GList *listElement;
    GList *actionFileList=NULL;
-   GList *selectionList=gtk_icon_view_get_selected_items(GTK_ICON_VIEW(icon_view));
+   GList *selectionList=get_view_selection_list(icon_or_tree_view,treeview,&store);
    guint i=0;
    RFM_FileAttributes *fileAttributes;
 
@@ -1911,7 +1978,7 @@ static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx)
    RFM_FileAttributes *selection_fileAttributes, *fileAttributes;
    gboolean match_mimeRoot=TRUE, match_mimeSub=TRUE;
 
-   selectionList=gtk_icon_view_get_selected_items(GTK_ICON_VIEW(icon_view));
+   selectionList=get_view_selection_list(icon_or_tree_view,treeview,&store);
    if (selectionList==NULL)
       return FALSE;
 
@@ -2014,7 +2081,7 @@ static RFM_rootMenu *setup_root_menu(void)
    return rootMenu;
 }
 
-static gboolean icon_view_key_press(GtkWidget *widget, GdkEvent *event,RFM_ctx *rfmCtx) {
+static gboolean view_key_press(GtkWidget *widget, GdkEvent *event,RFM_ctx *rfmCtx) {
   GdkEventKey *ek=(GdkEventKey *)event;
   if (ek->keyval==GDK_KEY_Menu)
     return popup_file_menu(event, rfmCtx);
@@ -2022,7 +2089,8 @@ static gboolean icon_view_key_press(GtkWidget *widget, GdkEvent *event,RFM_ctx *
     return FALSE;
 }
 
-static gboolean icon_view_button_press(GtkWidget *widget, GdkEvent *event, RFM_ctx *rfmCtx)
+
+static gboolean view_button_press(GtkWidget *widget, GdkEvent *event, RFM_ctx *rfmCtx)
 {
    GtkTreePath *tree_path=NULL;
    gboolean ret_val=FALSE;
@@ -2037,33 +2105,47 @@ static gboolean icon_view_button_press(GtkWidget *widget, GdkEvent *event, RFM_c
    if (eb->state&GDK_CONTROL_MASK || eb->state&GDK_SHIFT_MASK)
       return FALSE;  /* If CTRL or SHIFT is down, let icon view handle selections */
 
-   tree_path=gtk_icon_view_get_path_at_pos(GTK_ICON_VIEW(widget), eb->x, eb->y); /* This needs to be freed */
+   get_path_at_view_pos(widget,treeview,eb->x,eb->y,&tree_path);
    switch (eb->button) {
       case 1:  /* Custom DnD start if multiple items selected */
          if (tree_path) {
-            selectionList=gtk_icon_view_get_selected_items(GTK_ICON_VIEW(widget));
+	    selectionList=get_view_selection_list(widget,treeview,&store);
             first=g_list_first(selectionList);
-            if (gtk_icon_view_path_is_selected(GTK_ICON_VIEW(widget), tree_path) && first->next!=NULL) {
-               gtk_icon_view_unset_model_drag_source(GTK_ICON_VIEW(widget));
+            if (path_is_selected(widget, treeview, tree_path) && first->next!=NULL) {
+              if (treeview)
+		 gtk_tree_view_unset_rows_drag_source(GTK_TREE_VIEW(widget));
+	      else
+	         gtk_icon_view_unset_model_drag_source(GTK_ICON_VIEW(widget));
                gtk_drag_begin_with_coordinates(widget, target_list, DND_ACTION_MASK , 1, event, eb->x, eb->y);
                ret_val=TRUE;
             }
             else
-               gtk_icon_view_enable_model_drag_source(GTK_ICON_VIEW(widget), GDK_BUTTON1_MASK, target_entry, N_TARGETS, DND_ACTION_MASK); 
+	       if(treeview)
+		 gtk_tree_view_enable_model_drag_source(GTK_TREE_VIEW(widget), GDK_BUTTON1_MASK, target_entry, N_TARGETS, DND_ACTION_MASK); 
+	       else
+                 gtk_icon_view_enable_model_drag_source(GTK_ICON_VIEW(widget), GDK_BUTTON1_MASK, target_entry, N_TARGETS, DND_ACTION_MASK); 
             g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
          }
       break;
       case 3:  /* Button 3 selections */
          if (tree_path) {
-            if (! gtk_icon_view_path_is_selected(GTK_ICON_VIEW(widget), tree_path)) {
+	   if (! path_is_selected(widget,treeview, tree_path)) {
+             if (treeview) {
+               gtk_tree_selection_unselect_all(gtk_tree_view_get_selection(GTK_TREE_VIEW(widget)));
+               gtk_tree_view_set_cursor(GTK_TREE_VIEW(widget), tree_path,NULL,FALSE);
+             } else {
                gtk_icon_view_unselect_all(GTK_ICON_VIEW(widget));
                gtk_icon_view_select_path(GTK_ICON_VIEW(widget), tree_path);
+             }
             }
             popup_file_menu(event, rfmCtx);
             ret_val=TRUE;
          }
          else {
-            gtk_icon_view_unselect_all(GTK_ICON_VIEW(widget));
+	    if(treeview)
+	      gtk_tree_selection_unselect_all(gtk_tree_view_get_selection(GTK_TREE_VIEW(widget)));
+	    else
+              gtk_icon_view_unselect_all(GTK_ICON_VIEW(widget));
             rootMenu=g_object_get_data(G_OBJECT(window), "rfm_root_menu");
             gtk_menu_popup_at_pointer(GTK_MENU(rootMenu->menu), event);
             ret_val=TRUE;
@@ -2173,44 +2255,64 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
    g_signal_connect(info_button, "clicked", G_CALLBACK(info_clicked), NULL);
 }
 
-static GtkWidget *add_iconview(GtkWidget *rfm_main_box, RFM_ctx *rfmCtx)
+static GtkWidget *add_view(GtkWidget *rfm_main_box, RFM_ctx *rfmCtx)
 {
    GtkWidget *sw;
-   GtkWidget *icon_view;
+   GtkWidget *_view;
 
    sw=gtk_scrolled_window_new(NULL, NULL);
    gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(sw), GTK_SHADOW_ETCHED_IN);
    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(sw), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
    gtk_box_pack_start(GTK_BOX(rfm_main_box), sw, TRUE, TRUE, 0);
 
-   icon_view=gtk_icon_view_new_with_model(GTK_TREE_MODEL(store));
-   gtk_icon_view_set_selection_mode(GTK_ICON_VIEW(icon_view), GTK_SELECTION_MULTIPLE);
-   gtk_icon_view_set_markup_column(GTK_ICON_VIEW(icon_view), COL_DISPLAY_NAME);
-   gtk_icon_view_set_pixbuf_column(GTK_ICON_VIEW(icon_view), COL_PIXBUF);
-   gtk_drag_dest_set(icon_view, 0, target_entry, N_TARGETS, DND_ACTION_MASK);
+   if (treeview) {
+     _view = gtk_tree_view_new_with_model(GTK_TREE_MODEL(store));
+     GtkCellRenderer  * renderer  =  gtk_cell_renderer_text_new();
+     GtkTreeViewColumn * col1=gtk_tree_view_column_new_with_attributes("DisplayName" , renderer,"text" ,  COL_DISPLAY_NAME , NULL);
+     gtk_tree_view_column_set_resizable(col1,TRUE);
+     gtk_tree_view_append_column(GTK_TREE_VIEW(_view),col1);
+     GtkTreeViewColumn * col2=gtk_tree_view_column_new_with_attributes("MTIME" , renderer,"text" ,  COL_MTIME , NULL);
+     gtk_tree_view_column_set_resizable(col2,TRUE);
+     gtk_tree_view_append_column(GTK_TREE_VIEW(_view),col2);
+     GtkTreeViewColumn * col3=gtk_tree_view_column_new_with_attributes("OWNER" , renderer,"text" ,  COL_OWNER , NULL);
+     gtk_tree_view_column_set_resizable(col3,TRUE);
+     gtk_tree_view_append_column(GTK_TREE_VIEW(_view),col3);
+     
+
+   } else {
+     _view = gtk_icon_view_new_with_model(GTK_TREE_MODEL(store));
+     gtk_icon_view_set_selection_mode(GTK_ICON_VIEW(_view),GTK_SELECTION_MULTIPLE);
+     gtk_icon_view_set_markup_column(GTK_ICON_VIEW(_view),COL_DISPLAY_NAME);
+     gtk_icon_view_set_pixbuf_column(GTK_ICON_VIEW(_view), COL_PIXBUF);
+   }
+   gtk_drag_dest_set(_view, 0, target_entry, N_TARGETS, DND_ACTION_MASK);
    #ifdef RFM_SINGLE_CLICK
    gtk_icon_view_set_activate_on_single_click(GTK_ICON_VIEW(icon_view), TRUE);
    #endif
    /* Source DnD signals */
-   g_signal_connect(icon_view, "drag-data-get", G_CALLBACK(drag_data_get_handl), rfmCtx);
-   g_signal_connect(icon_view, "drag-begin", G_CALLBACK(drag_local_handl), rfmCtx);
-   g_signal_connect(icon_view, "drag-end", G_CALLBACK(drag_local_handl), rfmCtx);
+   g_signal_connect(_view, "drag-data-get", G_CALLBACK(drag_data_get_handl), rfmCtx);
+   g_signal_connect(_view, "drag-begin", G_CALLBACK(drag_local_handl), rfmCtx);
+   g_signal_connect(_view, "drag-end", G_CALLBACK(drag_local_handl), rfmCtx);
 
    if (!readFromPipe) {
 
      /* Destination DnD signals */
-     g_signal_connect(icon_view, "drag-drop", G_CALLBACK(drag_drop_handl),rfmCtx);
-     g_signal_connect(icon_view, "drag-data-received",G_CALLBACK(drag_data_received_handl), NULL);
-     g_signal_connect(icon_view, "drag-motion", G_CALLBACK(drag_motion_handl),rfmCtx);
+     g_signal_connect(_view, "drag-drop", G_CALLBACK(drag_drop_handl),rfmCtx);
+     g_signal_connect(_view, "drag-data-received",G_CALLBACK(drag_data_received_handl), NULL);
+     g_signal_connect(_view, "drag-motion", G_CALLBACK(drag_motion_handl),rfmCtx);
    }
 
 //   g_signal_connect (icon_view, "selection-changed", G_CALLBACK (selection_changed), rfmCtx);
-   g_signal_connect(icon_view, "button-press-event", G_CALLBACK(icon_view_button_press), rfmCtx);
-   g_signal_connect(icon_view, "key-press-event", G_CALLBACK(icon_view_key_press), rfmCtx);
-   g_signal_connect(icon_view, "item-activated", G_CALLBACK(item_activated), NULL);
+   g_signal_connect(_view, "button-press-event", G_CALLBACK(view_button_press), rfmCtx);
+   g_signal_connect(_view, "key-press-event", G_CALLBACK(view_key_press), rfmCtx);
+
+   if (treeview)
+     g_signal_connect(_view, "row-activated", G_CALLBACK(row_activated), NULL);
+   else
+     g_signal_connect(_view, "item-activated", G_CALLBACK(item_activated), NULL);
    
-   gtk_container_add(GTK_CONTAINER(sw), icon_view);
-   gtk_widget_grab_focus(icon_view);
+   gtk_container_add(GTK_CONTAINER(sw), _view);
+   gtk_widget_grab_focus(_view);
 
 #ifdef DebugPrintf
    printf("gtk_icon_view_get_column_spacing:%d\n",gtk_icon_view_get_column_spacing((GtkIconView *)icon_view));
@@ -2222,11 +2324,10 @@ static GtkWidget *add_iconview(GtkWidget *rfm_main_box, RFM_ctx *rfmCtx)
    
    if (readFromPipe) {
      /*a single cell will be too wide if width is set automatically, one cell can take a whole row, don't know why*/
-     gtk_icon_view_set_item_width((GtkIconView *)icon_view,
-                                  RFM_THUMBNAIL_LARGE_SIZE);
+     if (!treeview) gtk_icon_view_set_item_width((GtkIconView *)_view,RFM_THUMBNAIL_LARGE_SIZE);
    }
 
-   return icon_view;
+   return _view;
 }
 
 static void inotify_insert_item(gchar *name, gboolean is_dir)
@@ -2265,6 +2366,8 @@ static void inotify_insert_item(gchar *name, gboolean is_dir)
                        COL_PIXBUF, fileAttributes->pixbuf,
                        COL_MTIME, fileAttributes->file_mtime, 
                        COL_ATTR, fileAttributes,
+                       COL_OWNER,fileAttributes->owner,
+                       COL_GROUP,fileAttributes->group,
                        -1);
 }
 
@@ -2491,12 +2594,14 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
                               G_TYPE_STRING,    /* Displayed name */
                               GDK_TYPE_PIXBUF,  /* Displayed icon */
                               G_TYPE_UINT64,    /* File mtime: time_t is currently 32 bit signed */
-                              G_TYPE_POINTER);  /* RFM_FileAttributes */
+			      G_TYPE_POINTER,  /* RFM_FileAttributes */
+			      G_TYPE_STRING,    //OWNER
+			      G_TYPE_STRING);   //GROUP
    if (!readFromPipe)
      gtk_tree_sortable_set_default_sort_func(GTK_TREE_SORTABLE(store), sort_func, NULL, NULL);
 
    add_toolbar(rfm_main_box, defaultPixbufs, rfmCtx);
-   icon_view=add_iconview(rfm_main_box, rfmCtx);
+   icon_or_tree_view=add_view(rfm_main_box, rfmCtx);
 
    g_signal_connect(window,"destroy", G_CALLBACK(cleanup), rfmCtx);
 
@@ -2516,7 +2621,10 @@ static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx)
 {
    RFM_fileMenu *fileMenu=g_object_get_data(G_OBJECT(window),"rfm_file_menu");
 
-   gtk_icon_view_unselect_all(GTK_ICON_VIEW(icon_view));
+   if (treeview)
+     gtk_tree_selection_unselect_all(gtk_tree_view_get_selection(GTK_TREE_VIEW(icon_or_tree_view)));
+   else
+     gtk_icon_view_unselect_all(GTK_ICON_VIEW(icon_or_tree_view));
    gtk_target_list_unref(target_list);
    if (rfm_childList != NULL) {
       g_warning ("Ending program, but background jobs still running!\n");
@@ -2651,8 +2759,12 @@ int main(int argc, char *argv[])
 
          break;
 
+      case 'l':
+	 treeview=TRUE;
+	 break;
+
       default:
-         die("Usage: %s [-c] [-d <full path to directory>] [-i] [-v] [-p || -p<custom pagesize such as 50>]\n", PROG_NAME);
+         die("Usage: %s [-c] [-d <full path to directory>] [-i] [-v] [-l] [-p || -p<custom pagesize such as 50>]\n", PROG_NAME);
       }
 
       c++;
