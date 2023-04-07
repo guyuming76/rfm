@@ -2346,6 +2346,7 @@ static GtkWidget *add_view(GtkWidget *rfm_main_box, RFM_ctx *rfmCtx)
    if (treeview) {
      _view = gtk_tree_view_new_with_model(GTK_TREE_MODEL(store));
      GtkCellRenderer  * renderer  =  gtk_cell_renderer_text_new();
+     gtk_tree_selection_set_mode(gtk_tree_view_get_selection(GTK_TREE_VIEW(_view)),GTK_SELECTION_MULTIPLE);
 
      GtkTreeViewColumn * colModeStr=gtk_tree_view_column_new_with_attributes("Mode" , renderer,"text" ,  COL_MODE_STR , NULL);
      gtk_tree_view_column_set_resizable(colModeStr,TRUE);
