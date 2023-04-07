@@ -119,6 +119,10 @@ typedef struct {  /* Update free_fileAttributes() and malloc_fileAttributes() if
 
    gchar *owner;
    gchar *group;
+   guint64 file_atime;
+   guint64 file_ctime;
+   guint32 file_mode;
+   gchar * file_mode_str;
 } RFM_FileAttributes;
 
 typedef struct {
@@ -138,12 +142,16 @@ typedef struct {
 } RFM_defaultPixbufs;
 
 enum {
+   COL_MODE_STR,
    COL_DISPLAY_NAME,
    COL_PIXBUF,
    COL_MTIME,
+   COL_MTIME_STR,
    COL_ATTR,
    COL_OWNER,
    COL_GROUP,
+   COL_ATIME_STR,
+   COL_CTIME_STR,
    NUM_COLS
 };
 
@@ -221,6 +229,67 @@ static GHashTable *get_mount_points(void);
 /* TODO: Function definitions */
 
 #include "config.h"
+
+char * yyyymmddhhmmss(time_t nSeconds) {
+    struct tm * pTM=localtime(&nSeconds);
+    char * psDateTime=malloc(sizeof(char)*16);
+
+    /* datetime format: yyyymmdd:HHMMSS */
+    sprintf(psDateTime, "%04d-%02d-%02d %02d:%02d:%02d",
+            pTM->tm_year + 1900, pTM->tm_mon + 1, pTM->tm_mday,
+            pTM->tm_hour, pTM->tm_min, pTM->tm_sec);
+    return psDateTime;
+}
+
+char * st_mode_str(guint32 st_mode){
+    char * ret=malloc(sizeof(char)*11);
+    //文件类型
+    if(S_ISDIR(st_mode))//目录文件
+      ret[0]='d';
+    else if(S_ISREG(st_mode))//普通文件  
+      ret[0]='-';
+    else if(S_ISCHR(st_mode))//字符文件
+      ret[0]='c';
+    else if(S_ISBLK(st_mode))//块文件
+      ret[0]='b';
+    else if(S_ISFIFO(st_mode))//管道文件
+      ret[0]='p';
+    else if(S_ISLNK(st_mode))//链接文件
+      ret[0]='l';
+    //else if(S_ISSOCK(st_mode))//套接字文件
+    //  ret[0]='s';
+    // TODO: code copied from https://blog.csdn.net/xieeryihe/article/details/121715202 ,why S_ISSOCK not defined on my system?
+    else ret[0]='-';
+
+    //文件所有者权限
+    if(st_mode&S_IRUSR) ret[1]='r';
+    else ret[1]='-';
+    if(st_mode&S_IWUSR) ret[2]='w';
+    else ret[2]='-';
+    if(st_mode&S_IXUSR) ret[3]='x';
+    else ret[3]='-';
+    
+    //用户组权限
+    if(st_mode&S_IRGRP) ret[4]='r';
+    else ret[4]='-';
+    if(st_mode&S_IWGRP) ret[5]='w';
+    else ret[5]='-';
+    if(st_mode&S_IXGRP) ret[6]='x';
+    else ret[6]='-';
+
+    //其他用户权限
+    if(st_mode&S_IROTH) ret[7]='r';
+    else ret[7]='-';
+    if(st_mode&S_IWOTH) ret[8]='w';
+    else ret[8]='-';
+    if(st_mode&S_IXOTH) ret[9]='x';
+    else ret[9]='-';
+
+    ret[10]=0;
+    return ret;
+}
+
+
 
 static void free_thumbQueueData(RFM_ThumbQueueData *thumbData)
 {
@@ -957,6 +1026,10 @@ static RFM_FileAttributes *get_file_info(const gchar *name, guint64 mtimeThresho
    }
 
    fileAttributes->file_mtime=g_file_info_get_attribute_uint64(info, G_FILE_ATTRIBUTE_TIME_MODIFIED);
+   fileAttributes->file_atime=g_file_info_get_attribute_uint64(info, G_FILE_ATTRIBUTE_TIME_ACCESS);
+   fileAttributes->file_ctime=g_file_info_get_attribute_uint64(info, G_FILE_ATTRIBUTE_TIME_CHANGED);
+   fileAttributes->file_mode=g_file_info_get_attribute_uint32(info, G_FILE_ATTRIBUTE_UNIX_MODE);
+   fileAttributes->file_mode_str=st_mode_str(fileAttributes->file_mode);
    fileAttributes->file_name=g_strdup(name);
    utf8_display_name=g_filename_to_utf8(name, -1, NULL, NULL, NULL);
    if (fileAttributes->file_mtime > mtimeThreshold)
@@ -1083,13 +1156,18 @@ static void updateIconView()
             g_object_unref(theme_pixbuf);
          }
       }
+
       gtk_list_store_insert_with_values(store, &iter, -1,
+                          COL_MODE_STR, fileAttributes->file_mode_str,
                           COL_DISPLAY_NAME, fileAttributes->display_name,
                           COL_PIXBUF, fileAttributes->pixbuf,
                           COL_MTIME, fileAttributes->file_mtime,
+			  COL_MTIME_STR,yyyymmddhhmmss(fileAttributes->file_mtime),
                           COL_ATTR, fileAttributes,
                           COL_OWNER,fileAttributes->owner,
 			  COL_GROUP,fileAttributes->group,
+			  COL_ATIME_STR,yyyymmddhhmmss(fileAttributes->file_atime),
+			  COL_CTIME_STR,yyyymmddhhmmss(fileAttributes->file_ctime),
                           -1);
 #ifdef DebugPrintf
       printf("Inserted into store:%s\n",fileAttributes->display_name);
@@ -2268,15 +2346,28 @@ static GtkWidget *add_view(GtkWidget *rfm_main_box, RFM_ctx *rfmCtx)
    if (treeview) {
      _view = gtk_tree_view_new_with_model(GTK_TREE_MODEL(store));
      GtkCellRenderer  * renderer  =  gtk_cell_renderer_text_new();
-     GtkTreeViewColumn * col1=gtk_tree_view_column_new_with_attributes("DisplayName" , renderer,"text" ,  COL_DISPLAY_NAME , NULL);
-     gtk_tree_view_column_set_resizable(col1,TRUE);
-     gtk_tree_view_append_column(GTK_TREE_VIEW(_view),col1);
-     GtkTreeViewColumn * col2=gtk_tree_view_column_new_with_attributes("MTIME" , renderer,"text" ,  COL_MTIME , NULL);
-     gtk_tree_view_column_set_resizable(col2,TRUE);
-     gtk_tree_view_append_column(GTK_TREE_VIEW(_view),col2);
-     GtkTreeViewColumn * col3=gtk_tree_view_column_new_with_attributes("OWNER" , renderer,"text" ,  COL_OWNER , NULL);
-     gtk_tree_view_column_set_resizable(col3,TRUE);
-     gtk_tree_view_append_column(GTK_TREE_VIEW(_view),col3);
+
+     GtkTreeViewColumn * colModeStr=gtk_tree_view_column_new_with_attributes("Mode" , renderer,"text" ,  COL_MODE_STR , NULL);
+     gtk_tree_view_column_set_resizable(colModeStr,TRUE);
+     gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colModeStr);
+     GtkTreeViewColumn * colDispName=gtk_tree_view_column_new_with_attributes("DisplayName" , renderer,"text" ,  COL_DISPLAY_NAME , NULL);
+     gtk_tree_view_column_set_resizable(colDispName,TRUE);
+     gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colDispName);
+     GtkTreeViewColumn * colMTime=gtk_tree_view_column_new_with_attributes("MTime" , renderer,"text" ,  COL_MTIME_STR , NULL);
+     gtk_tree_view_column_set_resizable(colMTime,TRUE);
+     gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colMTime);
+     GtkTreeViewColumn * colOwner=gtk_tree_view_column_new_with_attributes("Owner" , renderer,"text" ,  COL_OWNER , NULL);
+     gtk_tree_view_column_set_resizable(colOwner,TRUE);
+     gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colOwner);
+     GtkTreeViewColumn * colGroup=gtk_tree_view_column_new_with_attributes("Group" , renderer,"text" ,  COL_GROUP , NULL);
+     gtk_tree_view_column_set_resizable(colGroup,TRUE);
+     gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colGroup);
+     GtkTreeViewColumn * colATime=gtk_tree_view_column_new_with_attributes("ATime" , renderer,"text" ,  COL_ATIME_STR , NULL);
+     gtk_tree_view_column_set_resizable(colATime,TRUE);
+     gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colATime);
+     GtkTreeViewColumn * colCTime=gtk_tree_view_column_new_with_attributes("CTime" , renderer,"text" ,  COL_CTIME_STR , NULL);
+     gtk_tree_view_column_set_resizable(colCTime,TRUE);
+     gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colCTime);
      
 
    } else {
@@ -2361,13 +2452,20 @@ static void inotify_insert_item(gchar *name, gboolean is_dir)
    fileAttributes->path=g_build_filename(rfm_curPath, name, NULL);
    fileAttributes->file_mtime=(gint64)time(NULL); /* time() returns a type time_t */
    rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
+
+   //char * c_time=ctime((time_t*)(&(fileAttributes->file_mtime)));
+   // c_time[strcspn(c_time, "\n")] = 0;
    gtk_list_store_insert_with_values(store, &iter, -1,
+                       COL_MODE_STR, fileAttributes->file_mode_str,
                        COL_DISPLAY_NAME, fileAttributes->display_name,
                        COL_PIXBUF, fileAttributes->pixbuf,
-                       COL_MTIME, fileAttributes->file_mtime, 
+                       COL_MTIME, fileAttributes->file_mtime,
+		       COL_MTIME_STR,yyyymmddhhmmss(fileAttributes->file_mtime),
                        COL_ATTR, fileAttributes,
                        COL_OWNER,fileAttributes->owner,
                        COL_GROUP,fileAttributes->group,
+		       COL_ATIME_STR,yyyymmddhhmmss(fileAttributes->file_atime),
+                       COL_CTIME_STR,yyyymmddhhmmss(fileAttributes->file_ctime),
                        -1);
 }
 
@@ -2591,12 +2689,16 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
    g_object_set_data_full(G_OBJECT(window),"rfm_default_pixbufs",defaultPixbufs,(GDestroyNotify)free_default_pixbufs);
 
    store=gtk_list_store_new(NUM_COLS,
+			      G_TYPE_STRING,     //MODE_STR
                               G_TYPE_STRING,    /* Displayed name */
                               GDK_TYPE_PIXBUF,  /* Displayed icon */
                               G_TYPE_UINT64,    /* File mtime: time_t is currently 32 bit signed */
+			      G_TYPE_STRING, //MTIME_STR
 			      G_TYPE_POINTER,  /* RFM_FileAttributes */
 			      G_TYPE_STRING,    //OWNER
-			      G_TYPE_STRING);   //GROUP
+			      G_TYPE_STRING,   //GROUP
+   			      G_TYPE_STRING, //ATIME_STR
+			      G_TYPE_STRING); //CTIME_STR				
    if (!readFromPipe)
      gtk_tree_sortable_set_default_sort_func(GTK_TREE_SORTABLE(store), sort_func, NULL, NULL);
 
