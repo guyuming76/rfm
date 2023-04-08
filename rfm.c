@@ -2746,6 +2746,14 @@ static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx)
 {
    RFM_fileMenu *fileMenu=g_object_get_data(G_OBJECT(window),"rfm_file_menu");
 
+   inotify_rm_watch(rfm_inotify_fd, rfm_curPath_wd);
+   if (rfm_do_thumbs==1) {
+      inotify_rm_watch(rfm_inotify_fd, rfm_thumbnail_wd);
+      if (rfm_thumbQueue!=NULL)
+         g_list_free_full(rfm_thumbQueue, (GDestroyNotify)free_thumbQueueData);
+   }
+   close(rfm_inotify_fd);
+   
    if (treeview)
      gtk_tree_selection_unselect_all(gtk_tree_view_get_selection(GTK_TREE_VIEW(icon_or_tree_view)));
    else
@@ -2757,14 +2765,6 @@ static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx)
    }
 
    gtk_main_quit();
-
-   inotify_rm_watch(rfm_inotify_fd, rfm_curPath_wd);
-   if (rfm_do_thumbs==1) {
-      inotify_rm_watch(rfm_inotify_fd, rfm_thumbnail_wd);
-      if (rfm_thumbQueue!=NULL)
-         g_list_free_full(rfm_thumbQueue, (GDestroyNotify)free_thumbQueueData);
-   }
-   close(rfm_inotify_fd);
 
    g_object_unref(rfmCtx->rfm_mountMonitor);
 
