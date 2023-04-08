@@ -152,6 +152,8 @@ enum {
    COL_ATTR,
    COL_OWNER,
    COL_GROUP,
+   COL_MIME_ROOT,
+   COL_MIME_SUB,
    COL_ATIME_STR,
    COL_CTIME_STR,
    NUM_COLS
@@ -1170,6 +1172,8 @@ static void updateIconView()
                           COL_ATTR, fileAttributes,
                           COL_OWNER,fileAttributes->owner,
 			  COL_GROUP,fileAttributes->group,
+                          COL_MIME_ROOT,fileAttributes->mime_root,
+			  COL_MIME_SUB,fileAttributes->mime_sub_type,
 			  COL_ATIME_STR,yyyymmddhhmmss(fileAttributes->file_atime),
 			  COL_CTIME_STR,yyyymmddhhmmss(fileAttributes->file_ctime),
                           -1);
@@ -2370,6 +2374,13 @@ static GtkWidget *add_view(GtkWidget *rfm_main_box, RFM_ctx *rfmCtx)
      GtkTreeViewColumn * colGroup=gtk_tree_view_column_new_with_attributes("Group" , renderer,"text" ,  COL_GROUP , NULL);
      gtk_tree_view_column_set_resizable(colGroup,TRUE);
      gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colGroup);
+     GtkTreeViewColumn * colMIME_root=gtk_tree_view_column_new_with_attributes("MIME_root" , renderer,"text" ,  COL_MIME_ROOT , NULL);
+     gtk_tree_view_column_set_resizable(colMIME_root,TRUE);
+     gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colMIME_root);
+     GtkTreeViewColumn * colMIME_sub=gtk_tree_view_column_new_with_attributes("MIME_sub" , renderer,"text" ,  COL_MIME_SUB , NULL);
+     gtk_tree_view_column_set_resizable(colMIME_sub,TRUE);
+     gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colMIME_sub);
+     
      /* GtkTreeViewColumn * colATime=gtk_tree_view_column_new_with_attributes("ATime" , renderer,"text" ,  COL_ATIME_STR , NULL); */
      /* gtk_tree_view_column_set_resizable(colATime,TRUE); */
      /* gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colATime); */
@@ -2471,6 +2482,8 @@ static void inotify_insert_item(gchar *name, gboolean is_dir)
                        COL_ATTR, fileAttributes,
                        COL_OWNER,fileAttributes->owner,
                        COL_GROUP,fileAttributes->group,
+                       COL_MIME_ROOT,fileAttributes->mime_root,
+                       COL_MIME_SUB,fileAttributes->mime_sub_type,
 		       COL_ATIME_STR,yyyymmddhhmmss(fileAttributes->file_atime),
                        COL_CTIME_STR,yyyymmddhhmmss(fileAttributes->file_ctime),
                        -1);
@@ -2705,6 +2718,8 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
 			      G_TYPE_POINTER,  /* RFM_FileAttributes */
 			      G_TYPE_STRING,    //OWNER
 			      G_TYPE_STRING,   //GROUP
+			      G_TYPE_STRING,  //mime_root
+			      G_TYPE_STRING,  //mime_sub
    			      G_TYPE_STRING, //ATIME_STR
 			      G_TYPE_STRING); //CTIME_STR				
    if (!readFromPipe)
