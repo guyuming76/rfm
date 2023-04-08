@@ -123,6 +123,7 @@ typedef struct {  /* Update free_fileAttributes() and malloc_fileAttributes() if
    guint64 file_ctime;
    guint32 file_mode;
    gchar * file_mode_str;
+   guint64 file_size;
 } RFM_FileAttributes;
 
 typedef struct {
@@ -147,6 +148,7 @@ enum {
    COL_PIXBUF,
    COL_MTIME,
    COL_MTIME_STR,
+   COL_SIZE,
    COL_ATTR,
    COL_OWNER,
    COL_GROUP,
@@ -1028,6 +1030,7 @@ static RFM_FileAttributes *get_file_info(const gchar *name, guint64 mtimeThresho
    fileAttributes->file_mtime=g_file_info_get_attribute_uint64(info, G_FILE_ATTRIBUTE_TIME_MODIFIED);
    fileAttributes->file_atime=g_file_info_get_attribute_uint64(info, G_FILE_ATTRIBUTE_TIME_ACCESS);
    fileAttributes->file_ctime=g_file_info_get_attribute_uint64(info, G_FILE_ATTRIBUTE_TIME_CHANGED);
+   fileAttributes->file_size=g_file_info_get_attribute_uint64(info, G_FILE_ATTRIBUTE_STANDARD_SIZE);
    fileAttributes->file_mode=g_file_info_get_attribute_uint32(info, G_FILE_ATTRIBUTE_UNIX_MODE);
    fileAttributes->file_mode_str=st_mode_str(fileAttributes->file_mode);
    fileAttributes->file_name=g_strdup(name);
@@ -1163,6 +1166,7 @@ static void updateIconView()
                           COL_PIXBUF, fileAttributes->pixbuf,
                           COL_MTIME, fileAttributes->file_mtime,
 			  COL_MTIME_STR,yyyymmddhhmmss(fileAttributes->file_mtime),
+             		  COL_SIZE,fileAttributes->file_size,
                           COL_ATTR, fileAttributes,
                           COL_OWNER,fileAttributes->owner,
 			  COL_GROUP,fileAttributes->group,
@@ -2357,20 +2361,21 @@ static GtkWidget *add_view(GtkWidget *rfm_main_box, RFM_ctx *rfmCtx)
      GtkTreeViewColumn * colMTime=gtk_tree_view_column_new_with_attributes("MTime" , renderer,"text" ,  COL_MTIME_STR , NULL);
      gtk_tree_view_column_set_resizable(colMTime,TRUE);
      gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colMTime);
+     GtkTreeViewColumn * colSize=gtk_tree_view_column_new_with_attributes("Size" , renderer,"text" ,  COL_SIZE , NULL);
+     gtk_tree_view_column_set_resizable(colSize,TRUE);
+     gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colSize);
      GtkTreeViewColumn * colOwner=gtk_tree_view_column_new_with_attributes("Owner" , renderer,"text" ,  COL_OWNER , NULL);
      gtk_tree_view_column_set_resizable(colOwner,TRUE);
      gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colOwner);
      GtkTreeViewColumn * colGroup=gtk_tree_view_column_new_with_attributes("Group" , renderer,"text" ,  COL_GROUP , NULL);
      gtk_tree_view_column_set_resizable(colGroup,TRUE);
      gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colGroup);
-     GtkTreeViewColumn * colATime=gtk_tree_view_column_new_with_attributes("ATime" , renderer,"text" ,  COL_ATIME_STR , NULL);
-     gtk_tree_view_column_set_resizable(colATime,TRUE);
-     gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colATime);
-     GtkTreeViewColumn * colCTime=gtk_tree_view_column_new_with_attributes("CTime" , renderer,"text" ,  COL_CTIME_STR , NULL);
-     gtk_tree_view_column_set_resizable(colCTime,TRUE);
-     gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colCTime);
-     
-
+     /* GtkTreeViewColumn * colATime=gtk_tree_view_column_new_with_attributes("ATime" , renderer,"text" ,  COL_ATIME_STR , NULL); */
+     /* gtk_tree_view_column_set_resizable(colATime,TRUE); */
+     /* gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colATime); */
+     /* GtkTreeViewColumn * colCTime=gtk_tree_view_column_new_with_attributes("CTime" , renderer,"text" ,  COL_CTIME_STR , NULL); */
+     /* gtk_tree_view_column_set_resizable(colCTime,TRUE); */
+     /* gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colCTime); */
    } else {
      _view = gtk_icon_view_new_with_model(GTK_TREE_MODEL(store));
      gtk_icon_view_set_selection_mode(GTK_ICON_VIEW(_view),GTK_SELECTION_MULTIPLE);
@@ -2462,6 +2467,7 @@ static void inotify_insert_item(gchar *name, gboolean is_dir)
                        COL_PIXBUF, fileAttributes->pixbuf,
                        COL_MTIME, fileAttributes->file_mtime,
 		       COL_MTIME_STR,yyyymmddhhmmss(fileAttributes->file_mtime),
+	               COL_SIZE,fileAttributes->file_size,
                        COL_ATTR, fileAttributes,
                        COL_OWNER,fileAttributes->owner,
                        COL_GROUP,fileAttributes->group,
@@ -2695,6 +2701,7 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
                               GDK_TYPE_PIXBUF,  /* Displayed icon */
                               G_TYPE_UINT64,    /* File mtime: time_t is currently 32 bit signed */
 			      G_TYPE_STRING, //MTIME_STR
+			      G_TYPE_UINT64, //size
 			      G_TYPE_POINTER,  /* RFM_FileAttributes */
 			      G_TYPE_STRING,    //OWNER
 			      G_TYPE_STRING,   //GROUP
