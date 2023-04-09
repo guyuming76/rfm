@@ -1,6 +1,7 @@
 /* Config file for rfm
  */
 
+#define DebugPrintf
 /*#define RFM_ICON_THEME "elementary"*/
 /*#define RFM_SINGLE_CLICK "True"*/
 #define RFM_TOOL_SIZE 22
@@ -22,7 +23,7 @@ static const char *f_mv[]   = { "/bin/mv", "-f", NULL };
 static const char *play_video[] = { "/usr/bin/mpv", NULL };
 static const char *play_audio[] = { "/usr/bin/mpv", "--player-operation-mode=pseudo-gui", "--", NULL };
 static const char *av_info[]    = { "/usr/bin/mediainfo", "-f", NULL };
-static const char *textEdit[]   = { "/usr/bin/gedit", "--new-window", NULL };
+static const char *textEdit[]   = { "/usr/bin/emacs", "--no-splash", NULL };
 static const char *mupdf[]      = { "/usr/bin/evince", NULL };
 //static const char *show_image[] = { "/usr/bin/eog", NULL };
 static const char *show_image[] = { "/usr/local/bin/RefreshImage.sh", NULL };
@@ -44,9 +45,10 @@ static const char *open_with[]  = { "/usr/local/bin/open_with_dmenu.sh", NULL };
 static const char *exiftran[]   = { "/usr/bin/exiftran", "-a", "-i", NULL };  /* pacman -S fbida */
 static const char *gnumeric[]   = { "/usr/bin/gnumeric", NULL };
 static const char *ftview[] = { "/usr/bin/ftview", "14", NULL }; /* pacman -S freetype2-demos */
-/* Tool button commands */
-//static const char *term_cmd[]  = { "/usr/bin/xterm", "+ls", NULL };
-static const char *term_cmd[] = { "/usr/bin/vte-2.91", "--cursor-blink=off", "--cursor-background-color=red", "--cursor-foreground-color=white", "--background-color=black", "--foreground-color=white", "--no-scrollbar", "--no-decorations", "-f", "Terminus 14", NULL };
+static const char *ffmpegThumb[] =  { "/usr/bin/ffmpeg", "-i","", "-frames", "1", "-s", "256x256",NULL  };
+
+    /* Tool button commands */
+static const char *term_cmd[]  = { "/usr/bin/alacritty", NULL };
 static const char *new_rfm[]  = { "/usr/local/bin/rfm", "-c", NULL };
 /* Run actions
  * NOTES: The first three MUST be the built in commands for cp, mv and rm, respectively.
@@ -148,9 +150,24 @@ static RFM_ToolButtons tool_buttons[] = {
  * The function should return the thumbnail as a pixbuf.
  */
 
+
 //#include "libdcmthumb/dcmThumb.h"
+static gpointer ffmpeg4Thumb(RFM_ThumbQueueData * thumbData)
+{
+  gchar *thumb_path=g_build_filename(rfm_thumbDir, thumbData->thumb_name, NULL);
+  //gchar *input_file=strcat("-i ", thumbData->path);
+  GList * input_files=NULL;
+  input_files=g_list_prepend(input_files, g_strdup(thumbData->path));
+  exec_run_action_internal(ffmpegThumb, input_files, 1, RFM_EXEC_NONE, thumb_path, FALSE, NULL, NULL);
+  g_list_free(input_files);
+  return NULL;
+}
+
 static const RFM_Thumbnailers thumbnailers[] = {
-   /* mime root      mime sub type        thumbnail function */
-   { "image",        "*",                 NULL },
-//   { "application",  "dicom",             dcmThumb},
+    /* mime root      mime sub type        thumbnail function */
+    {"image", "*", NULL},
+    {"video","mp4",ffmpeg4Thumb},
+    //   { "application",  "dicom",             dcmThumb},
 };
+
+#define NonGtkThumbnail

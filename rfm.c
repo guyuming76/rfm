@@ -30,11 +30,6 @@
 #define PIPE_SZ 65535      /* Kernel pipe size */
 #define RFM_N_BUILT_IN 3   /* Number of built in actions */
 
-typedef struct {
-   gchar *thumbRoot;
-   gchar *thumbSub;
-   GdkPixbuf *(*func)(gchar *path, gint size);
-} RFM_Thumbnailers;
 
 typedef struct {
    gchar *path;
@@ -46,6 +41,13 @@ typedef struct {
    pid_t rfm_pid;
    gint thumb_size; 
 } RFM_ThumbQueueData;
+
+typedef struct {
+   gchar *thumbRoot;
+   gchar *thumbSub;
+   GdkPixbuf *(*func)(RFM_ThumbQueueData * thumbData);
+} RFM_Thumbnailers;
+
 
 typedef struct {
    gchar *runName;
@@ -229,6 +231,8 @@ static void up_clicked(GtkToolItem *item, gpointer user_data);
 static void home_clicked(GtkToolItem *item, gpointer user_data);
 static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx);
 static GHashTable *get_mount_points(void);
+
+static void exec_run_action_internal(const char **action, GList *file_list, long n_args, int run_opts, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData);
 
 /* TODO: Function definitions */
 
@@ -753,7 +757,14 @@ static gchar **build_cmd_vector(const char **cmd, GList *file_list, long n_args,
       return NULL;
 
    while (cmd[j]!=NULL && j<RFM_MX_ARGS) {
-      v[j]=(gchar*)cmd[j]; /* FIXME: gtk spawn functions require gchar*, but we have const gchar*; should probably g_strdup() and create a free_cmd_vector() function */
+     if (strcmp(cmd[j],"")!=0)
+       v[j]=(gchar*)cmd[j]; /* FIXME: gtk spawn functions require gchar*, but we have const gchar*; should probably g_strdup() and create a free_cmd_vector() function */
+     else if (listElement != NULL) {
+       // before this commit, file_list and dest_path are all appended after cmd, but commands like ffmpeg to create thumbnail need to have file name in the middle of the argv, appended at the end won't work. So i modify the rule here so that if we have empty string in cmd, we replace it with item in file_list. So, file_list can work as generic argument list later, not necessarily the filename. And replacing empty string place holders in cmd with items in file_list can be something like printf.
+       v[j]=listElement->data;
+       listElement=g_list_next(listElement);
+     }
+
       j++;
    }
    if (j==RFM_MX_ARGS) {
@@ -791,7 +802,7 @@ static void exec_run_action_internal(const char **action, GList *file_list, long
         } else {
           if (!g_spawn_sync(rfm_curPath, v, NULL, 0, NULL, NULL, NULL, NULL,NULL,NULL))
             g_warning("exec_run_action: %s failed to execute. Check run_actions[] in config.h!", v[0]);
-	  (*callbackfunc)(callbackfuncUserData);
+	  if(callbackfunc) (*callbackfunc)(callbackfuncUserData);
          }
       }
       else {
@@ -838,11 +849,17 @@ static int load_thumbnail(gchar *key)
    tmp=gdk_pixbuf_get_option(pixbuf, "tEXt::Thumb::MTime");
    if (tmp!=NULL) mtime_thumb=g_ascii_strtoll(tmp, NULL, 10); /* Convert to gint64 */
    if (mtime_file!=mtime_thumb) {
-      g_object_unref(pixbuf);
-      return 3;   /* Thumbnail out of date */
+#ifdef NonGtkThumbnail
+     if (tmp != NULL) {
+#endif
+       g_object_unref(pixbuf);
+       return 3; /* Thumbnail out of date */
+#ifdef NonGtkThumbnail
+     }
+#endif
    }
-
-   gtk_list_store_set(store, &iter, COL_PIXBUF, pixbuf, -1);
+   
+   gtk_list_store_set (store, &iter, COL_PIXBUF, pixbuf, -1);
    g_object_unref(pixbuf);
    return 0;
 }
@@ -907,7 +924,7 @@ static gboolean mkThumb()
    if (thumbnailers[thumbData->t_idx].func==NULL)
       thumb=gdk_pixbuf_new_from_file_at_scale(thumbData->path, thumbData->thumb_size, thumbData->thumb_size, TRUE, NULL);
    else
-      thumb=thumbnailers[thumbData->t_idx].func(thumbData->path, thumbData->thumb_size);
+      thumb=thumbnailers[thumbData->t_idx].func(thumbData);
    if (thumb!=NULL) {
       rfm_saveThumbnail(thumb, thumbData);
 #ifdef DebugPrintf
@@ -1110,7 +1127,8 @@ static void do_thumbnails(void)
       thumbData=get_thumbData(&iter); /* Returns NULL if thumbnail not handled */
       if (thumbData!=NULL) {
          /* Try to load any existing thumbnail */
-         if (load_thumbnail(thumbData->thumb_name) == 0) { /* Success: thumbnail exists in cache and is valid */
+	int ld=load_thumbnail(thumbData->thumb_name);
+	 if ( ld == 0) { /* Success: thumbnail exists in cache and is valid */
 #ifdef DebugPrintf
 	   printf("thumbnail exists: %s , %s\n",thumbData->path,thumbData->thumb_name);
 #endif
@@ -1118,7 +1136,7 @@ static void do_thumbnails(void)
          } else { /* Thumbnail doesn't exist or is out of date */
            rfm_thumbQueue = g_list_append(rfm_thumbQueue, thumbData);
 #ifdef DebugPrintf
-	   printf("thumbnail creation enqueued: %s\n",thumbData->path);
+	   printf("thumbnail creation enqueued: %s; load_thumbnail failure code:%d, for thumb_name:%s.\n",thumbData->path,ld,thumbData->thumb_name);
 #endif
          }
       }
@@ -2423,11 +2441,13 @@ static GtkWidget *add_view(GtkWidget *rfm_main_box, RFM_ctx *rfmCtx)
    gtk_widget_grab_focus(_view);
 
 #ifdef DebugPrintf
-   printf("gtk_icon_view_get_column_spacing:%d\n",gtk_icon_view_get_column_spacing((GtkIconView *)icon_view));
-   printf("gtk_icon_view_get_item_padding:%d\n",gtk_icon_view_get_item_padding((GtkIconView *)icon_view));
-   printf("gtk_icon_view_get_spacing:%d\n",gtk_icon_view_get_spacing((GtkIconView *)icon_view));
-   printf("gtk_icon_view_get_item_width:%d\n",gtk_icon_view_get_item_width((GtkIconView *)icon_view));
-   printf("gtk_icon_view_get_margin:%d\n",gtk_icon_view_get_margin((GtkIconView *)icon_view));
+   if (!treeview) {
+     printf("gtk_icon_view_get_column_spacing:%d\n",gtk_icon_view_get_column_spacing((GtkIconView *)_view));
+     printf("gtk_icon_view_get_item_padding:%d\n", gtk_icon_view_get_item_padding((GtkIconView *)_view));
+     printf("gtk_icon_view_get_spacing:%d\n", gtk_icon_view_get_spacing((GtkIconView *)_view));
+     printf("gtk_icon_view_get_item_width:%d\n", gtk_icon_view_get_item_width((GtkIconView *)_view));
+     printf("gtk_icon_view_get_margin:%d\n", gtk_icon_view_get_margin((GtkIconView *)_view));
+   }
 #endif
    
    if (readFromPipe) {
