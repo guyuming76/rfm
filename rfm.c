@@ -176,6 +176,8 @@ static GtkTargetEntry target_entry[] = {
 static GtkTargetList *target_list;
 
 static GtkWidget *window=NULL;      /* Main window */
+static GtkWidget *rfm_main_box;
+static GtkWidget *sw; //scroll window
 static GtkWidget *icon_or_tree_view;
 
 static gchar *rfm_homePath;         /* Users home dir */
@@ -203,6 +205,7 @@ static GtkToolItem *menu_button;
 static GtkToolItem *info_button;
 static GtkToolItem *PageUp_button;
 static GtkToolItem *PageDown_button;
+static GtkToolItem *SwitchView_button;
 static GtkAccelGroup *agMain;
 
 static GtkIconTheme *icon_theme;
@@ -233,6 +236,7 @@ static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx);
 static GHashTable *get_mount_points(void);
 
 static void exec_run_action_internal(const char **action, GList *file_list, long n_args, int run_opts, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData);
+static void switch_view(GtkToolItem *item, RFM_ctx *rfmCtx);
 
 /* TODO: Function definitions */
 
@@ -2357,11 +2361,15 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
    gtk_widget_set_sensitive(GTK_WIDGET(info_button),FALSE);
    gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), info_button, -1);
    g_signal_connect(info_button, "clicked", G_CALLBACK(info_clicked), NULL);
+
+   SwitchView_button=gtk_tool_button_new(NULL, "SwitchView");
+   gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), SwitchView_button, -1);
+   g_signal_connect(SwitchView_button, "clicked", G_CALLBACK(switch_view), rfmCtx);
+
 }
 
-static GtkWidget *add_view(GtkWidget *rfm_main_box, RFM_ctx *rfmCtx)
+static GtkWidget *add_view(RFM_ctx *rfmCtx)
 {
-   GtkWidget *sw;
    GtkWidget *_view;
 
    sw=gtk_scrolled_window_new(NULL, NULL);
@@ -2457,6 +2465,20 @@ static GtkWidget *add_view(GtkWidget *rfm_main_box, RFM_ctx *rfmCtx)
 
    return _view;
 }
+
+static void switch_view(GtkToolItem *item, RFM_ctx *rfmCtx) {
+  gtk_widget_hide(rfm_main_box);
+  gtk_container_remove(GTK_CONTAINER(sw), icon_or_tree_view);
+  //g_object_unref(icon_or_tree_view);
+  //gtk_widget_destroy(icon_or_tree_view);
+  gtk_container_remove(GTK_CONTAINER(rfm_main_box), sw);
+  // g_object_unref(sw);
+  //gtk_widget_destroy(sw);
+  treeview=!treeview;
+  icon_or_tree_view=add_view(rfmCtx);
+  gtk_widget_show_all(window);
+}
+
 
 static void inotify_insert_item(gchar *name, gboolean is_dir)
 {
@@ -2677,7 +2699,6 @@ static void free_default_pixbufs(RFM_defaultPixbufs *defaultPixbufs)
 
 static int setup(char *initDir, RFM_ctx *rfmCtx)
 {
-   GtkWidget *rfm_main_box;
    RFM_dndMenu *dndMenu=NULL;
    RFM_fileMenu *fileMenu=NULL;
    RFM_rootMenu *rootMenu=NULL;
@@ -2750,7 +2771,7 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
      gtk_tree_sortable_set_default_sort_func(GTK_TREE_SORTABLE(store), sort_func, NULL, NULL);
 
    add_toolbar(rfm_main_box, defaultPixbufs, rfmCtx);
-   icon_or_tree_view=add_view(rfm_main_box, rfmCtx);
+   icon_or_tree_view=add_view(rfmCtx);
 
    g_signal_connect(window,"destroy", G_CALLBACK(cleanup), rfmCtx);
 
