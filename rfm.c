@@ -928,7 +928,7 @@ static gboolean mkThumb()
    if (thumb!=NULL) {
       rfm_saveThumbnail(thumb, thumbData);
 #ifdef DebugPrintf
-      printf("thumbnail save:%s\n",thumbData->thumb_name);
+      printf("thumbnail %s saved.\n",thumbData->thumb_name);
 #endif
       g_object_unref(thumb);
    }
@@ -1130,13 +1130,13 @@ static void do_thumbnails(void)
 	int ld=load_thumbnail(thumbData->thumb_name);
 	 if ( ld == 0) { /* Success: thumbnail exists in cache and is valid */
 #ifdef DebugPrintf
-	   printf("thumbnail exists: %s , %s\n",thumbData->path,thumbData->thumb_name);
+	   printf("thumbnail %s exists for %s\n",thumbData->thumb_name, thumbData->path);
 #endif
            free_thumbQueueData(thumbData);
          } else { /* Thumbnail doesn't exist or is out of date */
            rfm_thumbQueue = g_list_append(rfm_thumbQueue, thumbData);
 #ifdef DebugPrintf
-	   printf("thumbnail creation enqueued: %s; load_thumbnail failure code:%d, for thumb_name:%s.\n",thumbData->path,ld,thumbData->thumb_name);
+	   printf("thumbnail %s creation enqueued for %s; load_thumbnail failure code:%d.\n",thumbData->thumb_name,thumbData->path,ld);
 #endif
          }
       }
@@ -2536,8 +2536,12 @@ static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer user_d
       if (event->len && event->name[0]!='.') {
          if (event->wd==rfm_thumbnail_wd) {
             /* Update thumbnails in the current view */
-            if (event->mask & IN_MOVED_TO)   /* Only update thumbnail move - not interested in temporary files */
-               load_thumbnail(event->name);
+            if (event->mask & IN_MOVED_TO || event->mask & IN_CREATE) { /* Only update thumbnail move - not interested in temporary files */
+              load_thumbnail(event->name);
+#ifdef DebugPrintf
+	      printf("thumbnail %s loaded in inotify_handler\n",event->name);
+#endif
+            }
          }
          else {   /* Must be from rfm_curPath_wd */
             if (event->mask & IN_CREATE)
@@ -2590,7 +2594,7 @@ static gboolean init_inotify(RFM_ctx *rfmCtx)
    else {
       g_unix_fd_add(rfm_inotify_fd, G_IO_IN, inotify_handler, rfmCtx);
       if (rfm_do_thumbs==1) {
-         rfm_thumbnail_wd=inotify_add_watch(rfm_inotify_fd, rfm_thumbDir, IN_MOVE);
+         rfm_thumbnail_wd=inotify_add_watch(rfm_inotify_fd, rfm_thumbDir, IN_MOVE|IN_CREATE);
          if (rfm_thumbnail_wd < 0) g_warning("init_inotify: Failed to add watch on dir %s\n", rfm_thumbDir);
       }
    }
@@ -2756,6 +2760,12 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
    else
      set_rfm_curPath(initDir);
 
+#ifdef DebugPrintf
+   printf("initDir: %s\n",initDir);
+   printf("rfm_curPath: %s\n",rfm_curPath);
+   printf("rfm_homePath: %s\n",rfm_homePath);
+   printf("rfm_thumbDir: %s\n",rfm_thumbDir);
+#endif
 
    fill_store(rfmCtx);
    gtk_widget_show_all(window);
