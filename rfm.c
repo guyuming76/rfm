@@ -1417,6 +1417,16 @@ static GList* get_view_selection_list(GtkWidget * view, gboolean treeview, GtkTr
    }
 }
 
+static void set_view_selection_list(GtkWidget *view, gboolean treeview,GList *selectionList) {
+  selectionList=g_list_first(selectionList);
+  while (selectionList != NULL) {
+    if (treeview)
+      gtk_tree_selection_select_path(gtk_tree_view_get_selection(GTK_TREE_VIEW(view)),(GtkTreePath *)selectionList->data);
+    else
+      gtk_icon_view_select_path(GTK_ICON_VIEW(view),(GtkTreePath *)selectionList->data);
+    selectionList = g_list_next(selectionList);
+  }
+}
 
 static gchar **selection_list_to_uri(GtkWidget *widget, RFM_ctx *rfmCtx)
 {
@@ -2467,6 +2477,7 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
 }
 
 static void switch_view(GtkToolItem *item, RFM_ctx *rfmCtx) {
+  GList *  selectionList=get_view_selection_list(icon_or_tree_view,treeview,&store);
   gtk_widget_hide(rfm_main_box);
   gtk_container_remove(GTK_CONTAINER(sw), icon_or_tree_view);
   //g_object_unref(icon_or_tree_view);
@@ -2477,6 +2488,7 @@ static void switch_view(GtkToolItem *item, RFM_ctx *rfmCtx) {
   treeview=!treeview;
   icon_or_tree_view=add_view(rfmCtx);
   gtk_widget_show_all(window);
+  set_view_selection_list(icon_or_tree_view, treeview, selectionList);
 }
 
 
