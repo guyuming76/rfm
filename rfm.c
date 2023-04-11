@@ -2527,19 +2527,19 @@ static void inotify_insert_item(gchar *name, gboolean is_dir)
    //char * c_time=ctime((time_t*)(&(fileAttributes->file_mtime)));
    // c_time[strcspn(c_time, "\n")] = 0;
    gtk_list_store_insert_with_values(store, &iter, -1,
-                       COL_MODE_STR, fileAttributes->file_mode_str,
+				     //                     COL_MODE_STR, fileAttributes->file_mode_str,
                        COL_DISPLAY_NAME, fileAttributes->display_name,
                        COL_PIXBUF, fileAttributes->pixbuf,
                        COL_MTIME, fileAttributes->file_mtime,
-		       COL_MTIME_STR,yyyymmddhhmmss(fileAttributes->file_mtime),
-	               COL_SIZE,fileAttributes->file_size,
+				     //		       COL_MTIME_STR,yyyymmddhhmmss(fileAttributes->file_mtime),
+				     //	               COL_SIZE,fileAttributes->file_size,
                        COL_ATTR, fileAttributes,
-                       COL_OWNER,fileAttributes->owner,
-                       COL_GROUP,fileAttributes->group,
+				     //                     COL_OWNER,fileAttributes->owner,
+				     //                       COL_GROUP,fileAttributes->group,
                        COL_MIME_ROOT,fileAttributes->mime_root,
                        COL_MIME_SUB,fileAttributes->mime_sub_type,
-		       COL_ATIME_STR,yyyymmddhhmmss(fileAttributes->file_atime),
-                       COL_CTIME_STR,yyyymmddhhmmss(fileAttributes->file_ctime),
+				     //		       COL_ATIME_STR,yyyymmddhhmmss(fileAttributes->file_atime),
+				     //                       COL_CTIME_STR,yyyymmddhhmmss(fileAttributes->file_ctime),
                        -1);
 }
 
