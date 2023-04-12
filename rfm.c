@@ -199,6 +199,7 @@ static gchar *rfm_prePath=NULL;  /* Previous directory: only set when up button 
 
 static GtkToolItem *up_button;
 static GtkToolItem *home_button;
+static GtkToolItem *Switch_curPath_StdIn_button;
 static GtkToolItem *stop_button;
 static GtkToolItem *refresh_button;;
 static GtkToolItem *menu_button;
@@ -207,12 +208,16 @@ static GtkToolItem *PageUp_button;
 static GtkToolItem *PageDown_button;
 static GtkToolItem *SwitchView_button;
 static GtkAccelGroup *agMain;
+static GtkWidget *tool_bar;
+static RFM_defaultPixbufs *defaultPixbufs=NULL;
 
 static GtkIconTheme *icon_theme;
 
 static GHashTable *thumb_hash=NULL; /* Thumbnails in the current view */
 
 static GtkListStore *store=NULL;
+static GtkTreeModel *treemodel=NULL;
+
 static gboolean treeview=FALSE;
 
 static gboolean readFromPipe=FALSE;  /* if true, means to fill store with data from something like  ls |xargs rfm -p, or locate blablablaa |xargs rfm -p, instead of from a directory*/
@@ -237,7 +242,8 @@ static GHashTable *get_mount_points(void);
 
 static void exec_run_action_internal(const char **action, GList *file_list, long n_args, int run_opts, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData);
 static void switch_view(GtkToolItem *item, RFM_ctx *rfmCtx);
-
+static void Switch_CurPath_StdIn(GtkToolItem *item, RFM_ctx *rfmCtx);
+  
 /* TODO: Function definitions */
 
 #include "config.h"
@@ -996,6 +1002,7 @@ static void free_fileAttributes(RFM_FileAttributes *fileAttributes) {
    g_free(fileAttributes->mime_root);
    g_free(fileAttributes->mime_sub_type);
    g_free(fileAttributes->icon_name);
+   g_free(fileAttributes->file_mode_str);
    g_free(fileAttributes);
 }
 
@@ -1301,23 +1308,6 @@ static void clear_store(void)
    rfm_fileAttributeList=NULL;
 }
 
-static void fill_store(RFM_ctx *rfmCtx)
-{
-   rfm_stop_all(rfmCtx);
-   clear_store();
-
-   if (readFromPipe) {
-    readItemsFromPipe();
-
-   } else {
-     gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(store), rfmCtx->rfm_sortColumn, GTK_SORT_ASCENDING);
-     GDir *dir=NULL;
-     dir=g_dir_open(rfm_curPath, 0, NULL);
-     if (!dir) return;
-     rfm_readDirSheduler=g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, (GSourceFunc)readDirItem, dir, (GDestroyNotify)g_dir_close);
-  }
-}
-
 static gint sort_func(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, gpointer user_data)
 {
    /* Sort directories first, then on-disk filename */
@@ -1334,6 +1324,26 @@ static gint sort_func(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, gpoin
 
    return rv;
 }
+
+
+static void fill_store(RFM_ctx *rfmCtx)
+{
+   rfm_stop_all(rfmCtx);
+   clear_store();
+   
+   if (readFromPipe) {
+     readItemsFromPipe();
+
+   } else {
+     gtk_tree_sortable_set_default_sort_func(GTK_TREE_SORTABLE(store), sort_func, NULL, NULL);
+     gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(store), rfmCtx->rfm_sortColumn, GTK_SORT_ASCENDING);
+     GDir *dir=NULL;
+     dir=g_dir_open(rfm_curPath, 0, NULL);
+     if (!dir) return;
+     rfm_readDirSheduler=g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, (GSourceFunc)readDirItem, dir, (GDestroyNotify)g_dir_close);
+  }
+}
+
 
 static void set_rfm_curPath(gchar* path)
 {
@@ -1352,8 +1362,10 @@ static void set_rfm_curPath(gchar* path)
      } else {
        inotify_rm_watch(rfm_inotify_fd, rfm_curPath_wd);
        rfm_curPath_wd = rfm_new_wd;
-       g_free(rfm_curPath);
-       rfm_curPath = g_strdup(path);
+       if (rfm_curPath != path) {
+         g_free(rfm_curPath);
+         rfm_curPath = g_strdup(path);
+       }
        gtk_window_set_title(GTK_WINDOW(window), rfm_curPath);
        gtk_widget_set_sensitive(GTK_WIDGET(up_button),
 				strcmp(rfm_curPath, G_DIR_SEPARATOR_S) != 0);
@@ -1434,7 +1446,7 @@ static gchar **selection_list_to_uri(GtkWidget *widget, RFM_ctx *rfmCtx)
    guint32 i=0;
    GtkTreeIter iter;
    GList *listElement;
-   GList *selectionList=get_view_selection_list(widget,treeview,&store);
+   GList *selectionList=get_view_selection_list(widget,treeview, &treemodel);
    RFM_FileAttributes *fileAttributes;
 
    uriList=malloc((1+g_list_length(selectionList))*sizeof(gchar *));
@@ -1915,7 +1927,8 @@ static void file_menu_cp_mv(GtkWidget *menuitem, gpointer rfmCtx)
    gchar *src_name=NULL;
    GtkTreeIter iter;
    GList *listElement;
-   GList *selectionList=get_view_selection_list(icon_or_tree_view, treeview, &store);
+   //GList *selectionList=get_view_selection_list(icon_or_tree_view, treeview,(GtkTreeModel **)&store); //is this type cast correct? Doc says that ListStore implement GtkTreeModel interface. If this is not correct, is it related to the clear_store issue in comment in Switch_CurPath_Stdin ?
+   GList *selectionList=get_view_selection_list(icon_or_tree_view, treeview,&treemodel);
    GList *fileList=NULL;
    RFM_FileAttributes *fileAttributes;
    RFM_fileMenu *fileMenu=g_object_get_data(G_OBJECT(window),"rfm_file_menu");
@@ -1964,7 +1977,7 @@ static void file_menu_rm(GtkWidget *menuitem, gpointer user_data)
    gboolean delete_to_last=FALSE;
    GList *fileList=NULL;
    gint i=0;
-   GList *selectionList=get_view_selection_list(icon_or_tree_view,treeview,&store);
+   GList *selectionList=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
    RFM_FileAttributes *fileAttributes;
    
    listElement=g_list_first(selectionList);
@@ -2014,7 +2027,7 @@ static void file_menu_exec(GtkMenuItem *menuitem, RFM_RunActions *selectedAction
    GtkTreeIter iter;
    GList *listElement;
    GList *actionFileList=NULL;
-   GList *selectionList=get_view_selection_list(icon_or_tree_view,treeview,&store);
+   GList *selectionList=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
    guint i=0;
    RFM_FileAttributes *fileAttributes;
 
@@ -2096,7 +2109,7 @@ static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx)
    RFM_FileAttributes *selection_fileAttributes, *fileAttributes;
    gboolean match_mimeRoot=TRUE, match_mimeSub=TRUE;
 
-   selectionList=get_view_selection_list(icon_or_tree_view,treeview,&store);
+   selectionList=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
    if (selectionList==NULL)
       return FALSE;
 
@@ -2227,7 +2240,7 @@ static gboolean view_button_press(GtkWidget *widget, GdkEvent *event, RFM_ctx *r
    switch (eb->button) {
       case 1:  /* Custom DnD start if multiple items selected */
          if (tree_path) {
-	    selectionList=get_view_selection_list(widget,treeview,&store);
+	    selectionList=get_view_selection_list(widget,treeview,&treemodel);
             first=g_list_first(selectionList);
             if (path_is_selected(widget, treeview, tree_path) && first->next!=NULL) {
               if (treeview)
@@ -2279,7 +2292,6 @@ static gboolean view_button_press(GtkWidget *widget, GdkEvent *event, RFM_ctx *r
 
 static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixbufs, RFM_ctx *rfmCtx)
 {
-   GtkWidget *tool_bar;
    GtkToolItem *userButton;
    GtkToolItem *separatorItem;
    GtkWidget *buttonImage=NULL; /* Temp store for button image; gtk_tool_button_new() appears to take the reference */
@@ -2291,7 +2303,13 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
 
    agMain = gtk_accel_group_new();
    gtk_window_add_accel_group(GTK_WINDOW(window), agMain);
-   
+
+   if (PictureFullNamesFromStdin != NULL) {
+     Switch_curPath_StdIn_button = gtk_tool_button_new(NULL, "CurrentPath/StdIn");
+     gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), Switch_curPath_StdIn_button, -1);
+     g_signal_connect(Switch_curPath_StdIn_button, "clicked", G_CALLBACK(Switch_CurPath_StdIn), rfmCtx);
+   }
+
    if (!readFromPipe) {
      buttonImage = gtk_image_new_from_pixbuf(defaultPixbufs->up);
      up_button = gtk_tool_button_new(buttonImage, "Up");
@@ -2372,7 +2390,7 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
    gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), info_button, -1);
    g_signal_connect(info_button, "clicked", G_CALLBACK(info_clicked), NULL);
 
-   SwitchView_button=gtk_tool_button_new(NULL, "SwitchView");
+   SwitchView_button=gtk_tool_button_new(NULL, "List/Icon");
    gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), SwitchView_button, -1);
    g_signal_connect(SwitchView_button, "clicked", G_CALLBACK(switch_view), rfmCtx);
 
@@ -2477,7 +2495,7 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
 }
 
 static void switch_view(GtkToolItem *item, RFM_ctx *rfmCtx) {
-  GList *  selectionList=get_view_selection_list(icon_or_tree_view,treeview,&store);
+  GList *  selectionList=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
   gtk_widget_hide(rfm_main_box);
   gtk_container_remove(GTK_CONTAINER(sw), icon_or_tree_view);
   //g_object_unref(icon_or_tree_view);
@@ -2491,6 +2509,34 @@ static void switch_view(GtkToolItem *item, RFM_ctx *rfmCtx) {
   set_view_selection_list(icon_or_tree_view, treeview, selectionList);
 }
 
+static void Switch_CurPath_StdIn(GtkToolItem *item, RFM_ctx *rfmCtx)
+{
+  if (PictureFullNamesFromStdin != NULL && rfm_curPath!= NULL) {
+    inotify_rm_watch(rfm_inotify_fd, rfm_curPath_wd);
+    gtk_widget_hide(rfm_main_box);
+
+    rfm_stop_all(rfmCtx);
+    clear_store(); //this line is very important here, although later in fill_store, this will be called again. If we don't call this here, that is, before widgets re-creation, we will get segfault in fill_store behow if we click Switch_CurPath_StdIn and switch_view, in any combination. If we only Switch_CurPath_StdIn, it's OK, and if we only swith_view, it's also OK, but there will be segfault if we switch one after the other.  This clear_store here fix this, very strange!
+
+    /* if (treeview) */
+    /*   gtk_tree_selection_unselect_all(gtk_tree_view_get_selection(GTK_TREE_VIEW(icon_or_tree_view))); */
+    /* else */
+    /*   gtk_icon_view_unselect_all(GTK_ICON_VIEW(icon_or_tree_view)); */
+
+    gtk_container_remove(GTK_CONTAINER(sw), icon_or_tree_view);
+    gtk_container_remove(GTK_CONTAINER(rfm_main_box), sw);
+    gtk_window_remove_accel_group(GTK_WINDOW(window), agMain);
+    gtk_container_remove(GTK_CONTAINER(rfm_main_box), tool_bar);
+
+    readFromPipe=!readFromPipe;
+
+    add_toolbar(rfm_main_box, defaultPixbufs, rfmCtx);
+    icon_or_tree_view=add_view(rfmCtx); // for the issue described above, turned out it's because i forget to assign add_view function result to icon_or_tree_view variable here. But it still works for many times if i click the switchCurPath/StdIn button in the test. I guess it was because the view re-created happens to be the same location before.
+    set_rfm_curPath(rfm_curPath); // this is to update rfm_new_wd
+    fill_store(rfmCtx);
+    gtk_widget_show_all(window);
+  }
+}
 
 static void inotify_insert_item(gchar *name, gboolean is_dir)
 {
@@ -2714,7 +2760,6 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
    RFM_dndMenu *dndMenu=NULL;
    RFM_fileMenu *fileMenu=NULL;
    RFM_rootMenu *rootMenu=NULL;
-   RFM_defaultPixbufs *defaultPixbufs=NULL;
 
    gtk_init(NULL, NULL);
 
@@ -2779,9 +2824,9 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
 			      G_TYPE_STRING,  //mime_sub
    			      G_TYPE_STRING, //ATIME_STR
 			      G_TYPE_STRING); //CTIME_STR				
-   if (!readFromPipe)
-     gtk_tree_sortable_set_default_sort_func(GTK_TREE_SORTABLE(store), sort_func, NULL, NULL);
 
+   treemodel=GTK_TREE_MODEL(store);
+   
    add_toolbar(rfm_main_box, defaultPixbufs, rfmCtx);
    icon_or_tree_view=add_view(rfmCtx);
 
