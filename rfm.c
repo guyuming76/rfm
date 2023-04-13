@@ -199,7 +199,7 @@ static gchar *rfm_prePath=NULL;  /* Previous directory: only set when up button 
 
 static GtkToolItem *up_button;
 static GtkToolItem *home_button;
-static GtkToolItem *Switch_curPath_StdIn_button;
+
 static GtkToolItem *stop_button;
 static GtkToolItem *refresh_button;;
 static GtkToolItem *menu_button;
@@ -242,7 +242,6 @@ static GHashTable *get_mount_points(void);
 
 static void exec_run_action_internal(const char **action, GList *file_list, long n_args, int run_opts, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData);
 static void switch_view(GtkToolItem *item, RFM_ctx *rfmCtx);
-static void Switch_CurPath_StdIn(GtkToolItem *item, RFM_ctx *rfmCtx);
   
 /* TODO: Function definitions */
 
@@ -2304,12 +2303,6 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
    agMain = gtk_accel_group_new();
    gtk_window_add_accel_group(GTK_WINDOW(window), agMain);
 
-   if (PictureFullNamesFromStdin != NULL) {
-     Switch_curPath_StdIn_button = gtk_tool_button_new(NULL, "CurrentPath/StdIn");
-     gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), Switch_curPath_StdIn_button, -1);
-     g_signal_connect(Switch_curPath_StdIn_button, "clicked", G_CALLBACK(Switch_CurPath_StdIn), rfmCtx);
-   }
-
    if (!readFromPipe) {
      buttonImage = gtk_image_new_from_pixbuf(defaultPixbufs->up);
      up_button = gtk_tool_button_new(buttonImage, "Up");
@@ -2509,37 +2502,6 @@ static void switch_view(GtkToolItem *item, RFM_ctx *rfmCtx) {
   set_view_selection_list(icon_or_tree_view, treeview, selectionList);
 }
 
-static void Switch_CurPath_StdIn(GtkToolItem *item, RFM_ctx *rfmCtx)
-{
-  if (PictureFullNamesFromStdin != NULL && rfm_curPath!= NULL) {
-    inotify_rm_watch(rfm_inotify_fd, rfm_curPath_wd);
-    gtk_widget_hide(rfm_main_box);
-
-    //rfm_stop_all(rfmCtx);
-    //clear_store(); 
-
-    /* if (treeview) */
-    /*   gtk_tree_selection_unselect_all(gtk_tree_view_get_selection(GTK_TREE_VIEW(icon_or_tree_view))); */
-    /* else */
-    /*   gtk_icon_view_unselect_all(GTK_ICON_VIEW(icon_or_tree_view)); */
-
-    //gtk_container_remove(GTK_CONTAINER(sw), icon_or_tree_view);
-    //gtk_container_remove(GTK_CONTAINER(rfm_main_box), sw);
-    gtk_widget_destroy(sw);
-    
-    gtk_window_remove_accel_group(GTK_WINDOW(window), agMain);
-    gtk_container_remove(GTK_CONTAINER(rfm_main_box), tool_bar);
-
-    readFromPipe=!readFromPipe;
-
-    add_toolbar(rfm_main_box, defaultPixbufs, rfmCtx);
-    icon_or_tree_view=add_view(rfmCtx);
-    
-    set_rfm_curPath(rfm_curPath); // this is to update rfm_new_wd
-    fill_store(rfmCtx);
-    gtk_widget_show_all(window);
-  }
-}
 
 static void inotify_insert_item(gchar *name, gboolean is_dir)
 {
