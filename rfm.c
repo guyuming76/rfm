@@ -2497,12 +2497,12 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
 static void switch_view(GtkToolItem *item, RFM_ctx *rfmCtx) {
   GList *  selectionList=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
   gtk_widget_hide(rfm_main_box);
-  gtk_container_remove(GTK_CONTAINER(sw), icon_or_tree_view);
+  //gtk_container_remove(GTK_CONTAINER(sw), icon_or_tree_view);
   //g_object_unref(icon_or_tree_view);
   //gtk_widget_destroy(icon_or_tree_view);
-  gtk_container_remove(GTK_CONTAINER(rfm_main_box), sw);
+  //gtk_container_remove(GTK_CONTAINER(rfm_main_box), sw);
   // g_object_unref(sw);
-  //gtk_widget_destroy(sw);
+  gtk_widget_destroy(sw);
   treeview=!treeview;
   icon_or_tree_view=add_view(rfmCtx);
   gtk_widget_show_all(window);
@@ -2515,23 +2515,26 @@ static void Switch_CurPath_StdIn(GtkToolItem *item, RFM_ctx *rfmCtx)
     inotify_rm_watch(rfm_inotify_fd, rfm_curPath_wd);
     gtk_widget_hide(rfm_main_box);
 
-    rfm_stop_all(rfmCtx);
-    clear_store(); //this line is very important here, although later in fill_store, this will be called again. If we don't call this here, that is, before widgets re-creation, we will get segfault in fill_store behow if we click Switch_CurPath_StdIn and switch_view, in any combination. If we only Switch_CurPath_StdIn, it's OK, and if we only swith_view, it's also OK, but there will be segfault if we switch one after the other.  This clear_store here fix this, very strange!
+    //rfm_stop_all(rfmCtx);
+    //clear_store(); 
 
     /* if (treeview) */
     /*   gtk_tree_selection_unselect_all(gtk_tree_view_get_selection(GTK_TREE_VIEW(icon_or_tree_view))); */
     /* else */
     /*   gtk_icon_view_unselect_all(GTK_ICON_VIEW(icon_or_tree_view)); */
 
-    gtk_container_remove(GTK_CONTAINER(sw), icon_or_tree_view);
-    gtk_container_remove(GTK_CONTAINER(rfm_main_box), sw);
+    //gtk_container_remove(GTK_CONTAINER(sw), icon_or_tree_view);
+    //gtk_container_remove(GTK_CONTAINER(rfm_main_box), sw);
+    gtk_widget_destroy(sw);
+    
     gtk_window_remove_accel_group(GTK_WINDOW(window), agMain);
     gtk_container_remove(GTK_CONTAINER(rfm_main_box), tool_bar);
 
     readFromPipe=!readFromPipe;
 
     add_toolbar(rfm_main_box, defaultPixbufs, rfmCtx);
-    icon_or_tree_view=add_view(rfmCtx); // for the issue described above, turned out it's because i forget to assign add_view function result to icon_or_tree_view variable here. But it still works for many times if i click the switchCurPath/StdIn button in the test. I guess it was because the view re-created happens to be the same location before.
+    icon_or_tree_view=add_view(rfmCtx);
+    
     set_rfm_curPath(rfm_curPath); // this is to update rfm_new_wd
     fill_store(rfmCtx);
     gtk_widget_show_all(window);
