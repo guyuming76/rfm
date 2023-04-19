@@ -2890,12 +2890,6 @@ int main(int argc, char *argv[])
    int c=1;
    while (c<argc  && argv[c][0]=='-') {
       switch (argv[c][1]) {
-      case 'c':
-         if (getcwd(cwd, sizeof(cwd)) != NULL) /* getcwd returns NULL if cwd[] not big enough! */
-            initDir=cwd;
-         else
-            die("ERROR: %s: getcwd() failed.\n", PROG_NAME);
-         break;
       case 'd':
 	 if (argc<=(c+1) || argv[c+1][0]!='/')
             die("ERROR: %s: A full path is required for the -d option.\n", PROG_NAME);
@@ -2961,13 +2955,22 @@ int main(int argc, char *argv[])
 	 treeview=TRUE;
 	 break;
 
+      case 'h':
       default:
-         die("Usage: %s [-c] [-d <full path to directory>] [-i] [-v] [-l] [-p || -p<custom pagesize such as 50>]\n", PROG_NAME);
+	  die("Usage: %s [-h] [-d <full path to directory>] [-i] [-v] [-l] [-p || -p<custom pagesize such as 50>]\n", PROG_NAME);
+
       }
 
       c++;
    }
-   
+
+   if (initDir == NULL) {
+       if (getcwd(cwd, sizeof(cwd)) != NULL) /* getcwd returns NULL if cwd[] not big enough! */
+           initDir=cwd;
+       else
+           die("ERROR: %s: getcwd() failed.\n", PROG_NAME);
+   }
+
    if (setup(initDir, rfmCtx)==0)
       gtk_main();
    else
