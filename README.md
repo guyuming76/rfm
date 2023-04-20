@@ -22,6 +22,20 @@ find ~ -cmin -5 2>/dev/null|grep png|rfm -p
 
 ![rfm 上下文菜单复制](20230410_13h05m34s_grim.png)
 
+
+当只需要当前目录下的文件时，可以用 `locate $(pwd)` 返回当前目录下所有文件的完整路径;可以建立一个alias,方便今后输入：
+
+```
+alias locatepwd='locate $(pwd)'
+```
+
+然后可以用如下命令选出当前目录下所有 .md结尾的文件，用rfm 展示并在根据MIME type 用相应应用打开：
+
+```
+ locatepwd|grep .md$|rfm -p
+```
+
+
 接下来多选图片git stage 操作也比较稍嫌麻烦，当然我可以用类似如下命令一次stage多个当天的图片文件：
 
 ```
