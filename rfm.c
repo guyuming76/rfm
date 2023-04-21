@@ -219,6 +219,7 @@ static GtkListStore *store=NULL;
 static GtkTreeModel *treemodel=NULL;
 
 static gboolean treeview=FALSE;
+static gboolean moreColumnsInTreeview=FALSE;
 
 static gboolean readFromPipe=FALSE;  /* if true, means to fill store with data from something like  ls |xargs rfm -p, or locate blablablaa |xargs rfm -p, instead of from a directory*/
 static GList *PictureFullNamesFromStdin=NULL;
@@ -2426,13 +2427,15 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
      GtkTreeViewColumn * colMIME_sub=gtk_tree_view_column_new_with_attributes("MIME_sub" , renderer,"text" ,  COL_MIME_SUB , NULL);
      gtk_tree_view_column_set_resizable(colMIME_sub,TRUE);
      gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colMIME_sub);
-     
-     /* GtkTreeViewColumn * colATime=gtk_tree_view_column_new_with_attributes("ATime" , renderer,"text" ,  COL_ATIME_STR , NULL); */
-     /* gtk_tree_view_column_set_resizable(colATime,TRUE); */
-     /* gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colATime); */
-     /* GtkTreeViewColumn * colCTime=gtk_tree_view_column_new_with_attributes("CTime" , renderer,"text" ,  COL_CTIME_STR , NULL); */
-     /* gtk_tree_view_column_set_resizable(colCTime,TRUE); */
-     /* gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colCTime); */
+
+     if (moreColumnsInTreeview) {
+       GtkTreeViewColumn *colATime = gtk_tree_view_column_new_with_attributes("ATime", renderer, "text", COL_ATIME_STR, NULL);
+       gtk_tree_view_column_set_resizable(colATime, TRUE);
+       gtk_tree_view_append_column(GTK_TREE_VIEW(_view), colATime);
+       GtkTreeViewColumn *colCTime = gtk_tree_view_column_new_with_attributes("CTime", renderer, "text", COL_CTIME_STR, NULL);
+       gtk_tree_view_column_set_resizable(colCTime, TRUE);
+       gtk_tree_view_append_column(GTK_TREE_VIEW(_view), colCTime);
+     }
    } else {
      _view = gtk_icon_view_new_with_model(GTK_TREE_MODEL(store));
      gtk_icon_view_set_selection_mode(GTK_ICON_VIEW(_view),GTK_SELECTION_MULTIPLE);
@@ -2489,11 +2492,6 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
 static void switch_view(GtkToolItem *item, RFM_ctx *rfmCtx) {
   GList *  selectionList=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
   gtk_widget_hide(rfm_main_box);
-  //gtk_container_remove(GTK_CONTAINER(sw), icon_or_tree_view);
-  //g_object_unref(icon_or_tree_view);
-  //gtk_widget_destroy(icon_or_tree_view);
-  //gtk_container_remove(GTK_CONTAINER(rfm_main_box), sw);
-  // g_object_unref(sw);
   gtk_widget_destroy(sw);
   treeview=!treeview;
   icon_or_tree_view=add_view(rfmCtx);
@@ -2909,8 +2907,8 @@ int main(int argc, char *argv[])
             rfmCtx->showMimeType=1;
          break;
       case 'v':
-         die("%s-%s, Copyright (C) Rodney Padgett, see LICENSE for details\n", PROG_NAME, VERSION);
-         break;
+         printf("%s-%s, Copyright (C) Rodney Padgett, with minors modification by guyuming, see LICENSE for details\n", PROG_NAME, VERSION);
+         return 0;
       case 'p':
 	 readFromPipe=1;
          if (getcwd(cwd, sizeof(cwd)) != NULL) /* getcwd returns NULL if cwd[] not big enough! */
@@ -2953,11 +2951,23 @@ int main(int argc, char *argv[])
       case 'l':
 	 treeview=TRUE;
 	 break;
+      case 'm': // more columns in listview, such as atime,ctime
+	 moreColumnsInTreeview=TRUE;
+	 break;
 
       case 'h':
-      default:
-	  die("Usage: %s [-h] [-d <full path to directory>] [-i] [-v] [-l] [-p || -p<custom pagesize such as 50>]\n", PROG_NAME);
+	 printf("Usage: %s [-h] || [-d <full path>] [-i] [-v] [-l] [-p || -p<custom pagesize such as 50>] [-m]\n",PROG_NAME);
+	 printf("-h       help\n");
+	 printf("-d       specify full path, such as /home/somebody/documents, instead of default current working directory\n");
+	 printf("-i       show mime type\n");
+	 printf("-l       open with listview instead of iconview\n");
+	 printf("-p       read file name list from StdIn, through pipeline,  for example:    locate 20230420|grep .png|rfm -p\n");
+	 printf("-px      with iconview, show only x number of items in a batch, for example: -p9\n");
+	 printf("-m       more columns displayed in listview,such as atime, ctime\n");
+	 return 0;
 
+      default:
+	 die("invalid parameter, %s -h for help\n",PROG_NAME);
       }
 
       c++;
