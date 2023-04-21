@@ -1,7 +1,7 @@
 /* Config file for rfm
  */
 
-#define DebugPrintf
+//#define DebugPrintf
 /*#define RFM_ICON_THEME "elementary"*/
 /*#define RFM_SINGLE_CLICK "True"*/
 #define RFM_TOOL_SIZE 22
@@ -49,7 +49,7 @@ static const char *ffmpegThumb[] =  { "/usr/bin/ffmpeg", "-i","", "-frames", "1"
 
     /* Tool button commands */
 static const char *term_cmd[]  = { "/usr/bin/alacritty", NULL };
-static const char *new_rfm[]  = { "/usr/local/bin/rfm", "-c", NULL };
+static const char *new_rfm[]  = { "/usr/local/bin/rfm", NULL };
 /* Run actions
  * NOTES: The first three MUST be the built in commands for cp, mv and rm, respectively.
  *        The first matched mime type will become the default action for that kind of file
