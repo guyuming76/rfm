@@ -2352,8 +2352,7 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
    separatorItem=gtk_separator_tool_item_new();
    gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), separatorItem, -1);
 
-   if (!readFromPipe){
-     for (i = 0; i < G_N_ELEMENTS(tool_buttons); i++) {
+   for (i = 0; i < G_N_ELEMENTS(tool_buttons); i++) {
        GdkPixbuf *buttonIcon;
        buttonIcon=gtk_icon_theme_load_icon(icon_theme, tool_buttons[i].buttonIcon, RFM_TOOL_SIZE, 0, NULL);
        buttonImage=gtk_image_new_from_pixbuf(buttonIcon);
@@ -2362,8 +2361,8 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
        userButton=gtk_tool_button_new(buttonImage, tool_buttons[i].buttonName);
        gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), userButton, -1);
        g_signal_connect(userButton, "clicked", G_CALLBACK(exec_user_tool),&tool_buttons[i]);
-     }
    }
+     
    separatorItem=gtk_separator_tool_item_new();
    gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), separatorItem, -1);
 
