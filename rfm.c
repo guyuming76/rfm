@@ -2956,14 +2956,14 @@ int main(int argc, char *argv[])
 	 break;
 
       case 'h':
-	 printf("Usage: %s [-h] || [-d <full path>] [-i] [-v] [-l] [-p || -p<custom pagesize such as 50>] [-m]\n",PROG_NAME);
-	 printf("-h       help\n");
+	 printf("Usage: %s [-h] || [-d <full path>] [-i] [-v] [-l] [-p || -p<custom pagesize>] [-m]\n\n",PROG_NAME);
+ 	 printf("-p       read file name list from StdIn, through pipeline,  for example:    locate 20230420|grep .png|rfm -p\n");
+	 printf("-px      with iconview, show only x number of items in a batch, for example: -p9\n");
 	 printf("-d       specify full path, such as /home/somebody/documents, instead of default current working directory\n");
 	 printf("-i       show mime type\n");
-	 printf("-l       open with listview instead of iconview\n");
-	 printf("-p       read file name list from StdIn, through pipeline,  for example:    locate 20230420|grep .png|rfm -p\n");
-	 printf("-px      with iconview, show only x number of items in a batch, for example: -p9\n");
+	 printf("-l       open with listview instead of iconview,you can also switch view with toolbar button\n");
 	 printf("-m       more columns displayed in listview,such as atime, ctime\n");
+	 printf("-h       show this help\n");
 	 return 0;
 
       default:
