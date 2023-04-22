@@ -22,6 +22,8 @@
 #include <mntent.h>
 #include <icons.h>
 
+#define GitIntegration //if i put this in config.h, type definition won't be able to reference this,although config.h seems to be a better location for this. In project DWL, this kind of conditional compilation switch is defined in config.mk
+
 #define PROG_NAME "rfm"
 #define DND_ACTION_MASK GDK_ACTION_ASK|GDK_ACTION_COPY|GDK_ACTION_MOVE
 #define INOTIFY_MASK IN_MOVE|IN_CREATE|IN_CLOSE_WRITE|IN_DELETE|IN_DELETE_SELF|IN_MOVE_SELF
@@ -126,6 +128,13 @@ typedef struct {  /* Update free_fileAttributes() and malloc_fileAttributes() if
    guint32 file_mode;
    gchar * file_mode_str;
    guint64 file_size;
+
+#ifdef GitIntegration
+   gboolean gitTracked;
+   gboolean gitStaged;
+   gboolean gitModified;
+#endif
+
 } RFM_FileAttributes;
 
 typedef struct {
@@ -243,10 +252,27 @@ static GHashTable *get_mount_points(void);
 
 static void exec_run_action_internal(const char **action, GList *file_list, long n_args, int run_opts, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData);
 static void switch_view(GtkToolItem *item, RFM_ctx *rfmCtx);
+
+#ifdef GitIntegration
+// function to call git ls-files to get file list tracked in git
+
+// function to call git rev-parse --is-inside-work-tree to check if curPath is  git repo
+
+// How can i find the git staged file list?
+// with git ls-files -s , the second column differs when git staged or not, but what does this long id mean?
+// git status --porcelain 
+
+#endif
+
   
 /* TODO: Function definitions */
 
 #include "config.h"
+
+#ifdef GitIntegration
+static gboolean curPath_is_git_repo=FALSE;
+#endif
+
 
 char * yyyymmddhhmmss(time_t nSeconds) {
     struct tm * pTM=localtime(&nSeconds);
@@ -1345,6 +1371,8 @@ static void fill_store(RFM_ctx *rfmCtx)
 }
 
 
+
+
 static void set_rfm_curPath(gchar* path)
 {
    char *msg;
@@ -1371,6 +1399,11 @@ static void set_rfm_curPath(gchar* path)
 				strcmp(rfm_curPath, G_DIR_SEPARATOR_S) != 0);
        gtk_widget_set_sensitive(GTK_WIDGET(home_button),
 				strcmp(rfm_curPath, rfm_homePath) != 0);
+
+#ifdef GitIntegration
+       curPath_is_git_repo=TRUE;//check if rfm_curPath is inside git work directory
+       
+#endif
      }
    }
 }
