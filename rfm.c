@@ -233,9 +233,9 @@ static gboolean treeview=FALSE;
 static gboolean moreColumnsInTreeview=FALSE;
 
 static gboolean readFromPipeStdIn=FALSE;  /* if true, means to fill store with data from something like  ls |xargs rfm -p, or locate blablablaa |xargs rfm -p, instead of from a directory*/
-static GList *PictureFullNamesFromStdin=NULL;
-static GList *CurrentPage;
-static gint PageSize=20;
+static GList *FileNameListWithAbsolutePathFromPipeStdin=NULL;
+static GList *CurrentDisplayingPageForFileNameListFromPipeStdIn;
+static gint DisplayingPageSizeForFileNameListFromPipeStdIn=20;
 
 /* Functions */
 static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer rfmCtx);
@@ -246,7 +246,7 @@ static void die(const char *errstr, ...);
 static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx);
 static void show_child_output(RFM_ChildAttribs *child_attribs);
 static void set_rfm_curPath(gchar* path);
-static void fill_store(RFM_ctx *rfmCtx);
+static void refresh_store(RFM_ctx *rfmCtx);
 static void up_clicked(GtkToolItem *item, gpointer user_data);
 static void home_clicked(GtkToolItem *item, gpointer user_data);
 static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx);
@@ -1254,7 +1254,7 @@ static void Iterate_through_fileAttribute_list_to_insert_into_store()
    }
 }
 
-static gboolean readDirItem(GDir *dir) {
+static gboolean read_one_DirItem_into_fileAttributeList_in_each_call_and_insert_all_into_store_in_last_call(GDir *dir) {
    const gchar *name=NULL;
    time_t mtimeThreshold=time(NULL)-RFM_MTIME_OFFSET;
    RFM_FileAttributes *fileAttributes;
@@ -1280,18 +1280,18 @@ static gboolean readDirItem(GDir *dir) {
 }
 
 static void TurnPage(RFM_ctx *rfmCtx, gboolean next) {
-  GList *name =CurrentPage;
+  GList *name =CurrentDisplayingPageForFileNameListFromPipeStdIn;
   gint i=0;
-  while (name != NULL && i < PageSize) {
+  while (name != NULL && i < DisplayingPageSizeForFileNameListFromPipeStdIn) {
     if (next)
       name=g_list_next(name);
     else
       name=g_list_previous(name);
     i++;
   }
-  if (name != NULL && name!=CurrentPage) {
-    CurrentPage = name;
-    fill_store(rfmCtx);
+  if (name != NULL && name!=CurrentDisplayingPageForFileNameListFromPipeStdIn) {
+    CurrentDisplayingPageForFileNameListFromPipeStdIn = name;
+    refresh_store(rfmCtx);
   }
 }
 
@@ -1299,14 +1299,14 @@ static void NextPage(GtkToolItem *item, RFM_ctx *rfmCtx) { TurnPage(rfmCtx, TRUE
 
 static void PreviousPage(GtkToolItem *item, RFM_ctx *rfmCtx) { TurnPage(rfmCtx, FALSE); }
 
-static gboolean fill_fileAttributeList_iteratively_with_filenames_of_current_displaying_page_from_pipeline_stdin() {
+static gboolean fill_fileAttributeList_with_filenames_from_pipeline_stdin_and_then_insert_into_store() {
   time_t mtimeThreshold=time(NULL)-RFM_MTIME_OFFSET;
   RFM_FileAttributes *fileAttributes;
   GHashTable *mount_hash=get_mount_points();
 
   gint i=0;
-  GList *name=CurrentPage;
-  while (name!=NULL && i<PageSize){
+  GList *name=CurrentDisplayingPageForFileNameListFromPipeStdIn;
+  while (name!=NULL && i<DisplayingPageSizeForFileNameListFromPipeStdIn){
     fileAttributes = get_file_info(name->data, mtimeThreshold, mount_hash);
     if (fileAttributes != NULL) {
       rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
@@ -1354,13 +1354,13 @@ static gint sort_func(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, gpoin
 }
 
 
-static void fill_store(RFM_ctx *rfmCtx)
+static void refresh_store(RFM_ctx *rfmCtx)
 {
    rfm_stop_all(rfmCtx);
    clear_store();
    
    if (readFromPipeStdIn) {
-     fill_fileAttributeList_iteratively_with_filenames_of_current_displaying_page_from_pipeline_stdin();
+     fill_fileAttributeList_with_filenames_from_pipeline_stdin_and_then_insert_into_store();
 
    } else {
      gtk_tree_sortable_set_default_sort_func(GTK_TREE_SORTABLE(store), sort_func, NULL, NULL);
@@ -1368,7 +1368,7 @@ static void fill_store(RFM_ctx *rfmCtx)
      GDir *dir=NULL;
      dir=g_dir_open(rfm_curPath, 0, NULL);
      if (!dir) return;
-     rfm_readDirSheduler=g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, (GSourceFunc)readDirItem, dir, (GDestroyNotify)g_dir_close);
+     rfm_readDirSheduler=g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, (GSourceFunc)read_one_DirItem_into_fileAttributeList_in_each_call_and_insert_all_into_store_in_last_call, dir, (GDestroyNotify)g_dir_close);
   }
 }
 
@@ -1539,7 +1539,7 @@ static void stop_clicked(GtkToolItem *item, RFM_ctx *rfmCtx)
 
 static void refresh_clicked(GtkToolItem *item, RFM_ctx *rfmCtx)
 {
-   fill_store(rfmCtx);
+   refresh_store(rfmCtx);
 }
 
 static void refresh_other(GtkToolItem *item, GdkEventButton *event, RFM_ctx *rfmCtx)
@@ -1629,7 +1629,7 @@ static void cp_mv_file(RFM_ctx * doMove, GList *fileList)
 	if (doMove==NULL || !readFromPipeStdIn) /*for copy, the source iconview won't change, we don't need to refresh with fill_store, for move with inotify hander on source iconview, we also don't need to refresh manually*/
             exec_run_action(run_actions[0].runCmdName, selected_files, i, run_actions[0].runOpts, dest_path);
          else {
-	    exec_run_action_internal(run_actions[1].runCmdName, selected_files, i, run_actions[1].runOpts, dest_path,FALSE,fill_store,doMove);
+	    exec_run_action_internal(run_actions[1].runCmdName, selected_files, i, run_actions[1].runOpts, dest_path,FALSE,refresh_store,doMove);
          }
       }
       g_list_free_full(selected_files, (GDestroyNotify)g_free);
@@ -2063,7 +2063,7 @@ static void file_menu_rm(GtkWidget *menuitem, gpointer user_data)
    if (fileList!=NULL) {
      if (response_id != GTK_RESPONSE_CANCEL) {
        if (readFromPipeStdIn) {
-         exec_run_action_internal(run_actions[2].runCmdName, fileList, i, run_actions[2].runOpts, NULL,FALSE,fill_store,user_data);
+         exec_run_action_internal(run_actions[2].runCmdName, fileList, i, run_actions[2].runOpts, NULL,FALSE,refresh_store,user_data);
        } else {
 	 exec_run_action(run_actions[2].runCmdName, fileList, i, run_actions[2].runOpts, NULL);
        }
@@ -2605,7 +2605,7 @@ static gboolean delayed_refreshAll(gpointer user_data)
 {
    RFM_ctx *rfmCtx=user_data;
 
-   fill_store(rfmCtx);
+   refresh_store(rfmCtx);
    return FALSE;
 }
 
@@ -2670,7 +2670,7 @@ static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer user_d
          rfmCtx->delayedRefresh_GSourceID=g_timeout_add(RFM_INOTIFY_TIMEOUT, delayed_refreshAll, user_data);
       break;
       case 2: /* Refresh imediately: fill_store() will remove delayedRefresh_GSourceID if required */
-         fill_store(rfmCtx);
+         refresh_store(rfmCtx);
       break;
       default: /* Refresh not required */
       break;
@@ -2710,7 +2710,7 @@ static gboolean mounts_handler(GUnixMountMonitor *monitor, gpointer rfmCtx)
       listElement=g_list_next(listElement);
    }
    if (listElement!=NULL)
-      fill_store((RFM_ctx*)rfmCtx);
+      refresh_store((RFM_ctx*)rfmCtx);
 
    g_hash_table_destroy(mount_hash);
    return TRUE;
@@ -2857,7 +2857,7 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
    printf("rfm_thumbDir: %s\n",rfm_thumbDir);
 #endif
 
-   fill_store(rfmCtx);
+   refresh_store(rfmCtx);
    gtk_widget_show_all(window);
    return 0;
 }
@@ -2968,7 +2968,7 @@ int main(int argc, char *argv[])
 
 	 char *pagesize=argv[c] + 2 * sizeof(char);
 	 int ps=atoi(pagesize);
-	 if (ps!=0) PageSize=ps;
+	 if (ps!=0) DisplayingPageSizeForFileNameListFromPipeStdIn=ps;
 
 	 /*with cmd_argv, i don't know how to deal with filename space, event with xargs -0 , so i switch to read line from stdin and give up xargs*/
          int name_size=sizeof(gchar) * 1024;
@@ -2984,17 +2984,17 @@ int main(int argc, char *argv[])
 	   
 	   
 	   name[strcspn(name, "\n")] = 0; //name[strlen(name)] = '\0'; //manual set the last char to NULL to eliminate the trailing \n from fgets
-	   PictureFullNamesFromStdin=g_list_prepend(PictureFullNamesFromStdin, name);
+	   FileNameListWithAbsolutePathFromPipeStdin=g_list_prepend(FileNameListWithAbsolutePathFromPipeStdin, name);
 #ifdef DebugPrintf
            printf("appended into PictureFullNamesFromStdin:%s\n", name);
 #endif
 	   name=malloc(name_size);
          }
-         if (PictureFullNamesFromStdin != NULL) {
-           PictureFullNamesFromStdin = g_list_reverse(PictureFullNamesFromStdin);
-           PictureFullNamesFromStdin = g_list_first(PictureFullNamesFromStdin);
+         if (FileNameListWithAbsolutePathFromPipeStdin != NULL) {
+           FileNameListWithAbsolutePathFromPipeStdin = g_list_reverse(FileNameListWithAbsolutePathFromPipeStdin);
+           FileNameListWithAbsolutePathFromPipeStdin = g_list_first(FileNameListWithAbsolutePathFromPipeStdin);
          }
-         CurrentPage=PictureFullNamesFromStdin;
+         CurrentDisplayingPageForFileNameListFromPipeStdIn=FileNameListWithAbsolutePathFromPipeStdin;
 
          break;
 
