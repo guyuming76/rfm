@@ -232,7 +232,7 @@ static GtkTreeModel *treemodel=NULL;
 static gboolean treeview=FALSE;
 static gboolean moreColumnsInTreeview=FALSE;
 
-static gboolean readFromPipe=FALSE;  /* if true, means to fill store with data from something like  ls |xargs rfm -p, or locate blablablaa |xargs rfm -p, instead of from a directory*/
+static gboolean readFromPipeStdIn=FALSE;  /* if true, means to fill store with data from something like  ls |xargs rfm -p, or locate blablablaa |xargs rfm -p, instead of from a directory*/
 static GList *PictureFullNamesFromStdin=NULL;
 static GList *CurrentPage;
 static gint PageSize=20;
@@ -1000,7 +1000,7 @@ static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter)
       return NULL;  /* Don't show thumbnails for files types with no thumbnailer */
    }
 
-   if (readFromPipe) {
+   if (readFromPipeStdIn) {
      thumbData->thumb_size = RFM_THUMBNAIL_LARGE_SIZE;
    } else {
      thumbData->thumb_size = RFM_THUMBNAIL_SIZE;
@@ -1155,7 +1155,7 @@ static RFM_FileAttributes *get_file_info(const gchar *name, guint64 mtimeThresho
    return fileAttributes;
 }
 
-static void do_thumbnails(void)
+static void iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue(void)
 {
    GtkTreeIter iter;
    gboolean valid;
@@ -1185,7 +1185,7 @@ static void do_thumbnails(void)
       rfm_thumbScheduler=g_idle_add((GSourceFunc)mkThumb, NULL);
 }
 
-static void updateIconView()
+static void Iterate_through_fileAttribute_list_to_insert_into_store()
 {
    GList *listElement;
    GtkTreeIter iter;
@@ -1270,9 +1270,9 @@ static gboolean readDirItem(GDir *dir) {
       return TRUE;   /* Return TRUE if more items */
    }
    else {   /* No more items */
-      updateIconView();
+      Iterate_through_fileAttribute_list_to_insert_into_store();
       if (rfm_do_thumbs==1 && g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR))
-         do_thumbnails();
+         iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue();
    }
 
    rfm_readDirSheduler=0;
@@ -1299,7 +1299,7 @@ static void NextPage(GtkToolItem *item, RFM_ctx *rfmCtx) { TurnPage(rfmCtx, TRUE
 
 static void PreviousPage(GtkToolItem *item, RFM_ctx *rfmCtx) { TurnPage(rfmCtx, FALSE); }
 
-static gboolean readItemsFromPipe() {
+static gboolean fill_fileAttributeList_iteratively_with_filenames_of_current_displaying_page_from_pipeline_stdin() {
   time_t mtimeThreshold=time(NULL)-RFM_MTIME_OFFSET;
   RFM_FileAttributes *fileAttributes;
   GHashTable *mount_hash=get_mount_points();
@@ -1319,10 +1319,10 @@ static gboolean readItemsFromPipe() {
   }
   rfm_fileAttributeList=g_list_reverse(rfm_fileAttributeList);
 
-  updateIconView();
+  Iterate_through_fileAttribute_list_to_insert_into_store();
   if (rfm_do_thumbs == 1 &&
       g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR))
-  do_thumbnails();
+  iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue();
 
   return TRUE;
 }
@@ -1359,8 +1359,8 @@ static void fill_store(RFM_ctx *rfmCtx)
    rfm_stop_all(rfmCtx);
    clear_store();
    
-   if (readFromPipe) {
-     readItemsFromPipe();
+   if (readFromPipeStdIn) {
+     fill_fileAttributeList_iteratively_with_filenames_of_current_displaying_page_from_pipeline_stdin();
 
    } else {
      gtk_tree_sortable_set_default_sort_func(GTK_TREE_SORTABLE(store), sort_func, NULL, NULL);
@@ -1391,7 +1391,7 @@ static void set_rfm_curPath(gchar* path)
    char *msg;
    int rfm_new_wd;
 
-   if (readFromPipe) {
+   if (readFromPipeStdIn) {
      rfm_curPath = g_strdup(path);
    }else{
      rfm_new_wd=inotify_add_watch(rfm_inotify_fd, path, INOTIFY_MASK);
@@ -1626,7 +1626,7 @@ static void cp_mv_file(RFM_ctx * doMove, GList *fileList)
 
    if (selected_files!=NULL) {
       if (response_id!=GTK_RESPONSE_CANCEL) {
-	if (doMove==NULL || !readFromPipe) /*for copy, the source iconview won't change, we don't need to refresh with fill_store, for move with inotify hander on source iconview, we also don't need to refresh manually*/
+	if (doMove==NULL || !readFromPipeStdIn) /*for copy, the source iconview won't change, we don't need to refresh with fill_store, for move with inotify hander on source iconview, we also don't need to refresh manually*/
             exec_run_action(run_actions[0].runCmdName, selected_files, i, run_actions[0].runOpts, dest_path);
          else {
 	    exec_run_action_internal(run_actions[1].runCmdName, selected_files, i, run_actions[1].runOpts, dest_path,FALSE,fill_store,doMove);
@@ -2062,7 +2062,7 @@ static void file_menu_rm(GtkWidget *menuitem, gpointer user_data)
    g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
    if (fileList!=NULL) {
      if (response_id != GTK_RESPONSE_CANCEL) {
-       if (readFromPipe) {
+       if (readFromPipeStdIn) {
          exec_run_action_internal(run_actions[2].runCmdName, fileList, i, run_actions[2].runOpts, NULL,FALSE,fill_store,user_data);
        } else {
 	 exec_run_action(run_actions[2].runCmdName, fileList, i, run_actions[2].runOpts, NULL);
@@ -2354,7 +2354,7 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
    agMain = gtk_accel_group_new();
    gtk_window_add_accel_group(GTK_WINDOW(window), agMain);
 
-   if (!readFromPipe) {
+   if (!readFromPipeStdIn) {
      buttonImage = gtk_image_new_from_pixbuf(defaultPixbufs->up);
      up_button = gtk_tool_button_new(buttonImage, "Up");
      gtk_tool_item_set_is_important(up_button, TRUE);
@@ -2385,7 +2385,7 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
    g_signal_connect(refresh_button, "clicked", G_CALLBACK(refresh_clicked), rfmCtx);
    g_signal_connect(refresh_button, "button-press-event", G_CALLBACK(refresh_other), rfmCtx);
 
-   if (readFromPipe) {
+   if (readFromPipeStdIn) {
      PageUp_button=gtk_tool_button_new(NULL, "PageUp");
      gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), PageUp_button, -1);
      g_signal_connect(PageUp_button, "clicked", G_CALLBACK(PreviousPage), rfmCtx);
@@ -2501,7 +2501,7 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
    g_signal_connect(_view, "drag-begin", G_CALLBACK(drag_local_handl), rfmCtx);
    g_signal_connect(_view, "drag-end", G_CALLBACK(drag_local_handl), rfmCtx);
 
-   if (!readFromPipe) {
+   if (!readFromPipeStdIn) {
 
      /* Destination DnD signals */
      g_signal_connect(_view, "drag-drop", G_CALLBACK(drag_drop_handl),rfmCtx);
@@ -2531,7 +2531,7 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
    }
 #endif
    
-   if (readFromPipe) {
+   if (readFromPipeStdIn) {
      /*a single cell will be too wide if width is set automatically, one cell can take a whole row, don't know why*/
      if (!treeview) gtk_icon_view_set_item_width((GtkIconView *)_view,RFM_THUMBNAIL_LARGE_SIZE);
    }
@@ -2784,7 +2784,7 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
 
    rfm_homePath=g_strdup(g_get_home_dir());
    
-   if (readFromPipe)
+   if (readFromPipeStdIn)
      rfm_thumbDir=g_build_filename(g_get_user_cache_dir(), "thumbnails", "large", NULL);
    else
      rfm_thumbDir=g_build_filename(g_get_user_cache_dir(), "thumbnails", "normal", NULL);
@@ -2960,7 +2960,7 @@ int main(int argc, char *argv[])
          printf("%s-%s, Copyright (C) Rodney Padgett, with minors modification by guyuming, see LICENSE for details\n", PROG_NAME, VERSION);
          return 0;
       case 'p':
-	 readFromPipe=1;
+	 readFromPipeStdIn=1;
          if (getcwd(cwd, sizeof(cwd)) != NULL) /* getcwd returns NULL if cwd[] not big enough! */
             initDir=cwd;
          else
