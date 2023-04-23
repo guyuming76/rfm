@@ -75,8 +75,9 @@ typedef struct {
    char *stdOut;
    char *stdErr;
    int   status;
-  void (*customCallBackFunc)(gpointer);
-  gpointer customCallbackUserData;
+   void (*customCallBackFunc)(gpointer);
+  //In readfrom pipeline situation, after runAction such as Move, i need to fill_store to reflect remove of files, so, i need a callback function. Rodger's original code only deals with working directory, and use INotify to reflect the change.
+   gpointer customCallbackUserData;
 } RFM_ChildAttribs;
 
 typedef struct {
@@ -171,12 +172,13 @@ enum {
 };
 
 enum {
-   RFM_EXEC_NONE,
-   RFM_EXEC_TEXT,
+   RFM_EXEC_NONE, // according to find-reference, these seem to mean that no stdout in child process is needed by rfm
+   RFM_EXEC_TEXT, // according to find-reference, these affects the way child process stdout shown on rfm dialog
    RFM_EXEC_PANGO,
    RFM_EXEC_PLAIN,
-   RFM_EXEC_INTERNAL,
-   RFM_EXEC_MOUNT
+   RFM_EXEC_INTERNAL, //i see rodger use this in config.def.h for commands like copy move, but i don't know what it mean precisely,and i don't see program logic that reference this value, so i add RFM_EXEC_OUTPUT_HANDLED_HERE
+   RFM_EXEC_MOUNT,
+   RFM_EXEC_OUPUT_HANDLED_HERE, // I need to read stdout of child process in rfm, but do not need to show to enduser, except in debugprintf. 
 };
 
 static GtkTargetEntry target_entry[] = {
@@ -257,6 +259,7 @@ static void switch_view(GtkToolItem *item, RFM_ctx *rfmCtx);
 // function to call git ls-files to get file list tracked in git
 
 // function to call git rev-parse --is-inside-work-tree to check if curPath is  git repo
+
 
 // How can i find the git staged file list?
 // with git ls-files -s , the second column differs when git staged or not, but what does this long id mean?
@@ -383,7 +386,7 @@ static gboolean child_supervisor(gpointer user_data)
    close(child_attribs->stdOut_fd);
    close(child_attribs->stdErr_fd);
    g_spawn_close_pid(child_attribs->pid);
-   show_child_output(child_attribs);
+   if (child_attribs->runOpts!=RFM_EXEC_OUPUT_HANDLED_HERE) show_child_output(child_attribs);
 
    rfm_childList=g_list_remove(rfm_childList, child_attribs);
 
@@ -1372,6 +1375,13 @@ static void fill_store(RFM_ctx *rfmCtx)
 
 
 
+#ifdef GitIntegration
+static void set_curPath_is_git_repo(gpointer *ChildProcessStdout)
+{
+}
+
+#endif
+
 
 static void set_rfm_curPath(gchar* path)
 {
@@ -1401,8 +1411,8 @@ static void set_rfm_curPath(gchar* path)
 				strcmp(rfm_curPath, rfm_homePath) != 0);
 
 #ifdef GitIntegration
-       curPath_is_git_repo=TRUE;//check if rfm_curPath is inside git work directory
-       
+       //check if rfm_curPath is inside git work directory async
+       exec_with_stdOut(git_inside_work_tree_cmd, RFM_EXEC_OUPUT_HANDLED_HERE,set_curPath_is_git_repo,NULL);
 #endif
      }
    }

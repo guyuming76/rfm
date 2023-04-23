@@ -51,9 +51,10 @@ static const char *ffmpegThumb[] =  { "/usr/bin/ffmpeg", "-i","", "-frames", "1"
 static const char *term_cmd[]  = { "/usr/bin/alacritty", NULL };
 static const char *new_rfm[]  = { "/usr/local/bin/rfm", NULL };
 
-static const char *git_inside_work_dir_cmd = {"/usr/bin/git", "rev-parse","--is-inside-work-tree", NULL};
-static const char *git_ls_files_cmd = {"/usr/bin/git", "ls-files", NULL};
-
+#ifdef GitIntegration
+static const char *git_inside_work_tree_cmd[] = {"/usr/bin/git", "rev-parse","--is-inside-work-tree", NULL};
+static const char *git_ls_files_cmd[] = {"/usr/bin/git", "ls-files", NULL};
+#endif
 
 
 /* Run actions
