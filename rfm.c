@@ -744,12 +744,9 @@ static gint cp_mv_check_path(char *src_path, char *dest_path, gpointer move)
    return response_id;
 }
 
-static gboolean exec_with_stdOut(gchar **v, gint run_opts,void(*callbackfunc)(gpointer callbackfuncUserData), gpointer callbackfuncUserData)
+static gboolean exec_with_stdOut(gchar **v, RFM_ChildAttribs *child_attribs)
 {
    gboolean rv=FALSE;
-   RFM_ChildAttribs *child_attribs=NULL;
-
-   child_attribs=malloc(sizeof(RFM_ChildAttribs));
    if (child_attribs!=NULL) {
       rv=g_spawn_async_with_pipes(rfm_curPath, v, NULL, G_SPAWN_DO_NOT_REAP_CHILD, NULL, NULL,
                                   &child_attribs->pid, NULL, &child_attribs->stdOut_fd,
@@ -762,21 +759,16 @@ static gboolean exec_with_stdOut(gchar **v, gint run_opts,void(*callbackfunc)(gp
             g_warning("Can't set child stdout to non-blocking mode.");
 
          child_attribs->name=g_strdup(v[0]);
-         child_attribs->runOpts=run_opts;
          child_attribs->stdOut=NULL;
          child_attribs->stdErr=NULL;
          child_attribs->status=-1;  /* -1 indicates child is running; set to wait wstatus on exit */
 
-	 child_attribs->customCallBackFunc=callbackfunc;
-	 child_attribs->customCallbackUserData=callbackfuncUserData;
- 
+
          g_timeout_add(100, (GSourceFunc)child_supervisor, (void*)child_attribs);
          g_child_watch_add(child_attribs->pid, (GChildWatchFunc)exec_child_handler, child_attribs);
          rfm_childList=g_list_prepend(rfm_childList, child_attribs);
          gtk_widget_set_sensitive(GTK_WIDGET(info_button), TRUE);
       }
-      else
-         free(child_attribs);
    }
    return rv;
 }
@@ -845,8 +837,15 @@ static void exec_run_action_internal(const char **action, GList *file_list, long
          }
       }
       else {
-	if (!exec_with_stdOut(v, run_opts,callbackfunc,callbackfuncUserData))
-            g_warning("exec_run_action: %s failed to execute. Check run_actions[] in config.h!",v[0]);
+	RFM_ChildAttribs *child_attribs=child_attribs=malloc(sizeof(RFM_ChildAttribs));
+	child_attribs->customCallBackFunc=callbackfunc;
+	child_attribs->customCallbackUserData=callbackfuncUserData;
+	child_attribs->runOpts=run_opts;
+
+        if (!exec_with_stdOut(v, child_attribs)){
+              g_warning("exec_run_action: %s failed to execute. Check run_actions[] in config.h!",v[0]);
+	      free_child_attribs(child_attribs);
+	}
       }
       free(v);
    }
@@ -1376,10 +1375,14 @@ static void fill_store(RFM_ctx *rfmCtx)
 
 
 #ifdef GitIntegration
-static void set_curPath_is_git_repo(gpointer *ChildProcessStdout)
+static void set_curPath_is_git_repo(gpointer *child_attribs)
 {
+  char *child_StdOut=((RFM_ChildAttribs *)child_attribs)->stdOut;
+  if(child_StdOut!=NULL && strcmp(child_StdOut, "true\n")==0) curPath_is_git_repo=TRUE;
+#ifdef DebugPrintf
+  printf("curPath_is_git_repo:%d\n",curPath_is_git_repo);
+#endif
 }
-
 #endif
 
 
@@ -1412,7 +1415,11 @@ static void set_rfm_curPath(gchar* path)
 
 #ifdef GitIntegration
        //check if rfm_curPath is inside git work directory async
-       exec_with_stdOut(git_inside_work_tree_cmd, RFM_EXEC_OUPUT_HANDLED_HERE,set_curPath_is_git_repo,NULL);
+       RFM_ChildAttribs *child_attribs=child_attribs=malloc(sizeof(RFM_ChildAttribs));
+       child_attribs->customCallBackFunc=set_curPath_is_git_repo;
+       child_attribs->customCallbackUserData=child_attribs;
+       child_attribs->runOpts=RFM_EXEC_OUPUT_HANDLED_HERE;
+       if (!exec_with_stdOut(git_inside_work_tree_cmd, child_attribs)) free_child_attribs(child_attribs);
 #endif
      }
    }
