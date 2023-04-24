@@ -130,12 +130,6 @@ typedef struct {  /* Update free_fileAttributes() and malloc_fileAttributes() if
    gchar * file_mode_str;
    guint64 file_size;
 
-#ifdef GitIntegration
-   gboolean gitTracked;
-   gboolean gitStaged;
-   gboolean gitModified;
-#endif
-
 } RFM_FileAttributes;
 
 typedef struct {
@@ -168,6 +162,9 @@ enum {
    COL_MIME_SUB,
    COL_ATIME_STR,
    COL_CTIME_STR,
+#ifdef GitIntegration
+   COL_GIT_STATUS_STR,
+#endif  
    NUM_COLS
 };
 
@@ -239,12 +236,11 @@ static gint DisplayingPageSizeForFileNameListFromPipeStdIn=20;
 
 #ifdef GitIntegration
 static GHashTable *gitTrackedFiles;
-// has key for git tracked files, no key for untracked files;
 // value " M " for modified
 // value "M " for staged
 // value "MM" for both modified and staged
+// value "??" for untracked 
 // the same as git status --porcelain
-
 #endif
 
 /* Functions */
@@ -264,18 +260,6 @@ static GHashTable *get_mount_points(void);
 
 static void exec_run_action_internal(const char **action, GList *file_list, long n_args, int run_opts, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData);
 static void switch_view(GtkToolItem *item, RFM_ctx *rfmCtx);
-
-#ifdef GitIntegration
-// function to call git ls-files to get file list tracked in git
-
-// function to call git rev-parse --is-inside-work-tree to check if curPath is  git repo
-
-
-// How can i find the git staged file list?
-// with git ls-files -s , the second column differs when git staged or not, but what does this long id mean?
-// git status --porcelain 
-
-#endif
 
   
 /* TODO: Function definitions */
@@ -1229,6 +1213,10 @@ static void Iterate_through_fileAttribute_list_to_insert_into_store()
          }
       }
 
+#ifdef GitIntegration
+      gchar * gitStatus=g_hash_table_lookup(gitTrackedFiles, fileAttributes->file_name);
+#endif
+
       gtk_list_store_insert_with_values(store, &iter, -1,
                           COL_MODE_STR, fileAttributes->file_mode_str,
                           COL_DISPLAY_NAME, fileAttributes->display_name,
@@ -1243,6 +1231,9 @@ static void Iterate_through_fileAttribute_list_to_insert_into_store()
 			  COL_MIME_SUB,fileAttributes->mime_sub_type,
 			  COL_ATIME_STR,yyyymmddhhmmss(fileAttributes->file_atime),
 			  COL_CTIME_STR,yyyymmddhhmmss(fileAttributes->file_ctime),
+#ifdef GitIntegration
+                          COL_GIT_STATUS_STR,gitStatus,
+#endif
                           -1);
 #ifdef DebugPrintf
       printf("Inserted into store:%s\n",fileAttributes->display_name);
@@ -1264,6 +1255,7 @@ static void Iterate_through_fileAttribute_list_to_insert_into_store()
    }
 }
 
+#ifdef GitIntegration
 static void load_GitTrackedFiles_into_HashTable()
 {
   gchar * child_stdout;
@@ -1292,13 +1284,13 @@ static void load_GitTrackedFiles_into_HashTable()
     gchar * oneline=strtok(child_stdout,"\n");
     while (oneline!=NULL){
       gchar * status=g_utf8_substring(oneline, 0, 2);
-      if (g_strcmp0("??", status)){
+      //      if (g_strcmp0("??", status)){
         gchar * filename=g_utf8_substring(oneline, 3, strlen(oneline));
 	g_hash_table_insert(gitTrackedFiles,g_strdup(filename),g_strdup(status));
 #ifdef DebugPrintf
 	printf("gitTrackedFile Status:%s,%s\n",status,filename);
 #endif
-      }
+	//      }
       oneline=strtok(NULL, "\n");
     }
   }
@@ -1309,7 +1301,7 @@ static void load_GitTrackedFiles_into_HashTable()
   g_free(child_stderr);
 
 }
-
+#endif
 
 static gboolean read_one_DirItem_into_fileAttributeList_in_each_call_and_insert_all_into_store_in_last_call(GDir *dir) {
    const gchar *name=NULL;
@@ -1327,9 +1319,9 @@ static gboolean read_one_DirItem_into_fileAttributeList_in_each_call_and_insert_
       return TRUE;   /* Return TRUE if more items */
    }
    else {   /* No more items */
-
+#ifdef GitIntegration
      if (curPath_is_git_repo) load_GitTrackedFiles_into_HashTable();
-
+#endif
       Iterate_through_fileAttribute_list_to_insert_into_store();
       if (rfm_do_thumbs==1 && g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR))
          iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue();
@@ -2544,6 +2536,11 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
      GtkTreeViewColumn * colMIME_sub=gtk_tree_view_column_new_with_attributes("MIME_sub" , renderer,"text" ,  COL_MIME_SUB , NULL);
      gtk_tree_view_column_set_resizable(colMIME_sub,TRUE);
      gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colMIME_sub);
+#ifdef GitIntegration
+     GtkTreeViewColumn * colGitStatus=gtk_tree_view_column_new_with_attributes("GitStatus" , renderer,"text" ,  COL_GIT_STATUS_STR , NULL);
+     gtk_tree_view_column_set_resizable(colGitStatus,TRUE);
+     gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colGitStatus);
+#endif
 
      if (moreColumnsInTreeview) {
        GtkTreeViewColumn *colATime = gtk_tree_view_column_new_with_attributes("ATime", renderer, "text", COL_ATIME_STR, NULL);
@@ -2906,7 +2903,8 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
 			      G_TYPE_STRING,  //mime_root
 			      G_TYPE_STRING,  //mime_sub
    			      G_TYPE_STRING, //ATIME_STR
-			      G_TYPE_STRING); //CTIME_STR				
+			      G_TYPE_STRING, //CTIME_STR
+			      G_TYPE_STRING); //GIT_STATUS_STR
 
    treemodel=GTK_TREE_MODEL(store);
    
