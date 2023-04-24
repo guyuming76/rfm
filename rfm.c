@@ -241,7 +241,9 @@ static GHashTable *gitTrackedFiles;
 // value "MM" for both modified and staged
 // value "??" for untracked 
 // the same as git status --porcelain
+static gboolean curPath_is_git_repo=FALSE;
 #endif
+
 
 /* Functions */
 static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer rfmCtx);
@@ -265,10 +267,6 @@ static void switch_view(GtkToolItem *item, RFM_ctx *rfmCtx);
 /* TODO: Function definitions */
 
 #include "config.h"
-
-#ifdef GitIntegration
-static gboolean curPath_is_git_repo=FALSE;
-#endif
 
 
 char * yyyymmddhhmmss(time_t nSeconds) {
@@ -1265,7 +1263,7 @@ static void load_GitTrackedFiles_into_HashTable()
 
     gchar * oneline=strtok(child_stdout,"\n");
     while (oneline!=NULL){
-      g_hash_table_insert(gitTrackedFiles,g_strdup(oneline),"");
+      g_hash_table_insert(gitTrackedFiles,g_strdup(oneline),g_strdup(""));
 #ifdef DebugPrintf
       printf("gitTrackedFile:%s\n",oneline);
 #endif
@@ -2537,9 +2535,11 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
      gtk_tree_view_column_set_resizable(colMIME_sub,TRUE);
      gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colMIME_sub);
 #ifdef GitIntegration
-     GtkTreeViewColumn * colGitStatus=gtk_tree_view_column_new_with_attributes("GitStatus" , renderer,"text" ,  COL_GIT_STATUS_STR , NULL);
-     gtk_tree_view_column_set_resizable(colGitStatus,TRUE);
-     gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colGitStatus);
+     if (curPath_is_git_repo){
+       GtkTreeViewColumn * colGitStatus=gtk_tree_view_column_new_with_attributes("GitStatus" , renderer,"text" ,  COL_GIT_STATUS_STR , NULL);
+       gtk_tree_view_column_set_resizable(colGitStatus,TRUE);
+       gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colGitStatus);
+     }
 #endif
 
      if (moreColumnsInTreeview) {
@@ -2856,7 +2856,7 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
    thumb_hash=g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)gtk_tree_row_reference_free);
 
 #ifdef GitIntegration
-   gitTrackedFiles=g_hash_table_new_full(g_str_hash, g_str_equal,g_free, NULL);
+   gitTrackedFiles=g_hash_table_new_full(g_str_hash, g_str_equal,g_free, g_free);
 #endif 
 
    if (rfm_do_thumbs==1 && !g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR)) {
