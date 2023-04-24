@@ -54,6 +54,7 @@ static const char *new_rfm[]  = { "/usr/local/bin/rfm", NULL };
 #ifdef GitIntegration
 static const char *git_inside_work_tree_cmd[] = {"/usr/bin/git", "rev-parse","--is-inside-work-tree", NULL};
 static const char *git_ls_files_cmd[] = {"/usr/bin/git", "ls-files", NULL};
+static const char *git_modified_staged_info_cmd[] = {"/usr/bin/git","status","--porcelain",NULL};
 #endif
 
 

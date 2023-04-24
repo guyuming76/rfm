@@ -1285,6 +1285,29 @@ static void load_GitTrackedFiles_into_HashTable()
   }
   g_free(child_stdout);
   g_free(child_stderr);
+
+
+  if (g_spawn_sync(rfm_curPath, git_modified_staged_info_cmd, NULL, 0, NULL, NULL, &child_stdout, &child_stderr, 0, NULL)){
+
+    gchar * oneline=strtok(child_stdout,"\n");
+    while (oneline!=NULL){
+      gchar * status=g_utf8_substring(oneline, 0, 2);
+      if (g_strcmp0("??", status)){
+        gchar * filename=g_utf8_substring(oneline, 3, strlen(oneline));
+	g_hash_table_insert(gitTrackedFiles,g_strdup(filename),g_strdup(status));
+#ifdef DebugPrintf
+	printf("gitTrackedFile Status:%s,%s\n",status,filename);
+#endif
+      }
+      oneline=strtok(NULL, "\n");
+    }
+  }
+  else{
+    printf("%s\n",child_stderr);
+  }
+  g_free(child_stdout);
+  g_free(child_stderr);
+
 }
 
 
