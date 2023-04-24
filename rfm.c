@@ -237,6 +237,16 @@ static GList *FileNameListWithAbsolutePathFromPipeStdin=NULL;
 static GList *CurrentDisplayingPageForFileNameListFromPipeStdIn;
 static gint DisplayingPageSizeForFileNameListFromPipeStdIn=20;
 
+#ifdef GitIntegration
+static GHashTable *gitTrackedFiles;
+// has key for git tracked files, no key for untracked files;
+// value " M " for modified
+// value "M " for staged
+// value "MM" for both modified and staged
+// the same as git status --porcelain
+
+#endif
+
 /* Functions */
 static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer rfmCtx);
 static void show_text(gchar *text, gchar *title, gint type);
@@ -1254,6 +1264,30 @@ static void Iterate_through_fileAttribute_list_to_insert_into_store()
    }
 }
 
+static void load_GitTrackedFiles_into_HashTable()
+{
+  gchar * child_stdout;
+  gchar * child_stderr;
+
+  if (g_spawn_sync(rfm_curPath, git_ls_files_cmd, NULL, 0, NULL, NULL, &child_stdout, &child_stderr, 0, NULL)){
+
+    gchar * oneline=strtok(child_stdout,"\n");
+    while (oneline!=NULL){
+      g_hash_table_insert(gitTrackedFiles,g_strdup(oneline),"");
+#ifdef DebugPrintf
+      printf("gitTrackedFile:%s\n",oneline);
+#endif
+      oneline=strtok(NULL, "\n");
+    }
+  }
+  else{
+    printf("%s\n",child_stderr);
+  }
+  g_free(child_stdout);
+  g_free(child_stderr);
+}
+
+
 static gboolean read_one_DirItem_into_fileAttributeList_in_each_call_and_insert_all_into_store_in_last_call(GDir *dir) {
    const gchar *name=NULL;
    time_t mtimeThreshold=time(NULL)-RFM_MTIME_OFFSET;
@@ -1270,6 +1304,9 @@ static gboolean read_one_DirItem_into_fileAttributeList_in_each_call_and_insert_
       return TRUE;   /* Return TRUE if more items */
    }
    else {   /* No more items */
+
+     if (curPath_is_git_repo) load_GitTrackedFiles_into_HashTable();
+
       Iterate_through_fileAttribute_list_to_insert_into_store();
       if (rfm_do_thumbs==1 && g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR))
          iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue();
@@ -1331,6 +1368,10 @@ static gboolean fill_fileAttributeList_with_filenames_from_pipeline_stdin_and_th
 static void clear_store(void)
 {
    g_hash_table_remove_all(thumb_hash);
+#ifdef GitIntegration
+   g_hash_table_remove_all(gitTrackedFiles);
+#endif
+   
    gtk_list_store_clear(store); /* This will g_free and g_object_unref */
    g_list_free_full(rfm_fileAttributeList, (GDestroyNotify)free_fileAttributes);
    rfm_fileAttributeList=NULL;
@@ -1368,6 +1409,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
      GDir *dir=NULL;
      dir=g_dir_open(rfm_curPath, 0, NULL);
      if (!dir) return;
+     
      rfm_readDirSheduler=g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, (GSourceFunc)read_one_DirItem_into_fileAttributeList_in_each_call_and_insert_all_into_store_in_last_call, dir, (GDestroyNotify)g_dir_close);
   }
 }
@@ -1415,6 +1457,8 @@ static void set_rfm_curPath(gchar* path)
 
 #ifdef GitIntegration
        //check if rfm_curPath is inside git work directory async
+       //this is async, so if something wrong with git commands, refresh_store will still run,just that git information is not loaded for file.
+       //but since it's async, is not possible that curPath_is_git_repo not set before refresh_store, user need to manually refresh, it can be confusing, but better than not being able to finish refreshing store due to git issue.
        RFM_ChildAttribs *child_attribs=child_attribs=malloc(sizeof(RFM_ChildAttribs));
        child_attribs->customCallBackFunc=set_curPath_is_git_repo;
        child_attribs->customCallbackUserData=child_attribs;
@@ -2791,6 +2835,10 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
 
    thumb_hash=g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)gtk_tree_row_reference_free);
 
+#ifdef GitIntegration
+   gitTrackedFiles=g_hash_table_new_full(g_str_hash, g_str_equal,g_free, NULL);
+#endif 
+
    if (rfm_do_thumbs==1 && !g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR)) {
       if (g_mkdir_with_parents(rfm_thumbDir, S_IRWXU)!=0) {
          g_warning("Setup: Can't create thumbnail directory.");
@@ -2864,6 +2912,8 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
 
 static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx)
 {
+  //since we call this on application exit, do we reaaly need this? i thought that all mem released on process termination.
+  
    RFM_fileMenu *fileMenu=g_object_get_data(G_OBJECT(window),"rfm_file_menu");
 
    inotify_rm_watch(rfm_inotify_fd, rfm_curPath_wd);
@@ -2889,6 +2939,10 @@ static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx)
    g_object_unref(rfmCtx->rfm_mountMonitor);
 
    g_hash_table_destroy(thumb_hash);
+
+   #ifdef GitIntegration
+   g_hash_table_destroy(gitTrackedFiles);
+   #endif
 
    #ifdef RFM_ICON_THEME
       g_object_unref(icon_theme);
