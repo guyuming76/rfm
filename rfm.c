@@ -22,13 +22,18 @@
 #include <mntent.h>
 #include <icons.h>
 
+//#define DragAndDropSupport
 #define GitIntegration //if i put this in config.h, type definition won't be able to reference this,although config.h seems to be a better location for this. In project DWL, this kind of conditional compilation switch is defined in config.mk
 
 #define PROG_NAME "rfm"
+#ifdef DragAndDropSupport
 #define DND_ACTION_MASK GDK_ACTION_ASK|GDK_ACTION_COPY|GDK_ACTION_MOVE
+#endif
 #define INOTIFY_MASK IN_MOVE|IN_CREATE|IN_CLOSE_WRITE|IN_DELETE|IN_DELETE_SELF|IN_MOVE_SELF
+#ifdef DragAndDropSupport
 #define TARGET_URI_LIST 0
 #define N_TARGETS 1        /* G_N_ELEMENTS(target_entry) */
+#endif
 #define PIPE_SZ 65535      /* Kernel pipe size */
 #define RFM_N_BUILT_IN 3   /* Number of built in actions */
 
@@ -80,6 +85,7 @@ typedef struct {
    gpointer customCallbackUserData;
 } RFM_ChildAttribs;
 
+#ifdef DragAndDropSupport
 typedef struct {
    GtkWidget *menu;
    GtkWidget *copy;
@@ -87,6 +93,7 @@ typedef struct {
    GdkEvent *drop_event;   /* The latest drop event */
    GList *dropData;        /* List of files dropped */
 } RFM_dndMenu;
+#endif
 
 typedef struct {
    GtkWidget *menu;
@@ -102,7 +109,9 @@ typedef struct {
 } RFM_rootMenu;
 
 typedef struct {
+#ifdef DragAndDropSupport
    gboolean    rfm_localDrag;
+#endif
    gint        rfm_sortColumn;   /* The column in the tree model to sort on */
    GUnixMountMonitor *rfm_mountMonitor;   /* Reference for monitor mount events */
    gint        showMimeType;              /* Display detected mime type on stdout when a file is right-clicked: toggled via -i option */
@@ -178,11 +187,12 @@ enum {
    RFM_EXEC_OUPUT_HANDLED_HERE, // I need to read stdout of child process in rfm, but do not need to show to enduser, except in debugprintf. 
 };
 
+#ifdef DragAndDropSupport
 static GtkTargetEntry target_entry[] = {
    {"text/uri-list", 0, TARGET_URI_LIST}
 };
 static GtkTargetList *target_list;
-
+#endif
 static GtkWidget *window=NULL;      /* Main window */
 static GtkWidget *rfm_main_box;
 static GtkWidget *sw; //scroll window
@@ -1702,6 +1712,7 @@ static void cp_mv_file(RFM_ctx * doMove, GList *fileList)
    g_free(dest_path);
 }
 
+#ifdef DragAndDropSupport
 static void dnd_menu_cp_mv(GtkWidget *menuitem, gpointer rfmCtx)
 {
    RFM_dndMenu *dndMenu=g_object_get_data(G_OBJECT(window),"rfm_dnd_menu");
@@ -1712,6 +1723,7 @@ static void dnd_menu_cp_mv(GtkWidget *menuitem, gpointer rfmCtx)
      cp_mv_file(rfmCtx, dndMenu->dropData);
    }
 }
+
 
 static GList *uriListToGList(gchar *uri_list[])
 {
@@ -1750,6 +1762,7 @@ static GList *uriListToGList(gchar *uri_list[])
       g_list_free_full(file_list, (GDestroyNotify)g_free);
    return NULL;
 }
+#endif
 
 /* Helper function to get treepath from treeview or iconview. This return value needs to be freed */
 static void get_path_at_view_pos(GtkWidget* view, gboolean treeview,gint x,gint y, GtkTreePath ** retval)
@@ -1761,6 +1774,7 @@ static void get_path_at_view_pos(GtkWidget* view, gboolean treeview,gint x,gint 
 }
 
 
+#ifdef DragAndDropSupport
 /* Receive data after requesting send from drag_drop_handl */
 static void drag_data_received_handl(GtkWidget *widget, GdkDragContext *context, gint x, gint y, GtkSelectionData *selection_data, guint target_type, guint time, RFM_ctx *rfmCtx)
 {
@@ -1841,6 +1855,8 @@ static void drag_data_received_handl(GtkWidget *widget, GdkDragContext *context,
    gtk_drag_finish(context, FALSE, FALSE, time);
    show_msgbox("Only URI lists of local files accepted\n", "Error", GTK_MESSAGE_ERROR);
 }
+#endif
+
 
 static gboolean path_is_selected(GtkWidget *widget, gboolean treeview, GtkTreePath *path) {
   if (treeview)
@@ -1849,6 +1865,7 @@ static gboolean path_is_selected(GtkWidget *widget, gboolean treeview, GtkTreePa
     return gtk_icon_view_path_is_selected(GTK_ICON_VIEW(widget), path);
 }
 
+#ifdef DragAndDropSupport
 /* Called when item is dragged over iconview */
 static gboolean drag_motion_handl(GtkWidget *widget, GdkDragContext *context, gint x, gint y, guint time, RFM_ctx *rfmCtx)
 {
@@ -1928,6 +1945,7 @@ static void drag_data_get_handl(GtkWidget *widget, GdkDragContext *context, GtkS
    else
       g_warning("drag_data_get_handl: Target type not available\n");
 }
+#endif
 
 /* Dialog box for file operations */
 static gchar *show_file_dialog(gchar *title, gchar *label, gchar *file, GdkPixbuf *file_pixbuf)
@@ -2278,8 +2296,9 @@ static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx)
    gtk_menu_popup_at_pointer(GTK_MENU(fileMenu->menu), event);
    g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
    return TRUE;
-}   
+}
 
+#ifdef DragAndDropSupport
 static RFM_dndMenu *setup_dnd_menu(RFM_ctx * rfmCtx)
 {
    RFM_dndMenu *dndMenu=NULL;
@@ -2302,6 +2321,7 @@ static RFM_dndMenu *setup_dnd_menu(RFM_ctx * rfmCtx)
    dndMenu->dropData=NULL;
    return dndMenu;
 }
+#endif
 
 static RFM_rootMenu *setup_root_menu(void)
 {
@@ -2342,8 +2362,10 @@ static gboolean view_button_press(GtkWidget *widget, GdkEvent *event, RFM_ctx *r
    gboolean ret_val=FALSE;
    RFM_rootMenu *rootMenu;
    GdkEventButton *eb=(GdkEventButton*)event;
+#ifdef DragAndDropSupport
    GList *selectionList;
    GList *first=NULL;
+#endif
 
    if (eb->type!=GDK_BUTTON_PRESS)
       return FALSE;  /* Only accept single clicks here: item_activated() handles double click */
@@ -2353,6 +2375,7 @@ static gboolean view_button_press(GtkWidget *widget, GdkEvent *event, RFM_ctx *r
 
    get_path_at_view_pos(widget,treeview,eb->x,eb->y,&tree_path);
    switch (eb->button) {
+#ifdef DragAndDropSupport
       case 1:  /* Custom DnD start if multiple items selected */
          if (tree_path) {
 	    selectionList=get_view_selection_list(widget,treeview,&treemodel);
@@ -2373,6 +2396,7 @@ static gboolean view_button_press(GtkWidget *widget, GdkEvent *event, RFM_ctx *r
             g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
          }
       break;
+#endif
       case 3:  /* Button 3 selections */
          if (tree_path) {
 	   if (! path_is_selected(widget,treeview, tree_path)) {
@@ -2564,10 +2588,13 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
      gtk_icon_view_set_markup_column(GTK_ICON_VIEW(_view),COL_DISPLAY_NAME);
      gtk_icon_view_set_pixbuf_column(GTK_ICON_VIEW(_view), COL_PIXBUF);
    }
+#ifdef DragAndDropSupport
    gtk_drag_dest_set(_view, 0, target_entry, N_TARGETS, DND_ACTION_MASK);
+#endif
    #ifdef RFM_SINGLE_CLICK
    gtk_icon_view_set_activate_on_single_click(GTK_ICON_VIEW(icon_view), TRUE);
    #endif
+#ifdef DragAndDropSupport
    /* Source DnD signals */
    g_signal_connect(_view, "drag-data-get", G_CALLBACK(drag_data_get_handl), rfmCtx);
    g_signal_connect(_view, "drag-begin", G_CALLBACK(drag_local_handl), rfmCtx);
@@ -2580,7 +2607,7 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
      g_signal_connect(_view, "drag-data-received",G_CALLBACK(drag_data_received_handl), NULL);
      g_signal_connect(_view, "drag-motion", G_CALLBACK(drag_motion_handl),rfmCtx);
    }
-
+#endif
 //   g_signal_connect (icon_view, "selection-changed", G_CALLBACK (selection_changed), rfmCtx);
    g_signal_connect(_view, "button-press-event", G_CALLBACK(view_button_press), rfmCtx);
    g_signal_connect(_view, "key-press-event", G_CALLBACK(view_key_press), rfmCtx);
@@ -2841,7 +2868,9 @@ static void free_default_pixbufs(RFM_defaultPixbufs *defaultPixbufs)
 
 static int setup(char *initDir, RFM_ctx *rfmCtx)
 {
+#ifdef DragAndDropSupport
    RFM_dndMenu *dndMenu=NULL;
+#endif
    RFM_fileMenu *fileMenu=NULL;
    RFM_rootMenu *rootMenu=NULL;
 
@@ -2878,9 +2907,10 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
    g_signal_connect (rfmCtx->rfm_mountMonitor, "mountpoints-changed", G_CALLBACK (mounts_handler), rfmCtx); /* fstab changed */
 
    init_inotify(rfmCtx);
-
+#ifdef DragAndDropSupport
    /* Initialise dnd */
    target_list=gtk_target_list_new(target_entry, N_TARGETS);
+#endif
 
    #ifdef RFM_ICON_THEME
       icon_theme=gtk_icon_theme_new();
@@ -2890,11 +2920,15 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
    #endif
 
    fileMenu=setup_file_menu(rfmCtx); /* TODO: WARNING: This can return NULL! */
+#ifdef DragAndDropSupport
    dndMenu=setup_dnd_menu(rfmCtx);
+#endif
    rootMenu=setup_root_menu();
    defaultPixbufs=load_default_pixbufs(); /* TODO: WARNING: This can return NULL! */
    g_object_set_data(G_OBJECT(window),"rfm_file_menu",fileMenu);
+#ifdef DragAndDropSupport
    g_object_set_data_full(G_OBJECT(window),"rfm_dnd_menu",dndMenu,(GDestroyNotify)g_free);
+#endif
    g_object_set_data_full(G_OBJECT(window),"rfm_root_menu",rootMenu,(GDestroyNotify)g_free);
    g_object_set_data_full(G_OBJECT(window),"rfm_default_pixbufs",defaultPixbufs,(GDestroyNotify)free_default_pixbufs);
 
@@ -2957,7 +2991,9 @@ static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx)
      gtk_tree_selection_unselect_all(gtk_tree_view_get_selection(GTK_TREE_VIEW(icon_or_tree_view)));
    else
      gtk_icon_view_unselect_all(GTK_ICON_VIEW(icon_or_tree_view));
+#ifdef DragAndDropSupport
    gtk_target_list_unref(target_list);
+#endif
    if (rfm_childList != NULL) {
       g_warning ("Ending program, but background jobs still running!\n");
       g_list_free_full(rfm_childList, (GDestroyNotify)free_child_attribs);
@@ -3006,7 +3042,9 @@ int main(int argc, char *argv[])
 
    rfmCtx=malloc(sizeof(RFM_ctx));
    if (rfmCtx==NULL) return 1;
+#ifdef DragAndDropSupport
    rfmCtx->rfm_localDrag=FALSE;
+#endif
    rfmCtx->rfm_sortColumn=GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID;
    rfmCtx->rfm_mountMonitor=g_unix_mount_monitor_get();
    rfmCtx->showMimeType=0;
