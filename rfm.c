@@ -232,9 +232,9 @@ static gboolean treeview=FALSE;
 static gboolean moreColumnsInTreeview=FALSE;
 
 static gboolean readFromPipeStdIn=FALSE;  /* if true, means to fill store with data from something like  ls |xargs rfm -p, or locate blablablaa |xargs rfm -p, instead of from a directory*/
-static GList *FileNameListWithAbsolutePathFromPipeStdin=NULL;
-static GList *CurrentDisplayingPageForFileNameListFromPipeStdIn;
-static gint DisplayingPageSizeForFileNameListFromPipeStdIn=20;
+static GList *FileNameListWithAbsolutePath_FromPipeStdin=NULL;
+static GList *CurrentDisplayingPage_ForFileNameListFromPipeStdIn;
+static gint DisplayingPageSize_ForFileNameListFromPipeStdIn=20;
 
 #ifdef GitIntegration
 static GHashTable *gitTrackedFiles;
@@ -1332,17 +1332,17 @@ static gboolean read_one_DirItem_into_fileAttributeList_in_each_call_and_insert_
 }
 
 static void TurnPage(RFM_ctx *rfmCtx, gboolean next) {
-  GList *name =CurrentDisplayingPageForFileNameListFromPipeStdIn;
+  GList *name =CurrentDisplayingPage_ForFileNameListFromPipeStdIn;
   gint i=0;
-  while (name != NULL && i < DisplayingPageSizeForFileNameListFromPipeStdIn) {
+  while (name != NULL && i < DisplayingPageSize_ForFileNameListFromPipeStdIn) {
     if (next)
       name=g_list_next(name);
     else
       name=g_list_previous(name);
     i++;
   }
-  if (name != NULL && name!=CurrentDisplayingPageForFileNameListFromPipeStdIn) {
-    CurrentDisplayingPageForFileNameListFromPipeStdIn = name;
+  if (name != NULL && name!=CurrentDisplayingPage_ForFileNameListFromPipeStdIn) {
+    CurrentDisplayingPage_ForFileNameListFromPipeStdIn = name;
     refresh_store(rfmCtx);
   }
 }
@@ -1357,8 +1357,8 @@ static gboolean fill_fileAttributeList_with_filenames_from_pipeline_stdin_and_th
   GHashTable *mount_hash=get_mount_points();
 
   gint i=0;
-  GList *name=CurrentDisplayingPageForFileNameListFromPipeStdIn;
-  while (name!=NULL && i<DisplayingPageSizeForFileNameListFromPipeStdIn){
+  GList *name=CurrentDisplayingPage_ForFileNameListFromPipeStdIn;
+  while (name!=NULL && i<DisplayingPageSize_ForFileNameListFromPipeStdIn){
     fileAttributes = get_file_info(name->data, mtimeThreshold, mount_hash);
     if (fileAttributes != NULL) {
       rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
@@ -3051,7 +3051,7 @@ int main(int argc, char *argv[])
 
 	 char *pagesize=argv[c] + 2 * sizeof(char);
 	 int ps=atoi(pagesize);
-	 if (ps!=0) DisplayingPageSizeForFileNameListFromPipeStdIn=ps;
+	 if (ps!=0) DisplayingPageSize_ForFileNameListFromPipeStdIn=ps;
 
 	 /*with cmd_argv, i don't know how to deal with filename space, event with xargs -0 , so i switch to read line from stdin and give up xargs*/
          int name_size=sizeof(gchar) * 1024;
@@ -3067,17 +3067,17 @@ int main(int argc, char *argv[])
 	   
 	   
 	   name[strcspn(name, "\n")] = 0; //name[strlen(name)] = '\0'; //manual set the last char to NULL to eliminate the trailing \n from fgets
-	   FileNameListWithAbsolutePathFromPipeStdin=g_list_prepend(FileNameListWithAbsolutePathFromPipeStdin, name);
+	   FileNameListWithAbsolutePath_FromPipeStdin=g_list_prepend(FileNameListWithAbsolutePath_FromPipeStdin, name);
 #ifdef DebugPrintf
            printf("appended into PictureFullNamesFromStdin:%s\n", name);
 #endif
 	   name=malloc(name_size);
          }
-         if (FileNameListWithAbsolutePathFromPipeStdin != NULL) {
-           FileNameListWithAbsolutePathFromPipeStdin = g_list_reverse(FileNameListWithAbsolutePathFromPipeStdin);
-           FileNameListWithAbsolutePathFromPipeStdin = g_list_first(FileNameListWithAbsolutePathFromPipeStdin);
+         if (FileNameListWithAbsolutePath_FromPipeStdin != NULL) {
+           FileNameListWithAbsolutePath_FromPipeStdin = g_list_reverse(FileNameListWithAbsolutePath_FromPipeStdin);
+           FileNameListWithAbsolutePath_FromPipeStdin = g_list_first(FileNameListWithAbsolutePath_FromPipeStdin);
          }
-         CurrentDisplayingPageForFileNameListFromPipeStdIn=FileNameListWithAbsolutePathFromPipeStdin;
+         CurrentDisplayingPage_ForFileNameListFromPipeStdIn=FileNameListWithAbsolutePath_FromPipeStdin;
 
          break;
 
