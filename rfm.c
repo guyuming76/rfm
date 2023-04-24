@@ -187,7 +187,9 @@ static GtkWidget *window=NULL;      /* Main window */
 static GtkWidget *rfm_main_box;
 static GtkWidget *sw; //scroll window
 static GtkWidget *icon_or_tree_view;
-
+#ifdef GitIntegration
+static GtkTreeViewColumn * colGitStatus;
+#endif
 static gchar *rfm_homePath;         /* Users home dir */
 static gchar *rfm_thumbDir;         /* Users thumbnail directory */
 static gint rfm_do_thumbs;          /* Show thumbnail images of files: 0: disabled; 1: enabled; 2: disabled for current dir */
@@ -1433,7 +1435,13 @@ static void refresh_store(RFM_ctx *rfmCtx)
 static void set_curPath_is_git_repo(gpointer *child_attribs)
 {
   char *child_StdOut=((RFM_ChildAttribs *)child_attribs)->stdOut;
-  if(child_StdOut!=NULL && strcmp(child_StdOut, "true\n")==0) curPath_is_git_repo=TRUE;
+  if(child_StdOut!=NULL && strcmp(child_StdOut, "true\n")==0){
+    curPath_is_git_repo=TRUE;
+  }else{
+    curPath_is_git_repo=FALSE;
+  }
+  if(treeview) gtk_tree_view_column_set_visible(colGitStatus,curPath_is_git_repo);
+  
 #ifdef DebugPrintf
   printf("curPath_is_git_repo:%d\n",curPath_is_git_repo);
 #endif
@@ -2511,11 +2519,10 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
      gtk_tree_selection_set_mode(gtk_tree_view_get_selection(GTK_TREE_VIEW(_view)),GTK_SELECTION_MULTIPLE);
 
 #ifdef GitIntegration
-     if (curPath_is_git_repo){
-       GtkTreeViewColumn * colGitStatus=gtk_tree_view_column_new_with_attributes("Git" , renderer,"text" ,  COL_GIT_STATUS_STR , NULL);
-       gtk_tree_view_column_set_resizable(colGitStatus,TRUE);
-       gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colGitStatus);
-     }
+     colGitStatus=gtk_tree_view_column_new_with_attributes("Git" , renderer,"text" ,  COL_GIT_STATUS_STR , NULL);
+     gtk_tree_view_column_set_resizable(colGitStatus,TRUE);
+     gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colGitStatus);
+     gtk_tree_view_column_set_visible(colGitStatus,curPath_is_git_repo);
 #endif
 
      GtkTreeViewColumn * colModeStr=gtk_tree_view_column_new_with_attributes("Mode" , renderer,"text" ,  COL_MODE_STR , NULL);
