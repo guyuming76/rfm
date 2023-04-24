@@ -2510,6 +2510,14 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
      GtkCellRenderer  * renderer  =  gtk_cell_renderer_text_new();
      gtk_tree_selection_set_mode(gtk_tree_view_get_selection(GTK_TREE_VIEW(_view)),GTK_SELECTION_MULTIPLE);
 
+#ifdef GitIntegration
+     if (curPath_is_git_repo){
+       GtkTreeViewColumn * colGitStatus=gtk_tree_view_column_new_with_attributes("Git" , renderer,"text" ,  COL_GIT_STATUS_STR , NULL);
+       gtk_tree_view_column_set_resizable(colGitStatus,TRUE);
+       gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colGitStatus);
+     }
+#endif
+
      GtkTreeViewColumn * colModeStr=gtk_tree_view_column_new_with_attributes("Mode" , renderer,"text" ,  COL_MODE_STR , NULL);
      gtk_tree_view_column_set_resizable(colModeStr,TRUE);
      gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colModeStr);
@@ -2534,13 +2542,6 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
      GtkTreeViewColumn * colMIME_sub=gtk_tree_view_column_new_with_attributes("MIME_sub" , renderer,"text" ,  COL_MIME_SUB , NULL);
      gtk_tree_view_column_set_resizable(colMIME_sub,TRUE);
      gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colMIME_sub);
-#ifdef GitIntegration
-     if (curPath_is_git_repo){
-       GtkTreeViewColumn * colGitStatus=gtk_tree_view_column_new_with_attributes("GitStatus" , renderer,"text" ,  COL_GIT_STATUS_STR , NULL);
-       gtk_tree_view_column_set_resizable(colGitStatus,TRUE);
-       gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colGitStatus);
-     }
-#endif
 
      if (moreColumnsInTreeview) {
        GtkTreeViewColumn *colATime = gtk_tree_view_column_new_with_attributes("ATime", renderer, "text", COL_ATIME_STR, NULL);
