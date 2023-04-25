@@ -81,7 +81,7 @@ typedef struct {
    char *stdErr;
    int   status;
    void (*customCallBackFunc)(gpointer);
-  //In readfrom pipeline situation, after runAction such as Move, i need to fill_store to reflect remove of files, so, i need a callback function. Rodger's original code only deals with working directory, and use INotify to reflect the change.
+  //In readfrom pipeline situation, after runAction such as Move, i need to fill_store to reflect remove of files, so, i need a callback function. Rodney's original code only deals with working directory, and use INotify to reflect the change.
    gpointer customCallbackUserData;
 } RFM_ChildAttribs;
 
@@ -115,7 +115,7 @@ typedef struct {
    gint        rfm_sortColumn;   /* The column in the tree model to sort on */
    GUnixMountMonitor *rfm_mountMonitor;   /* Reference for monitor mount events */
    gint        showMimeType;              /* Display detected mime type on stdout when a file is right-clicked: toggled via -i option */
-   guint       delayedRefresh_GSourceID;  /* Main loop source ID for fill_store() delayed refresh timer */
+   guint       delayedRefresh_GSourceID;  /* Main loop source ID for refresh_store() delayed refresh timer */
 } RFM_ctx;
 
 typedef struct {  /* Update free_fileAttributes() and malloc_fileAttributes() if new items are added */
@@ -183,7 +183,7 @@ enum {
    RFM_EXEC_TEXT, // according to find-reference, these affects the way child process stdout shown on rfm dialog
    RFM_EXEC_PANGO,
    RFM_EXEC_PLAIN,
-   RFM_EXEC_INTERNAL, //i see rodger use this in config.def.h for commands like copy move, but i don't know what it mean precisely,and i don't see program logic that reference this value, so i add RFM_EXEC_OUTPUT_HANDLED_HERE
+   RFM_EXEC_INTERNAL, //i see Rodney use this in config.def.h for commands like copy move, but i don't know what it mean precisely,and i don't see program logic that reference this value, so i add RFM_EXEC_OUTPUT_HANDLED_HERE
    RFM_EXEC_MOUNT,
    RFM_EXEC_OUPUT_HANDLED_HERE, // I need to read stdout of child process in rfm, but do not need to show to enduser, except in debugprintf. 
 };
@@ -1703,7 +1703,7 @@ static void cp_mv_file(RFM_ctx * doMove, GList *fileList)
 
    if (selected_files!=NULL) {
       if (response_id!=GTK_RESPONSE_CANCEL) {
-	if (doMove==NULL || !readFromPipeStdIn) /*for copy, the source iconview won't change, we don't need to refresh with fill_store, for move with inotify hander on source iconview, we also don't need to refresh manually*/
+	if (doMove==NULL || !readFromPipeStdIn) /*for copy, the source iconview won't change, we don't need to refresh with refresh_store, for move with inotify hander on source iconview, we also don't need to refresh manually*/
             exec_run_action(run_actions[0].runCmdName, selected_files, i, run_actions[0].runOpts, dest_path);
          else {
 	    exec_run_action_internal(run_actions[1].runCmdName, selected_files, i, run_actions[1].runOpts, dest_path,FALSE,refresh_store,doMove);
@@ -2670,7 +2670,7 @@ static void inotify_insert_item(gchar *name, gboolean is_dir)
       fileAttributes->pixbuf=g_object_ref(defaultPixbufs->dir);
       fileAttributes->display_name=g_markup_printf_escaped("<b>%s</b>", utf8_display_name);
    }
-   else {   /* A new file was added, but has not completed copying, or is still open: add entry; inotify will call fill_store when complete */
+   else {   /* A new file was added, but has not completed copying, or is still open: add entry; inotify will call refresh_store when complete */
       fileAttributes->mime_root=g_strdup("application");
       fileAttributes->mime_sub_type=g_strdup("octet-stream");
       fileAttributes->pixbuf=g_object_ref(defaultPixbufs->file);
@@ -2771,7 +2771,7 @@ static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer user_d
             g_source_remove(rfmCtx->delayedRefresh_GSourceID);
          rfmCtx->delayedRefresh_GSourceID=g_timeout_add(RFM_INOTIFY_TIMEOUT, delayed_refreshAll, user_data);
       break;
-      case 2: /* Refresh imediately: fill_store() will remove delayedRefresh_GSourceID if required */
+      case 2: /* Refresh imediately: refresh_store() will remove delayedRefresh_GSourceID if required */
          refresh_store(rfmCtx);
       break;
       default: /* Refresh not required */
