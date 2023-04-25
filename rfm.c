@@ -2722,9 +2722,7 @@ static void inotify_insert_item(gchar *name, gboolean is_dir)
 
 static gboolean delayed_refreshAll(gpointer user_data)
 {
-   RFM_ctx *rfmCtx=user_data;
-
-   refresh_store(rfmCtx);
+  refresh_store((RFM_ctx *)user_data);
    return FALSE;
 }
 
@@ -3060,9 +3058,7 @@ int main(int argc, char *argv[])
    char *initDir=NULL;
    struct stat statbuf;
    char cwd[1024]; /* Could use MAX_PATH here from limits.h, but still not guaranteed to be max */
-   RFM_ctx *rfmCtx=NULL;
-
-   rfmCtx=malloc(sizeof(RFM_ctx));
+   RFM_ctx *rfmCtx=malloc(sizeof(RFM_ctx));
    if (rfmCtx==NULL) return 1;
 #ifdef DragAndDropSupport
    rfmCtx->rfm_localDrag=FALSE;
