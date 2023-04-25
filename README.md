@@ -1,7 +1,7 @@
 
 在rfm的基础上，我作了定制，使用参数-p,接收管道输入文件名，以大图标查看图片，选中文件按回车用IMV查看完整图片。比如命令：
 
-`locate 菱锰|grep .jpg|rfm -p`
+`locate 菱锰|grep .jpg|rfm`
 
 ![接收管道输入的图片文件名，以大图标查看图片](20230401_12h02m34s_grim.png)
 
@@ -11,13 +11,13 @@
 
 如果希望选中图片回车打开每次都使用新的IMV窗口，而不是在同一个IMV窗口里切换图片，可以使用如下命令：
 
-`locate 菱锰|grep .jpg|rfm -p & exit`
+`locate 菱锰|grep .jpg|rfm & exit`
 
 
-一些我自己常用的操作流程：比如截屏后，把图片复制或移动到相应文档目录，然后 git stage 这些图片和文本信息，再git commit。就可以先cd进入相应文档目录，让后通过find 或locate找到最近的截图文件，用rfm -p 显示出来，再多选要复制的图片后，在rfm 里面使用文件上下文菜单完成到当前目录的复制，当要选择复制的图片数量稍多时，比字符终端输 cp命令方便
+一些我自己常用的操作流程：比如截屏后，把图片复制或移动到相应文档目录，然后 git stage 这些图片和文本信息，再git commit。就可以先cd进入相应文档目录，让后通过find 或locate找到最近的截图文件，用rfm显示出来，再多选要复制的图片后，在rfm 里面使用文件上下文菜单完成到当前目录的复制，当要选择复制的图片数量稍多时，比字符终端输 cp命令方便
 
 ```
-find ~ -cmin -5 2>/dev/null|grep png|rfm -p
+find ~ -cmin -5 2>/dev/null|grep png|rfm
 ```
 
 ![rfm 上下文菜单复制](20230410_13h05m34s_grim.png)
@@ -32,7 +32,7 @@ alias locatepwd='locate $(pwd)'
 然后可以用如下命令选出当前目录下所有 .md结尾的文件，用rfm 展示并在根据MIME type 用相应应用打开：
 
 ```
- locatepwd|grep .md$|rfm -p
+ locatepwd|grep .md$|rfm
 ```
 
 
@@ -46,7 +46,7 @@ ls *20230410*|xargs git stage
 
 rfm 原来只实现了用icon_view显示内容，这里怎加了-l 参数，使用列表视图显示内容，类似 ls -l 的显示内容。
 
-![rfm -c -l](20230410_12h55m39s_grim.png)
+![rfm -l](20230410_12h55m39s_grim.png)
 
 
 
