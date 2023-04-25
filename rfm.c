@@ -1619,17 +1619,17 @@ static void refresh_clicked(GtkToolItem *item, RFM_ctx *rfmCtx)
    refresh_store(rfmCtx);
 }
 
-static void refresh_other(GtkToolItem *item, GdkEventButton *event, RFM_ctx *rfmCtx)
-{
-   if (event->button==3) {
-      if (gtk_tree_sortable_get_sort_column_id(GTK_TREE_SORTABLE(store),NULL,NULL)==FALSE)
-         rfmCtx->rfm_sortColumn=COL_MTIME; /* Sort in mtime order */
-      else
-         rfmCtx->rfm_sortColumn=GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID;
+/* static void refresh_other(GtkToolItem *item, GdkEventButton *event, RFM_ctx *rfmCtx) */
+/* { */
+/*    if (event->button==3) { */
+/*       if (gtk_tree_sortable_get_sort_column_id(GTK_TREE_SORTABLE(store),NULL,NULL)==FALSE) */
+/*          rfmCtx->rfm_sortColumn=COL_MTIME; /\* Sort in mtime order *\/ */
+/*       else */
+/*          rfmCtx->rfm_sortColumn=GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID; */
    
-      refresh_clicked(item, rfmCtx);
-   }
-}
+/*       refresh_clicked(item, rfmCtx); */
+/*    } */
+/* } */
 
 static void info_clicked(GtkToolItem *item, gpointer user_data)
 {
@@ -2474,7 +2474,7 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
    refresh_button=gtk_tool_button_new(buttonImage, "Refresh");
    gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), refresh_button, -1);
    g_signal_connect(refresh_button, "clicked", G_CALLBACK(refresh_clicked), rfmCtx);
-   g_signal_connect(refresh_button, "button-press-event", G_CALLBACK(refresh_other), rfmCtx);
+   //g_signal_connect(refresh_button, "button-press-event", G_CALLBACK(refresh_other), rfmCtx);
 
    if (readFromPipeStdIn) {
      PageUp_button=gtk_tool_button_new(NULL, "PageUp");
