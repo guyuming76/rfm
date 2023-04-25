@@ -160,6 +160,7 @@ typedef struct {
 enum {
    COL_MODE_STR,
    COL_DISPLAY_NAME,
+   COL_FILENAME,
    COL_PIXBUF,
    COL_MTIME,
    COL_MTIME_STR,
@@ -1230,6 +1231,7 @@ static void Iterate_through_fileAttribute_list_to_insert_into_store()
       gtk_list_store_insert_with_values(store, &iter, -1,
                           COL_MODE_STR, fileAttributes->file_mode_str,
                           COL_DISPLAY_NAME, fileAttributes->display_name,
+			  COL_FILENAME,fileAttributes->file_name,
                           COL_PIXBUF, fileAttributes->pixbuf,
                           COL_MTIME, fileAttributes->file_mtime,
 			  COL_MTIME_STR,yyyymmddhhmmss(fileAttributes->file_mtime),
@@ -2552,7 +2554,7 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
      GtkTreeViewColumn * colModeStr=gtk_tree_view_column_new_with_attributes("Mode" , renderer,"text" ,  COL_MODE_STR , NULL);
      gtk_tree_view_column_set_resizable(colModeStr,TRUE);
      gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colModeStr);
-     GtkTreeViewColumn * colDispName=gtk_tree_view_column_new_with_attributes("DisplayName" , renderer,"text" ,  COL_DISPLAY_NAME , NULL);
+     GtkTreeViewColumn * colDispName=gtk_tree_view_column_new_with_attributes("FileName" , renderer,"text" ,  COL_FILENAME , NULL);
      gtk_tree_view_column_set_resizable(colDispName,TRUE);
      gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colDispName);
      GtkTreeViewColumn * colMTime=gtk_tree_view_column_new_with_attributes("MTime" , renderer,"text" ,  COL_MTIME_STR , NULL);
@@ -2686,6 +2688,7 @@ static void inotify_insert_item(gchar *name, gboolean is_dir)
    gtk_list_store_insert_with_values(store, &iter, -1,
 				     //                     COL_MODE_STR, fileAttributes->file_mode_str,
                        COL_DISPLAY_NAME, fileAttributes->display_name,
+		       COL_FILENAME,fileAttributes->file_name,
                        COL_PIXBUF, fileAttributes->pixbuf,
                        COL_MTIME, fileAttributes->file_mtime,
 				     //		       COL_MTIME_STR,yyyymmddhhmmss(fileAttributes->file_mtime),
@@ -2935,6 +2938,7 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
    store=gtk_list_store_new(NUM_COLS,
 			      G_TYPE_STRING,     //MODE_STR
                               G_TYPE_STRING,    /* Displayed name */
+			      G_TYPE_STRING,    //filename
                               GDK_TYPE_PIXBUF,  /* Displayed icon */
                               G_TYPE_UINT64,    /* File mtime: time_t is currently 32 bit signed */
 			      G_TYPE_STRING, //MTIME_STR
