@@ -138,6 +138,7 @@ typedef struct {  /* Update free_fileAttributes() and malloc_fileAttributes() if
    guint32 file_mode;
    gchar * file_mode_str;
    guint64 file_size;
+   gchar * mime_sort;
 
 } RFM_FileAttributes;
 
@@ -170,6 +171,7 @@ enum {
    COL_GROUP,
    COL_MIME_ROOT,
    COL_MIME_SUB,
+   COL_MIME_SORT, //mime root + sub for listview sort
    COL_ATIME_STR,
    COL_CTIME_STR,
 #ifdef GitIntegration
@@ -1036,6 +1038,7 @@ static void free_fileAttributes(RFM_FileAttributes *fileAttributes) {
    g_free(fileAttributes->mime_sub_type);
    g_free(fileAttributes->icon_name);
    g_free(fileAttributes->file_mode_str);
+   g_free(fileAttributes->mime_sort);
    g_free(fileAttributes);
 }
 
@@ -1227,7 +1230,7 @@ static void Iterate_through_fileAttribute_list_to_insert_into_store()
 #ifdef GitIntegration
       gchar * gitStatus=g_hash_table_lookup(gitTrackedFiles, fileAttributes->file_name);
 #endif
-
+      fileAttributes->mime_sort=strcat(g_strdup(fileAttributes->mime_root),fileAttributes->mime_sub_type);
       gtk_list_store_insert_with_values(store, &iter, -1,
                           COL_MODE_STR, fileAttributes->file_mode_str,
                           COL_DISPLAY_NAME, fileAttributes->display_name,
@@ -1246,6 +1249,7 @@ static void Iterate_through_fileAttribute_list_to_insert_into_store()
 #ifdef GitIntegration
                           COL_GIT_STATUS_STR,gitStatus,
 #endif
+			  COL_MIME_SORT,fileAttributes->mime_sort,
                           -1);
 #ifdef DebugPrintf
       printf("Inserted into store:%s\n",fileAttributes->display_name);
@@ -2549,40 +2553,51 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
      gtk_tree_view_column_set_resizable(colGitStatus,TRUE);
      gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colGitStatus);
      gtk_tree_view_column_set_visible(colGitStatus,curPath_is_git_repo);
+     gtk_tree_view_column_set_sort_column_id(colGitStatus, COL_GIT_STATUS_STR);
 #endif
 
      GtkTreeViewColumn * colModeStr=gtk_tree_view_column_new_with_attributes("Mode" , renderer,"text" ,  COL_MODE_STR , NULL);
      gtk_tree_view_column_set_resizable(colModeStr,TRUE);
      gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colModeStr);
-     GtkTreeViewColumn * colDispName=gtk_tree_view_column_new_with_attributes("FileName" , renderer,"text" ,  COL_FILENAME , NULL);
-     gtk_tree_view_column_set_resizable(colDispName,TRUE);
-     gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colDispName);
+     gtk_tree_view_column_set_sort_column_id(colModeStr, COL_MODE_STR);
+     GtkTreeViewColumn * colFileName=gtk_tree_view_column_new_with_attributes("FileName" , renderer,"text" ,  COL_FILENAME , NULL);
+     gtk_tree_view_column_set_resizable(colFileName,TRUE);
+     gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colFileName);
+     gtk_tree_view_column_set_sort_column_id(colFileName, COL_FILENAME);
      GtkTreeViewColumn * colMTime=gtk_tree_view_column_new_with_attributes("MTime" , renderer,"text" ,  COL_MTIME_STR , NULL);
      gtk_tree_view_column_set_resizable(colMTime,TRUE);
      gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colMTime);
+     gtk_tree_view_column_set_sort_column_id(colMTime, COL_MTIME_STR);
      GtkTreeViewColumn * colSize=gtk_tree_view_column_new_with_attributes("Size" , renderer,"text" ,  COL_SIZE , NULL);
      gtk_tree_view_column_set_resizable(colSize,TRUE);
      gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colSize);
+     gtk_tree_view_column_set_sort_column_id(colSize, COL_SIZE);
      GtkTreeViewColumn * colOwner=gtk_tree_view_column_new_with_attributes("Owner" , renderer,"text" ,  COL_OWNER , NULL);
      gtk_tree_view_column_set_resizable(colOwner,TRUE);
      gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colOwner);
+     gtk_tree_view_column_set_sort_column_id(colOwner, COL_OWNER);
      GtkTreeViewColumn * colGroup=gtk_tree_view_column_new_with_attributes("Group" , renderer,"text" ,  COL_GROUP , NULL);
      gtk_tree_view_column_set_resizable(colGroup,TRUE);
      gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colGroup);
+     gtk_tree_view_column_set_sort_column_id(colGroup, COL_GROUP);
      GtkTreeViewColumn * colMIME_root=gtk_tree_view_column_new_with_attributes("MIME_root" , renderer,"text" ,  COL_MIME_ROOT , NULL);
      gtk_tree_view_column_set_resizable(colMIME_root,TRUE);
      gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colMIME_root);
+     gtk_tree_view_column_set_sort_column_id(colMIME_root, COL_MIME_SORT);
      GtkTreeViewColumn * colMIME_sub=gtk_tree_view_column_new_with_attributes("MIME_sub" , renderer,"text" ,  COL_MIME_SUB , NULL);
      gtk_tree_view_column_set_resizable(colMIME_sub,TRUE);
      gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colMIME_sub);
+     gtk_tree_view_column_set_sort_column_id(colMIME_sub, COL_MIME_SUB);
 
      if (moreColumnsInTreeview) {
        GtkTreeViewColumn *colATime = gtk_tree_view_column_new_with_attributes("ATime", renderer, "text", COL_ATIME_STR, NULL);
        gtk_tree_view_column_set_resizable(colATime, TRUE);
        gtk_tree_view_append_column(GTK_TREE_VIEW(_view), colATime);
+       gtk_tree_view_column_set_sort_column_id(colATime, COL_ATIME_STR);
        GtkTreeViewColumn *colCTime = gtk_tree_view_column_new_with_attributes("CTime", renderer, "text", COL_CTIME_STR, NULL);
        gtk_tree_view_column_set_resizable(colCTime, TRUE);
        gtk_tree_view_append_column(GTK_TREE_VIEW(_view), colCTime);
+       gtk_tree_view_column_set_sort_column_id(colCTime, COL_CTIME_STR);
      }
    } else {
      _view = gtk_icon_view_new_with_model(GTK_TREE_MODEL(store));
@@ -2685,6 +2700,7 @@ static void inotify_insert_item(gchar *name, gboolean is_dir)
 
    //char * c_time=ctime((time_t*)(&(fileAttributes->file_mtime)));
    // c_time[strcspn(c_time, "\n")] = 0;
+   fileAttributes->mime_sort=strcat(g_strdup(fileAttributes->mime_root),fileAttributes->mime_sub_type);
    gtk_list_store_insert_with_values(store, &iter, -1,
 				     //                     COL_MODE_STR, fileAttributes->file_mode_str,
                        COL_DISPLAY_NAME, fileAttributes->display_name,
@@ -2700,6 +2716,7 @@ static void inotify_insert_item(gchar *name, gboolean is_dir)
                        COL_MIME_SUB,fileAttributes->mime_sub_type,
 				     //		       COL_ATIME_STR,yyyymmddhhmmss(fileAttributes->file_atime),
 				     //                       COL_CTIME_STR,yyyymmddhhmmss(fileAttributes->file_ctime),
+		       COL_MIME_SORT,fileAttributes->mime_sort,
                        -1);
 }
 
@@ -2950,7 +2967,8 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
 			      G_TYPE_STRING,  //mime_sub
    			      G_TYPE_STRING, //ATIME_STR
 			      G_TYPE_STRING, //CTIME_STR
-			      G_TYPE_STRING); //GIT_STATUS_STR
+			      G_TYPE_STRING, //GIT_STATUS_STR
+			      G_TYPE_STRING); //mime_sort
 
    treemodel=GTK_TREE_MODEL(store);
    
