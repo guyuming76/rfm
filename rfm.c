@@ -1062,7 +1062,7 @@ static RFM_FileAttributes *malloc_fileAttributes(void)
    return fileAttributes;
 }
 
-static RFM_FileAttributes *get_file_info(const gchar *name, guint64 mtimeThreshold, GHashTable *mount_hash)
+static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guint64 mtimeThreshold, GHashTable *mount_hash)
 {
    GFile *file=NULL;
    GFileInfo *info=NULL;
@@ -1328,7 +1328,7 @@ static gboolean read_one_DirItem_into_fileAttributeList_in_each_call_and_insert_
    name=g_dir_read_name(dir);
    if (name!=NULL) {
       if (name[0]!='.') {
-         fileAttributes=get_file_info(name, mtimeThreshold, mount_hash);
+         fileAttributes=get_fileAttributes_for_a_file(name, mtimeThreshold, mount_hash);
          if (fileAttributes!=NULL)
             rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
       }
@@ -1375,7 +1375,7 @@ static gboolean fill_fileAttributeList_with_filenames_from_pipeline_stdin_and_th
   gint i=0;
   GList *name=CurrentDisplayingPage_ForFileNameListFromPipeStdIn;
   while (name!=NULL && i<DisplayingPageSize_ForFileNameListFromPipeStdIn){
-    fileAttributes = get_file_info(name->data, mtimeThreshold, mount_hash);
+    fileAttributes = get_fileAttributes_for_a_file(name->data, mtimeThreshold, mount_hash);
     if (fileAttributes != NULL) {
       rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
 #ifdef DebugPrintf
