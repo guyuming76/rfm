@@ -3073,6 +3073,46 @@ int main(int argc, char *argv[])
    else
       rfm_do_thumbs=1;
 
+   static char buf[PATH_MAX];
+   int rslt = readlink("/proc/self/fd/0", buf, PATH_MAX);
+#ifdef DebugPrintf
+   printf("readlink for /proc/self/fd/0: %s\n",buf);
+#endif
+   if (strlen(buf)>4 && g_strcmp0(g_utf8_substring(buf, 0, 4),"pipe")==0){
+	 readFromPipeStdIn=1;
+         if (getcwd(cwd, sizeof(cwd)) != NULL) /* getcwd returns NULL if cwd[] not big enough! */
+            initDir=cwd;
+         else
+            die("ERROR: %s: getcwd() failed.\n", PROG_NAME);
+
+
+         int name_size=sizeof(gchar) * PATH_MAX;
+         gchar *name=malloc(name_size);
+         while (fgets(name, name_size, stdin) != NULL) {
+	   if (name[0] != '/') {
+	       die("ERROR: currently, when read from stdin via pipe, we only accept absolute path in filename!\n",PROG_NAME);
+	   }
+	   printf("%s",name);
+	   /* locate something|grep .jpg|rfm &           is ok
+           with
+	   locate something|grep .jpg|rfm & exit      , the command window will close, but then, when i press enter on a thumbnail to open IMV, it always open a new IMV instead of using an existing one. So, i must keep the command window open. Since the command window is open, i can just print the filenames so that user can see the contents of stdin*/
+	   
+	   
+	   name[strcspn(name, "\n")] = 0; //name[strlen(name)] = '\0'; //manual set the last char to NULL to eliminate the trailing \n from fgets
+	   FileNameListWithAbsolutePath_FromPipeStdin=g_list_prepend(FileNameListWithAbsolutePath_FromPipeStdin, name);
+#ifdef DebugPrintf
+           printf("appended into FileNameListWithAbsolutePath_FromPipeStdin:%s\n", name);
+#endif
+	   name=malloc(name_size);
+         }
+         if (FileNameListWithAbsolutePath_FromPipeStdin != NULL) {
+           FileNameListWithAbsolutePath_FromPipeStdin = g_list_reverse(FileNameListWithAbsolutePath_FromPipeStdin);
+           FileNameListWithAbsolutePath_FromPipeStdin = g_list_first(FileNameListWithAbsolutePath_FromPipeStdin);
+         }
+         CurrentDisplayingPage_ForFileNameListFromPipeStdIn=FileNameListWithAbsolutePath_FromPipeStdin;
+     
+   }
+   
    int c=1;
    while (c<argc  && argv[c][0]=='-') {
       switch (argv[c][1]) {
@@ -3099,42 +3139,11 @@ int main(int argc, char *argv[])
          printf("%s-%s, Copyright (C) Rodney Padgett, with minors modification by guyuming, see LICENSE for details\n", PROG_NAME, VERSION);
          return 0;
       case 'p':
-	 readFromPipeStdIn=1;
-         if (getcwd(cwd, sizeof(cwd)) != NULL) /* getcwd returns NULL if cwd[] not big enough! */
-            initDir=cwd;
-         else
-            die("ERROR: %s: getcwd() failed.\n", PROG_NAME);
-
-	 char *pagesize=argv[c] + 2 * sizeof(char);
-	 int ps=atoi(pagesize);
-	 if (ps!=0) DisplayingPageSize_ForFileNameListFromPipeStdIn=ps;
-
-	 /*with cmd_argv, i don't know how to deal with filename space, event with xargs -0 , so i switch to read line from stdin and give up xargs*/
-         int name_size=sizeof(gchar) * 1024;
-         gchar *name=malloc(name_size);
-         while (fgets(name, name_size, stdin) != NULL) {
-	   if (name[0] != '/') {
-	       die("ERROR: currently, with -p parameter, we only accept absolute path in filename!\n",PROG_NAME);
-	   }
-	   printf("%s",name);
-	   /* locate something|grep .jpg|rfm -p &           is ok
-           with
-	   locate something|grep .jpg|rfm -p & exit      , the command window will close, but then, when i press enter on a thumbnail to open IMV, it always open a new IMV instead of using an existing one. So, i must keep the command window open. Since the command window is open, i can just print the filenames so that user can see the contents of stdin*/
-	   
-	   
-	   name[strcspn(name, "\n")] = 0; //name[strlen(name)] = '\0'; //manual set the last char to NULL to eliminate the trailing \n from fgets
-	   FileNameListWithAbsolutePath_FromPipeStdin=g_list_prepend(FileNameListWithAbsolutePath_FromPipeStdin, name);
-#ifdef DebugPrintf
-           printf("appended into PictureFullNamesFromStdin:%s\n", name);
-#endif
-	   name=malloc(name_size);
-         }
-         if (FileNameListWithAbsolutePath_FromPipeStdin != NULL) {
-           FileNameListWithAbsolutePath_FromPipeStdin = g_list_reverse(FileNameListWithAbsolutePath_FromPipeStdin);
-           FileNameListWithAbsolutePath_FromPipeStdin = g_list_first(FileNameListWithAbsolutePath_FromPipeStdin);
-         }
-         CurrentDisplayingPage_ForFileNameListFromPipeStdIn=FileNameListWithAbsolutePath_FromPipeStdin;
-
+	 if (readFromPipeStdIn){
+	   gchar *pagesize=argv[c] + 2 * sizeof(gchar);
+	   int ps=atoi(pagesize);
+	   if (ps!=0) DisplayingPageSize_ForFileNameListFromPipeStdIn=ps;
+	 }
          break;
 
       case 'l':
@@ -3145,9 +3154,9 @@ int main(int argc, char *argv[])
 	 break;
 
       case 'h':
-	 printf("Usage: %s [-h] || [-d <full path>] [-i] [-v] [-l] [-p || -p<custom pagesize>] [-m]\n\n",PROG_NAME);
- 	 printf("-p       read file name list from StdIn, through pipeline,  for example:    locate 20230420|grep .png|rfm -p\n");
-	 printf("-px      with iconview, show only x number of items in a batch, for example: -p9\n");
+	 printf("Usage: %s [-h] || [-d <full path>] [-i] [-v] [-l] [-p<custom pagesize>] [-m]\n\n",PROG_NAME);
+ 	 printf("-p      read file name list from StdIn, through pipeline, this -p can be omitted, for example:    locate 20230420|grep .png|rfm\n");
+	 printf("-px      when read filename list from pipeline, show only x number of items in a batch, for example: -p9\n");
 	 printf("-d       specify full path, such as /home/somebody/documents, instead of default current working directory\n");
 	 printf("-i       show mime type\n");
 	 printf("-l       open with listview instead of iconview,you can also switch view with toolbar button\n");
