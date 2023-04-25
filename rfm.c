@@ -286,7 +286,7 @@ static void switch_view(GtkToolItem *item, RFM_ctx *rfmCtx);
 
 char * yyyymmddhhmmss(time_t nSeconds) {
     struct tm * pTM=localtime(&nSeconds);
-    char * psDateTime=malloc(sizeof(char)*16);
+    char * psDateTime=malloc(sizeof(char)*20);
 
     /* datetime format: yyyymmdd:HHMMSS */
     sprintf(psDateTime, "%04d-%02d-%02d %02d:%02d:%02d",
@@ -1230,7 +1230,7 @@ static void Iterate_through_fileAttribute_list_to_insert_into_store()
 #ifdef GitIntegration
       gchar * gitStatus=g_hash_table_lookup(gitTrackedFiles, fileAttributes->file_name);
 #endif
-      fileAttributes->mime_sort=strcat(g_strdup(fileAttributes->mime_root),fileAttributes->mime_sub_type);
+      fileAttributes->mime_sort=g_strjoin(NULL,fileAttributes->mime_root,fileAttributes->mime_sub_type,NULL);
       gtk_list_store_insert_with_values(store, &iter, -1,
                           COL_MODE_STR, fileAttributes->file_mode_str,
                           COL_DISPLAY_NAME, fileAttributes->display_name,
@@ -2700,7 +2700,7 @@ static void inotify_insert_item(gchar *name, gboolean is_dir)
 
    //char * c_time=ctime((time_t*)(&(fileAttributes->file_mtime)));
    // c_time[strcspn(c_time, "\n")] = 0;
-   fileAttributes->mime_sort=strcat(g_strdup(fileAttributes->mime_root),fileAttributes->mime_sub_type);
+   fileAttributes->mime_sort=g_strjoin(NULL,fileAttributes->mime_root,fileAttributes->mime_sub_type,NULL);
    gtk_list_store_insert_with_values(store, &iter, -1,
 				     //                     COL_MODE_STR, fileAttributes->file_mode_str,
                        COL_DISPLAY_NAME, fileAttributes->display_name,
