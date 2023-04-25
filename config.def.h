@@ -55,6 +55,7 @@ static const char *new_rfm[]  = { "/usr/local/bin/rfm", NULL };
 static const char *git_inside_work_tree_cmd[] = {"/usr/bin/git", "rev-parse","--is-inside-work-tree", NULL};
 static const char *git_ls_files_cmd[] = {"/usr/bin/git", "ls-files", NULL};
 static const char *git_modified_staged_info_cmd[] = {"/usr/bin/git","status","--porcelain",NULL};
+static const char *git_stage_cmd[] = {"/usr/bin/git","stage",NULL};
 #endif
 
 
@@ -85,6 +86,9 @@ static RFM_RunActions run_actions[] = {
    { "Delete",       "*",              "*",                    f_rm,             RFM_EXEC_INTERNAL },
    { "Properties",   "*",              "*",                    properties,       RFM_EXEC_PANGO },
    { "Open with...", "*",              "*",                    open_with,        RFM_EXEC_NONE },
+#ifdef GitIntegration
+   { "git stage",    "*",              "*",                    git_stage_cmd,    RFM_EXEC_NONE },
+#endif
    { "Open",         "image",          "*",                    show_image,       RFM_EXEC_NONE },
    { "Rotate",       "image",          "jpeg",                 exiftran,         RFM_EXEC_NONE },
    { "Open",         "application",    "vnd.oasis.opendocument.text",          soffice,  RFM_EXEC_NONE },
