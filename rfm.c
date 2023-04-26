@@ -1104,7 +1104,8 @@ static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guin
    g_object_unref(file); file=NULL;
 
    if (info == NULL ) {
-      free_fileAttributes(fileAttributes);
+      g_free(fileAttributes->path);
+      g_free(fileAttributes);
       return NULL;
    }
 
