@@ -835,29 +835,28 @@ static void g_spawn_wrapper(const char **action, GList *file_list, long n_args, 
       if (run_opts==RFM_EXEC_NONE) {
         if (async) {
           if (!g_spawn_async(rfm_curPath, v, NULL, 0, NULL, NULL, NULL, NULL))
-            g_warning("exec_run_action: %s failed to execute. Check run_actions[] in config.h!", v[0]);
-	  //TODO: implement callbackfunc invoke here
+            g_warning("g_spawn_wrapper with option RFM_EXEC_NONE: %s failed to execute. Check command in config.h!", v[0]);
+	  //for RFM_EXEC_NONE since no child PID is returned, no way to g_child_add_watch, so, no callbackfunc invoke here
         } else {
           if (!g_spawn_sync(rfm_curPath, v, NULL, 0, NULL, NULL, NULL, NULL,NULL,NULL))
-            g_warning("exec_run_action: %s failed to execute. Check run_actions[] in config.h!", v[0]);
-	  if(callbackfunc) (*callbackfunc)(callbackfuncUserData);
-         }
-      }
-      else {
+            g_warning("g_spawn_wrapper with option RFM_EXEC_NONE: %s failed to execute. Check command in config.h!", v[0]);
+	  //if(callbackfunc) (*callbackfunc)(callbackfuncUserData); //for sync, even if callback is possible here, won't do it to align with the definition of RFM_EXEC_NONE
+        }
+      } else {
 	RFM_ChildAttribs *child_attribs=child_attribs=malloc(sizeof(RFM_ChildAttribs));
 	child_attribs->customCallBackFunc=callbackfunc;
 	child_attribs->customCallbackUserData=callbackfuncUserData;
 	child_attribs->runOpts=run_opts;
-
+        //TODO: implement spawn sync branch here
         if (!g_spawn_async_with_pipes_wrapper(v, child_attribs)){
-              g_warning("exec_run_action: %s failed to execute. Check run_actions[] in config.h!",v[0]);
+              g_warning("g_spawn_async_with_pipes_wrapper: %s failed to execute. Check command in config.h!",v[0]);
 	      free_child_attribs(child_attribs);
 	}
       }
       free(v);
    }
    else
-      g_warning("exec_run_action: %s failed to execute: build_cmd_vector() returned NULL.",action[0]);
+      g_warning("g_spawn_wrapper: %s failed to execute: build_cmd_vector() returned NULL.",action[0]);
 }
 
 static void exec_run_action(const char **action, GList *file_list, long n_args, int run_opts, char *dest_path)
