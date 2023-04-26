@@ -189,7 +189,7 @@ enum {
    RFM_EXEC_PLAIN,
    RFM_EXEC_INTERNAL, //i see Rodney use this in config.def.h for commands like copy move, but i don't know what it mean precisely,and i don't see program logic that reference this value, so i add RFM_EXEC_OUTPUT_HANDLED_HERE
    RFM_EXEC_MOUNT,
-   RFM_EXEC_OUPUT_HANDLED_HERE, // I need to read stdout of child process in rfm, but do not need to show to enduser, except in debugprintf. 
+   RFM_EXEC_OUPUT_READ_BY_PROGRAM, // I need to read stdout of child process in rfm, but do not need to show to enduser, except in debugprintf. 
 };
 
 #ifdef DragAndDropSupport
@@ -395,7 +395,7 @@ static gboolean child_supervisor_to_ReadStdout_ShowOutput_ExecCallback(gpointer 
    close(child_attribs->stdOut_fd);
    close(child_attribs->stdErr_fd);
    g_spawn_close_pid(child_attribs->pid);
-   if (child_attribs->runOpts!=RFM_EXEC_OUPUT_HANDLED_HERE) show_child_output(child_attribs);
+   if (child_attribs->runOpts!=RFM_EXEC_OUPUT_READ_BY_PROGRAM) show_child_output(child_attribs);
 
    rfm_childList=g_list_remove(rfm_childList, child_attribs);
 
@@ -865,7 +865,7 @@ static void g_spawn_wrapper(const char **action, GList *file_list, long n_args, 
 
           if (!g_spawn_sync(rfm_curPath, v, NULL,G_SPAWN_DEFAULT, NULL, NULL,&child_attribs->stdOut, &child_attribs->stdErr,&child_attribs->exitcode,NULL))
             g_warning("g_spawn_sync: %s failed to execute. Check command in config.h!", v[0]);
-         if (child_attribs->runOpts!=RFM_EXEC_OUPUT_HANDLED_HERE) show_child_output(child_attribs);
+         if (child_attribs->runOpts!=RFM_EXEC_OUPUT_READ_BY_PROGRAM) show_child_output(child_attribs);
          if(callbackfunc) (*callbackfunc)(callbackfuncUserData);
          }
       }
@@ -1515,7 +1515,7 @@ static void set_rfm_curPath(gchar* path)
        RFM_ChildAttribs *child_attribs=child_attribs=malloc(sizeof(RFM_ChildAttribs));
        child_attribs->customCallBackFunc=set_curPath_is_git_repo;
        child_attribs->customCallbackUserData=child_attribs;
-       child_attribs->runOpts=RFM_EXEC_OUPUT_HANDLED_HERE;
+       child_attribs->runOpts=RFM_EXEC_OUPUT_READ_BY_PROGRAM;
        if (!g_spawn_async_with_pipes_wrapper(git_inside_work_tree_cmd, child_attribs)) free_child_attribs(child_attribs);
 #endif
      }
