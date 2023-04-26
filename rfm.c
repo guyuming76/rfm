@@ -381,7 +381,7 @@ static void rfm_stop_all(RFM_ctx *rfmCtx) {
 }
 
 /* Supervise the children to prevent blocked pipes */
-static gboolean child_supervisor(gpointer user_data)
+static gboolean child_supervisor_to_ReadStdout_ShowOutput_ExecCallback(gpointer user_data)
 {
    RFM_ChildAttribs *child_attribs=(RFM_ChildAttribs*)user_data;
 
@@ -407,7 +407,7 @@ static gboolean child_supervisor(gpointer user_data)
    return FALSE;
 }
 
-static void exec_child_handler(GPid pid, gint status, RFM_ChildAttribs *child_attribs)
+static void child_handler_to_set_finished_status_for_child_supervisor(GPid pid, gint status, RFM_ChildAttribs *child_attribs)
 {
    child_attribs->status=status; /* show_child_output() is called from child_supervisor() in case there is any data left in the pipes */
 }
@@ -751,7 +751,7 @@ static gint cp_mv_check_path(char *src_path, char *dest_path, gpointer move)
    return response_id;
 }
 
-static gboolean exec_with_stdOut(gchar **v, RFM_ChildAttribs *child_attribs)
+static gboolean exec_g_spawn_async_with_pipes(gchar **v, RFM_ChildAttribs *child_attribs)
 {
    gboolean rv=FALSE;
    if (child_attribs!=NULL) {
@@ -771,8 +771,8 @@ static gboolean exec_with_stdOut(gchar **v, RFM_ChildAttribs *child_attribs)
          child_attribs->status=-1;  /* -1 indicates child is running; set to wait wstatus on exit */
 
 
-         g_timeout_add(100, (GSourceFunc)child_supervisor, (void*)child_attribs);
-         g_child_watch_add(child_attribs->pid, (GChildWatchFunc)exec_child_handler, child_attribs);
+         g_timeout_add(100, (GSourceFunc)child_supervisor_to_ReadStdout_ShowOutput_ExecCallback, (void*)child_attribs);
+         g_child_watch_add(child_attribs->pid, (GChildWatchFunc)child_handler_to_set_finished_status_for_child_supervisor, child_attribs);
          rfm_childList=g_list_prepend(rfm_childList, child_attribs);
          gtk_widget_set_sensitive(GTK_WIDGET(info_button), TRUE);
       }
@@ -849,7 +849,7 @@ static void exec_run_action_internal(const char **action, GList *file_list, long
 	child_attribs->customCallbackUserData=callbackfuncUserData;
 	child_attribs->runOpts=run_opts;
 
-        if (!exec_with_stdOut(v, child_attribs)){
+        if (!exec_g_spawn_async_with_pipes(v, child_attribs)){
               g_warning("exec_run_action: %s failed to execute. Check run_actions[] in config.h!",v[0]);
 	      free_child_attribs(child_attribs);
 	}
@@ -1500,7 +1500,7 @@ static void set_rfm_curPath(gchar* path)
        child_attribs->customCallBackFunc=set_curPath_is_git_repo;
        child_attribs->customCallbackUserData=child_attribs;
        child_attribs->runOpts=RFM_EXEC_OUPUT_HANDLED_HERE;
-       if (!exec_with_stdOut(git_inside_work_tree_cmd, child_attribs)) free_child_attribs(child_attribs);
+       if (!exec_g_spawn_async_with_pipes(git_inside_work_tree_cmd, child_attribs)) free_child_attribs(child_attribs);
 #endif
      }
    }
