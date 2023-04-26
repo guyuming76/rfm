@@ -83,6 +83,8 @@ typedef struct {
    void (*customCallBackFunc)(gpointer);
   //In readfrom pipeline situation, after runAction such as Move, i need to fill_store to reflect remove of files, so, i need a callback function. Rodney's original code only deals with working directory, and use INotify to reflect the change.
    gpointer customCallbackUserData;
+   gboolean spawn_sync;
+   gint exitcode;
 } RFM_ChildAttribs;
 
 #ifdef DragAndDropSupport
@@ -415,8 +417,9 @@ static void child_handler_to_set_finished_status_for_child_supervisor(GPid pid, 
 static void show_child_output(RFM_ChildAttribs *child_attribs)
 {
    gchar *msg=NULL;
-   GError *err=NULL;
-   gint exitCode=0;
+   GError *err=NULL;  
+
+   if (!child_attribs->spawn_sync){
 
    if (g_spawn_check_wait_status(child_attribs->status, &err) && child_attribs->runOpts==RFM_EXEC_MOUNT)
       set_rfm_curPath(RFM_MOUNT_MEDIA_PATH);
@@ -426,11 +429,11 @@ static void show_child_output(RFM_ChildAttribs *child_attribs)
          msg=g_strdup_printf("%s (pid: %i): stopped: %s", child_attribs->name, child_attribs->pid, err->message);
          show_msgbox(msg, child_attribs->name, GTK_MESSAGE_ERROR);
          g_free(msg);
-      }
-      else
-         exitCode=err->code;
-      
+       } else
+         child_attribs->exitcode = err->code;
+
       g_error_free(err);
+   }
    }
    /* Show any output we have regardless of error status */
    if (child_attribs->stdOut!=NULL) {
@@ -442,11 +445,11 @@ static void show_child_output(RFM_ChildAttribs *child_attribs)
 
    if (child_attribs->stdErr!=NULL) {
       if (strlen(child_attribs->stdErr) > RFM_MX_MSGBOX_CHARS) {
-         msg=g_strdup_printf("%s (%i): Finished with exit code %i", child_attribs->name, child_attribs->pid, exitCode);
+         msg=g_strdup_printf("%s (%i): Finished with exit code %i", child_attribs->name, child_attribs->pid, child_attribs->exitcode);
          show_text(child_attribs->stdErr, msg, RFM_EXEC_TEXT);
       }
       else {
-         msg=g_strdup_printf("%s (%i): Finished with exit code %i.\n\n%s", child_attribs->name, child_attribs->pid, exitCode, child_attribs->stdErr);
+         msg=g_strdup_printf("%s (%i): Finished with exit code %i.\n\n%s", child_attribs->name, child_attribs->pid, child_attribs->exitcode, child_attribs->stdErr);
          show_msgbox(msg, child_attribs->name, GTK_MESSAGE_ERROR);
       }
       g_free(msg);
@@ -769,6 +772,8 @@ static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *ch
          child_attribs->stdOut=NULL;
          child_attribs->stdErr=NULL;
          child_attribs->status=-1;  /* -1 indicates child is running; set to wait wstatus on exit */
+	 child_attribs->spawn_sync=FALSE;
+	 child_attribs->exitcode=0;
 
 
          g_timeout_add(100, (GSourceFunc)child_supervisor_to_ReadStdout_ShowOutput_ExecCallback, (void*)child_attribs);
@@ -834,24 +839,35 @@ static void g_spawn_wrapper(const char **action, GList *file_list, long n_args, 
       
       if (run_opts==RFM_EXEC_NONE) {
         if (async) {
-          if (!g_spawn_async(rfm_curPath, v, NULL, 0, NULL, NULL, NULL, NULL))
+          if (!g_spawn_async(rfm_curPath, v, NULL, G_SPAWN_STDOUT_TO_DEV_NULL|G_SPAWN_STDERR_TO_DEV_NULL, NULL, NULL, NULL, NULL))
             g_warning("g_spawn_wrapper with option RFM_EXEC_NONE: %s failed to execute. Check command in config.h!", v[0]);
 	  //for RFM_EXEC_NONE since no child PID is returned, no way to g_child_add_watch, so, no callbackfunc invoke here
         } else {
-          if (!g_spawn_sync(rfm_curPath, v, NULL, 0, NULL, NULL, NULL, NULL,NULL,NULL))
+          if (!g_spawn_sync(rfm_curPath, v, NULL, G_SPAWN_STDERR_TO_DEV_NULL|G_SPAWN_STDOUT_TO_DEV_NULL, NULL, NULL, NULL, NULL,NULL,NULL))
             g_warning("g_spawn_wrapper with option RFM_EXEC_NONE: %s failed to execute. Check command in config.h!", v[0]);
-	  //if(callbackfunc) (*callbackfunc)(callbackfuncUserData); //for sync, even if callback is possible here, won't do it to align with the definition of RFM_EXEC_NONE
+	  //for sync, even if callback is possible here, won't do it to align with the definition of RFM_EXEC_NONE
         }
       } else {
 	RFM_ChildAttribs *child_attribs=child_attribs=malloc(sizeof(RFM_ChildAttribs));
 	child_attribs->customCallBackFunc=callbackfunc;
 	child_attribs->customCallbackUserData=callbackfuncUserData;
 	child_attribs->runOpts=run_opts;
-        //TODO: implement spawn sync branch here
-        if (!g_spawn_async_with_pipes_wrapper(v, child_attribs)){
-              g_warning("g_spawn_async_with_pipes_wrapper: %s failed to execute. Check command in config.h!",v[0]);
-	      free_child_attribs(child_attribs);
-	}
+
+	if (async){
+          if (!g_spawn_async_with_pipes_wrapper(v, child_attribs)) {
+            g_warning("g_spawn_async_with_pipes_wrapper: %s failed to execute. Check command in config.h!",v[0]);
+            free_child_attribs(child_attribs);
+          }
+        } else {
+          child_attribs->name=g_strdup(v[0]); //since show_child_output will use these value, set to prevent segfault
+	  child_attribs->pid=-1;
+	  child_attribs->spawn_sync=TRUE;
+
+          if (!g_spawn_sync(rfm_curPath, v, NULL,G_SPAWN_DEFAULT, NULL, NULL,&child_attribs->stdOut, &child_attribs->stdErr,&child_attribs->exitcode,NULL))
+            g_warning("g_spawn_sync: %s failed to execute. Check command in config.h!", v[0]);
+         if (child_attribs->runOpts!=RFM_EXEC_OUPUT_HANDLED_HERE) show_child_output(child_attribs);
+         if(callbackfunc) (*callbackfunc)(callbackfuncUserData);
+         }
       }
       free(v);
    }
