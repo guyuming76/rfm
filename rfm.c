@@ -751,7 +751,7 @@ static gint cp_mv_check_path(char *src_path, char *dest_path, gpointer move)
    return response_id;
 }
 
-static gboolean exec_g_spawn_async_with_pipes(gchar **v, RFM_ChildAttribs *child_attribs)
+static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *child_attribs)
 {
    gboolean rv=FALSE;
    if (child_attribs!=NULL) {
@@ -849,7 +849,7 @@ static void g_spawn_wrapper(const char **action, GList *file_list, long n_args, 
 	child_attribs->customCallbackUserData=callbackfuncUserData;
 	child_attribs->runOpts=run_opts;
 
-        if (!exec_g_spawn_async_with_pipes(v, child_attribs)){
+        if (!g_spawn_async_with_pipes_wrapper(v, child_attribs)){
               g_warning("exec_run_action: %s failed to execute. Check run_actions[] in config.h!",v[0]);
 	      free_child_attribs(child_attribs);
 	}
@@ -1500,7 +1500,7 @@ static void set_rfm_curPath(gchar* path)
        child_attribs->customCallBackFunc=set_curPath_is_git_repo;
        child_attribs->customCallbackUserData=child_attribs;
        child_attribs->runOpts=RFM_EXEC_OUPUT_HANDLED_HERE;
-       if (!exec_g_spawn_async_with_pipes(git_inside_work_tree_cmd, child_attribs)) free_child_attribs(child_attribs);
+       if (!g_spawn_async_with_pipes_wrapper(git_inside_work_tree_cmd, child_attribs)) free_child_attribs(child_attribs);
 #endif
      }
    }

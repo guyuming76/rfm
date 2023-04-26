@@ -170,7 +170,7 @@ static gpointer ffmpeg4Thumb(RFM_ThumbQueueData * thumbData)
   //gchar *input_file=strcat("-i ", thumbData->path);
   GList * input_files=NULL;
   input_files=g_list_prepend(input_files, g_strdup(thumbData->path));
-  exec_run_action_internal(ffmpegThumb, input_files, 1, RFM_EXEC_NONE, thumb_path, FALSE, NULL, NULL);
+  g_spawn_wrapper(ffmpegThumb, input_files, 1, RFM_EXEC_NONE, thumb_path, FALSE, NULL, NULL);
   g_list_free(input_files);
   return NULL;
 }
