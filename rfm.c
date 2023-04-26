@@ -275,7 +275,7 @@ static void home_clicked(GtkToolItem *item, gpointer user_data);
 static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx);
 static GHashTable *get_mount_points(void);
 
-static void exec_run_action_internal(const char **action, GList *file_list, long n_args, int run_opts, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData);
+static void g_spawn_wrapper(const char **action, GList *file_list, long n_args, int run_opts, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData);
 static void switch_view(GtkToolItem *item, RFM_ctx *rfmCtx);
 
   
@@ -284,7 +284,7 @@ static void switch_view(GtkToolItem *item, RFM_ctx *rfmCtx);
 #include "config.h"
 
 
-char * yyyymmddhhmmss(time_t nSeconds) {
+static char * yyyymmddhhmmss(time_t nSeconds) {
     struct tm * pTM=localtime(&nSeconds);
     char * psDateTime=malloc(sizeof(char)*20);
 
@@ -295,7 +295,7 @@ char * yyyymmddhhmmss(time_t nSeconds) {
     return psDateTime;
 }
 
-char * st_mode_str(guint32 st_mode){
+static char * st_mode_str(guint32 st_mode){
     char * ret=malloc(sizeof(char)*11);
     //文件类型
     if(S_ISDIR(st_mode))//目录文件
@@ -822,7 +822,7 @@ static gchar **build_cmd_vector(const char **cmd, GList *file_list, long n_args,
    return v;
 }
 
-static void exec_run_action_internal(const char **action, GList *file_list, long n_args, int run_opts, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData)
+static void g_spawn_wrapper(const char **action, GList *file_list, long n_args, int run_opts, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData)
 {
    gchar **v=NULL;
 
@@ -861,7 +861,7 @@ static void exec_run_action_internal(const char **action, GList *file_list, long
 }
 
 static void exec_run_action(const char **action, GList *file_list, long n_args, int run_opts, char *dest_path)
-{ exec_run_action_internal(action,file_list,n_args,run_opts,dest_path,TRUE,NULL,NULL);}
+{ g_spawn_wrapper(action,file_list,n_args,run_opts,dest_path,TRUE,NULL,NULL);}
 
 
 /* Load and update a thumbnail from disk cache: key is the md5 hash of the required thumbnail */
@@ -1710,7 +1710,7 @@ static void cp_mv_file(RFM_ctx * doMove, GList *fileList)
 	if (doMove==NULL || !readFromPipeStdIn) /*for copy, the source iconview won't change, we don't need to refresh with refresh_store, for move with inotify hander on source iconview, we also don't need to refresh manually*/
             exec_run_action(run_actions[0].runCmdName, selected_files, i, run_actions[0].runOpts, dest_path);
          else {
-	    exec_run_action_internal(run_actions[1].runCmdName, selected_files, i, run_actions[1].runOpts, dest_path,FALSE,refresh_store,doMove);
+	    g_spawn_wrapper(run_actions[1].runCmdName, selected_files, i, run_actions[1].runOpts, dest_path,FALSE,refresh_store,doMove);
          }
       }
       g_list_free_full(selected_files, (GDestroyNotify)g_free);
@@ -2152,7 +2152,7 @@ static void file_menu_rm(GtkWidget *menuitem, gpointer user_data)
    if (fileList!=NULL) {
      if (response_id != GTK_RESPONSE_CANCEL) {
        if (readFromPipeStdIn) {
-         exec_run_action_internal(run_actions[2].runCmdName, fileList, i, run_actions[2].runOpts, NULL,FALSE,refresh_store,user_data);
+         g_spawn_wrapper(run_actions[2].runCmdName, fileList, i, run_actions[2].runOpts, NULL,FALSE,refresh_store,user_data);
        } else {
 	 exec_run_action(run_actions[2].runCmdName, fileList, i, run_actions[2].runOpts, NULL);
        }
