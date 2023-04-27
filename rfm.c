@@ -1736,7 +1736,7 @@ static void cp_mv_file(RFM_ctx * doMove, GList *fileList)
 	if (doMove==NULL || !readFromPipeStdIn) /*for copy, the source iconview won't change, we don't need to refresh with refresh_store, for move with inotify hander on source iconview, we also don't need to refresh manually*/
             exec_run_action(run_actions[0].runCmdName, selected_files, i, run_actions[0].runOpts, dest_path);
          else {
-	    g_spawn_wrapper(run_actions[1].runCmdName, selected_files, i, run_actions[1].runOpts, dest_path,FALSE,refresh_store,doMove);
+	    g_spawn_wrapper(run_actions[1].runCmdName, selected_files, i, run_actions[1].runOpts, dest_path,TRUE,refresh_store,doMove);
          }
       }
       g_list_free_full(selected_files, (GDestroyNotify)g_free);
@@ -2178,7 +2178,7 @@ static void file_menu_rm(GtkWidget *menuitem, gpointer user_data)
    if (fileList!=NULL) {
      if (response_id != GTK_RESPONSE_CANCEL) {
        if (readFromPipeStdIn) {
-         g_spawn_wrapper(run_actions[2].runCmdName, fileList, i, run_actions[2].runOpts, NULL,FALSE,refresh_store,user_data);
+         g_spawn_wrapper(run_actions[2].runCmdName, fileList, i, run_actions[2].runOpts, NULL,TRUE,refresh_store,user_data);
        } else {
 	 exec_run_action(run_actions[2].runCmdName, fileList, i, run_actions[2].runOpts, NULL);
        }
