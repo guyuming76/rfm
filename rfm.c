@@ -189,7 +189,8 @@ enum {
    RFM_EXEC_PLAIN,
    RFM_EXEC_INTERNAL, //i see Rodney use this in config.def.h for commands like copy move, but i don't know what it mean precisely,and i don't see program logic that reference this value, so i add RFM_EXEC_OUTPUT_HANDLED_HERE
    RFM_EXEC_MOUNT,
-   RFM_EXEC_OUPUT_READ_BY_PROGRAM, // I need to read stdout of child process in rfm, but do not need to show to enduser, except in debugprintf. 
+   RFM_EXEC_OUPUT_READ_BY_PROGRAM, // I need to read stdout of child process in rfm, but do not need to show to enduser, except in debugprintf.
+   RFM_EXEC_STDOUT,
 };
 
 #ifdef DragAndDropSupport
@@ -402,7 +403,7 @@ static gboolean child_supervisor_to_ReadStdout_ShowOutput_ExecCallback(gpointer 
    if (rfm_childList==NULL)
       gtk_widget_set_sensitive(GTK_WIDGET(info_button), FALSE);
 
-   if((child_attribs->customCallBackFunc)!=NULL)
+   if(child_attribs->exitcode==0 && (child_attribs->customCallBackFunc)!=NULL)
      (child_attribs->customCallBackFunc)(child_attribs->customCallbackUserData);
 
    free_child_attribs(child_attribs);
@@ -417,34 +418,39 @@ static void child_handler_to_set_finished_status_for_child_supervisor(GPid pid, 
 static void show_child_output(RFM_ChildAttribs *child_attribs)
 {
    gchar *msg=NULL;
-   GError *err=NULL;  
+   GError *err=NULL;
 
-   if (!child_attribs->spawn_sync){
-
+   //for g_spawn_sync, the lass parameter is GError *, so why pass in NULL there and get it here instead?
    if (g_spawn_check_wait_status(child_attribs->status, &err) && child_attribs->runOpts==RFM_EXEC_MOUNT)
       set_rfm_curPath(RFM_MOUNT_MEDIA_PATH);
 
    if (err!=NULL) {
+      child_attribs->exitcode = err->code;
+      
       if (g_error_matches(err, G_SPAWN_ERROR, G_SPAWN_ERROR_FAILED)) {
-         msg=g_strdup_printf("%s (pid: %i): stopped: %s", child_attribs->name, child_attribs->pid, err->message);
+	 msg=g_strdup_printf("%s (pid: %i): stopped: %s", child_attribs->name, child_attribs->pid, err->message);
          show_msgbox(msg, child_attribs->name, GTK_MESSAGE_ERROR);
          g_free(msg);
-       } else
-         child_attribs->exitcode = err->code;
+      }
 
       g_error_free(err);
    }
-   }
+   
    /* Show any output we have regardless of error status */
    if (child_attribs->stdOut!=NULL) {
-      if (child_attribs->runOpts==RFM_EXEC_TEXT || strlen(child_attribs->stdOut) > RFM_MX_MSGBOX_CHARS)
+      if (child_attribs->runOpts==RFM_EXEC_STDOUT)
+	 printf("%s\n",child_attribs->stdOut);
+      else if (child_attribs->runOpts==RFM_EXEC_TEXT || strlen(child_attribs->stdOut) > RFM_MX_MSGBOX_CHARS)
          show_text(child_attribs->stdOut, child_attribs->name, child_attribs->runOpts);
       else
          show_msgbox(child_attribs->stdOut, child_attribs->name, GTK_MESSAGE_INFO);
    }
 
    if (child_attribs->stdErr!=NULL) {
-      if (strlen(child_attribs->stdErr) > RFM_MX_MSGBOX_CHARS) {
+      if (child_attribs->runOpts==RFM_EXEC_STDOUT){
+         msg=g_strdup_printf("%s (%i): Finished with exit code %i.\n\n%s", child_attribs->name, child_attribs->pid, child_attribs->exitcode, child_attribs->stdErr);
+	 printf("%s\n",msg);
+      }else if (strlen(child_attribs->stdErr) > RFM_MX_MSGBOX_CHARS) {
          msg=g_strdup_printf("%s (%i): Finished with exit code %i", child_attribs->name, child_attribs->pid, child_attribs->exitcode);
          show_text(child_attribs->stdErr, msg, RFM_EXEC_TEXT);
       }
@@ -862,11 +868,15 @@ static void g_spawn_wrapper(const char **action, GList *file_list, long n_args, 
           child_attribs->name=g_strdup(v[0]); //since show_child_output will use these value, set to prevent segfault
 	  child_attribs->pid=-1;
 	  child_attribs->spawn_sync=TRUE;
+	  child_attribs->stdOut=NULL;
+	  child_attribs->stdErr=NULL;
+	  child_attribs->exitcode=0;
+	  child_attribs->status=-1;
 
-          if (!g_spawn_sync(rfm_curPath, v, NULL,G_SPAWN_DEFAULT, NULL, NULL,&child_attribs->stdOut, &child_attribs->stdErr,&child_attribs->exitcode,NULL))
+          if (!g_spawn_sync(rfm_curPath, v, NULL,G_SPAWN_DEFAULT, NULL, NULL,&child_attribs->stdOut, &child_attribs->stdErr,&child_attribs->status,NULL))
             g_warning("g_spawn_sync: %s failed to execute. Check command in config.h!", v[0]);
          if (child_attribs->runOpts!=RFM_EXEC_OUPUT_READ_BY_PROGRAM) show_child_output(child_attribs);
-         if(callbackfunc) (*callbackfunc)(callbackfuncUserData);
+         if(child_attribs->exitcode==0 && callbackfunc!=NULL) (*callbackfunc)(callbackfuncUserData);
          }
       }
       free(v);
