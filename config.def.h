@@ -183,3 +183,5 @@ static const RFM_Thumbnailers thumbnailers[] = {
 };
 
 #define NonGtkThumbnail
+#define MOD_KEY GDK_SUPER_MASK // the windows logo key
+//#define MOD_KEY GDK_META_MASK // the Alt key

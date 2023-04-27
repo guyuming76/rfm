@@ -2481,8 +2481,8 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
      gtk_tool_item_set_is_important(up_button, TRUE);
      gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), up_button, -1);
      g_signal_connect(up_button, "clicked", G_CALLBACK(up_clicked), NULL);
-     gtk_widget_add_accelerator(GTK_WIDGET(up_button), "clicked", agMain,GDK_KEY_Up, GDK_META_MASK, GTK_ACCEL_VISIBLE);
-     gtk_tool_item_set_tooltip_text(up_button,"Alt+up arrow");
+     gtk_widget_add_accelerator(GTK_WIDGET(up_button), "clicked", agMain,GDK_KEY_Up, MOD_KEY, GTK_ACCEL_VISIBLE);
+     gtk_tool_item_set_tooltip_text(up_button,"MOD+up arrow");
 
 
      buttonImage = gtk_image_new_from_pixbuf(defaultPixbufs->home);
@@ -2490,8 +2490,8 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
      gtk_tool_item_set_is_important(home_button, TRUE);
      gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), home_button, -1);
      g_signal_connect(home_button, "clicked", G_CALLBACK(home_clicked), NULL);
-     gtk_widget_add_accelerator(GTK_WIDGET(home_button), "clicked", agMain,GDK_KEY_Home, GDK_META_MASK, GTK_ACCEL_VISIBLE);
-     gtk_tool_item_set_tooltip_text(home_button,"Alt+Home");
+     //gtk_widget_add_accelerator(GTK_WIDGET(home_button), "clicked", agMain,GDK_KEY_Home, MOD_KEY, GTK_ACCEL_VISIBLE);
+     //gtk_tool_item_set_tooltip_text(home_button,"MOD+Home");
    }
 
    buttonImage=gtk_image_new_from_pixbuf(defaultPixbufs->stop);
@@ -2515,10 +2515,10 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
      gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), PageDown_button, -1);
      g_signal_connect(PageDown_button, "clicked", G_CALLBACK(NextPage), rfmCtx);
 
-     gtk_widget_add_accelerator(GTK_WIDGET(PageUp_button), "clicked", agMain,GDK_KEY_Page_Up,GDK_META_MASK, GTK_ACCEL_VISIBLE);
-     gtk_widget_add_accelerator(GTK_WIDGET(PageDown_button), "clicked", agMain,GDK_KEY_Page_Down,GDK_META_MASK, GTK_ACCEL_VISIBLE);
-     gtk_tool_item_set_tooltip_text(PageUp_button,"Alt+PgUp");
-     gtk_tool_item_set_tooltip_text(PageDown_button,"Alt+PgDn");
+     gtk_widget_add_accelerator(GTK_WIDGET(PageUp_button), "clicked", agMain,GDK_KEY_Page_Up,MOD_KEY, GTK_ACCEL_VISIBLE);
+     gtk_widget_add_accelerator(GTK_WIDGET(PageDown_button), "clicked", agMain,GDK_KEY_Page_Down,MOD_KEY, GTK_ACCEL_VISIBLE);
+     gtk_tool_item_set_tooltip_text(PageUp_button,"MOD+PgUp");
+     gtk_tool_item_set_tooltip_text(PageDown_button,"MOD+PgDn");
    }
 
    separatorItem=gtk_separator_tool_item_new();
@@ -2545,8 +2545,8 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
    menu_button = gtk_tool_button_new(buttonImage, "Menu");
    gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), menu_button, -1);
    g_signal_connect(menu_button, "clicked", G_CALLBACK(tool_menu_clicked), rfmCtx);
-   gtk_widget_add_accelerator(GTK_WIDGET(menu_button), "clicked", agMain,GDK_KEY_Menu,GDK_META_MASK, GTK_ACCEL_VISIBLE);
-   gtk_tool_item_set_tooltip_text(menu_button,"Alt+Menu");
+   gtk_widget_add_accelerator(GTK_WIDGET(menu_button), "clicked", agMain,GDK_KEY_Menu,MOD_KEY, GTK_ACCEL_VISIBLE);
+   gtk_tool_item_set_tooltip_text(menu_button,"MOD+Menu");
 
    buttonImage=gtk_image_new_from_pixbuf(defaultPixbufs->info);
    info_button=gtk_tool_button_new(buttonImage,"Info");
@@ -2557,6 +2557,8 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
    SwitchView_button=gtk_tool_button_new(NULL, "List/Icon");
    gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), SwitchView_button, -1);
    g_signal_connect(SwitchView_button, "clicked", G_CALLBACK(switch_view), rfmCtx);
+   gtk_widget_add_accelerator(GTK_WIDGET(SwitchView_button), "clicked", agMain,GDK_KEY_slash,MOD_KEY, GTK_ACCEL_VISIBLE);
+   gtk_tool_item_set_tooltip_text(SwitchView_button,"MOD+/");
 
 }
 
