@@ -25,7 +25,6 @@ static const char *play_audio[] = { "/usr/bin/mpv", "--player-operation-mode=pse
 static const char *av_info[]    = { "/usr/bin/mediainfo", "-f", NULL };
 static const char *textEdit[]   = { "/usr/bin/emacs", "--no-splash", NULL };
 static const char *mupdf[]      = { "/usr/bin/evince", NULL };
-//static const char *show_image[] = { "/usr/bin/eog", NULL };
 static const char *show_image[] = { "/usr/local/bin/RefreshImage.sh", NULL };
 static const char *soffice[]    = { "/usr/bin/soffice", NULL };
 static const char *extract_archive[] = { "/usr/local/bin/extractArchive.sh", NULL };
@@ -78,6 +77,7 @@ static const char *git_stage_cmd[] = {"/usr/bin/git","stage",NULL};
  *   RFM_EXEC_MOUNT  - same as RFM_EXEC_PLAIN; this should be specified for the mount command.
  *                     causes the filer to auto switch on success to the directory defined by
  *                     #define RFM_MOUNT_MEDIA_PATH.
+ *   RFM_EXEC_STDOUT - run and show output in stdout of parent process.
  */
 static RFM_RunActions run_actions[] = {
    /* name           mime root        mime sub type             argument          run options */
@@ -136,16 +136,16 @@ static RFM_RunActions run_actions[] = {
  * If function is not NULL, arguments may be passed as a const char *arg[].
  */
 
-static const char *dev_disk_path[]= { "/dev/disk" };
-static void show_disk_devices(const char **path) {
-   set_rfm_curPath((char*)path[0]);
-}
+//static const char *dev_disk_path[]= { "/dev/disk" };
+//static void show_disk_devices(const char **path) {
+//   set_rfm_curPath((char*)path[0]);
+//}
 
 static RFM_ToolButtons tool_buttons[] = {
    /* name           icon                       function    		argument*/
    { "Terminal",     "utilities-terminal",      NULL,                   term_cmd },
    { "rfm",          "system-file-manager",     NULL,                   new_rfm },
-   { "mounts",       "drive-harddisk",          show_disk_devices,      dev_disk_path },
+// { "mounts",       "drive-harddisk",          show_disk_devices,      dev_disk_path },
 };
 
 /* Thumbnailers
@@ -182,6 +182,6 @@ static const RFM_Thumbnailers thumbnailers[] = {
     //   { "application",  "dicom",             dcmThumb},
 };
 
-#define NonGtkThumbnail
+#define Allow_Thumbnail_Without_tExtThumbMTime
 #define MOD_KEY GDK_SUPER_MASK // the windows logo key
 //#define MOD_KEY GDK_META_MASK // the Alt key

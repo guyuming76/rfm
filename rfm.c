@@ -919,12 +919,12 @@ static int load_thumbnail(gchar *key)
    tmp=gdk_pixbuf_get_option(pixbuf, "tEXt::Thumb::MTime");
    if (tmp!=NULL) mtime_thumb=g_ascii_strtoll(tmp, NULL, 10); /* Convert to gint64 */
    if (mtime_file!=mtime_thumb) {
-#ifdef NonGtkThumbnail
+#ifdef Allow_Thumbnail_Without_tExtThumbMTime
      if (tmp != NULL) {
 #endif
        g_object_unref(pixbuf);
        return 3; /* Thumbnail out of date */
-#ifdef NonGtkThumbnail
+#ifdef Allow_Thumbnail_Without_tExtThumbMTime
      }
 #endif
    }
