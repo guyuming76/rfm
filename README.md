@@ -36,17 +36,26 @@ alias locatepwd='locate $(pwd)'
 ```
 
 
-接下来多选图片git stage 操作也比较稍嫌麻烦，当然我可以用类似如下命令一次stage多个当天的图片文件：
+多张图片git stage 操作也比较稍嫌麻烦，当然我可以用类似如下命令一次stage多个当天的图片文件：
 
 ```
 ls *20230410*|xargs git stage 
 ```
 
-但今后不妨考虑把git的部分状态和操作集成的rfm里面。
+但现在可以在rfm里多选多个文件，然后通过鼠标右键菜单选择Stage操作。
 
-rfm 原来只实现了用icon_view显示内容，这里怎加了-l 参数，使用列表视图显示内容，类似 ls -l 的显示内容。
+rfm 原来只实现了用icon_view显示内容，这里怎加了-l 参数，使用列表视图显示内容，类似 ls -l 的显示内容。也可以在rfm界面里面使用 MOD+l 组合键切换icon或list视图。MOD键默认定义为Win键，可以在config.h里重新定义为Alt或别的键
 
 ![rfm -l](20230410_12h55m39s_grim.png)
+
+
+如果在多个tty分别启动了wayland和xorg显示服务，可以用如下命令决定rfm这样的gtk应用窗口显示在那里：
+
+```
+WAYLAND_DISPLAY=wayland-1 rfm
+GDK_BACKEND=x11 rfm
+
+```
 
 
 
