@@ -52,9 +52,10 @@ static const char *new_rfm[]  = { "/usr/local/bin/rfm", NULL };
 
 #ifdef GitIntegration
 static const char *git_inside_work_tree_cmd[] = {"/usr/bin/git", "rev-parse","--is-inside-work-tree", NULL};
-static const char *git_ls_files_cmd[] = {"/usr/bin/git", "ls-files", NULL};
+static const char *git_ls_files_cmd[] = {"/usr/bin/git", "ls-files", "--full-name",NULL};
 static const char *git_modified_staged_info_cmd[] = {"/usr/bin/git","status","--porcelain",NULL};
 static const char *git_stage_cmd[] = {"/usr/bin/git","stage",NULL};
+static const char *git_root_cmd[] = {"/usr/bin/git","rev-parse", "--show-toplevel",NULL};
 #endif
 
 

@@ -1254,7 +1254,7 @@ static void Iterate_through_fileAttribute_list_to_insert_into_store()
       }
 
 #ifdef GitIntegration
-      gchar * gitStatus=g_hash_table_lookup(gitTrackedFiles, fileAttributes->file_name);
+      gchar * gitStatus=g_hash_table_lookup(gitTrackedFiles, fileAttributes->path);
 #endif
       fileAttributes->mime_sort=g_strjoin(NULL,fileAttributes->mime_root,fileAttributes->mime_sub_type,NULL);
       gtk_list_store_insert_with_values(store, &iter, -1,
@@ -1302,14 +1302,30 @@ static void load_GitTrackedFiles_into_HashTable()
 {
   gchar * child_stdout;
   gchar * child_stderr;
+  gchar * git_root;
 
+  if (g_spawn_sync(rfm_curPath, git_root_cmd, NULL, 0, NULL, NULL,&child_stdout, &child_stderr, 0, NULL)) {
+    git_root = g_strdup(strtok(child_stdout, "\n"));
+#ifdef DebugPrintf
+      printf("git root:%s\n",git_root);
+#endif
+    g_free(child_stdout);
+    g_free(child_stderr);
+  } else {
+    printf("%s\n", child_stderr);
+    g_free(child_stdout);
+    g_free(child_stderr);   
+    return;
+  }    
+  
   if (g_spawn_sync(rfm_curPath, git_ls_files_cmd, NULL, 0, NULL, NULL, &child_stdout, &child_stderr, 0, NULL)){
 
     gchar * oneline=strtok(child_stdout,"\n");
     while (oneline!=NULL){
-      g_hash_table_insert(gitTrackedFiles,g_strdup(oneline),g_strdup(""));
+      gchar * fullpath=g_build_filename(git_root,g_strdup(oneline),NULL);         
+      g_hash_table_insert(gitTrackedFiles,fullpath,g_strdup(""));
 #ifdef DebugPrintf
-      printf("gitTrackedFile:%s\n",oneline);
+      printf("gitTrackedFile:%s\n",fullpath);
 #endif
       oneline=strtok(NULL, "\n");
     }
@@ -1328,9 +1344,10 @@ static void load_GitTrackedFiles_into_HashTable()
       gchar * status=g_utf8_substring(oneline, 0, 2);
       //      if (g_strcmp0("??", status)){
         gchar * filename=g_utf8_substring(oneline, 3, strlen(oneline));
-	g_hash_table_insert(gitTrackedFiles,g_strdup(filename),g_strdup(status));
+      gchar *fullpath=g_build_filename(git_root,g_strdup(filename),NULL);         
+	g_hash_table_insert(gitTrackedFiles,fullpath,g_strdup(status));
 #ifdef DebugPrintf
-	printf("gitTrackedFile Status:%s,%s\n",status,filename);
+	printf("gitTrackedFile Status:%s,%s\n",status,fullpath);
 #endif
 	//      }
       oneline=strtok(NULL, "\n");
