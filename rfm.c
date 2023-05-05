@@ -888,9 +888,6 @@ static void g_spawn_wrapper(const char **action, GList *file_list, long n_args, 
       g_warning("g_spawn_wrapper: %s failed to execute: build_cmd_vector() returned NULL.",action[0]);
 }
 
-static void exec_run_action(const char **action, GList *file_list, long n_args, int run_opts, char *dest_path)
-{ g_spawn_wrapper(action,file_list,n_args,run_opts,dest_path,TRUE,NULL,NULL);}
-
 
 /* Load and update a thumbnail from disk cache: key is the md5 hash of the required thumbnail */
 static int load_thumbnail(gchar *key)
@@ -1577,7 +1574,7 @@ static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointe
       }
 
       if (r_idx != -1)
-         exec_run_action(run_actions[r_idx].runCmdName, file_list, 2, run_actions[r_idx].runOpts, NULL);
+         g_spawn_wrapper(run_actions[r_idx].runCmdName, file_list, 2, run_actions[r_idx].runOpts, NULL,TRUE,NULL,NULL);
       else {
          msg=g_strdup_printf("No run action defined for mime type:\n %s/%s\n", fileAttributes->mime_root, fileAttributes->mime_sub_type);
          show_msgbox(msg, "Run Action", GTK_MESSAGE_INFO);
@@ -1754,7 +1751,7 @@ static void cp_mv_file(RFM_ctx * doMove, GList *fileList)
    if (selected_files!=NULL) {
       if (response_id!=GTK_RESPONSE_CANCEL) {
 	if (doMove==NULL || !readFromPipeStdIn) /*for copy, the source iconview won't change, we don't need to refresh with refresh_store, for move with inotify hander on source iconview, we also don't need to refresh manually*/
-            exec_run_action(run_actions[0].runCmdName, selected_files, i, run_actions[0].runOpts, dest_path);
+	    g_spawn_wrapper(run_actions[0].runCmdName, selected_files, i, run_actions[0].runOpts, dest_path,TRUE,NULL,NULL);
          else {
 	    g_spawn_wrapper(run_actions[1].runCmdName, selected_files, i, run_actions[1].runOpts, dest_path,TRUE,refresh_store,doMove);
          }
@@ -2200,7 +2197,7 @@ static void file_menu_rm(GtkWidget *menuitem, gpointer user_data)
        if (readFromPipeStdIn) {
          g_spawn_wrapper(run_actions[2].runCmdName, fileList, i, run_actions[2].runOpts, NULL,TRUE,refresh_store,user_data);
        } else {
-	 exec_run_action(run_actions[2].runCmdName, fileList, i, run_actions[2].runOpts, NULL);
+	 g_spawn_wrapper(run_actions[2].runCmdName, fileList, i, run_actions[2].runOpts, NULL,TRUE,NULL,NULL);
        }
      }
       g_list_free(fileList); /* Do not free list elements: owned by GList rfm_fileAttributeList */
