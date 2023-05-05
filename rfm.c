@@ -35,8 +35,11 @@
 #define N_TARGETS 1        /* G_N_ELEMENTS(target_entry) */
 #endif
 #define PIPE_SZ 65535      /* Kernel pipe size */
-#define RFM_N_BUILT_IN 3   /* Number of built in actions */
-
+#ifdef GitIntegration
+#define RFM_N_BUILT_IN 4   /* Number of built in actions */
+#else
+#define RFM_N_BUILT_IN 3
+#endif
 
 typedef struct {
    gchar *path;
@@ -100,7 +103,7 @@ typedef struct {
 typedef struct {
    GtkWidget *menu;
    GtkWidget **action;
-   GtkWidget *separator[2];
+   GtkWidget *separator[1];
 } RFM_fileMenu;
 
 typedef struct {
@@ -2204,7 +2207,8 @@ static void file_menu_rm(GtkWidget *menuitem, gpointer user_data)
    }
 }
 
-static void file_menu_exec(GtkMenuItem *menuitem, RFM_RunActions *selectedAction)
+
+static void g_spawn_wrapper_for_selected_fileList(const gchar** runCmd, gint runOpts, void (*callback)(gpointer),gpointer callbackdata ) 
 {
    GtkTreeIter iter;
    GList *listElement;
@@ -2223,11 +2227,23 @@ static void file_menu_exec(GtkMenuItem *menuitem, RFM_RunActions *selectedAction
          listElement=g_list_next(listElement);
          i++;
       }
-      exec_run_action(selectedAction->runCmdName, actionFileList, i, selectedAction->runOpts, NULL);
+      g_spawn_wrapper(runCmd,actionFileList,i,runOpts,NULL,TRUE,callback,callbackdata);
       g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
       g_list_free(actionFileList); /* Do not free list elements: owned by GList rfm_fileAttributeList */
    }
 }
+
+static void file_menu_exec(GtkMenuItem *menuitem, RFM_RunActions *selectedAction)
+{
+  g_spawn_wrapper_for_selected_fileList(selectedAction->runCmdName,selectedAction->runOpts,NULL,NULL);
+}
+
+
+static void file_menu_git_stage(GtkMenuItem *menuitem, gpointer user_data)
+{
+  g_spawn_wrapper_for_selected_fileList(run_actions[3].runCmdName, run_actions[3].runOpts,refresh_store,user_data);
+}
+
 
 /* Every action defined in config.h is added to the menu here; each menu item is associated with
  * the corresponding index in the run_actions_array.
@@ -2244,27 +2260,26 @@ static RFM_fileMenu *setup_file_menu(RFM_ctx * rfmCtx){
       return NULL;
    }
    fileMenu->menu=gtk_menu_new();
-   for (i=0;i<2;i++) {
+#ifdef GitIntegration
+   for (i=0;i<=3;i++) {
+#else
+   for (i=0;i<3;i++) {
+#endif
       fileMenu->action[i]=gtk_menu_item_new_with_label(run_actions[i].runName);
-      gtk_widget_show(fileMenu->action[i]);
+      //gtk_widget_show(fileMenu->action[i]);
       gtk_menu_shell_append(GTK_MENU_SHELL(fileMenu->menu), fileMenu->action[i]);
    }
    g_signal_connect(fileMenu->action[0], "activate", G_CALLBACK (file_menu_cp_mv), rfmCtx);   /* Copy item */
    g_signal_connect(fileMenu->action[1], "activate", G_CALLBACK (file_menu_cp_mv), rfmCtx);                  /* Move item */
-
+   g_signal_connect(fileMenu->action[2], "activate", G_CALLBACK(file_menu_rm), rfmCtx);
+#ifdef GitIntegration
+   g_signal_connect(fileMenu->action[3], "activate", G_CALLBACK(file_menu_git_stage),rfmCtx);
+#endif
    /* Built in actions */
    fileMenu->separator[0]=gtk_separator_menu_item_new();
    gtk_widget_show(fileMenu->separator[0]);
    gtk_menu_shell_append(GTK_MENU_SHELL(fileMenu->menu), fileMenu->separator[0]);
 
-   fileMenu->action[2]=gtk_menu_item_new_with_label(run_actions[2].runName);
-   gtk_widget_show(fileMenu->action[2]);
-   gtk_menu_shell_append(GTK_MENU_SHELL(fileMenu->menu), fileMenu->action[2]);
-   g_signal_connect(fileMenu->action[2], "activate", G_CALLBACK(file_menu_rm), rfmCtx);
-
-   fileMenu->separator[1]=gtk_separator_menu_item_new();
-   gtk_widget_show(fileMenu->separator[1]);
-   gtk_menu_shell_append(GTK_MENU_SHELL(fileMenu->menu), fileMenu->separator[1]);
 
    for(i=RFM_N_BUILT_IN; i<G_N_ELEMENTS(run_actions); i++) {
       fileMenu->action[i]=gtk_menu_item_new_with_label(run_actions[i].runName);
@@ -2333,6 +2348,12 @@ static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx)
    /* Show built in actions */
    gtk_widget_show(fileMenu->action[0]);  /* Copy */
    gtk_widget_show(fileMenu->action[1]);  /* Move */
+   gtk_widget_show(fileMenu->action[2]);  /* Delete */
+#ifdef GitIntegration
+   if(curPath_is_git_repo) gtk_widget_show(fileMenu->action[3]);
+   else
+      gtk_widget_hide(fileMenu->action[3]);
+#endif
    gtk_widget_show(fileMenu->separator[0]);
 
    for(i=RFM_N_BUILT_IN; i<G_N_ELEMENTS(run_actions); i++) {

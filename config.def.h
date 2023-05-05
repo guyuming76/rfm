@@ -85,11 +85,11 @@ static RFM_RunActions run_actions[] = {
    { "Copy",         "*",              "*",                    f_cp,             RFM_EXEC_INTERNAL },
    { "Move",         "*",              "*",                    f_mv,             RFM_EXEC_INTERNAL },
    { "Delete",       "*",              "*",                    f_rm,             RFM_EXEC_INTERNAL },
+#ifdef GitIntegration
+   { "git stage",    "*",              "*",                    git_stage_cmd,    RFM_EXEC_INTERNAL },
+#endif
    { "Properties",   "*",              "*",                    properties,       RFM_EXEC_PANGO },
    { "Open with...", "*",              "*",                    open_with,        RFM_EXEC_NONE },
-#ifdef GitIntegration
-   { "git stage",    "*",              "*",                    git_stage_cmd,    RFM_EXEC_NONE },
-#endif
    { "Open",         "image",          "*",                    show_image,       RFM_EXEC_NONE },
    { "Rotate",       "image",          "jpeg",                 exiftran,         RFM_EXEC_NONE },
    { "Open",         "application",    "vnd.oasis.opendocument.text",          soffice,  RFM_EXEC_NONE },
