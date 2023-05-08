@@ -2510,6 +2510,13 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
    agMain = gtk_accel_group_new();
    gtk_window_add_accel_group(GTK_WINDOW(window), agMain);
 
+   SwitchView_button=gtk_tool_button_new(NULL, "List/Icon");
+   gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), SwitchView_button, -1);
+   g_signal_connect(SwitchView_button, "clicked", G_CALLBACK(switch_view), rfmCtx);
+   gtk_widget_add_accelerator(GTK_WIDGET(SwitchView_button), "clicked", agMain,GDK_KEY_slash,MOD_KEY, GTK_ACCEL_VISIBLE);
+   gtk_tool_item_set_tooltip_text(SwitchView_button,"MOD+/");
+
+   
    if (!readFromPipeStdIn) {
      buttonImage = gtk_image_new_from_pixbuf(defaultPixbufs->up);
      up_button = gtk_tool_button_new(buttonImage, "Up");
@@ -2520,20 +2527,8 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
      gtk_tool_item_set_tooltip_text(up_button,"MOD+up arrow");
 
 
-     buttonImage = gtk_image_new_from_pixbuf(defaultPixbufs->home);
-     home_button = gtk_tool_button_new(buttonImage, "Home");
-     gtk_tool_item_set_is_important(home_button, TRUE);
-     gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), home_button, -1);
-     g_signal_connect(home_button, "clicked", G_CALLBACK(home_clicked), NULL);
-     //gtk_widget_add_accelerator(GTK_WIDGET(home_button), "clicked", agMain,GDK_KEY_Home, MOD_KEY, GTK_ACCEL_VISIBLE);
-     //gtk_tool_item_set_tooltip_text(home_button,"MOD+Home");
    }
 
-   buttonImage=gtk_image_new_from_pixbuf(defaultPixbufs->stop);
-   stop_button=gtk_tool_button_new(buttonImage, "Stop");
-   gtk_tool_item_set_is_important(stop_button, TRUE);
-   gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), stop_button, -1);
-   g_signal_connect(stop_button, "clicked", G_CALLBACK(stop_clicked), rfmCtx);
 
    buttonImage=gtk_image_new_from_pixbuf(defaultPixbufs->refresh);
    refresh_button=gtk_tool_button_new(buttonImage, "Refresh");
@@ -2583,18 +2578,28 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
    gtk_widget_add_accelerator(GTK_WIDGET(menu_button), "clicked", agMain,GDK_KEY_Menu,MOD_KEY, GTK_ACCEL_VISIBLE);
    gtk_tool_item_set_tooltip_text(menu_button,"MOD+Menu");
 
+   buttonImage=gtk_image_new_from_pixbuf(defaultPixbufs->stop);
+   stop_button=gtk_tool_button_new(buttonImage, "Stop");
+   gtk_tool_item_set_is_important(stop_button, TRUE);
+   gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), stop_button, -1);
+   g_signal_connect(stop_button, "clicked", G_CALLBACK(stop_clicked), rfmCtx);
+
+   
    buttonImage=gtk_image_new_from_pixbuf(defaultPixbufs->info);
    info_button=gtk_tool_button_new(buttonImage,"Info");
    gtk_widget_set_sensitive(GTK_WIDGET(info_button),FALSE);
    gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), info_button, -1);
    g_signal_connect(info_button, "clicked", G_CALLBACK(info_clicked), NULL);
 
-   SwitchView_button=gtk_tool_button_new(NULL, "List/Icon");
-   gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), SwitchView_button, -1);
-   g_signal_connect(SwitchView_button, "clicked", G_CALLBACK(switch_view), rfmCtx);
-   gtk_widget_add_accelerator(GTK_WIDGET(SwitchView_button), "clicked", agMain,GDK_KEY_slash,MOD_KEY, GTK_ACCEL_VISIBLE);
-   gtk_tool_item_set_tooltip_text(SwitchView_button,"MOD+/");
-
+   if (!readFromPipeStdIn) {
+     buttonImage = gtk_image_new_from_pixbuf(defaultPixbufs->home);
+     home_button = gtk_tool_button_new(buttonImage, "Home");
+     gtk_tool_item_set_is_important(home_button, TRUE);
+     gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), home_button, -1);
+     g_signal_connect(home_button, "clicked", G_CALLBACK(home_clicked), NULL);
+     //gtk_widget_add_accelerator(GTK_WIDGET(home_button), "clicked", agMain,GDK_KEY_Home, MOD_KEY, GTK_ACCEL_VISIBLE);
+     //gtk_tool_item_set_tooltip_text(home_button,"MOD+Home");
+   }
 }
 
 static GtkWidget *add_view(RFM_ctx *rfmCtx)
