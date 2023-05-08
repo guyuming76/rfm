@@ -1,6 +1,9 @@
 /* Config file for rfm
  */
 
+#include "Chinese.h"
+//#include "English.h"
+
 //#define DebugPrintf
 /*#define RFM_ICON_THEME "elementary"*/
 /*#define RFM_SINGLE_CLICK "True"*/

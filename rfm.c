@@ -2519,7 +2519,7 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
    
    if (!readFromPipeStdIn) {
      buttonImage = gtk_image_new_from_pixbuf(defaultPixbufs->up);
-     up_button = gtk_tool_button_new(buttonImage, "Up");
+     up_button = gtk_tool_button_new(buttonImage, Up);
      gtk_tool_item_set_is_important(up_button, TRUE);
      gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), up_button, -1);
      g_signal_connect(up_button, "clicked", G_CALLBACK(up_clicked), NULL);
@@ -2537,11 +2537,11 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
    //g_signal_connect(refresh_button, "button-press-event", G_CALLBACK(refresh_other), rfmCtx);
 
    if (readFromPipeStdIn) {
-     PageUp_button=gtk_tool_button_new(NULL, "PageUp");
+     PageUp_button=gtk_tool_button_new(NULL, PageUp);
      gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), PageUp_button, -1);
      g_signal_connect(PageUp_button, "clicked", G_CALLBACK(PreviousPage), rfmCtx);
 
-     PageDown_button=gtk_tool_button_new(NULL, "PageDown");
+     PageDown_button=gtk_tool_button_new(NULL, PageDown);
      gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), PageDown_button, -1);
      g_signal_connect(PageDown_button, "clicked", G_CALLBACK(NextPage), rfmCtx);
 
