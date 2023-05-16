@@ -989,10 +989,11 @@ static gboolean mkThumb()
 {
    RFM_ThumbQueueData *thumbData;
    GdkPixbuf *thumb;
+   GError *pixbufErr=NULL;
 
    thumbData=(RFM_ThumbQueueData*)rfm_thumbQueue->data;
    if (thumbnailers[thumbData->t_idx].func==NULL)
-      thumb=gdk_pixbuf_new_from_file_at_scale(thumbData->path, thumbData->thumb_size, thumbData->thumb_size, TRUE, NULL);
+      thumb=gdk_pixbuf_new_from_file_at_scale(thumbData->path, thumbData->thumb_size, thumbData->thumb_size, TRUE, &pixbufErr);
    else
       thumb=thumbnailers[thumbData->t_idx].func(thumbData);
    if (thumb!=NULL) {
@@ -1001,15 +1002,28 @@ static gboolean mkThumb()
       printf("thumbnail %s saved.\n",thumbData->thumb_name);
 #endif
       g_object_unref(thumb);
+   }else{
+      if (pixbufErr==NULL)
+        printf("thumbnail null\n");
+      else
+        printf("thumbnail null, GError code:%d, GError msg:%s\n",pixbufErr->code,pixbufErr->message);
    }
+
+
    if (rfm_thumbQueue->next!=NULL) {   /* More items in queue */
       rfm_thumbQueue=g_list_next(rfm_thumbQueue);
+#ifdef DebugPrintf
+      printf("mkThumb return TRUE\n");
+#endif
       return TRUE;
    }
    
    g_list_free_full(rfm_thumbQueue, (GDestroyNotify)free_thumbQueueData);
    rfm_thumbQueue=NULL;
    rfm_thumbScheduler=0;
+#ifdef DebugPrintf
+      printf("mkThumb return FALSE\n");
+#endif
    return FALSE;  /* Finished thumb queue */
 }
 
