@@ -1347,7 +1347,8 @@ static void Iterate_through_fileAttribute_list_to_insert_into_store()
 
 #ifdef GitIntegration
 static void readGitCommitMsgFromGitLogCmdAndInsertIntoHashTable(RFM_ChildAttribs * childAttribs){
-   gchar * commitMsg=strtok(childAttribs->stdOut,"\n");
+   gchar * commitMsg=childAttribs->stdOut;
+   commitMsg[strcspn(commitMsg, "\n")] = 0;
    g_hash_table_insert(gitCommitMsg, childAttribs->customCallbackUserData, commitMsg);
 }
 
@@ -1389,7 +1390,7 @@ static void load_GitTrackedFiles_into_HashTable()
 	if(!g_spawn_wrapper(git_commit_message_cmd, file_list,0,RFM_EXEC_OUPUT_READ_BY_PROGRAM ,NULL, 0, &readGitCommitMsgFromGitLogCmdAndInsertIntoHashTable, g_strdup(fullpath))){
 	  
 	}
-      }           
+      }
            
       oneline=strtok(NULL, "\n");
     }
