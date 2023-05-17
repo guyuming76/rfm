@@ -1386,7 +1386,7 @@ static void load_GitTrackedFiles_into_HashTable()
 	   // seems that iterate with git log cmd can have long delay, async way might be better, but just try sync first
 	GList *file_list=NULL;
 	file_list=g_list_append(file_list, oneline);
-	if(!g_spawn_wrapper(git_commit_message_cmd, file_list,0,RFM_EXEC_OUPUT_READ_BY_PROGRAM ,NULL, 0, &readGitCommitMsgFromGitLogCmdAndInsertIntoHashTable, fullpath)){
+	if(!g_spawn_wrapper(git_commit_message_cmd, file_list,0,RFM_EXEC_OUPUT_READ_BY_PROGRAM ,NULL, 0, &readGitCommitMsgFromGitLogCmdAndInsertIntoHashTable, g_strdup(fullpath))){
 	  
 	}
       }           
