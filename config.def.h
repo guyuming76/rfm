@@ -59,6 +59,7 @@ static const char *git_ls_files_cmd[] = {"/usr/bin/git", "ls-files", "--full-nam
 static const char *git_modified_staged_info_cmd[] = {"/usr/bin/git","status","--porcelain",NULL};
 static const char *git_stage_cmd[] = {"/usr/bin/git","stage",NULL};
 static const char *git_root_cmd[] = {"/usr/bin/git","rev-parse", "--show-toplevel",NULL};
+static const char *git_commit_message_cmd[] = {"/usr/bin/git","log","--oneline",NULL};
 #endif
 
 

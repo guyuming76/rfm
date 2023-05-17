@@ -181,6 +181,7 @@ enum {
    COL_CTIME_STR,
 #ifdef GitIntegration
    COL_GIT_STATUS_STR,
+   COL_GIT_COMMIT_MSG,
 #endif  
    NUM_COLS
 };
@@ -207,7 +208,8 @@ static GtkWidget *rfm_main_box;
 static GtkWidget *sw; //scroll window
 static GtkWidget *icon_or_tree_view;
 #ifdef GitIntegration
-static GtkTreeViewColumn * colGitStatus;
+static GtkTreeViewColumn *colGitStatus;
+static GtkTreeViewColumn *colGitCommitMsg;
 #endif
 static gchar *rfm_homePath;         /* Users home dir */
 static gchar *rfm_thumbDir;         /* Users thumbnail directory */
@@ -260,9 +262,11 @@ static GHashTable *gitTrackedFiles;
 // value " M " for modified
 // value "M " for staged
 // value "MM" for both modified and staged
-// value "??" for untracked 
+// value "??" for untracked
 // the same as git status --porcelain
+static GHashTable *gitCommitMsg; //filePath and commit
 static gboolean curPath_is_git_repo=FALSE;
+static gboolean showGitCommitMsg=TRUE;
 #endif
 
 
@@ -281,7 +285,7 @@ static void home_clicked(GtkToolItem *item, gpointer user_data);
 static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx);
 static GHashTable *get_mount_points(void);
 
-static void g_spawn_wrapper(const char **action, GList *file_list, long n_args, int run_opts, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData);
+static gboolean g_spawn_wrapper(const char **action, GList *file_list, long n_args, int run_opts, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData);
 static void switch_view(GtkToolItem *item, RFM_ctx *rfmCtx);
 
   
@@ -836,9 +840,10 @@ static gchar **build_cmd_vector(const char **cmd, GList *file_list, long n_args,
    return v;
 }
 
-static void g_spawn_wrapper(const char **action, GList *file_list, long n_args, int run_opts, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData)
+static gboolean g_spawn_wrapper(const char **action, GList *file_list, long n_args, int run_opts, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData)
 {
    gchar **v=NULL;
+   gboolean ret=TRUE;
 
    v=build_cmd_vector(action, file_list, n_args, dest_path);
    if (v != NULL) {
@@ -848,16 +853,20 @@ static void g_spawn_wrapper(const char **action, GList *file_list, long n_args, 
       
       if (run_opts==RFM_EXEC_NONE) {
         if (async) {
-          if (!g_spawn_async(rfm_curPath, v, NULL, G_SPAWN_STDOUT_TO_DEV_NULL|G_SPAWN_STDERR_TO_DEV_NULL, NULL, NULL, NULL, NULL))
+          if (!g_spawn_async(rfm_curPath, v, NULL, G_SPAWN_STDOUT_TO_DEV_NULL|G_SPAWN_STDERR_TO_DEV_NULL, NULL, NULL, NULL, NULL)){
             g_warning("g_spawn_wrapper with option RFM_EXEC_NONE: %s failed to execute. Check command in config.h!", v[0]);
+	    ret = FALSE;
+	  }
 	  //for RFM_EXEC_NONE since no child PID is returned, no way to g_child_add_watch, so, no callbackfunc invoke here
         } else {
-          if (!g_spawn_sync(rfm_curPath, v, NULL, G_SPAWN_STDERR_TO_DEV_NULL|G_SPAWN_STDOUT_TO_DEV_NULL, NULL, NULL, NULL, NULL,NULL,NULL))
+          if (!g_spawn_sync(rfm_curPath, v, NULL, G_SPAWN_STDERR_TO_DEV_NULL|G_SPAWN_STDOUT_TO_DEV_NULL, NULL, NULL, NULL, NULL,NULL,NULL)){
             g_warning("g_spawn_wrapper with option RFM_EXEC_NONE: %s failed to execute. Check command in config.h!", v[0]);
+	    ret = FALSE;
+	  };
 	  //for sync, even if callback is possible here, won't do it to align with the definition of RFM_EXEC_NONE
         }
       } else {
-	RFM_ChildAttribs *child_attribs=child_attribs=malloc(sizeof(RFM_ChildAttribs));
+	RFM_ChildAttribs *child_attribs=malloc(sizeof(RFM_ChildAttribs));
 	child_attribs->customCallBackFunc=callbackfunc;
 	child_attribs->customCallbackUserData=callbackfuncUserData;
 	child_attribs->runOpts=run_opts;
@@ -866,7 +875,8 @@ static void g_spawn_wrapper(const char **action, GList *file_list, long n_args, 
           if (!g_spawn_async_with_pipes_wrapper(v, child_attribs)) {
             g_warning("g_spawn_async_with_pipes_wrapper: %s failed to execute. Check command in config.h!",v[0]);
             free_child_attribs(child_attribs);
-          }
+	    ret = FALSE;
+          };
         } else {
           child_attribs->name=g_strdup(v[0]); //since show_child_output will use these value, set to prevent segfault
 	  child_attribs->pid=-1;
@@ -876,16 +886,21 @@ static void g_spawn_wrapper(const char **action, GList *file_list, long n_args, 
 	  child_attribs->exitcode=0;
 	  child_attribs->status=-1;
 
-          if (!g_spawn_sync(rfm_curPath, v, NULL,G_SPAWN_DEFAULT, NULL, NULL,&child_attribs->stdOut, &child_attribs->stdErr,&child_attribs->status,NULL))
+          if (!g_spawn_sync(rfm_curPath, v, NULL,G_SPAWN_DEFAULT, NULL, NULL,&child_attribs->stdOut, &child_attribs->stdErr,&child_attribs->status,NULL)){
             g_warning("g_spawn_sync: %s failed to execute. Check command in config.h!", v[0]);
+	    ret = FALSE;
+	  } 
          if (child_attribs->runOpts!=RFM_EXEC_OUPUT_READ_BY_PROGRAM) show_child_output(child_attribs);
          if(child_attribs->exitcode==0 && callbackfunc!=NULL) (*callbackfunc)(callbackfuncUserData);
          }
       }
       free(v);
    }
-   else
+   else{
       g_warning("g_spawn_wrapper: %s failed to execute: build_cmd_vector() returned NULL.",action[0]);
+      ret = FALSE;
+   }
+   return ret;
 }
 
 
@@ -1005,8 +1020,10 @@ static gboolean mkThumb()
    }else{
       if (pixbufErr==NULL)
         printf("thumbnail null\n");
-      else
+      else{
         printf("thumbnail null, GError code:%d, GError msg:%s\n",pixbufErr->code,pixbufErr->message);
+	g_error_free(pixbufErr);
+      }
    }
 
 
@@ -1269,6 +1286,7 @@ static void Iterate_through_fileAttribute_list_to_insert_into_store()
 
 #ifdef GitIntegration
       gchar * gitStatus=g_hash_table_lookup(gitTrackedFiles, fileAttributes->path);
+      gchar * git_commit_msg=g_hash_table_lookup(gitCommitMsg,fileAttributes->path);
 #endif
       fileAttributes->mime_sort=g_strjoin(NULL,fileAttributes->mime_root,fileAttributes->mime_sub_type,NULL);
       gtk_list_store_insert_with_values(store, &iter, -1,
@@ -1288,6 +1306,7 @@ static void Iterate_through_fileAttribute_list_to_insert_into_store()
 			  COL_CTIME_STR,yyyymmddhhmmss(fileAttributes->file_ctime),
 #ifdef GitIntegration
                           COL_GIT_STATUS_STR,gitStatus,
+			  COL_GIT_COMMIT_MSG,git_commit_msg,
 #endif
 			  COL_MIME_SORT,fileAttributes->mime_sort,
                           -1);
@@ -1312,6 +1331,16 @@ static void Iterate_through_fileAttribute_list_to_insert_into_store()
 }
 
 #ifdef GitIntegration
+typedef struct {
+  gchar * stdout;
+  gpointer * key;
+} CallBackFuncParameter; //maybe we can generalize this to work with RFM_EXEC_OUPUT_READ_BY_PROGRAM
+
+static void readGitCommitMsgFromGitLogCmdAndInsertIntoHashTable(CallBackFuncParameter * p){
+   gchar * commitMsg=strtok(p->stdout,"\n");
+   g_hash_table_insert(gitCommitMsg, p->key, commitMsg);
+}
+
 static void load_GitTrackedFiles_into_HashTable()
 {
   gchar * child_stdout;
@@ -1341,6 +1370,25 @@ static void load_GitTrackedFiles_into_HashTable()
 #ifdef DebugPrintf
       printf("gitTrackedFile:%s\n",fullpath);
 #endif
+
+      gchar * child_stdout_1;
+      gchar * child_stderr_1;
+      if (showGitCommitMsg) {
+           // get git commit msg for current file with git log --oneline and store into hashtable
+	   // seems that iterate with git log cmd can have long delay, async way might be better, but just try sync first
+	GList *file_list=NULL;
+	file_list=g_list_append(file_list, oneline);
+	CallBackFuncParameter *callbackpara=(CallBackFuncParameter*)malloc(sizeof(CallBackFuncParameter));
+	callbackpara->stdout=child_stdout_1;
+	callbackpara->key=fullpath;
+	if(!g_spawn_wrapper(git_commit_message_cmd, file_list,0,RFM_EXEC_OUPUT_READ_BY_PROGRAM ,NULL, 0, &readGitCommitMsgFromGitLogCmdAndInsertIntoHashTable, callbackpara)){
+	  printf("%s\n",child_stderr_1);
+	}
+	
+	g_free(child_stdout_1);
+	g_free(child_stderr_1);
+      }           
+           
       oneline=strtok(NULL, "\n");
     }
   }
@@ -1458,6 +1506,7 @@ static void clear_store(void)
    g_hash_table_remove_all(thumb_hash);
 #ifdef GitIntegration
    g_hash_table_remove_all(gitTrackedFiles);
+   g_hash_table_remove_all(gitCommitMsg);
 #endif
    
    gtk_list_store_clear(store); /* This will g_free and g_object_unref */
@@ -2646,6 +2695,15 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
      gtk_tree_view_column_set_resizable(colFileName,TRUE);
      gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colFileName);
      gtk_tree_view_column_set_sort_column_id(colFileName, COL_FILENAME);
+
+#ifdef GitIntegration
+     colGitCommitMsg=gtk_tree_view_column_new_with_attributes("GitCommitMsg" , renderer,"text" ,  COL_GIT_COMMIT_MSG , NULL);
+     gtk_tree_view_column_set_resizable(colGitCommitMsg,TRUE);
+     gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colGitCommitMsg);
+     gtk_tree_view_column_set_visible(colGitCommitMsg,curPath_is_git_repo);
+     gtk_tree_view_column_set_sort_column_id(colGitCommitMsg, COL_GIT_COMMIT_MSG);
+#endif
+     
      GtkTreeViewColumn * colMTime=gtk_tree_view_column_new_with_attributes("MTime" , renderer,"text" ,  COL_MTIME_STR , NULL);
      gtk_tree_view_column_set_resizable(colMTime,TRUE);
      gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colMTime);
@@ -2994,6 +3052,7 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
 
 #ifdef GitIntegration
    gitTrackedFiles=g_hash_table_new_full(g_str_hash, g_str_equal,g_free, g_free);
+   gitCommitMsg=g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
 #endif 
 
    if (rfm_do_thumbs==1 && !g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR)) {
@@ -3033,7 +3092,7 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
    g_object_set_data_full(G_OBJECT(window),"rfm_default_pixbufs",defaultPixbufs,(GDestroyNotify)free_default_pixbufs);
 
    store=gtk_list_store_new(NUM_COLS,
-			      G_TYPE_STRING,     //MODE_STR
+                              G_TYPE_STRING,     //MODE_STR
                               G_TYPE_STRING,    /* Displayed name */
 			      G_TYPE_STRING,    //filename
                               GDK_TYPE_PIXBUF,  /* Displayed icon */
@@ -3047,8 +3106,11 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
 			      G_TYPE_STRING,  //mime_sub
    			      G_TYPE_STRING, //ATIME_STR
 			      G_TYPE_STRING, //CTIME_STR
+#ifdef GitIntegration
 			      G_TYPE_STRING, //GIT_STATUS_STR
-			      G_TYPE_STRING); //mime_sort
+			      G_TYPE_STRING,     //git commit message
+#endif
+			    G_TYPE_STRING); //mime_sort
 
    treemodel=GTK_TREE_MODEL(store);
    
@@ -3109,6 +3171,7 @@ static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx)
 
    #ifdef GitIntegration
    g_hash_table_destroy(gitTrackedFiles);
+   g_hash_table_destroy(gitCommitMsg);
    #endif
 
    #ifdef RFM_ICON_THEME
