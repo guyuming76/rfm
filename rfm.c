@@ -410,8 +410,15 @@ static gboolean child_supervisor_to_ReadStdout_ShowOutput_ExecCallback(gpointer 
    if (rfm_childList==NULL)
       gtk_widget_set_sensitive(GTK_WIDGET(info_button), FALSE);
 
-   if(child_attribs->exitcode==0 && (child_attribs->customCallBackFunc)!=NULL)
-     (child_attribs->customCallBackFunc)(child_attribs->customCallbackUserData);
+   if(child_attribs->exitcode==0 && (child_attribs->customCallBackFunc)!=NULL){
+     if (child_attribs->runOpts!=RFM_EXEC_OUPUT_READ_BY_PROGRAM){
+       //for old callback such as refresh_store, there is no need for child_attribs->stdout, so pass in customcallbackuserdata as parameter to remain compatible.
+       //note that this should be the same as code in g_spawn_wrapper for sync 
+       (child_attribs->customCallBackFunc)(child_attribs->customCallbackUserData);
+     }else{
+       (child_attribs->customCallBackFunc)(child_attribs);
+     }
+   }
 
    free_child_attribs(child_attribs);
    return FALSE;
@@ -891,7 +898,15 @@ static gboolean g_spawn_wrapper(const char **action, GList *file_list, long n_ar
 	    ret = FALSE;
 	  } 
          if (child_attribs->runOpts!=RFM_EXEC_OUPUT_READ_BY_PROGRAM) show_child_output(child_attribs);
-         if(child_attribs->exitcode==0 && callbackfunc!=NULL) (*callbackfunc)(callbackfuncUserData);
+         if(child_attribs->exitcode==0 && callbackfunc!=NULL){
+	   if (child_attribs->runOpts!=RFM_EXEC_OUPUT_READ_BY_PROGRAM){
+	     //to keep the same with callback parameter in function child_supervisor_to_ReadStdout_ShowOutput_ExecCallback, which is for async.pass in the same parameter looks simple, but, different base on runOpts can deep compatible with old code.
+	     //what's more, sometimes let user to new an RFM_ChildAttribs object as wrapper for a callback parameter can be confusing and inconvenient.
+	     (*callbackfunc)(callbackfuncUserData);
+	   }else{
+	     (*callbackfunc)(child_attribs);
+	   }
+	 }
          }
       }
       free(v);
@@ -1331,14 +1346,9 @@ static void Iterate_through_fileAttribute_list_to_insert_into_store()
 }
 
 #ifdef GitIntegration
-typedef struct {
-  gchar * stdout;
-  gpointer * key;
-} CallBackFuncParameter; //maybe we can generalize this to work with RFM_EXEC_OUPUT_READ_BY_PROGRAM
-
-static void readGitCommitMsgFromGitLogCmdAndInsertIntoHashTable(CallBackFuncParameter * p){
-   gchar * commitMsg=strtok(p->stdout,"\n");
-   g_hash_table_insert(gitCommitMsg, p->key, commitMsg);
+static void readGitCommitMsgFromGitLogCmdAndInsertIntoHashTable(RFM_ChildAttribs * childAttribs){
+   gchar * commitMsg=strtok(childAttribs->stdOut,"\n");
+   g_hash_table_insert(gitCommitMsg, childAttribs->customCallbackUserData, commitMsg);
 }
 
 static void load_GitTrackedFiles_into_HashTable()
@@ -1371,22 +1381,14 @@ static void load_GitTrackedFiles_into_HashTable()
       printf("gitTrackedFile:%s\n",fullpath);
 #endif
 
-      gchar * child_stdout_1;
-      gchar * child_stderr_1;
       if (showGitCommitMsg) {
            // get git commit msg for current file with git log --oneline and store into hashtable
 	   // seems that iterate with git log cmd can have long delay, async way might be better, but just try sync first
 	GList *file_list=NULL;
 	file_list=g_list_append(file_list, oneline);
-	CallBackFuncParameter *callbackpara=(CallBackFuncParameter*)malloc(sizeof(CallBackFuncParameter));
-	callbackpara->stdout=child_stdout_1;
-	callbackpara->key=fullpath;
-	if(!g_spawn_wrapper(git_commit_message_cmd, file_list,0,RFM_EXEC_OUPUT_READ_BY_PROGRAM ,NULL, 0, &readGitCommitMsgFromGitLogCmdAndInsertIntoHashTable, callbackpara)){
-	  printf("%s\n",child_stderr_1);
+	if(!g_spawn_wrapper(git_commit_message_cmd, file_list,0,RFM_EXEC_OUPUT_READ_BY_PROGRAM ,NULL, 0, &readGitCommitMsgFromGitLogCmdAndInsertIntoHashTable, fullpath)){
+	  
 	}
-	
-	g_free(child_stdout_1);
-	g_free(child_stderr_1);
       }           
            
       oneline=strtok(NULL, "\n");
