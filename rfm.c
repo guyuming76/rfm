@@ -193,7 +193,7 @@ enum {
    RFM_EXEC_PLAIN,
    RFM_EXEC_INTERNAL, //i see Rodney use this in config.def.h for commands like copy move, but i don't know what it mean precisely,and i don't see program logic that reference this value, so i add RFM_EXEC_OUTPUT_HANDLED_HERE
    RFM_EXEC_MOUNT,
-   RFM_EXEC_OUPUT_READ_BY_PROGRAM, // I need to read stdout of child process in rfm, but do not need to show to enduser, except in debugprintf.
+   RFM_EXEC_OUPUT_READ_BY_PROGRAM, // I need to read stdout of child process in rfm, but do not need to show to enduser, except in debugprintf. With g_spawn_wrapper, no matter in sync or async mode, with RFM_EXEC_OUPUT_READ_BY_PROGRAM, callback function can have RFM_childAttribs, and RFM_childAttribs->stdout
    RFM_EXEC_STDOUT,
 };
 
@@ -812,8 +812,9 @@ static gchar **build_cmd_vector(const char **cmd, GList *file_list, long n_args,
    GList *listElement=NULL;
 
    listElement=g_list_first(file_list);
-   if (listElement==NULL) return NULL;
-
+   //if (listElement==NULL) return NULL;
+   if (listElement==NULL && n_args!=0) return NULL; //Rodney's originally don't have this n_arg!=0 criteria, but sometime, i just need g_spawn_wrapper for arbitory command, and can have empty file_list. 
+   
    n_args+=2; /* Account for terminating NULL & possible destination path argument */
    
    if((v=malloc((RFM_MX_ARGS+n_args)*sizeof(gchar*)))==NULL)
@@ -1387,7 +1388,7 @@ static void load_GitTrackedFiles_into_HashTable()
 	   // seems that iterate with git log cmd can have long delay, async way might be better, but just try sync first
 	GList *file_list=NULL;
 	file_list=g_list_append(file_list, oneline);
-	if(!g_spawn_wrapper(git_commit_message_cmd, file_list,0,RFM_EXEC_OUPUT_READ_BY_PROGRAM ,NULL, 0, &readGitCommitMsgFromGitLogCmdAndInsertIntoHashTable, g_strdup(fullpath))){
+	if(!g_spawn_wrapper(git_commit_message_cmd, file_list,1,RFM_EXEC_OUPUT_READ_BY_PROGRAM ,NULL, FALSE, &readGitCommitMsgFromGitLogCmdAndInsertIntoHashTable, g_strdup(fullpath))){
 	  
 	}
       }
@@ -1604,12 +1605,13 @@ static void set_rfm_curPath(gchar* path)
 #ifdef GitIntegration
        //check if rfm_curPath is inside git work directory async
        //this is async, so if something wrong with git commands, refresh_store will still run,just that git information is not loaded for file.
-       //but since it's async, is not possible that curPath_is_git_repo not set before refresh_store, user need to manually refresh, it can be confusing, but better than not being able to finish refreshing store due to git issue.
-       RFM_ChildAttribs *child_attribs=child_attribs=malloc(sizeof(RFM_ChildAttribs));
-       child_attribs->customCallBackFunc=set_curPath_is_git_repo;
-       child_attribs->customCallbackUserData=child_attribs;
-       child_attribs->runOpts=RFM_EXEC_OUPUT_READ_BY_PROGRAM;
-       if (!g_spawn_async_with_pipes_wrapper(git_inside_work_tree_cmd, child_attribs)) free_child_attribs(child_attribs);
+       //but since it's async, is it possible that curPath_is_git_repo not set before refresh_store? user need to manually refresh, it can be confusing, but better than not being able to finish refreshing store due to git issue.
+       /* RFM_ChildAttribs *child_attribs=child_attribs=malloc(sizeof(RFM_ChildAttribs)); */
+       /* child_attribs->customCallBackFunc=set_curPath_is_git_repo; */
+       /* child_attribs->customCallbackUserData=child_attribs; */
+       /* child_attribs->runOpts=RFM_EXEC_OUPUT_READ_BY_PROGRAM; */
+       /* if (!g_spawn_async_with_pipes_wrapper(git_inside_work_tree_cmd, child_attribs)) free_child_attribs(child_attribs); */
+       g_spawn_wrapper(git_inside_work_tree_cmd, NULL, 0, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, TRUE, set_curPath_is_git_repo, NULL);
 #endif
      }
    }
