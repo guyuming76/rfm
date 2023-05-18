@@ -190,3 +190,9 @@ static const RFM_Thumbnailers thumbnailers[] = {
 #define Allow_Thumbnail_Without_tExtThumbMTime
 #define MOD_KEY GDK_SUPER_MASK // the windows logo key
 //#define MOD_KEY GDK_META_MASK // the Alt key
+
+static gboolean ignored_filename(gchar *name){
+  if (name[0]=='.') return TRUE; /* Don't show hidden files */
+  if (strcmp(name, "gmon.out")==0) return TRUE;
+  return FALSE;
+}

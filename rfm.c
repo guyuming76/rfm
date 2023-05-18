@@ -1436,7 +1436,7 @@ static gboolean read_one_DirItem_into_fileAttributeList_in_each_call_and_insert_
 
    name=g_dir_read_name(dir);
    if (name!=NULL) {
-      if (name[0]!='.') {
+     if (!ignored_filename(name)) {
          fileAttributes=get_fileAttributes_for_a_file(name, mtimeThreshold, mount_hash);
          if (fileAttributes!=NULL)
             rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
@@ -2819,7 +2819,7 @@ static void inotify_insert_item(gchar *name, gboolean is_dir)
    RFM_FileAttributes *fileAttributes=malloc_fileAttributes();
 
    if (fileAttributes==NULL) return;
-   if (name[0]=='.') return; /* Don't show hidden files */
+   if (ignored_filename(name)) return;
 
    utf8_display_name=g_filename_to_utf8(name, -1, NULL, NULL, NULL);
    fileAttributes->file_name=g_strdup(name);
@@ -2887,7 +2887,7 @@ static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer user_d
    while (i<len) {
       struct inotify_event *event=(struct inotify_event *) (buffer+i);
       
-      if (event->len && event->name[0]!='.') {
+      if (event->len && !ignored_filename(event->name)) {
          if (event->wd==rfm_thumbnail_wd) {
             /* Update thumbnails in the current view */
             if (event->mask & IN_MOVED_TO || event->mask & IN_CREATE) { /* Only update thumbnail move - not interested in temporary files */
