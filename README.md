@@ -58,6 +58,17 @@ GDK_BACKEND=x11 rfm
 ```
 
 
+#一些TroubleShooting记录#
+
+##gentoo上gdk-pixbuf这个包及其USE flag ##
+
+我在gentoo笔记本上.jpg文件图标无法生成：
+```thumbnail null, GError code:3, GError msg:Couldn’t recognize the image file format for file “/home/guyuming/plant/IMG_20230513_145210.jpg”```
+源于 gdk_pixbuf_new_from_file_at_scale 函数
+
+网上搜不到答案，只提到有个 gdk-pixbuf-query-loaders 工具可以在shell里运行，但我gentoo上也没找到这个工具，估计没装，在寻找这个工具安装过程中发现有gdk-pixbuf这个USE flag. 
+
+后来 `euse -i gdk-pixbuf` 发现有 x11-libs/gdk-pixbuf 这个包，包上有个jpeg USE flag没打开，打开后 .jpg文件就可以产生缩略图了。
 
 
 -----------分割线下面是rfm原README内容--------------------
