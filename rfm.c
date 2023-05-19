@@ -1388,7 +1388,7 @@ static void load_GitTrackedFiles_into_HashTable()
       printf("gitTrackedFile:%s\n",fullpath);
 #endif
 
-      if (showGitCommitMsg && treeview) {
+      if (showGitCommitMsg) {
            // get git commit msg for current file with git log --oneline and store into hashtable
 	   // seems that iterate with git log cmd can have long delay, async way might be better, but just try sync first
 	GList *file_list=NULL;
