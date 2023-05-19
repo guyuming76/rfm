@@ -460,7 +460,7 @@ static void show_child_output(RFM_ChildAttribs *child_attribs)
          show_msgbox(child_attribs->stdOut, child_attribs->name, GTK_MESSAGE_INFO);
    }
 
-   if (child_attribs->stdErr!=NULL) {
+   if (child_attribs->stdErr!=NULL && strlen(child_attribs->stdErr)>0) {
       if (child_attribs->runOpts==RFM_EXEC_STDOUT){
          msg=g_strdup_printf("%s (%i): Finished with exit code %i.\n\n%s", child_attribs->name, child_attribs->pid, child_attribs->exitcode, child_attribs->stdErr);
 	 printf("%s\n",msg);
