@@ -1388,7 +1388,7 @@ static void load_GitTrackedFiles_into_HashTable()
       printf("gitTrackedFile:%s\n",fullpath);
 #endif
 
-      if (showGitCommitMsg) {
+      if (showGitCommitMsg && treeview) {
            // get git commit msg for current file with git log --oneline and store into hashtable
 	   // seems that iterate with git log cmd can have long delay, async way might be better, but just try sync first
 	GList *file_list=NULL;
@@ -1635,8 +1635,14 @@ static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointe
    gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, tree_path);
    gtk_tree_model_get(GTK_TREE_MODEL(store), &iter, COL_ATTR, &fileAttributes, -1);
 
+   file_list=g_list_append(file_list, g_strdup(fileAttributes->path));
+
+#ifdef GitIntegration
+   if (curPath_is_git_repo) g_spawn_wrapper(git_commit_message_cmd, file_list,2,RFM_EXEC_STDOUT ,NULL, FALSE, NULL, NULL);
+#endif
+   
    if (!fileAttributes->is_dir) {
-      file_list=g_list_append(file_list, g_strdup(fileAttributes->path));
+
       for(i=RFM_N_BUILT_IN; i<G_N_ELEMENTS(run_actions); i++) {
          if (strcmp(fileAttributes->mime_root, run_actions[i].runRoot)==0) {
             if (strcmp(fileAttributes->mime_sub_type, run_actions[i].runSub)==0 || strncmp("*", run_actions[i].runSub, 1)==0) { /* Exact match */
@@ -1653,11 +1659,13 @@ static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointe
          show_msgbox(msg, "Run Action", GTK_MESSAGE_INFO);
          g_free(msg);
       }
-      g_list_foreach(file_list, (GFunc)g_free, NULL);
-      g_list_free(file_list);
    }
    else /* If dir, reset rfm_curPath and fill the model */
       set_rfm_curPath(fileAttributes->path);
+
+   g_list_foreach(file_list, (GFunc)g_free, NULL);
+   g_list_free(file_list);
+
 }
 
 static void row_activated(GtkTreeView *tree_view, GtkTreePath *tree_path,GtkTreeViewColumn *col, gpointer user_data)
