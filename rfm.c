@@ -848,6 +848,8 @@ static gchar **build_cmd_vector(const char **cmd, GList *file_list, long n_args,
    return v;
 }
 
+#define PRINT_STR_ARRAY(v)  for (int i=0;v[i];i++) printf("%s ",v[i]);printf("\n");
+
 static gboolean g_spawn_wrapper(const char **action, GList *file_list, long n_args, int run_opts, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData)
 {
    gchar **v=NULL;
@@ -855,10 +857,13 @@ static gboolean g_spawn_wrapper(const char **action, GList *file_list, long n_ar
 
    v=build_cmd_vector(action, file_list, n_args, dest_path);
    if (v != NULL) {
-     for (int i=0;v[i];i++)
-        printf("%s ",v[i]);
-     printf("\n");
-      
+      if (run_opts==RFM_EXEC_OUPUT_READ_BY_PROGRAM){
+#ifdef DebugPrintf
+	PRINT_STR_ARRAY(v);
+#endif
+      }else{
+        PRINT_STR_ARRAY(v);
+      }
       if (run_opts==RFM_EXEC_NONE) {
         if (async) {
           if (!g_spawn_async(rfm_curPath, v, NULL, G_SPAWN_STDOUT_TO_DEV_NULL|G_SPAWN_STDERR_TO_DEV_NULL, NULL, NULL, NULL, NULL)){
