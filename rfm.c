@@ -2591,7 +2591,7 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
    agMain = gtk_accel_group_new();
    gtk_window_add_accel_group(GTK_WINDOW(window), agMain);
 
-   SwitchView_button=gtk_tool_button_new(NULL, "List/Icon");
+   SwitchView_button=gtk_tool_button_new(NULL, SwitchView);
    gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), SwitchView_button, -1);
    g_signal_connect(SwitchView_button, "clicked", G_CALLBACK(switch_view), rfmCtx);
    gtk_widget_add_accelerator(GTK_WIDGET(SwitchView_button), "clicked", agMain,GDK_KEY_slash,MOD_KEY, GTK_ACCEL_VISIBLE);
@@ -2653,7 +2653,7 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
      buttonImage=NULL;
    else
      buttonImage = gtk_image_new_from_pixbuf(defaultPixbufs->menu);
-   menu_button = gtk_tool_button_new(buttonImage, "Menu");
+   menu_button = gtk_tool_button_new(buttonImage, Menu);
    gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), menu_button, -1);
    g_signal_connect(menu_button, "clicked", G_CALLBACK(tool_menu_clicked), rfmCtx);
    gtk_widget_add_accelerator(GTK_WIDGET(menu_button), "clicked", agMain,GDK_KEY_Menu,MOD_KEY, GTK_ACCEL_VISIBLE);

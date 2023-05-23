@@ -1,3 +1,5 @@
 #define PageUp  "上葉"
 #define PageDown  "下葉"
 #define Up "父"
+#define SwitchView "表/图"
+#define Menu "菜单"

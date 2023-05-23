@@ -1,3 +1,5 @@
 #define PageUp  "PageUp"
 #define PageDown  "PageDown"
 #define Up "UP"
+#define SwitchView "List/Icon"
+#define Menu "Menu"
