@@ -2341,7 +2341,7 @@ static RFM_fileMenu *setup_file_menu(RFM_ctx * rfmCtx){
 #ifdef GitIntegration
    for (i=0;i<=4;i++) {
 #else
-   for (i=0;i<4;i++) {
+   for (i=0;i<3;i++) {
 #endif
       fileMenu->action[i]=gtk_menu_item_new_with_label(run_actions[i].runName);
       //gtk_widget_show(fileMenu->action[i]);
