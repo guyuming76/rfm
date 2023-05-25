@@ -60,6 +60,7 @@ static const char *git_modified_staged_info_cmd[] = {"/usr/bin/git","status","--
 static const char *git_stage_cmd[] = {"/usr/bin/git","stage",NULL};
 static const char *git_root_cmd[] = {"/usr/bin/git","rev-parse", "--show-toplevel",NULL};
 static const char *git_commit_message_cmd[] = {"/usr/bin/git","log","--oneline",NULL};
+static const char *git_log_cmd[] = {"alacritty","--hold","-e","git","log",NULL};
 #endif
 
 
@@ -91,6 +92,7 @@ static RFM_RunActions run_actions[] = {
    { "Delete",       "*",              "*",                    f_rm,             RFM_EXEC_INTERNAL },
 #ifdef GitIntegration
    { "git stage",    "*",              "*",                    git_stage_cmd,    RFM_EXEC_INTERNAL },
+   { "git log",      "*",              "*",                    git_log_cmd,      RFM_EXEC_NONE },
 #endif
    { "Properties",   "*",              "*",                    properties,       RFM_EXEC_PANGO },
    { "Open with...", "*",              "*",                    open_with,        RFM_EXEC_NONE },
