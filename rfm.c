@@ -36,7 +36,7 @@
 #endif
 #define PIPE_SZ 65535      /* Kernel pipe size */
 #ifdef GitIntegration
-#define RFM_N_BUILT_IN 4   /* Number of built in actions */
+#define RFM_N_BUILT_IN 5   /* Number of built in actions */
 #else
 #define RFM_N_BUILT_IN 3
 #endif
@@ -2338,11 +2338,8 @@ static RFM_fileMenu *setup_file_menu(RFM_ctx * rfmCtx){
       return NULL;
    }
    fileMenu->menu=gtk_menu_new();
-#ifdef GitIntegration
-   for (i=0;i<=4;i++) {
-#else
-   for (i=0;i<3;i++) {
-#endif
+
+   for (i=0;i<RFM_N_BUILT_IN;i++) {
       fileMenu->action[i]=gtk_menu_item_new_with_label(run_actions[i].runName);
       //gtk_widget_show(fileMenu->action[i]);
       gtk_menu_shell_append(GTK_MENU_SHELL(fileMenu->menu), fileMenu->action[i]);
@@ -2352,6 +2349,7 @@ static RFM_fileMenu *setup_file_menu(RFM_ctx * rfmCtx){
    g_signal_connect(fileMenu->action[2], "activate", G_CALLBACK(file_menu_rm), rfmCtx);
 #ifdef GitIntegration
    g_signal_connect(fileMenu->action[3], "activate", G_CALLBACK(file_menu_git_stage),rfmCtx);
+   g_signal_connect(fileMenu->action[4], "activate", G_CALLBACK(file_menu_exec), &run_actions[4]);
 #endif
    /* Built in actions */
    fileMenu->separator[0]=gtk_separator_menu_item_new();
@@ -2428,9 +2426,13 @@ static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx)
    gtk_widget_show(fileMenu->action[1]);  /* Move */
    gtk_widget_show(fileMenu->action[2]);  /* Delete */
 #ifdef GitIntegration
-   if(curPath_is_git_repo) gtk_widget_show(fileMenu->action[3]);
-   else
-      gtk_widget_hide(fileMenu->action[3]);
+   if(curPath_is_git_repo) {
+     gtk_widget_show(fileMenu->action[3]);
+     gtk_widget_show(fileMenu->action[4]);
+   }else{
+     gtk_widget_hide(fileMenu->action[3]);
+     gtk_widget_hide(fileMenu->action[4]);
+   }
 #endif
    gtk_widget_show(fileMenu->separator[0]);
 
