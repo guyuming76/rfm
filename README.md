@@ -58,6 +58,10 @@ GDK_BACKEND=x11 rfm
 ```
 
 
+Firefox 下载界面有个"open containning folder" 按钮，用文件管理器打开下载目录。我图形界面用DWL,没有KDE啥的设置默认文件管理器的功能。可以编辑 /usr/share/applications/mimeinfo.cache 文件，找到 inode/directory= 这一行，然后把 rfm.desktop 设置为等号后面第一项。我的rfm Makefile里面包含了rfm.desktop文件的安装。[参见](https://askubuntu.com/questions/267514/open-containing-folder-in-firefox-does-not-use-my-default-file-manager)
+
+
+
 #一些TroubleShooting记录#
 
 ##gentoo上gdk-pixbuf这个包及其USE flag ##

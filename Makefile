@@ -52,6 +52,7 @@ install: all
 	@mkdir -p ${PREFIX}/bin
 	@cp -f rfm ${PREFIX}/bin
 	@cp -f scripts/RefreshImage.sh ${PREFIX}/bin
+	@cp -f rfm.desktop /usr/share/applications/rfm.desktop 
 	@chmod 755 ${PREFIX}/bin/rfm
 	@chmod +x ${PREFIX}/bin/RefreshImage.sh
 
