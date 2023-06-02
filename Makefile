@@ -49,16 +49,16 @@ clean:
 
 install: all
 	@echo installing executable file to ${DESTDIR}${PREFIX}/bin
-	@mkdir -p ${PREFIX}/bin
-	@cp -f rfm ${PREFIX}/bin
-	@cp -f scripts/RefreshImage.sh ${PREFIX}/bin
-	@cp -f rfm.desktop /usr/share/applications/rfm.desktop 
-	@chmod 755 ${PREFIX}/bin/rfm
-	@chmod +x ${PREFIX}/bin/RefreshImage.sh
+	@mkdir -p ${DESTDIR}${PREFIX}/bin
+	@cp -f rfm ${DESTDIR}${PREFIX}/bin
+	@cp -f scripts/RefreshImage.sh ${DESTDIR}${PREFIX}/bin
+#	@cp -f rfm.desktop /usr/share/applications/rfm.desktop 
+	@chmod 755 ${DESTDIR}${PREFIX}/bin/rfm
+	@chmod +x ${DESTDIR}${PREFIX}/bin/RefreshImage.sh
 
 uninstall:
-	@echo removing executable file from ${PREFIX}/bin
-	@rm -f ${PREFIX}/bin/rfm
-	@rm -f ${PREFIX}/bin/RefreshImage.sh
+	@echo removing executable file from ${DESTDIR}${PREFIX}/bin
+	@rm -f ${DESTDIR}${PREFIX}/bin/rfm
+	@rm -f ${DESTDIR}${PREFIX}/bin/RefreshImage.sh
 
 .PHONY: all options clean install uninstall
