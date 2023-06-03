@@ -1,4 +1,7 @@
 # Makefile for RFM
+
+include config.mk
+
 VERSION = 1.9.4
 
 # Edit below for extra libs (e.g. for thumbnailers etc.)
@@ -17,7 +20,7 @@ CPPFLAGS += -DVERSION=\"${VERSION}\"
 GTK_CFLAGS = `pkg-config --cflags ${GTK_VERSION}`
 CFLAGS = -g -Wall -std=c11 -O0 ${GTK_CFLAGS} ${INCS} ${CPPFLAGS}
 LDFLAGS = -g ${LIBS}
-PREFIX = /usr/local
+
 # compiler and linker
 CC = gcc
 
