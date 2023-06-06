@@ -18,7 +18,8 @@
 #define RFM_INOTIFY_TIMEOUT 500  /* ms between inotify events after which a full refresh is done */
 
 /* Built in commands - MUST be present */
-static const char *f_rm[]   = { "/bin/rm", "-r", "-f", NULL };
+/* rfmBinPath is passed in by compiler via Makefile*/
+static const char *f_rm[]   = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmRemove.sh",NULL };
 static const char *f_cp[]   = { "/bin/cp", "-p", "-R", "-f", NULL };
 static const char *f_mv[]   = { "/bin/mv", "-f", NULL };
 
@@ -28,22 +29,22 @@ static const char *play_audio[] = { "/usr/bin/mpv", "--player-operation-mode=pse
 static const char *av_info[]    = { "/usr/bin/mediainfo", "-f", NULL };
 static const char *textEdit[]   = { "/usr/bin/emacs", "--no-splash", NULL };
 static const char *mupdf[]      = { "/usr/bin/evince", NULL };
-static const char *show_image[] = { "/usr/local/bin/RefreshImage.sh", NULL };
+static const char *show_image[] = { rfmBinPath "/rfmRefreshImage.sh", NULL };
 static const char *soffice[]    = { "/usr/bin/soffice", NULL };
-static const char *extract_archive[] = { "/usr/local/bin/extractArchive.sh", NULL };
-static const char *create_archive[]  = { "/usr/local/bin/createArchive.sh", NULL };
+static const char *extract_archive[] = { rfmBinPath "/extractArchive.sh", NULL };
+static const char *create_archive[]  = { rfmBinPath "/createArchive.sh", NULL };
 static const char *metaflac[] = { "/usr/bin/metaflac", "--list", "--block-type=VORBIS_COMMENT", NULL };
 static const char *du[]       = { "/usr/bin/du", "-s", "-h", NULL };
-static const char *mount[]    = { "/usr/local/bin/suMount.sh", NULL };
-static const char *umount[]   = { "/usr/local/bin/suMount.sh", "-u", NULL };
+static const char *mount[]    = { rfmBinPath "/suMount.sh", NULL };
+static const char *umount[]   = { rfmBinPath "/suMount.sh", "-u", NULL };
 /* static const char *udisks_mount[]   = { "/usr/bin/udisksctl", "mount", "--no-user-interaction", "-b", NULL }; */
 /* static const char *udisks_unmount[] = { "/usr/bin/udisksctl", "unmount", "--no-user-interaction", "-b", NULL }; */
-static const char *properties[]     = { "/usr/local/bin/properties.sh", NULL };
+static const char *properties[]     = { rfmBinPath "/rfmVTforCMD_hold.sh", rfmBinPath "/rfmProperties.sh", NULL };
 static const char *www[]        = { "/usr/local/bin/www", NULL };
 static const char *man[]        = { "/usr/bin/groff", "-man", "-Tutf8", NULL };
 static const char *java[]       = { "/usr/bin/java", "-jar", NULL };
 static const char *audioSpect[] = { "/usr/local/bin/spectrogram.sh", NULL };
-static const char *open_with[]  = { "/usr/local/bin/open_with_dmenu.sh", NULL };
+static const char *open_with[]  = { rfmBinPath "/open_with_dmenu.sh", NULL };
 static const char *exiftran[]   = { "/usr/bin/exiftran", "-a", "-i", NULL };  /* pacman -S fbida */
 static const char *gnumeric[]   = { "/usr/bin/gnumeric", NULL };
 static const char *ftview[] = { "/usr/bin/ftview", "14", NULL }; /* pacman -S freetype2-demos */
@@ -51,7 +52,7 @@ static const char *ffmpegThumb[] =  { "/usr/bin/ffmpeg", "-i","", "-frames", "1"
 
     /* Tool button commands */
 static const char *term_cmd[]  = { "/usr/bin/alacritty", NULL };
-static const char *new_rfm[]  = { "/usr/local/bin/rfm", NULL };
+static const char *new_rfm[]  = { rfmBinPath "/rfm", NULL };
 
 #ifdef GitIntegration
 static const char *git_inside_work_tree_cmd[] = {"/usr/bin/git", "rev-parse","--is-inside-work-tree", NULL};
@@ -60,7 +61,7 @@ static const char *git_modified_staged_info_cmd[] = {"/usr/bin/git","status","--
 static const char *git_stage_cmd[] = {"/usr/bin/git","stage",NULL};
 static const char *git_root_cmd[] = {"/usr/bin/git","rev-parse", "--show-toplevel",NULL};
 static const char *git_commit_message_cmd[] = {"/usr/bin/git","log","--oneline",NULL};
-static const char *git_log_cmd[] = {"alacritty","--hold","-e","git","log",NULL};
+static const char *git_log_cmd[] = { rfmBinPath "/rfmVTforCMD_hold.sh","/usr/bin/git","log",NULL};
 #endif
 
 

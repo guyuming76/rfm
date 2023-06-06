@@ -568,22 +568,24 @@ static RFM_defaultPixbufs *load_default_pixbufs(void)
 
 static void show_msgbox(gchar *msg, gchar *title, gint type)
 {
-   GtkWidget *dialog;
+  //GtkWidget *dialog;
    gchar *utf8_string=g_locale_to_utf8(msg, -1, NULL, NULL, NULL);
 
    if (utf8_string==NULL)
-      dialog=gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_DESTROY_WITH_PARENT, GTK_MESSAGE_WARNING, GTK_BUTTONS_OK, "%s", "Can't convert message text to UTF8!");
+     //dialog=gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_DESTROY_WITH_PARENT, GTK_MESSAGE_WARNING, GTK_BUTTONS_OK, "%s", "Can't convert message text to UTF8!");
+     printf("%s", "Can't convert message text to UTF8!");
    else {
-      dialog=gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_DESTROY_WITH_PARENT, type, GTK_BUTTONS_OK, NULL);
-      gtk_message_dialog_set_markup(GTK_MESSAGE_DIALOG(dialog), utf8_string);
+     //dialog=gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_DESTROY_WITH_PARENT, type, GTK_BUTTONS_OK, NULL);
+     //gtk_message_dialog_set_markup(GTK_MESSAGE_DIALOG(dialog), utf8_string);
+     printf("%s",utf8_string);
    }
 
-   gtk_window_set_title(GTK_WINDOW(dialog), title);
-   g_signal_connect_swapped (dialog, "response", G_CALLBACK(gtk_widget_destroy), dialog);
-   gtk_widget_show_all(dialog);
-   if (type==GTK_MESSAGE_ERROR)
-      gtk_dialog_run(GTK_DIALOG(dialog)); /* Show a modal dialog for errors/warnings */
-   g_free(utf8_string);
+   //gtk_window_set_title(GTK_WINDOW(dialog), title);
+   //g_signal_connect_swapped (dialog, "response", G_CALLBACK(gtk_widget_destroy), dialog);
+   //gtk_widget_show_all(dialog);
+   //if (type==GTK_MESSAGE_ERROR)
+   //   gtk_dialog_run(GTK_DIALOG(dialog)); /* Show a modal dialog for errors/warnings */
+   //g_free(utf8_string);
 }
 
 static int show_actionbox(gchar *msg, gchar *title)
@@ -660,18 +662,18 @@ static gboolean text_view_key_press(GtkWidget *widget, GdkEventKey *event, GtkWi
 
 static void show_text(gchar *text, gchar *title, gint type)
 {
-   GtkWidget *text_view;
-   GtkWidget *sw;
-   GtkWidget *search_entry;
-   GtkTextBuffer *buffer=gtk_text_buffer_new(NULL);
-   GtkTextIter startIter;
+  //GtkWidget *text_view;
+  //GtkWidget *sw;
+  //GtkWidget *search_entry;
+  //GtkTextBuffer *buffer=gtk_text_buffer_new(NULL);
+  //GtkTextIter startIter;
    gchar *utf8_string=g_locale_to_utf8(text, -1, NULL, NULL, NULL);
-   GtkWidget *text_window=gtk_window_new(GTK_WINDOW_TOPLEVEL);
-   GtkWidget *vbox=gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+   //GtkWidget *text_window=gtk_window_new(GTK_WINDOW_TOPLEVEL);
+   //GtkWidget *vbox=gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 
-   gtk_window_set_default_size(GTK_WINDOW(text_window), 640, 400);
-   gtk_window_set_title(GTK_WINDOW(text_window), title);
-   gtk_container_add(GTK_CONTAINER(text_window), vbox);
+   //gtk_window_set_default_size(GTK_WINDOW(text_window), 640, 400);
+   //gtk_window_set_title(GTK_WINDOW(text_window), title);
+   //gtk_container_add(GTK_CONTAINER(text_window), vbox);
 
    if (utf8_string==NULL) {
       show_msgbox("Can't convert text to utf8\n", "Error", GTK_MESSAGE_ERROR);
@@ -679,42 +681,44 @@ static void show_text(gchar *text, gchar *title, gint type)
    }
 
    if (type==RFM_EXEC_PANGO) {
-      gtk_text_buffer_get_start_iter(buffer, &startIter);
-      gtk_text_buffer_insert_markup(buffer, &startIter, utf8_string, -1);
+     //gtk_text_buffer_get_start_iter(buffer, &startIter);
+     //gtk_text_buffer_insert_markup(buffer, &startIter, utf8_string, -1);
+     printf("%s",utf8_string);
    }
    else
-      gtk_text_buffer_set_text(buffer, utf8_string, -1);
+     //gtk_text_buffer_set_text(buffer, utf8_string, -1);
+     printf("%s",utf8_string);
 
-   sw=gtk_scrolled_window_new(NULL, NULL);
-   gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(sw), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
-   gtk_scrolled_window_set_max_content_width(GTK_SCROLLED_WINDOW(sw), 1024);
-   gtk_scrolled_window_set_max_content_height(GTK_SCROLLED_WINDOW(sw), 768);
-   gtk_widget_set_hexpand(sw, TRUE);
-   gtk_widget_set_vexpand(sw, TRUE);
+   //sw=gtk_scrolled_window_new(NULL, NULL);
+   //gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(sw), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+   //gtk_scrolled_window_set_max_content_width(GTK_SCROLLED_WINDOW(sw), 1024);
+   //gtk_scrolled_window_set_max_content_height(GTK_SCROLLED_WINDOW(sw), 768);
+   //gtk_widget_set_hexpand(sw, TRUE);
+   //gtk_widget_set_vexpand(sw, TRUE);
 
-   text_view=gtk_text_view_new_with_buffer(buffer);
-   gtk_text_view_set_editable(GTK_TEXT_VIEW(text_view), FALSE);
-   gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW(text_view), GTK_WRAP_NONE);
-   gtk_text_view_set_cursor_visible(GTK_TEXT_VIEW(text_view), FALSE);
-   gtk_text_view_set_monospace(GTK_TEXT_VIEW(text_view), TRUE);
+   //text_view=gtk_text_view_new_with_buffer(buffer);
+   //gtk_text_view_set_editable(GTK_TEXT_VIEW(text_view), FALSE);
+   //gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW(text_view), GTK_WRAP_NONE);
+   //gtk_text_view_set_cursor_visible(GTK_TEXT_VIEW(text_view), FALSE);
+   //gtk_text_view_set_monospace(GTK_TEXT_VIEW(text_view), TRUE);
 
-   search_entry=gtk_entry_new();
-   gtk_entry_set_activates_default(GTK_ENTRY(search_entry), FALSE);
-   gtk_entry_set_icon_from_icon_name(GTK_ENTRY(search_entry), GTK_ENTRY_ICON_PRIMARY, "edit-find");
-   gtk_entry_set_input_hints (GTK_ENTRY(search_entry), GTK_INPUT_HINT_NO_EMOJI);
+   //search_entry=gtk_entry_new();
+   //gtk_entry_set_activates_default(GTK_ENTRY(search_entry), FALSE);
+   //gtk_entry_set_icon_from_icon_name(GTK_ENTRY(search_entry), GTK_ENTRY_ICON_PRIMARY, "edit-find");
+   //gtk_entry_set_input_hints (GTK_ENTRY(search_entry), GTK_INPUT_HINT_NO_EMOJI);
    
-   g_signal_connect (text_view, "key-press-event", G_CALLBACK(text_view_key_press), search_entry);
-   g_signal_connect(search_entry, "activate", G_CALLBACK(search_text_buffer), text_view);
-   gtk_text_buffer_create_tag(buffer, "highlight", "background", "yellow", "foreground", "black", NULL);
+   //g_signal_connect (text_view, "key-press-event", G_CALLBACK(text_view_key_press), search_entry);
+   //g_signal_connect(search_entry, "activate", G_CALLBACK(search_text_buffer), text_view);
+   //gtk_text_buffer_create_tag(buffer, "highlight", "background", "yellow", "foreground", "black", NULL);
 
-   gtk_container_add(GTK_CONTAINER(sw), text_view);
-   gtk_container_add(GTK_CONTAINER(vbox), sw);
-   gtk_container_add(GTK_CONTAINER(vbox), search_entry);
+   //gtk_container_add(GTK_CONTAINER(sw), text_view);
+   //gtk_container_add(GTK_CONTAINER(vbox), sw);
+   //gtk_container_add(GTK_CONTAINER(vbox), search_entry);
 
-   g_object_unref(buffer);
-   g_free(utf8_string);
-   gtk_widget_show_all(text_window);
-   gtk_widget_grab_focus(search_entry);
+   //g_object_unref(buffer);
+   //g_free(utf8_string);
+   //gtk_widget_show_all(text_window);
+   //gtk_widget_grab_focus(search_entry);
 }
 
 static gint cp_mv_check_path(char *src_path, char *dest_path, gpointer move)
@@ -2231,60 +2235,6 @@ static void file_menu_cp_mv(GtkWidget *menuitem, gpointer rfmCtx)
    g_list_free(fileList);  /* Do not free src list elements: owned by GList rfm_fileAttributeList */
 }
 
-static void file_menu_rm(GtkWidget *menuitem, gpointer user_data)
-{
-   GtkTreeIter iter;
-   GList *listElement;
-   gchar *dialog_label_text=NULL;
-   gint response_id=-1;
-   gboolean delete_to_last=FALSE;
-   GList *fileList=NULL;
-   gint i=0;
-   GList *selectionList=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
-   RFM_FileAttributes *fileAttributes;
-   
-   listElement=g_list_first(selectionList);
-   while (listElement!=NULL && response_id!=GTK_RESPONSE_CANCEL) {
-      gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, listElement->data);
-      gtk_tree_model_get(GTK_TREE_MODEL(store), &iter, COL_ATTR, &fileAttributes, -1);
-      if (!delete_to_last) {
-         if (fileAttributes->is_dir)
-            dialog_label_text=g_strdup_printf("Delete the directory <b>%s</b>?\n", fileAttributes->display_name);
-         else
-            dialog_label_text=g_strdup_printf("Delete the file <b>%s</b>?\n", fileAttributes->display_name);
-
-         response_id=show_actionbox(dialog_label_text, "Delete");
-         g_free(dialog_label_text);
-      }
-
-      switch (response_id) {
-         case GTK_RESPONSE_ACCEPT:
-            delete_to_last=TRUE;
-            response_id=GTK_RESPONSE_YES;
-         /* Fall through */
-         case GTK_RESPONSE_YES:
-            fileList=g_list_append(fileList, fileAttributes->path);
-            i++;
-         break;
-         default:
-            /* Don't delete file */
-         break;
-      }
-      listElement=g_list_next(listElement);
-   }
-   g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
-   if (fileList!=NULL) {
-     if (response_id != GTK_RESPONSE_CANCEL) {
-       if (readFromPipeStdIn) {
-         g_spawn_wrapper(run_actions[2].runCmdName, fileList, i, run_actions[2].runOpts, NULL,TRUE,refresh_store,user_data);
-       } else {
-	 g_spawn_wrapper(run_actions[2].runCmdName, fileList, i, run_actions[2].runOpts, NULL,TRUE,NULL,NULL);
-       }
-     }
-      g_list_free(fileList); /* Do not free list elements: owned by GList rfm_fileAttributeList */
-   }
-}
-
 
 static void g_spawn_wrapper_for_selected_fileList(const gchar** runCmd, gint runOpts, void (*callback)(gpointer),gpointer callbackdata ) 
 {
@@ -2310,6 +2260,19 @@ static void g_spawn_wrapper_for_selected_fileList(const gchar** runCmd, gint run
       g_list_free(actionFileList); /* Do not free list elements: owned by GList rfm_fileAttributeList */
    }
 }
+
+
+
+static void file_menu_rm(GtkWidget *menuitem, gpointer user_data)
+{
+       if (readFromPipeStdIn) {
+         g_spawn_wrapper_for_selected_fileList(run_actions[2].runCmdName, run_actions[2].runOpts,&refresh_store,user_data);
+       } else {
+	 g_spawn_wrapper_for_selected_fileList(run_actions[2].runCmdName, run_actions[2].runOpts, NULL,NULL);
+       }
+}
+
+
 
 static void file_menu_exec(GtkMenuItem *menuitem, RFM_RunActions *selectedAction)
 {

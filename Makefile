@@ -7,7 +7,7 @@ VERSION = 1.9.4
 # Edit below for extra libs (e.g. for thumbnailers etc.)
 #LIBS = -L./libdcmthumb -lm -ldcmthumb
 GTK_VERSION = gtk+-3.0
-CPPFLAGS =
+CPPFLAGS = -DrfmBinPath=\"${PREFIX}/bin\"
 
 # Uncomment the line below if compiling on a 32 bit system (otherwise stat() may fail on large directories; see man 2 stat)
 CPPFLAGS += -D_FILE_OFFSET_BITS=64
@@ -54,14 +54,29 @@ install: all
 	@echo installing executable file to ${DESTDIR}${PREFIX}/bin
 	@mkdir -p ${DESTDIR}${PREFIX}/bin
 	@cp -f rfm ${DESTDIR}${PREFIX}/bin
-	@cp -f scripts/RefreshImage.sh ${DESTDIR}${PREFIX}/bin
+	@cp -f scripts/rfmRefreshImage.sh ${DESTDIR}${PREFIX}/bin
+	@cp -f scripts/rfmVTforCMD.sh ${DESTDIR}${PREFIX}/bin
+	@cp -f scripts/rfmVTforCMD_hold.sh ${DESTDIR}${PREFIX}/bin
+	@cp -f scripts/rfmRemove.sh ${DESTDIR}${PREFIX}/bin
+	@cp -f scripts/rfmProperties.sh ${DESTDIR}${PREFIX}/bin
+	@cp -f scripts/rfmOpenWith_.sh ${DESTDIR}${PREFIX}/bin
 #	@cp -f rfm.desktop /usr/share/applications/rfm.desktop 
 	@chmod 755 ${DESTDIR}${PREFIX}/bin/rfm
-	@chmod +x ${DESTDIR}${PREFIX}/bin/RefreshImage.sh
+	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmRefreshImage.sh
+	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmVTforCMD.sh
+	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmVTforCMD_hold.sh
+	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmRemove.sh
+	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmProperties.sh
+	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmOpenWith_.sh
 
 uninstall:
 	@echo removing executable file from ${DESTDIR}${PREFIX}/bin
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfm
-	@rm -f ${DESTDIR}${PREFIX}/bin/RefreshImage.sh
+	@rm -f ${DESTDIR}${PREFIX}/bin/rfmRefreshImage.sh
+	@rm -f ${DESTDIR}${PREFIX}/bin/rfmVTforCMD.sh
+	@rm -f ${DESTDIR}${PREFIX}/bin/rfmVTforCMD_hold.sh
+	@rm -f ${DESTDIR}${PREFIX}/bin/rfmRemove.sh
+	@rm -f ${DESTDIR}${PREFIX}/bin/rfmProperties.sh
+	@rm -f ${DESTDIR}${PREFIX}/bin/rfmOpenWith_.sh
 
 .PHONY: all options clean install uninstall
