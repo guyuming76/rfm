@@ -22,7 +22,7 @@
 #include <mntent.h>
 #include <icons.h>
 
-//#define DragAndDropSupport
+#define DragAndDropSupport
 #define GitIntegration //if i put this in config.h, type definition won't be able to reference this,although config.h seems to be a better location for this. In project DWL, this kind of conditional compilation switch is defined in config.mk
 
 #define PROG_NAME "rfm"
@@ -588,6 +588,7 @@ static void show_msgbox(gchar *msg, gchar *title, gint type)
    //g_free(utf8_string);
 }
 
+#ifdef DragAndDropSupport
 static int show_actionbox(gchar *msg, gchar *title)
 {
    GtkWidget *dialog;
@@ -618,47 +619,7 @@ static int show_actionbox(gchar *msg, gchar *title)
    gtk_widget_destroy(dialog);
    return response_id;
 }
-
-static void search_text_buffer(GtkWidget *search_entry, GtkWidget *text_view)
-{
-   GtkTextIter start_find, end_find; 
-   GtkTextIter start_match, end_match;
-   const gchar *text=gtk_entry_get_text(GTK_ENTRY(search_entry));
-   GtkTextBuffer *buffer=gtk_text_view_get_buffer(GTK_TEXT_VIEW(text_view));  /* Doesn't take a ref */
-
-   gtk_text_buffer_get_start_iter(buffer, &start_find);
-   gtk_text_buffer_get_end_iter(buffer, &end_find);
-   gtk_text_buffer_remove_tag_by_name(buffer, "highlight", &start_find, &end_find);
-
-   if (text[0]=='\0')
-      return;
-   
-   if (gtk_text_iter_forward_search(&start_find, text, GTK_TEXT_SEARCH_TEXT_ONLY | GTK_TEXT_SEARCH_VISIBLE_ONLY, &start_match, &end_match, NULL)) {
-      gtk_text_buffer_apply_tag_by_name(buffer, "highlight", &start_match, &end_match);
-      start_find=end_match; /* iterators can be copied with a simple assignment */
-   }
-   else
-      return;
-   gtk_text_view_scroll_to_iter(GTK_TEXT_VIEW(text_view), &start_match, 0.0, TRUE, 0.5, 0.5);
-
-   while (gtk_text_iter_forward_search(&start_find, text,
-           GTK_TEXT_SEARCH_TEXT_ONLY | GTK_TEXT_SEARCH_VISIBLE_ONLY,
-           &start_match, &end_match, NULL))
-   {
-      gtk_text_buffer_apply_tag_by_name(buffer, "highlight", &start_match, &end_match);
-      start_find=end_match;
-   }
-}
-
-static gboolean text_view_key_press(GtkWidget *widget, GdkEventKey *event, GtkWidget *search_entry) {
-   if ((event->type==GDK_KEY_PRESS) && (event->state&GDK_CONTROL_MASK)) { 
-      switch (event->keyval) {
-      case GDK_KEY_f: gtk_widget_grab_focus(search_entry); break;
-      default: return FALSE; break;
-      }
-   }
-   return TRUE;
-}
+#endif
 
 static void show_text(gchar *text, gchar *title, gint type)
 {
@@ -721,6 +682,7 @@ static void show_text(gchar *text, gchar *title, gint type)
    //gtk_widget_grab_focus(search_entry);
 }
 
+#ifdef DragAndDropSupport
 static gint cp_mv_check_path(char *src_path, char *dest_path, gpointer move)
 {
    gchar *src_basename=g_path_get_basename(src_path);
@@ -777,6 +739,8 @@ static gint cp_mv_check_path(char *src_path, char *dest_path, gpointer move)
    g_free(dest_basename);
    return response_id;
 }
+#endif
+
 
 static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *child_attribs)
 {
@@ -1699,6 +1663,7 @@ static void set_view_selection_list(GtkWidget *view, gboolean treeview,GList *se
   }
 }
 
+#ifdef DragAndDropSupport
 static gchar **selection_list_to_uri(GtkWidget *widget, RFM_ctx *rfmCtx)
 {
    gchar **uriList;
@@ -1723,6 +1688,7 @@ static gchar **selection_list_to_uri(GtkWidget *widget, RFM_ctx *rfmCtx)
    g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
    return uriList;
 }
+#endif
 
 static void up_clicked(GtkToolItem *item, gpointer user_data)
 {
@@ -1806,6 +1772,10 @@ static void exec_user_tool(GtkToolItem *item, RFM_ToolButtons *tool)
       tool->func(tool->args);
 }
 
+
+
+#ifdef DragAndDropSupport
+
 static void cp_mv_file(RFM_ctx * doMove, GList *fileList)
 /*there used to be a parameter call doCopy here, when doCopy==NULL, means move. But now, i need to pass rfmCtx here, and only when we do move, we need rfmCtx, so, i pass rfmCtx into doMove when move, and NULL when copy*/
 {
@@ -1828,7 +1798,7 @@ static void cp_mv_file(RFM_ctx * doMove, GList *fileList)
          selected_files=g_list_append(selected_files, g_strdup(listElement->data));
          i++;
       }
-       else if (response_id==GTK_RESPONSE_CANCEL)
+      else if (response_id==GTK_RESPONSE_CANCEL)
           break;
       listElement=g_list_next(listElement);
    }
@@ -1836,9 +1806,9 @@ static void cp_mv_file(RFM_ctx * doMove, GList *fileList)
    if (selected_files!=NULL) {
       if (response_id!=GTK_RESPONSE_CANCEL) {
 	if (doMove==NULL || !readFromPipeStdIn) /*for copy, the source iconview won't change, we don't need to refresh with refresh_store, for move with inotify hander on source iconview, we also don't need to refresh manually*/
-	    g_spawn_wrapper(run_actions[0].runCmdName, selected_files, i, run_actions[0].runOpts, dest_path,TRUE,NULL,NULL);
-         else {
-	    g_spawn_wrapper(run_actions[1].runCmdName, selected_files, i, run_actions[1].runOpts, dest_path,TRUE,refresh_store,doMove);
+	    g_spawn_wrapper(f_cp_DnD, selected_files, i, RFM_EXEC_INTERNAL, dest_path,TRUE,NULL,NULL);
+	else {
+	    g_spawn_wrapper(f_mv_DnD, selected_files, i, RFM_EXEC_INTERNAL, dest_path,TRUE,refresh_store,doMove);
          }
       }
       g_list_free_full(selected_files, (GDestroyNotify)g_free);
@@ -1846,7 +1816,7 @@ static void cp_mv_file(RFM_ctx * doMove, GList *fileList)
    g_free(dest_path);
 }
 
-#ifdef DragAndDropSupport
+
 static void dnd_menu_cp_mv(GtkWidget *menuitem, gpointer rfmCtx)
 {
    RFM_dndMenu *dndMenu=g_object_get_data(G_OBJECT(window),"rfm_dnd_menu");
@@ -2188,53 +2158,6 @@ static void copy_curPath_to_clipboard(GtkWidget *menuitem, gpointer user_data)
 }
 
 
-static void file_menu_cp_mv(GtkWidget *menuitem, gpointer rfmCtx)
-{
-   gchar *dest_path;
-   gchar *src_name=NULL;
-   GtkTreeIter iter;
-   GList *listElement;
-   //GList *selectionList=get_view_selection_list(icon_or_tree_view, treeview,(GtkTreeModel **)&store); //is this type cast correct? Doc says that ListStore implement GtkTreeModel interface. If this is not correct, is it related to the clear_store issue in comment in Switch_CurPath_Stdin ?
-   GList *selectionList=get_view_selection_list(icon_or_tree_view, treeview,&treemodel);
-   GList *fileList=NULL;
-   RFM_FileAttributes *fileAttributes;
-   RFM_fileMenu *fileMenu=g_object_get_data(G_OBJECT(window),"rfm_file_menu");
-   gboolean cp=(menuitem==fileMenu->action[0]);
-  
-   listElement=g_list_first(selectionList);
-   gtk_tree_model_get_iter(GTK_TREE_MODEL (store), &iter, listElement->data);
-   gtk_tree_model_get(GTK_TREE_MODEL (store), &iter, COL_ATTR, &fileAttributes, -1);
-   if (listElement->next==NULL)  /* Only one source file */
-      src_name=g_path_get_basename(fileAttributes->path);
-
-   fileList=g_list_append(fileList, fileAttributes->path);
-   listElement=g_list_next(listElement);
-   if (cp) /* For multiple files src_name will be NULL and only a dirbox will show */
-      dest_path=show_file_dialog("Copy File", "\n<b><span size=\"large\">Copy To:</span></b>\n", src_name, fileAttributes->pixbuf);
-   else
-      dest_path=show_file_dialog("Move File", "\n<b><span size=\"large\">Move To:</span></b>\n", src_name, fileAttributes->pixbuf);
-
-   if (dest_path!=NULL) {
-      fileList=g_list_prepend(fileList, dest_path);
-      while (listElement!=NULL) {   /* Add any further source files to fileList */
-         gtk_tree_model_get_iter(GTK_TREE_MODEL (store), &iter, listElement->data);
-         gtk_tree_model_get(GTK_TREE_MODEL (store), &iter, COL_ATTR, &fileAttributes, -1);
-         fileList=g_list_append(fileList, fileAttributes->path);
-         listElement=g_list_next(listElement);
-      }
-      if(cp)
-	cp_mv_file(NULL, fileList);
-      else
-	cp_mv_file(rfmCtx,fileList);
-      listElement=g_list_first(fileList);
-      g_free(listElement->data); /* Free the destination obtained from show_file_dialog() */
-   }
-
-   g_free(src_name);
-   g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
-   g_list_free(fileList);  /* Do not free src list elements: owned by GList rfm_fileAttributeList */
-}
-
 
 static void g_spawn_wrapper_for_selected_fileList(const gchar** runCmd, gint runOpts, void (*callback)(gpointer),gpointer callbackdata ) 
 {
@@ -2262,11 +2185,20 @@ static void g_spawn_wrapper_for_selected_fileList(const gchar** runCmd, gint run
 }
 
 
+static void file_menu_mv(GtkWidget *menuitem, gpointer rfmCtx)
+{
+       if (readFromPipeStdIn) {
+         g_spawn_wrapper_for_selected_fileList(run_actions[1].runCmdName, run_actions[1].runOpts, refresh_store,rfmCtx);
+       } else {
+	 g_spawn_wrapper_for_selected_fileList(run_actions[1].runCmdName, run_actions[1].runOpts, NULL,NULL);
+       }
+}
+
 
 static void file_menu_rm(GtkWidget *menuitem, gpointer user_data)
 {
        if (readFromPipeStdIn) {
-         g_spawn_wrapper_for_selected_fileList(run_actions[2].runCmdName, run_actions[2].runOpts,&refresh_store,user_data);
+         g_spawn_wrapper_for_selected_fileList(run_actions[2].runCmdName, run_actions[2].runOpts, refresh_store,user_data);
        } else {
 	 g_spawn_wrapper_for_selected_fileList(run_actions[2].runCmdName, run_actions[2].runOpts, NULL,NULL);
        }
@@ -2307,8 +2239,8 @@ static RFM_fileMenu *setup_file_menu(RFM_ctx * rfmCtx){
       //gtk_widget_show(fileMenu->action[i]);
       gtk_menu_shell_append(GTK_MENU_SHELL(fileMenu->menu), fileMenu->action[i]);
    }
-   g_signal_connect(fileMenu->action[0], "activate", G_CALLBACK (file_menu_cp_mv), rfmCtx);   /* Copy item */
-   g_signal_connect(fileMenu->action[1], "activate", G_CALLBACK (file_menu_cp_mv), rfmCtx);                  /* Move item */
+   g_signal_connect(fileMenu->action[0], "activate", G_CALLBACK (file_menu_exec), &run_actions[0]);   /* Copy item */
+   g_signal_connect(fileMenu->action[1], "activate", G_CALLBACK (file_menu_mv), rfmCtx);                  /* Move item */
    g_signal_connect(fileMenu->action[2], "activate", G_CALLBACK(file_menu_rm), rfmCtx);
 #ifdef GitIntegration
    g_signal_connect(fileMenu->action[3], "activate", G_CALLBACK(file_menu_git_stage),rfmCtx);

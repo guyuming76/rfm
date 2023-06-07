@@ -20,8 +20,12 @@
 /* Built in commands - MUST be present */
 /* rfmBinPath is passed in by compiler via Makefile*/
 static const char *f_rm[]   = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmRemove.sh",NULL };
-static const char *f_cp[]   = { "/bin/cp", "-p", "-R", "-f", NULL };
-static const char *f_mv[]   = { "/bin/mv", "-f", NULL };
+static const char *f_cp[]   = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmCopy.sh", NULL };
+static const char *f_mv[]   = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmMove.sh", NULL };
+#ifdef DragAndDropSupport
+static const char *f_cp_DnD[]   = { "/bin/cp", "-p", "-R", "-f", NULL };
+static const char *f_mv_DnD[]   = { "/bin/mv", "-f", NULL };
+#endif
 
 /* Run action commands: called as run_action <list of paths to selected files> */
 static const char *play_video[] = { "/usr/bin/mpv", NULL };
