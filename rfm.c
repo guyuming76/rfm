@@ -395,8 +395,26 @@ static void rfm_stop_all(RFM_ctx *rfmCtx) {
    rfm_thumbQueue=NULL;
 }
 
+
+static gboolean ShowChildOutput_ExecCallback_freeChildAttribs(RFM_ChildAttribs * child_attribs){
+   if (child_attribs->runOpts!=RFM_EXEC_OUPUT_READ_BY_PROGRAM) show_child_output(child_attribs);
+
+   if(child_attribs->exitcode==0 && (child_attribs->customCallBackFunc)!=NULL){
+     if (child_attribs->runOpts!=RFM_EXEC_OUPUT_READ_BY_PROGRAM){
+       //for old callback such as refresh_store, there is no need for child_attribs->stdout, so pass in customcallbackuserdata as parameter to remain compatible.
+
+       (child_attribs->customCallBackFunc)(child_attribs->customCallbackUserData);
+     }else{
+       (child_attribs->customCallBackFunc)(child_attribs);
+     }
+   }
+
+   free_child_attribs(child_attribs);
+   return TRUE;
+}
+
 /* Supervise the children to prevent blocked pipes */
-static gboolean child_supervisor_to_ReadStdout_ShowOutput_ExecCallback(gpointer user_data)
+static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_data)
 {
    RFM_ChildAttribs *child_attribs=(RFM_ChildAttribs*)user_data;
 
@@ -408,24 +426,13 @@ static gboolean child_supervisor_to_ReadStdout_ShowOutput_ExecCallback(gpointer 
    close(child_attribs->stdOut_fd);
    close(child_attribs->stdErr_fd);
    g_spawn_close_pid(child_attribs->pid);
-   if (child_attribs->runOpts!=RFM_EXEC_OUPUT_READ_BY_PROGRAM) show_child_output(child_attribs);
 
    rfm_childList=g_list_remove(rfm_childList, child_attribs);
-
    if (rfm_childList==NULL)
       gtk_widget_set_sensitive(GTK_WIDGET(info_button), FALSE);
+   // the above two line was called somewhere inside ShowchildOutput_Execcallback before, but in order to share ShowchildOutput_Execcallback between async and sync, the calling is moved a little bit earlier as it is here now.
 
-   if(child_attribs->exitcode==0 && (child_attribs->customCallBackFunc)!=NULL){
-     if (child_attribs->runOpts!=RFM_EXEC_OUPUT_READ_BY_PROGRAM){
-       //for old callback such as refresh_store, there is no need for child_attribs->stdout, so pass in customcallbackuserdata as parameter to remain compatible.
-       //note that this should be the same as code in g_spawn_wrapper for sync 
-       (child_attribs->customCallBackFunc)(child_attribs->customCallbackUserData);
-     }else{
-       (child_attribs->customCallBackFunc)(child_attribs);
-     }
-   }
-
-   free_child_attribs(child_attribs);
+   ShowChildOutput_ExecCallback_freeChildAttribs(child_attribs);
    return FALSE;
 }
 
@@ -769,7 +776,7 @@ static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *ch
 	 child_attribs->exitcode=0;
 
 
-         g_timeout_add(100, (GSourceFunc)child_supervisor_to_ReadStdout_ShowOutput_ExecCallback, (void*)child_attribs);
+         g_timeout_add(100, (GSourceFunc)g_spawn_async_with_pipes_wrapper_child_supervisor, (void*)child_attribs);
          g_child_watch_add(child_attribs->pid, (GChildWatchFunc)child_handler_to_set_finished_status_for_child_supervisor, child_attribs);
          rfm_childList=g_list_prepend(rfm_childList, child_attribs);
          gtk_widget_set_sensitive(GTK_WIDGET(info_button), TRUE);
@@ -850,6 +857,7 @@ static gboolean g_spawn_wrapper_(GList *file_list, long n_args, char *dest_path,
 	    ret = FALSE;
 	  };
 	  //for sync, even if callback is possible here, won't do it to align with the definition of RFM_EXEC_NONE
+	  free_child_attribs(child_attribs);
         }
       } else {
 
@@ -859,7 +867,7 @@ static gboolean g_spawn_wrapper_(GList *file_list, long n_args, char *dest_path,
             free_child_attribs(child_attribs); //这里是失败的异步，成功的异步会在  child_supervisor_to_ReadStdout_ShowOutput_ExecCallback 里面 free
 	    ret = FALSE;
           };
-        } else {//这个分支为啥没看到free child_attribs, 前面留下的bug?
+        } else {
           child_attribs->name=g_strdup(v[0]); //since show_child_output will use these value, set to prevent segfault
 	  child_attribs->pid=-1;
 	  child_attribs->spawn_async=FALSE;
@@ -870,24 +878,17 @@ static gboolean g_spawn_wrapper_(GList *file_list, long n_args, char *dest_path,
 
           if (!g_spawn_sync(rfm_curPath, v, NULL,G_SPAWN_DEFAULT, NULL, NULL,&child_attribs->stdOut, &child_attribs->stdErr,&child_attribs->status,NULL)){
             g_warning("g_spawn_sync: %s failed to execute. Check command in config.h!", v[0]);
+	    free_child_attribs(child_attribs);
 	    ret = FALSE;
 	  } 
-         if (child_attribs->runOpts!=RFM_EXEC_OUPUT_READ_BY_PROGRAM) show_child_output(child_attribs);
-         if(child_attribs->exitcode==0 && child_attribs->customCallBackFunc!=NULL){
-	   if (child_attribs->runOpts!=RFM_EXEC_OUPUT_READ_BY_PROGRAM){
-	     //to keep the same with callback parameter in function child_supervisor_to_ReadStdout_ShowOutput_ExecCallback, which is for async.pass in the same parameter looks simple, but, different base on runOpts can keep compatible with old code.
-	     //what's more, sometimes let user to new an RFM_ChildAttribs object as wrapper for a callback parameter can be confusing and inconvenient.
-	     (*(child_attribs->customCallBackFunc))(child_attribs->customCallbackUserData);
-	   }else{
-	     (*(child_attribs->customCallBackFunc))(child_attribs);
-	   }
-	 }
+	  ShowChildOutput_ExecCallback_freeChildAttribs(child_attribs);
          }
       }
       free(v);
    }
    else{
       g_warning("g_spawn_wrapper: %s failed to execute: build_cmd_vector() returned NULL.",child_attribs->RunCmd[0]);
+      free_child_attribs(child_attribs);
       ret = FALSE;
    }
    return ret;
