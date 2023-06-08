@@ -288,7 +288,7 @@ static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx);
 static GHashTable *get_mount_points(void);
 
 static gboolean g_spawn_wrapper(const char **action, GList *file_list, long n_args, int run_opts, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData);
-static gboolean g_spawn_wrapper_(const char **action, GList *file_list, long n_args, char *dest_path, RFM_ChildAttribs * childAttribs);
+static gboolean g_spawn_wrapper_(GList *file_list, long n_args, char *dest_path, RFM_ChildAttribs * childAttribs);
 static void g_spawn_wrapper_for_selected_fileList_(RFM_ChildAttribs *childAttribs);
 
 static void switch_view(GtkToolItem *item, RFM_ctx *rfmCtx);
@@ -823,12 +823,12 @@ static gchar **build_cmd_vector(const char **cmd, GList *file_list, long n_args,
 
 
 #define PRINT_STR_ARRAY(v)  for (int i=0;v[i];i++) printf("%s ",v[i]);printf("\n");
-static gboolean g_spawn_wrapper_(const char **action, GList *file_list, long n_args, char *dest_path, RFM_ChildAttribs * child_attribs)
+static gboolean g_spawn_wrapper_(GList *file_list, long n_args, char *dest_path, RFM_ChildAttribs * child_attribs)
 {
    gchar **v=NULL;
    gboolean ret=TRUE;
 
-   v=build_cmd_vector(action, file_list, n_args, dest_path);
+   v=build_cmd_vector(child_attribs->RunCmd, file_list, n_args, dest_path);
    if (v != NULL) {
       if (child_attribs->runOpts==RFM_EXEC_OUPUT_READ_BY_PROGRAM){
 #ifdef DebugPrintf
@@ -887,7 +887,7 @@ static gboolean g_spawn_wrapper_(const char **action, GList *file_list, long n_a
       free(v);
    }
    else{
-      g_warning("g_spawn_wrapper: %s failed to execute: build_cmd_vector() returned NULL.",action[0]);
+      g_warning("g_spawn_wrapper: %s failed to execute: build_cmd_vector() returned NULL.",child_attribs->RunCmd[0]);
       ret = FALSE;
    }
    return ret;
@@ -898,8 +898,9 @@ static gboolean g_spawn_wrapper(const char **action, GList *file_list, long n_ar
   child_attribs->customCallBackFunc=callbackfunc;
   child_attribs->customCallbackUserData=callbackfuncUserData;
   child_attribs->runOpts=run_opts;
+  child_attribs->RunCmd = action;
 	
-  return g_spawn_wrapper_(action,file_list,n_args,dest_path,child_attribs);
+  return g_spawn_wrapper_(file_list,n_args,dest_path,child_attribs);
 }
 
 /* Load and update a thumbnail from disk cache: key is the md5 hash of the required thumbnail */
@@ -2186,7 +2187,7 @@ static void g_spawn_wrapper_for_selected_fileList_(RFM_ChildAttribs *childAttrib
          listElement=g_list_next(listElement);
          i++;
       }
-      g_spawn_wrapper_(childAttribs->RunCmd,actionFileList,i,NULL,childAttribs);
+      g_spawn_wrapper_(actionFileList,i,NULL,childAttribs);
       g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
       g_list_free(actionFileList); /* Do not free list elements: owned by GList rfm_fileAttributeList */
    }
