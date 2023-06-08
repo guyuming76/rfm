@@ -289,7 +289,7 @@ static GHashTable *get_mount_points(void);
 
 static gboolean g_spawn_wrapper(const char **action, GList *file_list, long n_args, int run_opts, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData);
 static gboolean g_spawn_wrapper_(const char **action, GList *file_list, long n_args, char *dest_path, RFM_ChildAttribs * childAttribs);
-static void g_spawn_wrapper_for_selected_fileList(const gchar** runCmd, gint runOpts, void (*callback)(gpointer),gpointer callbackdata ); 
+static void g_spawn_wrapper_for_selected_fileList_(RFM_ChildAttribs *childAttribs);
 
 static void switch_view(GtkToolItem *item, RFM_ctx *rfmCtx);
 
@@ -823,22 +823,22 @@ static gchar **build_cmd_vector(const char **cmd, GList *file_list, long n_args,
 
 
 #define PRINT_STR_ARRAY(v)  for (int i=0;v[i];i++) printf("%s ",v[i]);printf("\n");
-static gboolean g_spawn_wrapper(const char **action, GList *file_list, long n_args, int run_opts, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData)
+static gboolean g_spawn_wrapper_(const char **action, GList *file_list, long n_args, char *dest_path, RFM_ChildAttribs * child_attribs)
 {
    gchar **v=NULL;
    gboolean ret=TRUE;
 
    v=build_cmd_vector(action, file_list, n_args, dest_path);
    if (v != NULL) {
-      if (run_opts==RFM_EXEC_OUPUT_READ_BY_PROGRAM){
+      if (child_attribs->runOpts==RFM_EXEC_OUPUT_READ_BY_PROGRAM){
 #ifdef DebugPrintf
 	PRINT_STR_ARRAY(v);
 #endif
       }else{
         PRINT_STR_ARRAY(v);
       }
-      if (run_opts==RFM_EXEC_NONE) {
-        if (async) {
+      if (child_attribs->runOpts==RFM_EXEC_NONE) {
+        if (!child_attribs->spawn_sync) {
           if (!g_spawn_async(rfm_curPath, v, NULL, G_SPAWN_STDOUT_TO_DEV_NULL|G_SPAWN_STDERR_TO_DEV_NULL, NULL, NULL, NULL, NULL)){
             g_warning("g_spawn_wrapper with option RFM_EXEC_NONE: %s failed to execute. Check command in config.h!", v[0]);
 	    ret = FALSE;
@@ -852,12 +852,8 @@ static gboolean g_spawn_wrapper(const char **action, GList *file_list, long n_ar
 	  //for sync, even if callback is possible here, won't do it to align with the definition of RFM_EXEC_NONE
         }
       } else {
-	RFM_ChildAttribs *child_attribs=malloc(sizeof(RFM_ChildAttribs));
-	child_attribs->customCallBackFunc=callbackfunc;
-	child_attribs->customCallbackUserData=callbackfuncUserData;
-	child_attribs->runOpts=run_opts;
 
-	if (async){
+	if (!child_attribs->spawn_sync){
           if (!g_spawn_async_with_pipes_wrapper(v, child_attribs)) {
             g_warning("g_spawn_async_with_pipes_wrapper: %s failed to execute. Check command in config.h!",v[0]);
             free_child_attribs(child_attribs); //这里是失败的异步，成功的异步会在  child_supervisor_to_ReadStdout_ShowOutput_ExecCallback 里面 free
@@ -877,13 +873,13 @@ static gboolean g_spawn_wrapper(const char **action, GList *file_list, long n_ar
 	    ret = FALSE;
 	  } 
          if (child_attribs->runOpts!=RFM_EXEC_OUPUT_READ_BY_PROGRAM) show_child_output(child_attribs);
-         if(child_attribs->exitcode==0 && callbackfunc!=NULL){
+         if(child_attribs->exitcode==0 && child_attribs->customCallBackFunc!=NULL){
 	   if (child_attribs->runOpts!=RFM_EXEC_OUPUT_READ_BY_PROGRAM){
 	     //to keep the same with callback parameter in function child_supervisor_to_ReadStdout_ShowOutput_ExecCallback, which is for async.pass in the same parameter looks simple, but, different base on runOpts can keep compatible with old code.
 	     //what's more, sometimes let user to new an RFM_ChildAttribs object as wrapper for a callback parameter can be confusing and inconvenient.
-	     (*callbackfunc)(callbackfuncUserData);
+	     (*(child_attribs->customCallBackFunc))(child_attribs->customCallbackUserData);
 	   }else{
-	     (*callbackfunc)(child_attribs);
+	     (*(child_attribs->customCallBackFunc))(child_attribs);
 	   }
 	 }
          }
@@ -897,8 +893,13 @@ static gboolean g_spawn_wrapper(const char **action, GList *file_list, long n_ar
    return ret;
 }
 
-static gboolean g_spawn_wrapper_(const char **action, GList *file_list, long n_args, char *dest_path, RFM_ChildAttribs * childAttribs){
-  return g_spawn_wrapper(action,file_list,n_args,childAttribs->runOpts,dest_path,!childAttribs->spawn_sync,childAttribs->customCallBackFunc,childAttribs->customCallbackUserData);
+static gboolean g_spawn_wrapper(const char **action, GList *file_list, long n_args, int run_opts, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData){
+  RFM_ChildAttribs *child_attribs=malloc(sizeof(RFM_ChildAttribs));
+  child_attribs->customCallBackFunc=callbackfunc;
+  child_attribs->customCallbackUserData=callbackfuncUserData;
+  child_attribs->runOpts=run_opts;
+	
+  return g_spawn_wrapper_(action,file_list,n_args,dest_path,child_attribs);
 }
 
 /* Load and update a thumbnail from disk cache: key is the md5 hash of the required thumbnail */
@@ -2166,8 +2167,7 @@ static void copy_curPath_to_clipboard(GtkWidget *menuitem, gpointer user_data)
 }
 
 
-
-static void g_spawn_wrapper_for_selected_fileList(const gchar** runCmd, gint runOpts, void (*callback)(gpointer),gpointer callbackdata ) 
+static void g_spawn_wrapper_for_selected_fileList_(RFM_ChildAttribs *childAttribs)
 {
    GtkTreeIter iter;
    GList *listElement;
@@ -2186,28 +2186,16 @@ static void g_spawn_wrapper_for_selected_fileList(const gchar** runCmd, gint run
          listElement=g_list_next(listElement);
          i++;
       }
-      g_spawn_wrapper(runCmd,actionFileList,i,runOpts,NULL,TRUE,callback,callbackdata);
+      g_spawn_wrapper_(childAttribs->RunCmd,actionFileList,i,NULL,childAttribs);
       g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
       g_list_free(actionFileList); /* Do not free list elements: owned by GList rfm_fileAttributeList */
    }
 }
 
-static void g_spawn_wrapper_for_selected_fileList_(RFM_ChildAttribs *childAttribs) {
-   g_spawn_wrapper_for_selected_fileList(
-       childAttribs->RunCmd, childAttribs->runOpts,
-       childAttribs->customCallBackFunc, childAttribs->customCallbackUserData);
-}
 
 static void file_menu_exec(GtkMenuItem *menuitem, RFM_ChildAttribs *childAttribs)
 {
    g_spawn_wrapper_for_selected_fileList_(childAttribs);
-   g_free(childAttribs);
-   // 这个现在很尴尬： g_spawn_wrapper 里面会 malloc childAttribs,
-   // 如果可以把当前这个childAttrbits传过去就很好
-   // 问题是g_spawn_wrapper 没有childAttributs
-   // 参数，如果加上得话，会和其他参数重复，只有调用时注意一组参数设为NULL
-   // 如果统一只用childAttribs类型的参数，所有调用又必须先malloc这个对象，又很麻烦
-   // 暂时就先在这里free掉，然后 g_spawn_wrapper 里再建新的，后面再重构。
 }
 
 
