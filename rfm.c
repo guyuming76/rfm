@@ -22,7 +22,7 @@
 #include <mntent.h>
 #include <icons.h>
 
-#define DragAndDropSupport
+//#define DragAndDropSupport
 #define GitIntegration //if i put this in config.h, type definition won't be able to reference this,although config.h seems to be a better location for this. In project DWL, this kind of conditional compilation switch is defined in config.mk
 
 #define PROG_NAME "rfm"
@@ -76,6 +76,7 @@ typedef struct {
 
 typedef struct {
    gchar *name;
+   gchar **RunCmd;
    gint  runOpts;
    GPid  pid;
    gint  stdOut_fd;
@@ -122,6 +123,7 @@ typedef struct {
    gint        showMimeType;              /* Display detected mime type on stdout when a file is right-clicked: toggled via -i option */
    guint       delayedRefresh_GSourceID;  /* Main loop source ID for refresh_store() delayed refresh timer */
 } RFM_ctx;
+//I don't understand why Rodney need this ctx type. it's only instantiated in main, so, all members can be changed into global variable, and many function parameter can be removed. However, if there would be any important usage, adding the removed function parameters will be time taking. So, just keep as is, although it makes current code confusing.
 
 typedef struct {  /* Update free_fileAttributes() and malloc_fileAttributes() if new items are added */
    gchar *path;
@@ -286,6 +288,9 @@ static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx);
 static GHashTable *get_mount_points(void);
 
 static gboolean g_spawn_wrapper(const char **action, GList *file_list, long n_args, int run_opts, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData);
+static gboolean g_spawn_wrapper_(const char **action, GList *file_list, long n_args, char *dest_path, RFM_ChildAttribs * childAttribs);
+static void g_spawn_wrapper_for_selected_fileList(const gchar** runCmd, gint runOpts, void (*callback)(gpointer),gpointer callbackdata ); 
+
 static void switch_view(GtkToolItem *item, RFM_ctx *rfmCtx);
 
   
@@ -816,8 +821,8 @@ static gchar **build_cmd_vector(const char **cmd, GList *file_list, long n_args,
    return v;
 }
 
-#define PRINT_STR_ARRAY(v)  for (int i=0;v[i];i++) printf("%s ",v[i]);printf("\n");
 
+#define PRINT_STR_ARRAY(v)  for (int i=0;v[i];i++) printf("%s ",v[i]);printf("\n");
 static gboolean g_spawn_wrapper(const char **action, GList *file_list, long n_args, int run_opts, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData)
 {
    gchar **v=NULL;
@@ -855,10 +860,10 @@ static gboolean g_spawn_wrapper(const char **action, GList *file_list, long n_ar
 	if (async){
           if (!g_spawn_async_with_pipes_wrapper(v, child_attribs)) {
             g_warning("g_spawn_async_with_pipes_wrapper: %s failed to execute. Check command in config.h!",v[0]);
-            free_child_attribs(child_attribs);
+            free_child_attribs(child_attribs); //这里是失败的异步，成功的异步会在  child_supervisor_to_ReadStdout_ShowOutput_ExecCallback 里面 free
 	    ret = FALSE;
           };
-        } else {
+        } else {//这个分支为啥没看到free child_attribs, 前面留下的bug?
           child_attribs->name=g_strdup(v[0]); //since show_child_output will use these value, set to prevent segfault
 	  child_attribs->pid=-1;
 	  child_attribs->spawn_sync=TRUE;
@@ -874,7 +879,7 @@ static gboolean g_spawn_wrapper(const char **action, GList *file_list, long n_ar
          if (child_attribs->runOpts!=RFM_EXEC_OUPUT_READ_BY_PROGRAM) show_child_output(child_attribs);
          if(child_attribs->exitcode==0 && callbackfunc!=NULL){
 	   if (child_attribs->runOpts!=RFM_EXEC_OUPUT_READ_BY_PROGRAM){
-	     //to keep the same with callback parameter in function child_supervisor_to_ReadStdout_ShowOutput_ExecCallback, which is for async.pass in the same parameter looks simple, but, different base on runOpts can deep compatible with old code.
+	     //to keep the same with callback parameter in function child_supervisor_to_ReadStdout_ShowOutput_ExecCallback, which is for async.pass in the same parameter looks simple, but, different base on runOpts can keep compatible with old code.
 	     //what's more, sometimes let user to new an RFM_ChildAttribs object as wrapper for a callback parameter can be confusing and inconvenient.
 	     (*callbackfunc)(callbackfuncUserData);
 	   }else{
@@ -892,6 +897,9 @@ static gboolean g_spawn_wrapper(const char **action, GList *file_list, long n_ar
    return ret;
 }
 
+static gboolean g_spawn_wrapper_(const char **action, GList *file_list, long n_args, char *dest_path, RFM_ChildAttribs * childAttribs){
+  return g_spawn_wrapper(action,file_list,n_args,childAttribs->runOpts,dest_path,!childAttribs->spawn_sync,childAttribs->customCallBackFunc,childAttribs->customCallbackUserData);
+}
 
 /* Load and update a thumbnail from disk cache: key is the md5 hash of the required thumbnail */
 static int load_thumbnail(gchar *key)
@@ -2184,37 +2192,22 @@ static void g_spawn_wrapper_for_selected_fileList(const gchar** runCmd, gint run
    }
 }
 
-
-static void file_menu_mv(GtkWidget *menuitem, gpointer rfmCtx)
-{
-       if (readFromPipeStdIn) {
-         g_spawn_wrapper_for_selected_fileList(run_actions[1].runCmdName, run_actions[1].runOpts, refresh_store,rfmCtx);
-       } else {
-	 g_spawn_wrapper_for_selected_fileList(run_actions[1].runCmdName, run_actions[1].runOpts, NULL,NULL);
-       }
+static void g_spawn_wrapper_for_selected_fileList_(RFM_ChildAttribs *childAttribs) {
+   g_spawn_wrapper_for_selected_fileList(
+       childAttribs->RunCmd, childAttribs->runOpts,
+       childAttribs->customCallBackFunc, childAttribs->customCallbackUserData);
 }
 
-
-static void file_menu_rm(GtkWidget *menuitem, gpointer user_data)
+static void file_menu_exec(GtkMenuItem *menuitem, RFM_ChildAttribs *childAttribs)
 {
-       if (readFromPipeStdIn) {
-         g_spawn_wrapper_for_selected_fileList(run_actions[2].runCmdName, run_actions[2].runOpts, refresh_store,user_data);
-       } else {
-	 g_spawn_wrapper_for_selected_fileList(run_actions[2].runCmdName, run_actions[2].runOpts, NULL,NULL);
-       }
-}
-
-
-
-static void file_menu_exec(GtkMenuItem *menuitem, RFM_RunActions *selectedAction)
-{
-  g_spawn_wrapper_for_selected_fileList(selectedAction->runCmdName,selectedAction->runOpts,NULL,NULL);
-}
-
-
-static void file_menu_git_stage(GtkMenuItem *menuitem, gpointer user_data)
-{
-  g_spawn_wrapper_for_selected_fileList(run_actions[3].runCmdName, run_actions[3].runOpts,refresh_store,user_data);
+   g_spawn_wrapper_for_selected_fileList_(childAttribs);
+   g_free(childAttribs);
+   // 这个现在很尴尬： g_spawn_wrapper 里面会 malloc childAttribs,
+   // 如果可以把当前这个childAttrbits传过去就很好
+   // 问题是g_spawn_wrapper 没有childAttributs
+   // 参数，如果加上得话，会和其他参数重复，只有调用时注意一组参数设为NULL
+   // 如果统一只用childAttribs类型的参数，所有调用又必须先malloc这个对象，又很麻烦
+   // 暂时就先在这里free掉，然后 g_spawn_wrapper 里再建新的，后面再重构。
 }
 
 
@@ -2234,29 +2227,23 @@ static RFM_fileMenu *setup_file_menu(RFM_ctx * rfmCtx){
    }
    fileMenu->menu=gtk_menu_new();
 
-   for (i=0;i<RFM_N_BUILT_IN;i++) {
+   for(i=0; i<G_N_ELEMENTS(run_actions); i++) {
       fileMenu->action[i]=gtk_menu_item_new_with_label(run_actions[i].runName);
       //gtk_widget_show(fileMenu->action[i]);
       gtk_menu_shell_append(GTK_MENU_SHELL(fileMenu->menu), fileMenu->action[i]);
-   }
-   g_signal_connect(fileMenu->action[0], "activate", G_CALLBACK (file_menu_exec), &run_actions[0]);   /* Copy item */
-   g_signal_connect(fileMenu->action[1], "activate", G_CALLBACK (file_menu_mv), rfmCtx);                  /* Move item */
-   g_signal_connect(fileMenu->action[2], "activate", G_CALLBACK(file_menu_rm), rfmCtx);
-#ifdef GitIntegration
-   g_signal_connect(fileMenu->action[3], "activate", G_CALLBACK(file_menu_git_stage),rfmCtx);
-   g_signal_connect(fileMenu->action[4], "activate", G_CALLBACK(file_menu_exec), &run_actions[4]);
-#endif
-   /* Built in actions */
-   fileMenu->separator[0]=gtk_separator_menu_item_new();
-   gtk_widget_show(fileMenu->separator[0]);
-   gtk_menu_shell_append(GTK_MENU_SHELL(fileMenu->menu), fileMenu->separator[0]);
 
-
-   for(i=RFM_N_BUILT_IN; i<G_N_ELEMENTS(run_actions); i++) {
-      fileMenu->action[i]=gtk_menu_item_new_with_label(run_actions[i].runName);
-      gtk_widget_show(fileMenu->action[i]);
-      gtk_menu_shell_append(GTK_MENU_SHELL(fileMenu->menu), fileMenu->action[i]);
-      g_signal_connect(fileMenu->action[i], "activate", G_CALLBACK(file_menu_exec), &run_actions[i]);
+      RFM_ChildAttribs *child_attribs = malloc(sizeof(RFM_ChildAttribs));
+      // this child_attribs will be freed by g_spawn_wrapper call tree if menuitem clicked
+      // but if menuitem not clicked? currently, setup_file_menu won't be called many times, so, it will be freed after application quit, no need to free manually.
+      child_attribs->RunCmd = run_actions[i].runCmdName;      
+      child_attribs->runOpts = run_actions[i].runOpts;
+      child_attribs->spawn_sync = FALSE;
+      if (readFromPipeStdIn && (i==1||i==2)){ //here we use i==1 instead of run_actions[i].Name="Move" because we will localize
+         child_attribs->customCallBackFunc = refresh_store;
+         child_attribs->customCallbackUserData = rfmCtx;         
+      } else 
+	 child_attribs->customCallBackFunc = NULL;
+      g_signal_connect(fileMenu->action[i], "activate", G_CALLBACK(file_menu_exec), child_attribs);
    }
    return fileMenu;
 }
@@ -2426,9 +2413,9 @@ static gboolean view_button_press(GtkWidget *widget, GdkEvent *event, RFM_ctx *r
 	    selectionList=get_view_selection_list(widget,treeview,&treemodel);
             first=g_list_first(selectionList);
             if (path_is_selected(widget, treeview, tree_path) && first->next!=NULL) {
-              if (treeview)
+              if (treeview){
 		 gtk_tree_view_unset_rows_drag_source(GTK_TREE_VIEW(widget));
-	      else
+	      }else
 	         gtk_icon_view_unset_model_drag_source(GTK_ICON_VIEW(widget));
                gtk_drag_begin_with_coordinates(widget, target_list, DND_ACTION_MASK , 1, event, eb->x, eb->y);
                ret_val=TRUE;
