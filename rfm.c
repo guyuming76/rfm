@@ -87,7 +87,7 @@ typedef struct {
    void (*customCallBackFunc)(gpointer);
   //In readfrom pipeline situation, after runAction such as Move, i need to fill_store to reflect remove of files, so, i need a callback function. Rodney's original code only deals with working directory, and use INotify to reflect the change.
    gpointer customCallbackUserData;
-   gboolean spawn_sync;
+   gboolean spawn_async;
    gint exitcode;
 } RFM_ChildAttribs;
 
@@ -765,7 +765,7 @@ static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *ch
          child_attribs->stdOut=NULL;
          child_attribs->stdErr=NULL;
          child_attribs->status=-1;  /* -1 indicates child is running; set to wait wstatus on exit */
-	 child_attribs->spawn_sync=FALSE;
+	 child_attribs->spawn_async=TRUE;
 	 child_attribs->exitcode=0;
 
 
@@ -838,7 +838,7 @@ static gboolean g_spawn_wrapper_(GList *file_list, long n_args, char *dest_path,
         PRINT_STR_ARRAY(v);
       }
       if (child_attribs->runOpts==RFM_EXEC_NONE) {
-        if (!child_attribs->spawn_sync) {
+        if (child_attribs->spawn_async) {
           if (!g_spawn_async(rfm_curPath, v, NULL, G_SPAWN_STDOUT_TO_DEV_NULL|G_SPAWN_STDERR_TO_DEV_NULL, NULL, NULL, NULL, NULL)){
             g_warning("g_spawn_wrapper with option RFM_EXEC_NONE: %s failed to execute. Check command in config.h!", v[0]);
 	    ret = FALSE;
@@ -853,7 +853,7 @@ static gboolean g_spawn_wrapper_(GList *file_list, long n_args, char *dest_path,
         }
       } else {
 
-	if (!child_attribs->spawn_sync){
+	if (child_attribs->spawn_async){
           if (!g_spawn_async_with_pipes_wrapper(v, child_attribs)) {
             g_warning("g_spawn_async_with_pipes_wrapper: %s failed to execute. Check command in config.h!",v[0]);
             free_child_attribs(child_attribs); //这里是失败的异步，成功的异步会在  child_supervisor_to_ReadStdout_ShowOutput_ExecCallback 里面 free
@@ -862,7 +862,7 @@ static gboolean g_spawn_wrapper_(GList *file_list, long n_args, char *dest_path,
         } else {//这个分支为啥没看到free child_attribs, 前面留下的bug?
           child_attribs->name=g_strdup(v[0]); //since show_child_output will use these value, set to prevent segfault
 	  child_attribs->pid=-1;
-	  child_attribs->spawn_sync=TRUE;
+	  child_attribs->spawn_async=FALSE;
 	  child_attribs->stdOut=NULL;
 	  child_attribs->stdErr=NULL;
 	  child_attribs->exitcode=0;
@@ -2226,7 +2226,7 @@ static RFM_fileMenu *setup_file_menu(RFM_ctx * rfmCtx){
       // but if menuitem not clicked? currently, setup_file_menu won't be called many times, so, it will be freed after application quit, no need to free manually.
       child_attribs->RunCmd = run_actions[i].runCmdName;      
       child_attribs->runOpts = run_actions[i].runOpts;
-      child_attribs->spawn_sync = FALSE;
+      child_attribs->spawn_async = TRUE;
       if (readFromPipeStdIn && (i==1||i==2)){ //here we use i==1 instead of run_actions[i].Name="Move" because we will localize
          child_attribs->customCallBackFunc = refresh_store;
          child_attribs->customCallbackUserData = rfmCtx;         
