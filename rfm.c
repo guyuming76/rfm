@@ -761,16 +761,18 @@ static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *ch
       rv=g_spawn_async_with_pipes(rfm_curPath, v, NULL, G_SPAWN_DO_NOT_REAP_CHILD, NULL, NULL,
                                   &child_attribs->pid, NULL, &child_attribs->stdOut_fd,
                                   &child_attribs->stdErr_fd, NULL);
+#ifdef DebugPrintf
+      fprintf(stderr,"g_spawn_async_with_pipes, workingdir:%s, argv:%s, G_SPAWN_DO_NOT_REAP_CHILD \n",rfm_curPath,v[0]);
+#endif  
+      
       if (rv==TRUE) {
          /* Don't block on read if nothing in pipe */
          if (! g_unix_set_fd_nonblocking(child_attribs->stdOut_fd, TRUE, NULL))
             g_warning("Can't set child stdout to non-blocking mode.");
          if (! g_unix_set_fd_nonblocking(child_attribs->stdErr_fd, TRUE, NULL))
-            g_warning("Can't set child stdout to non-blocking mode.");
+            g_warning("Can't set child stderr to non-blocking mode.");
 
          child_attribs->name=g_strdup(v[0]);
-         child_attribs->stdOut=NULL;
-         child_attribs->stdErr=NULL;
          child_attribs->status=-1;  /* -1 indicates child is running; set to wait wstatus on exit */
 	 child_attribs->spawn_async=TRUE;
 	 child_attribs->exitcode=0;
@@ -846,12 +848,20 @@ static gboolean g_spawn_wrapper_(GList *file_list, long n_args, char *dest_path,
       }
       if (child_attribs->runOpts==RFM_EXEC_NONE) {
         if (child_attribs->spawn_async) {
+#ifdef DebugPrintf
+          fprintf(stderr,"g_spawn_async, workingdir:%s, argv:%s, G_SPAWN_STDOUT_TO_DEV_NULL|G_SPAWN_STDERR_TO_DEV_NULL \n",rfm_curPath,v[0]);
+#endif  
+
           if (!g_spawn_async(rfm_curPath, v, NULL, G_SPAWN_STDOUT_TO_DEV_NULL|G_SPAWN_STDERR_TO_DEV_NULL, NULL, NULL, NULL, NULL)){
             g_warning("g_spawn_wrapper with option RFM_EXEC_NONE: %s failed to execute. Check command in config.h!", v[0]);
 	    ret = FALSE;
 	  }
 	  //for RFM_EXEC_NONE since no child PID is returned, no way to g_child_add_watch, so, no callbackfunc invoke here
         } else {
+#ifdef DebugPrintf
+          fprintf(stderr,"g_spawn_sync, workingdir:%s, argv:%s, G_SPAWN_STDOUT_TO_DEV_NULL|G_SPAWN_STDERR_TO_DEV_NULL \n",rfm_curPath,v[0]);
+#endif
+
           if (!g_spawn_sync(rfm_curPath, v, NULL, G_SPAWN_STDERR_TO_DEV_NULL|G_SPAWN_STDOUT_TO_DEV_NULL, NULL, NULL, NULL, NULL,NULL,NULL)){
             g_warning("g_spawn_wrapper with option RFM_EXEC_NONE: %s failed to execute. Check command in config.h!", v[0]);
 	    ret = FALSE;
@@ -876,6 +886,10 @@ static gboolean g_spawn_wrapper_(GList *file_list, long n_args, char *dest_path,
 	  child_attribs->exitcode=0;
 	  child_attribs->status=-1;
 
+#ifdef DebugPrintf
+          fprintf(stderr,"g_spawn_sync, workingdir:%s, argv:%s, G_SPAWN_DEFAULT \n",rfm_curPath,v[0]);
+#endif
+	  
           if (!g_spawn_sync(rfm_curPath, v, NULL,G_SPAWN_DEFAULT, NULL, NULL,&child_attribs->stdOut, &child_attribs->stdErr,&child_attribs->status,NULL)){
             g_warning("g_spawn_sync: %s failed to execute. Check command in config.h!", v[0]);
 	    free_child_attribs(child_attribs);
@@ -900,6 +914,10 @@ static gboolean g_spawn_wrapper(const char **action, GList *file_list, long n_ar
   child_attribs->customCallbackUserData=callbackfuncUserData;
   child_attribs->runOpts=run_opts;
   child_attribs->RunCmd = action;
+  child_attribs->stdOut = NULL;
+  child_attribs->stdErr = NULL;
+  child_attribs->spawn_async = async;
+  child_attribs->name=g_strdup(action[0]);
 	
   return g_spawn_wrapper_(file_list,n_args,dest_path,child_attribs);
 }
@@ -2227,7 +2245,10 @@ static RFM_fileMenu *setup_file_menu(RFM_ctx * rfmCtx){
       // but if menuitem not clicked? currently, setup_file_menu won't be called many times, so, it will be freed after application quit, no need to free manually.
       child_attribs->RunCmd = run_actions[i].runCmdName;      
       child_attribs->runOpts = run_actions[i].runOpts;
+      child_attribs->stdOut = NULL;
+      child_attribs->stdErr = NULL;
       child_attribs->spawn_async = TRUE;
+      child_attribs->name = g_strdup(run_actions[i].runName);
       if (readFromPipeStdIn && (i==1||i==2)){ //here we use i==1 instead of run_actions[i].Name="Move" because we will localize
          child_attribs->customCallBackFunc = refresh_store;
          child_attribs->customCallbackUserData = rfmCtx;         
