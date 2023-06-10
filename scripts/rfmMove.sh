@@ -10,9 +10,11 @@ read -p "Please input the move destination(default $destination ): " -r input_de
 
 /bin/mv -i $@ -t $destination
 
-read -p "input 1 to open rfm for $destination, press enter to close this window: " -r next_action
+read -p "enter 1 to open rfm for $destination, or just press enter to close this window: " -r next_action
 
-[[ "$next_action" == "1" ]]  && rfm -d $destination 1>/tmp/rfm1.log 2>/tmp/rfm2.log &
+[[ "$next_action" == "1" ]]  && rfm -d $destination
+
+#[[ "$next_action" == "1" ]]  && rfm -d $destination 1>/tmp/rfm1.log 2>/tmp/rfm2.log &
 
 #我本希望上面一行新的rfm启动后，本脚本就终结了，本窗口也就会关闭，但是新的 rfm 作为子进程能够继续。
 #但是我机器上的结果是 新的 rfm 作为本进程的子进程也随着本窗口的关闭立刻关闭了。
@@ -35,5 +37,4 @@ read -p "input 1 to open rfm for $destination, press enter to close this window:
 #a process can change its children's PGID if they're still running the original process image (i.e. they haven't called execve to run a different program).
 #https://unix.stackexchange.com/questions/462188/is-there-a-way-to-change-the-process-group-of-a-running-process
 
-sleep 10s
-exit
+#sleep 10s

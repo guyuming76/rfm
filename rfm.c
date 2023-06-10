@@ -1353,6 +1353,9 @@ static void readGitCommitMsgFromGitLogCmdAndInsertIntoHashTable(RFM_ChildAttribs
    gchar * commitMsg=childAttribs->stdOut;
    commitMsg[strcspn(commitMsg, "\n")] = 0;
    g_hash_table_insert(gitCommitMsg, childAttribs->customCallbackUserData, commitMsg);
+#ifdef DebugPrintf
+   printf("gitCommitMsg:%s,%s\n",childAttribs->customCallbackUserData,commitMsg);
+#endif
 }
 
 static void load_GitTrackedFiles_into_HashTable()
@@ -1390,7 +1393,7 @@ static void load_GitTrackedFiles_into_HashTable()
 	   // seems that iterate with git log cmd can have long delay, async way might be better, but just try sync first
 	GList *file_list=NULL;
 	file_list=g_list_append(file_list, oneline);
-	if(!g_spawn_wrapper(git_commit_message_cmd, file_list,1,RFM_EXEC_OUPUT_READ_BY_PROGRAM ,NULL, FALSE, &readGitCommitMsgFromGitLogCmdAndInsertIntoHashTable, g_strdup(fullpath))){
+	if(!g_spawn_wrapper(git_commit_message_cmd, file_list,1,RFM_EXEC_OUPUT_READ_BY_PROGRAM ,NULL, FALSE, readGitCommitMsgFromGitLogCmdAndInsertIntoHashTable, g_strdup(fullpath))){
 	  
 	}
       }
