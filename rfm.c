@@ -1113,6 +1113,8 @@ static void free_fileAttributes(RFM_FileAttributes *fileAttributes) {
    g_free(fileAttributes->mime_root);
    g_free(fileAttributes->mime_sub_type);
    g_free(fileAttributes->icon_name);
+   g_free(fileAttributes->owner);
+   g_free(fileAttributes->group);
    g_free(fileAttributes->file_mode_str);
    g_free(fileAttributes->mime_sort);
    g_free(fileAttributes);
