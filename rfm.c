@@ -22,7 +22,7 @@
 #include <mntent.h>
 #include <icons.h>
 
-//#define DragAndDropSupport
+// #define DragAndDropSupport
 #define GitIntegration //if i put this in config.h, type definition won't be able to reference this,although config.h seems to be a better location for this. In project DWL, this kind of conditional compilation switch is defined in config.mk
 
 #define PROG_NAME "rfm"
@@ -374,6 +374,8 @@ static void free_child_attribs(RFM_ChildAttribs *child_attribs)
    g_free(child_attribs->stdOut);
    g_free(child_attribs->stdErr);
    g_free(child_attribs->name);
+   //TODO:child_attribs->RunCmd  ?
+   g_free(child_attribs->customCallbackUserData);
    g_free(child_attribs);
 }
 
@@ -1352,7 +1354,7 @@ static void Iterate_through_fileAttribute_list_to_insert_into_store()
 static void readGitCommitMsgFromGitLogCmdAndInsertIntoHashTable(RFM_ChildAttribs * childAttribs){
    gchar * commitMsg=childAttribs->stdOut;
    commitMsg[strcspn(commitMsg, "\n")] = 0;
-   g_hash_table_insert(gitCommitMsg, childAttribs->customCallbackUserData, commitMsg);
+   g_hash_table_insert(gitCommitMsg, g_strdup(childAttribs->customCallbackUserData), g_strdup(commitMsg));
 #ifdef DebugPrintf
    printf("gitCommitMsg:%s,%s\n",childAttribs->customCallbackUserData,commitMsg);
 #endif
