@@ -76,7 +76,7 @@ typedef struct {
 
 typedef struct {
    gchar *name;
-   gchar **RunCmd;
+   const gchar **RunCmd;
    gint  runOpts;
    GPid  pid;
    gint  stdOut_fd;
@@ -374,7 +374,6 @@ static void free_child_attribs(RFM_ChildAttribs *child_attribs)
    g_free(child_attribs->stdOut);
    g_free(child_attribs->stdErr);
    g_free(child_attribs->name);
-   //TODO:child_attribs->RunCmd  ?
    g_free(child_attribs->customCallbackUserData);
    g_free(child_attribs);
 }
