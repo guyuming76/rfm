@@ -2257,9 +2257,12 @@ static RFM_fileMenu *setup_file_menu(RFM_ctx * rfmCtx){
       child_attribs->name = g_strdup(run_actions[i].runName);
       if (readFromPipeStdIn && (i==1||i==2)){ //here we use i==1 instead of run_actions[i].Name="Move" because we will localize
          child_attribs->customCallBackFunc = refresh_store;
-         child_attribs->customCallbackUserData = rfmCtx;         
-      } else 
-	 child_attribs->customCallBackFunc = NULL;
+         child_attribs->customCallbackUserData = rfmCtx;
+      } else {
+         child_attribs->customCallBackFunc = NULL;
+	 child_attribs->customCallbackUserData = NULL;
+      }
+
       g_signal_connect(fileMenu->action[i], "activate", G_CALLBACK(file_menu_exec), child_attribs);
    }
    return fileMenu;
