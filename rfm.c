@@ -2230,8 +2230,18 @@ static void g_spawn_wrapper_for_selected_fileList_(RFM_ChildAttribs *childAttrib
 
 
 static void file_menu_exec(GtkMenuItem *menuitem, RFM_ChildAttribs *childAttribs)
-{
-   g_spawn_wrapper_for_selected_fileList_(childAttribs);
+{ 
+  RFM_ChildAttribs *child_attribs=calloc(1, sizeof(RFM_ChildAttribs));
+  child_attribs->customCallBackFunc=childAttribs->customCallBackFunc;
+  child_attribs->customCallbackUserData=childAttribs->customCallbackUserData;
+  child_attribs->runOpts=childAttribs->runOpts;
+  child_attribs->RunCmd = childAttribs->RunCmd;
+  child_attribs->stdOut = NULL;
+  child_attribs->stdErr = NULL;
+  child_attribs->spawn_async = childAttribs->spawn_async;
+  child_attribs->name=g_strdup(childAttribs->name);
+	
+  g_spawn_wrapper_for_selected_fileList_(child_attribs);
 }
 
 
@@ -2257,7 +2267,8 @@ static RFM_fileMenu *setup_file_menu(RFM_ctx * rfmCtx){
       gtk_menu_shell_append(GTK_MENU_SHELL(fileMenu->menu), fileMenu->action[i]);
 
       RFM_ChildAttribs *child_attribs = calloc(1,sizeof(RFM_ChildAttribs));
-      // this child_attribs will be freed by g_spawn_wrapper call tree if menuitem clicked
+      // this child_attribs will be freed by g_spawn_wrapper call tree if menuitem clicked,
+      // and it will be copied to a new instance in file_menu_exec.
       // but if menuitem not clicked? currently, setup_file_menu won't be called many times, so, it will be freed after application quit, no need to free manually.
       child_attribs->RunCmd = run_actions[i].runCmdName;      
       child_attribs->runOpts = run_actions[i].runOpts;
