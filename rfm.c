@@ -307,7 +307,7 @@ static void free_default_pixbufs(RFM_defaultPixbufs *defaultPixbufs);
 
 static char * yyyymmddhhmmss(time_t nSeconds) {
     struct tm * pTM=localtime(&nSeconds);
-    char * psDateTime=malloc(sizeof(char)*20);
+    char * psDateTime=calloc(20,sizeof(char));
 
     /* datetime format: yyyymmdd:HHMMSS */
     sprintf(psDateTime, "%04d-%02d-%02d %02d:%02d:%02d",
@@ -317,7 +317,7 @@ static char * yyyymmddhhmmss(time_t nSeconds) {
 }
 
 static char * st_mode_str(guint32 st_mode){
-    char * ret=malloc(sizeof(char)*11);
+    char * ret=calloc(11,sizeof(char));
     //文件类型
     if(S_ISDIR(st_mode))//目录文件
       ret[0]='d';
@@ -502,7 +502,7 @@ static int read_char_pipe(gint fd, ssize_t block_size, char **buffer)
    ssize_t read_size=-1;
    ssize_t txt_size, i;
 
-   txt=malloc((block_size+1)*sizeof(char));
+   txt=calloc((block_size+1),sizeof(char));
    if (txt==NULL) return -1;
 
    read_size=read(fd, txt, block_size);
@@ -806,7 +806,7 @@ static gchar **build_cmd_vector(const char **cmd, GList *file_list, long n_args,
    
    n_args+=2; /* Account for terminating NULL & possible destination path argument */
    
-   if((v=malloc((RFM_MX_ARGS+n_args)*sizeof(gchar*)))==NULL)
+   if((v=calloc((RFM_MX_ARGS+n_args), sizeof(gchar*)))==NULL)
       return NULL;
 
    while (cmd[j]!=NULL && j<RFM_MX_ARGS) {
@@ -916,7 +916,7 @@ static gboolean g_spawn_wrapper_(GList *file_list, long n_args, char *dest_path,
 }
 
 static gboolean g_spawn_wrapper(const char **action, GList *file_list, long n_args, int run_opts, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData){
-  RFM_ChildAttribs *child_attribs=malloc(sizeof(RFM_ChildAttribs));
+  RFM_ChildAttribs *child_attribs=calloc(1,sizeof(RFM_ChildAttribs));
   child_attribs->customCallBackFunc=callbackfunc;
   child_attribs->customCallbackUserData=callbackfuncUserData;
   child_attribs->runOpts=run_opts;
@@ -1079,7 +1079,7 @@ static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter)
 
    if (fileAttributes->is_dir || fileAttributes->is_symlink) return NULL;
    
-   thumbData=malloc(sizeof(RFM_ThumbQueueData));
+   thumbData=calloc(1, sizeof(RFM_ThumbQueueData));
    if (thumbData==NULL) return NULL;
 
    thumbData->t_idx=find_thumbnailer(fileAttributes->mime_root, fileAttributes->mime_sub_type);
@@ -1127,25 +1127,25 @@ static void free_fileAttributes(RFM_FileAttributes *fileAttributes) {
 
 static RFM_FileAttributes *malloc_fileAttributes(void)
 {
-   RFM_FileAttributes *fileAttributes=malloc(sizeof(RFM_FileAttributes));
+   RFM_FileAttributes *fileAttributes=calloc(1,sizeof(RFM_FileAttributes));
    if (fileAttributes==NULL)
       return NULL;
 
-   fileAttributes->path=NULL;
-   fileAttributes->file_name=NULL;
-   fileAttributes->display_name=NULL;
-   fileAttributes->pixbuf=NULL;
-   fileAttributes->mime_root=NULL;
-   fileAttributes->mime_sub_type=NULL;
-   fileAttributes->file_mtime=0;
-   fileAttributes->is_dir=FALSE;
-   fileAttributes->is_mountPoint=FALSE;
-   fileAttributes->is_symlink=FALSE;
-   fileAttributes->icon_name=NULL;
-   fileAttributes->group=NULL;
-   fileAttributes->owner=NULL;
-   fileAttributes->file_mode_str=NULL;
-   fileAttributes->mime_sort=NULL;
+   /* fileAttributes->path=NULL; */
+   /* fileAttributes->file_name=NULL; */
+   /* fileAttributes->display_name=NULL; */
+   /* fileAttributes->pixbuf=NULL; */
+   /* fileAttributes->mime_root=NULL; */
+   /* fileAttributes->mime_sub_type=NULL; */
+   /* fileAttributes->file_mtime=0; */
+   /* fileAttributes->is_dir=FALSE; */
+   /* fileAttributes->is_mountPoint=FALSE; */
+   /* fileAttributes->is_symlink=FALSE; */
+   /* fileAttributes->icon_name=NULL; */
+   /* fileAttributes->group=NULL; */
+   /* fileAttributes->owner=NULL; */
+   /* fileAttributes->file_mode_str=NULL; */
+   /* fileAttributes->mime_sort=NULL; */
    return fileAttributes;
 }
 
@@ -2256,7 +2256,7 @@ static RFM_fileMenu *setup_file_menu(RFM_ctx * rfmCtx){
       //gtk_widget_show(fileMenu->action[i]);
       gtk_menu_shell_append(GTK_MENU_SHELL(fileMenu->menu), fileMenu->action[i]);
 
-      RFM_ChildAttribs *child_attribs = malloc(sizeof(RFM_ChildAttribs));
+      RFM_ChildAttribs *child_attribs = calloc(1,sizeof(RFM_ChildAttribs));
       // this child_attribs will be freed by g_spawn_wrapper call tree if menuitem clicked
       // but if menuitem not clicked? currently, setup_file_menu won't be called many times, so, it will be freed after application quit, no need to free manually.
       child_attribs->RunCmd = run_actions[i].runCmdName;      
@@ -3135,7 +3135,7 @@ int main(int argc, char *argv[])
    char *initDir=NULL;
    struct stat statbuf;
    char cwd[1024]; /* Could use MAX_PATH here from limits.h, but still not guaranteed to be max */
-   RFM_ctx *rfmCtx=malloc(sizeof(RFM_ctx));
+   RFM_ctx *rfmCtx=calloc(1,sizeof(RFM_ctx));
    if (rfmCtx==NULL) return 1;
 #ifdef DragAndDropSupport
    rfmCtx->rfm_localDrag=FALSE;
@@ -3164,7 +3164,7 @@ int main(int argc, char *argv[])
 
 
          int name_size=sizeof(gchar) * PATH_MAX;
-         gchar *name=malloc(name_size);
+         gchar *name=calloc(1,name_size);
          while (fgets(name, name_size, stdin) != NULL) {
 	   if (name[0] != '/') {
 	       die("ERROR: currently, when read from stdin via pipe, we only accept absolute path in filename!\n",PROG_NAME);
@@ -3180,7 +3180,7 @@ int main(int argc, char *argv[])
 #ifdef DebugPrintf
            printf("appended into FileNameListWithAbsolutePath_FromPipeStdin:%s\n", name);
 #endif
-	   name=malloc(name_size);
+	   name=calloc(1,name_size);
          }
          if (FileNameListWithAbsolutePath_FromPipeStdin != NULL) {
            FileNameListWithAbsolutePath_FromPipeStdin = g_list_reverse(FileNameListWithAbsolutePath_FromPipeStdin);
