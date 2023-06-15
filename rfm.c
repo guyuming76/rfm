@@ -293,7 +293,13 @@ static void g_spawn_wrapper_for_selected_fileList_(RFM_ChildAttribs *childAttrib
 
 static void switch_view(GtkToolItem *item, RFM_ctx *rfmCtx);
 
-  
+/* Free functions*/
+static void free_thumbQueueData(RFM_ThumbQueueData *thumbData);
+static void free_child_attribs(RFM_ChildAttribs *child_attribs);
+static void free_fileAttributes(RFM_FileAttributes *fileAttributes);
+static RFM_FileAttributes *malloc_fileAttributes(void);
+static void free_default_pixbufs(RFM_defaultPixbufs *defaultPixbufs);
+
 /* TODO: Function definitions */
 
 #include "config.h"
@@ -1136,6 +1142,10 @@ static RFM_FileAttributes *malloc_fileAttributes(void)
    fileAttributes->is_mountPoint=FALSE;
    fileAttributes->is_symlink=FALSE;
    fileAttributes->icon_name=NULL;
+   fileAttributes->group=NULL;
+   fileAttributes->owner=NULL;
+   fileAttributes->file_mode_str=NULL;
+   fileAttributes->mime_sort=NULL;
    return fileAttributes;
 }
 
