@@ -92,11 +92,11 @@ static const char *git_log_cmd[] = { rfmBinPath "/rfmVTforCMD_hold.sh","/usr/bin
  */
 static RFM_RunActions run_actions[] = {
    /* name           mime root        mime sub type             argument          run options */
-   { "Copy",         "*",              "*",                    f_cp,             RFM_EXEC_INTERNAL },
-   { "Move",         "*",              "*",                    f_mv,             RFM_EXEC_INTERNAL },
-   { "Delete",       "*",              "*",                    f_rm,             RFM_EXEC_INTERNAL },
+   { RunActionCopy,         "*",              "*",                    f_cp,             RFM_EXEC_INTERNAL },
+   { RunActionMove,         "*",              "*",                    f_mv,             RFM_EXEC_INTERNAL },
+   { RunActionDelete,       "*",              "*",                    f_rm,             RFM_EXEC_INTERNAL },
 #ifdef GitIntegration
-   { "git stage",    "*",              "*",                    git_stage_cmd,    RFM_EXEC_INTERNAL },
+   { RunActionGitStage,    "*",              "*",                    git_stage_cmd,    RFM_EXEC_INTERNAL },
    { "git log",      "*",              "*",                    git_log_cmd,      RFM_EXEC_NONE },
 #endif
    { "Properties",   "*",              "*",                    properties,       RFM_EXEC_PANGO },

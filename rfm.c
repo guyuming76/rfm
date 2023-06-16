@@ -2276,8 +2276,12 @@ static RFM_fileMenu *setup_file_menu(RFM_ctx * rfmCtx){
       child_attribs->stdErr = NULL;
       child_attribs->spawn_async = TRUE;
       child_attribs->name = g_strdup(run_actions[i].runName);
-      if (readFromPipeStdIn && (i==1||i==2)){ //here we use i==1 instead of run_actions[i].Name="Move" because we will localize
-         child_attribs->customCallBackFunc = refresh_store;
+      if ((g_strcmp0(child_attribs->name, RunActionGitStage)==0) ||
+	  (readFromPipeStdIn &&
+	       ((g_strcmp0(child_attribs->name, RunActionMove)==0
+	       ||g_strcmp0(child_attribs->name, RunActionDelete)==0)))){
+
+	 child_attribs->customCallBackFunc = refresh_store;
          child_attribs->customCallbackUserData = rfmCtx;
       } else {
          child_attribs->customCallBackFunc = NULL;

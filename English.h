@@ -3,3 +3,7 @@
 #define Up "UP"
 #define SwitchView "List/Icon"
 #define Menu "Menu"
+#define RunActionCopy "Copy"
+#define RunActionMove "Move"
+#define RunActionDelete "Delete"
+#define RunActionGitStage "git stage"
