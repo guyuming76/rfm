@@ -35,6 +35,13 @@ alias locatepwd='locate $(pwd)'
  locatepwd|grep .md$|rfm
 ```
 
+也可以用[其他方法获取文件完整路径](https://blog.csdn.net/yaxuan88521/article/details/128172956),比如：
+
+```
+ls|xargs readlink -f|rfm
+ls|xargs realpath|rfm
+```
+
 
 多张图片git stage 操作也比较稍嫌麻烦，当然我可以用类似如下命令一次stage多个当天的图片文件：
 
