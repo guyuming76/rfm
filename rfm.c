@@ -2971,6 +2971,37 @@ static void free_default_pixbufs(RFM_defaultPixbufs *defaultPixbufs)
    g_free(defaultPixbufs);
 }
 
+static gboolean  
+gio_in_stdin (GIOChannel *gio, GIOCondition condition, gpointer data)  
+{  
+        GIOStatus ret;  
+        GError *err = NULL;  
+        gchar *msg;  
+        gsize len;  
+  
+        ret = g_io_channel_read_line (gio, &msg, &len, NULL, &err);  
+        if (ret == G_IO_STATUS_ERROR)  
+                g_error ("Error reading: %s\n", err->message);  
+  
+        //printf ("Read %u bytes: %s\n", len, msg);
+	if (len>3 && g_strcmp0(g_utf8_substring(msg, 0, 3),"cd ")==0){
+	  gchar * addr=g_utf8_substring(msg, 3, len-1); //ending charactor for msg is \n
+	  //printf ("addr (%s)\n", addr);
+
+	  struct stat addr_info;
+
+          if (stat(addr, &addr_info)==0) {
+	    if (S_ISDIR(addr_info.st_mode)) {
+	      set_rfm_curPath(addr);
+	    }
+	  }
+
+	}
+	
+        g_free (msg);  
+        return TRUE;
+}  
+
 static int setup(char *initDir, RFM_ctx *rfmCtx)
 {
 #ifdef DragAndDropSupport
@@ -3078,8 +3109,14 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
    printf("rfm_homePath: %s\n",rfm_homePath);
    printf("rfm_thumbDir: %s\n",rfm_thumbDir);
 #endif
-
+   
    refresh_store(rfmCtx);
+
+   if (!readFromPipeStdIn){
+     GIOChannel *channel_stdin = g_io_channel_unix_new (0);
+     g_io_add_watch_full(channel_stdin,0,G_IO_IN,gio_in_stdin,NULL,(GDestroyNotify)g_free);
+   }
+   
    gtk_widget_show_all(window);
    return 0;
 }
