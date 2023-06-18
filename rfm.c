@@ -2200,7 +2200,20 @@ static void new_item(GtkWidget *menuitem, gpointer newFile)
 static void copy_curPath_to_clipboard(GtkWidget *menuitem, gpointer user_data)
 {
    /* Clipboards: GDK_SELECTION_CLIPBOARD, GDK_SELECTION_PRIMARY, GDK_SELECTION_SECONDARY */
-   GtkClipboard *clipboard = gtk_clipboard_get(GDK_SELECTION_PRIMARY);
+   //https://specifications.freedesktop.org/clipboards-spec/clipboards-0.1.txt
+   /* No one ever does anything interesting with SECONDARY as far as I can
+tell.
+
+The current consensus is that interpretation b) is correct. Qt 3 and
+GNU Emacs 21 will use interpretation b), changing the behavior of
+previous versions.
+
+The correct behavior can be summarized as follows: CLIPBOARD works
+just like the clipboard on Mac or Windows; it only changes on explicit
+cut/copy. PRIMARY is an "easter egg" for expert users, regular users
+can just ignore it; it's normally pastable only via
+middle-mouse-click.  */
+   GtkClipboard *clipboard = gtk_clipboard_get(GDK_SELECTION_CLIPBOARD);
    gtk_clipboard_set_text(clipboard, rfm_curPath, -1);
 }
 
