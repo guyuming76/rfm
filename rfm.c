@@ -8,6 +8,8 @@
  *            OR use the supplied Makefile.
  */
 
+#define _GNU_SOURCE
+
 #include <stdlib.h>
 #include <gtk/gtk.h>
 #include <string.h>
@@ -2971,6 +2973,7 @@ static void free_default_pixbufs(RFM_defaultPixbufs *defaultPixbufs)
    g_free(defaultPixbufs);
 }
 
+
 static gboolean  
 gio_in_stdin (GIOChannel *gio, GIOCondition condition, gpointer data)  
 {  
@@ -2992,7 +2995,13 @@ gio_in_stdin (GIOChannel *gio, GIOCondition condition, gpointer data)
 
           if (stat(addr, &addr_info)==0) {
 	    if (S_ISDIR(addr_info.st_mode)) {
-	      set_rfm_curPath(addr);
+	      char * destpath = NULL;
+	      destpath = canonicalize_file_name(addr);
+	      if (destpath!=NULL){
+		//printf("destpath (%s)\n",destpath);
+		set_rfm_curPath(destpath);
+		g_free(destpath);
+	      }
 	    }
 	  }
 
