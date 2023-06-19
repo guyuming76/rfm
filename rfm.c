@@ -2098,104 +2098,6 @@ static void drag_data_get_handl(GtkWidget *widget, GdkDragContext *context, GtkS
 }
 #endif
 
-/* Dialog box for file operations */
-static gchar *show_file_dialog(gchar *title, gchar *label, gchar *file, GdkPixbuf *file_pixbuf)
-{
-   GtkWidget *content_area;
-   GtkWidget *dialog;
-   GtkWidget *dir_entry;
-   GtkWidget *name_entry;
-   GtkWidget *dialog_label;
-   gint response_id;
-   gchar *tmp, *path_dir, *path_name=NULL;
-   gchar *full_path=NULL;
-   RFM_defaultPixbufs *defaultPixbufs=g_object_get_data(G_OBJECT(window), "rfm_default_pixbufs");
-
-   dialog=gtk_dialog_new_with_buttons(title, GTK_WINDOW (window), GTK_DIALOG_MODAL,
-                                       "_Cancel", GTK_RESPONSE_CANCEL,
-                                       "_Ok", GTK_RESPONSE_OK,
-                                       NULL);
-   /* Add dir box */
-   gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_OK);
-   content_area=gtk_dialog_get_content_area(GTK_DIALOG(dialog));
-   dialog_label=gtk_label_new(NULL);
-   gtk_label_set_markup(GTK_LABEL(dialog_label), label);
-   gtk_container_add(GTK_CONTAINER(content_area), dialog_label);
-   dir_entry=gtk_entry_new();
-   gtk_entry_set_activates_default(GTK_ENTRY(dir_entry), TRUE);
-   gtk_entry_set_text(GTK_ENTRY(dir_entry), rfm_curPath);
-   gtk_entry_set_width_chars(GTK_ENTRY(dir_entry), strlen(rfm_curPath));
-   gtk_entry_set_icon_from_pixbuf(GTK_ENTRY(dir_entry), GTK_ENTRY_ICON_PRIMARY, defaultPixbufs->dir);
-   gtk_container_add(GTK_CONTAINER(content_area), dir_entry);
-
-   if (file != NULL) {
-      name_entry=gtk_entry_new();
-      gtk_entry_set_activates_default(GTK_ENTRY(name_entry), TRUE);
-      gtk_entry_set_text(GTK_ENTRY(name_entry), file);
-      gtk_entry_set_width_chars(GTK_ENTRY(name_entry), strlen(file));
-      if (file_pixbuf != NULL)
-         gtk_entry_set_icon_from_pixbuf(GTK_ENTRY(name_entry), GTK_ENTRY_ICON_PRIMARY, file_pixbuf);
-      gtk_container_add(GTK_CONTAINER(content_area), name_entry);
-      gtk_widget_grab_focus(name_entry);
-   }
-
-   gtk_widget_show_all(dialog);
-
-   response_id=gtk_dialog_run(GTK_DIALOG(dialog));
-   if (response_id==GTK_RESPONSE_OK) {
-      tmp=gtk_editable_get_chars(GTK_EDITABLE(dir_entry), 0, -1);
-      if (g_path_is_absolute(tmp)) {
-         path_dir=tmp;
-         tmp=NULL;
-      }
-      else {
-         path_dir=g_build_filename(rfm_curPath, tmp, NULL);
-         g_free(tmp);
-      }
-      if (g_file_test(path_dir, G_FILE_TEST_IS_DIR)) {
-         if (file != NULL)
-            path_name=gtk_editable_get_chars(GTK_EDITABLE(name_entry), 0, -1);
-         full_path=g_build_filename(path_dir, path_name, NULL);
-         g_free(path_dir);
-         g_free(path_name);
-      }
-      else {
-         show_msgbox("Invalid path", "Path error", GTK_MESSAGE_ERROR);
-         free (path_dir);
-      }
-   }
-   gtk_widget_destroy(dialog);
-   return full_path;
-}
-
-static void new_item(GtkWidget *menuitem, gpointer newFile)
-{
-   gchar *dest_path=NULL;
-   FILE *nFile;
-   RFM_defaultPixbufs *defaultPixbufs=g_object_get_data(G_OBJECT(window), "rfm_default_pixbufs");
-
-   if (newFile!=NULL)
-      dest_path=show_file_dialog("New File", "\n<b><span size=\"large\">Create blank file:</span></b>\n", "newFile", defaultPixbufs->file);
-   else
-      dest_path=show_file_dialog("New Directory", "\n<b><span size=\"large\">Create directory:</span></b>\n", "newDir", defaultPixbufs->dir);
-
-   if (dest_path!=NULL) {
-      if (g_file_test(dest_path, G_FILE_TEST_EXISTS))
-         show_msgbox("New file/dir aborted: path exists!\n", "Error", GTK_MESSAGE_ERROR);
-      else {
-         if (newFile!=NULL) {
-               nFile = fopen (dest_path, "w");
-               if (nFile!=NULL) fclose (nFile);
-               else show_msgbox("Can't create file!\n", "Error", GTK_MESSAGE_ERROR);
-         }
-         else {
-            if (mkdir(dest_path, 0777)!=0)
-               show_msgbox("Can't create directory!\n", "Error", GTK_MESSAGE_ERROR);
-         }
-      }
-      g_free(dest_path);
-   }
-}
 
 static void copy_curPath_to_clipboard(GtkWidget *menuitem, gpointer user_data)
 {
@@ -2421,15 +2323,6 @@ static RFM_rootMenu *setup_root_menu(void)
    if(!(rootMenu=calloc(1, sizeof(RFM_rootMenu))))
       return NULL;
    rootMenu->menu=gtk_menu_new();
-   rootMenu->newFile=gtk_menu_item_new_with_label("New File");
-   gtk_widget_show(rootMenu->newFile);
-   gtk_menu_shell_append(GTK_MENU_SHELL(rootMenu->menu),rootMenu->newFile);
-   g_signal_connect(rootMenu->newFile, "activate", G_CALLBACK(new_item), rootMenu->newFile);
-
-   rootMenu->newDir=gtk_menu_item_new_with_label("New Dir");
-   gtk_widget_show(rootMenu->newDir);
-   gtk_menu_shell_append(GTK_MENU_SHELL(rootMenu->menu), rootMenu->newDir);
-   g_signal_connect(rootMenu->newDir, "activate", G_CALLBACK(new_item), NULL);
    
    rootMenu->copyPath=gtk_menu_item_new_with_label("Copy Path");
    gtk_widget_show(rootMenu->copyPath);
