@@ -4,13 +4,13 @@ set -x
 
 export destination=$(pwd)
 
-read -p "Please input the move destination(default $destination ): " -r input_destination
+read -p "请输入移动目的地址(默认 $destination ): " -r input_destination
 
 [[ ! -z "$input_destination" ]] && destination=$input_destination
 
 /bin/mv -i $@ -t $destination
 
-read -p "enter 1 to open rfm for $destination, or just press enter to close this window: " -r next_action
+read -p "输入 1 在新窗口用 rfm 打开路径 $destination, 或回车关闭此窗口: " -r next_action
 
 [[ "$next_action" == "1" ]]  && rfm -d $destination
 

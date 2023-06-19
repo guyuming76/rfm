@@ -7,7 +7,7 @@ VERSION = 1.9.4
 # Edit below for extra libs (e.g. for thumbnailers etc.)
 #LIBS = -L./libdcmthumb -lm -ldcmthumb
 GTK_VERSION = gtk+-3.0
-CPPFLAGS = -DrfmBinPath=\"${PREFIX}/bin\"
+CPPFLAGS = -DrfmBinPath=\"${PREFIX}/bin\" --include ${languageInclude}
 
 # Uncomment the line below if compiling on a 32 bit system (otherwise stat() may fail on large directories; see man 2 stat)
 CPPFLAGS += -D_FILE_OFFSET_BITS=64
@@ -22,7 +22,7 @@ CFLAGS = -g -Wall -std=c11 -O0 ${GTK_CFLAGS} ${INCS} ${CPPFLAGS}
 LDFLAGS = -g ${LIBS}
 
 # compiler and linker
-CC = gcc
+CC = clang
 
 all: options rfm
 
@@ -58,7 +58,7 @@ install: all
 	@cp -f scripts/rfmVTforCMD.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmVTforCMD_hold.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmCopy.sh ${DESTDIR}${PREFIX}/bin
-	@cp -f scripts/rfmMove.sh ${DESTDIR}${PREFIX}/bin
+	@cp -f scripts/rfmMove_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmMove.sh
 	@cp -f scripts/rfmRemove.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmProperties.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmOpenWith_.sh ${DESTDIR}${PREFIX}/bin

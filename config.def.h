@@ -1,10 +1,7 @@
-/* Config file for rfm
- */
-
-#include "Chinese.h"
-//#include "English.h"
+/* Config file for rfm */
 
 //#define DebugPrintf
+
 /*#define RFM_ICON_THEME "elementary"*/
 /*#define RFM_SINGLE_CLICK "True"*/
 #define RFM_TOOL_SIZE 22
