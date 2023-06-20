@@ -3032,53 +3032,19 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
 
 static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx)
 {
-  //since we call this on application exit, do we reaaly need this? i thought that all mem released on process termination.
-  
-   RFM_fileMenu *fileMenu=g_object_get_data(G_OBJECT(window),"rfm_file_menu");
-
+   //https://unix.stackexchange.com/questions/534657/do-inotify-watches-automatically-stop-when-a-program-ends
    inotify_rm_watch(rfm_inotify_fd, rfm_curPath_wd);
    if (rfm_do_thumbs==1) {
       inotify_rm_watch(rfm_inotify_fd, rfm_thumbnail_wd);
-      if (rfm_thumbQueue!=NULL)
-         g_list_free_full(rfm_thumbQueue, (GDestroyNotify)free_thumbQueueData);
    }
    close(rfm_inotify_fd);
    
-   if (treeview)
-     gtk_tree_selection_unselect_all(gtk_tree_view_get_selection(GTK_TREE_VIEW(icon_or_tree_view)));
-   else
-     gtk_icon_view_unselect_all(GTK_ICON_VIEW(icon_or_tree_view));
 #ifdef DragAndDropSupport
    gtk_target_list_unref(target_list);
 #endif
-   if (rfm_childList != NULL) {
-      g_warning ("Ending program, but background jobs still running!\n");
-      g_list_free_full(rfm_childList, (GDestroyNotify)free_child_attribs);
-   }
 
    gtk_main_quit();
 
-   g_object_unref(rfmCtx->rfm_mountMonitor);
-
-   g_hash_table_destroy(thumb_hash);
-
-   #ifdef GitIntegration
-   g_hash_table_destroy(gitTrackedFiles);
-   g_hash_table_destroy(gitCommitMsg);
-   #endif
-
-   #ifdef RFM_ICON_THEME
-      g_object_unref(icon_theme);
-   #endif
-
-   g_free(rfm_homePath);
-   g_free(rfm_thumbDir);
-   g_free(rfm_curPath);
-   g_free(rfm_prePath);
-
-   g_object_unref(store);
-   free(fileMenu->action);
-   free(fileMenu);
 }
 
 /* From http://dwm.suckless.org/ */
