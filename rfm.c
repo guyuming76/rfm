@@ -770,9 +770,9 @@ static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *ch
       rv=g_spawn_async_with_pipes(rfm_curPath, v, NULL, G_SPAWN_DO_NOT_REAP_CHILD, NULL, NULL,
                                   &child_attribs->pid, NULL, &child_attribs->stdOut_fd,
                                   &child_attribs->stdErr_fd, NULL);
-#ifdef DebugPrintf
-      fprintf(stderr,"g_spawn_async_with_pipes, workingdir:%s, argv:%s, G_SPAWN_DO_NOT_REAP_CHILD \n",rfm_curPath,v[0]);
-#endif  
+
+      g_debug("g_spawn_async_with_pipes, workingdir:%s, argv:%s, G_SPAWN_DO_NOT_REAP_CHILD",rfm_curPath,v[0]);
+
       
       if (rv==TRUE) {
          /* Don't block on read if nothing in pipe */
@@ -857,9 +857,8 @@ static gboolean g_spawn_wrapper_(GList *file_list, long n_args, char *dest_path,
       }
       if (child_attribs->runOpts==RFM_EXEC_NONE) {
         if (child_attribs->spawn_async) {
-#ifdef DebugPrintf
-          fprintf(stderr,"g_spawn_async, workingdir:%s, argv:%s, G_SPAWN_STDOUT_TO_DEV_NULL|G_SPAWN_STDERR_TO_DEV_NULL \n",rfm_curPath,v[0]);
-#endif  
+
+          g_debug("g_spawn_async, workingdir:%s, argv:%s, G_SPAWN_STDOUT_TO_DEV_NULL|G_SPAWN_STDERR_TO_DEV_NULL",rfm_curPath,v[0]);
 
           if (!g_spawn_async(rfm_curPath, v, NULL, G_SPAWN_STDOUT_TO_DEV_NULL|G_SPAWN_STDERR_TO_DEV_NULL, NULL, NULL, NULL, NULL)){
             g_warning("g_spawn_wrapper with option RFM_EXEC_NONE: %s failed to execute. Check command in config.h!", v[0]);
@@ -867,9 +866,9 @@ static gboolean g_spawn_wrapper_(GList *file_list, long n_args, char *dest_path,
 	  }
 	  //for RFM_EXEC_NONE since no child PID is returned, no way to g_child_add_watch, so, no callbackfunc invoke here
         } else {
-#ifdef DebugPrintf
-          fprintf(stderr,"g_spawn_sync, workingdir:%s, argv:%s, G_SPAWN_STDOUT_TO_DEV_NULL|G_SPAWN_STDERR_TO_DEV_NULL \n",rfm_curPath,v[0]);
-#endif
+
+          g_debug("g_spawn_sync, workingdir:%s, argv:%s, G_SPAWN_STDOUT_TO_DEV_NULL|G_SPAWN_STDERR_TO_DEV_NULL",rfm_curPath,v[0]);
+
 
           if (!g_spawn_sync(rfm_curPath, v, NULL, G_SPAWN_STDERR_TO_DEV_NULL|G_SPAWN_STDOUT_TO_DEV_NULL, NULL, NULL, NULL, NULL,NULL,NULL)){
             g_warning("g_spawn_wrapper with option RFM_EXEC_NONE: %s failed to execute. Check command in config.h!", v[0]);
@@ -895,9 +894,8 @@ static gboolean g_spawn_wrapper_(GList *file_list, long n_args, char *dest_path,
 	  child_attribs->exitcode=0;
 	  child_attribs->status=-1;
 
-#ifdef DebugPrintf
-          fprintf(stderr,"g_spawn_sync, workingdir:%s, argv:%s, G_SPAWN_DEFAULT \n",rfm_curPath,v[0]);
-#endif
+          g_debug("g_spawn_sync, workingdir:%s, argv:%s, G_SPAWN_DEFAULT",rfm_curPath,v[0]);
+
 	  
           if (!g_spawn_sync(rfm_curPath, v, NULL,G_SPAWN_DEFAULT, NULL, NULL,&child_attribs->stdOut, &child_attribs->stdErr,&child_attribs->status,NULL)){
             g_warning("g_spawn_sync: %s failed to execute. Check command in config.h!", v[0]);
@@ -1040,9 +1038,9 @@ static gboolean mkThumb()
       thumb=thumbnailers[thumbData->t_idx].func(thumbData);
    if (thumb!=NULL) {
       rfm_saveThumbnail(thumb, thumbData);
-#ifdef DebugPrintf
-      printf("thumbnail %s saved.\n",thumbData->thumb_name);
-#endif
+
+      g_debug("thumbnail %s saved.",thumbData->thumb_name);
+
       g_object_unref(thumb);
    }else{
       if (pixbufErr==NULL)
@@ -1056,18 +1054,18 @@ static gboolean mkThumb()
 
    if (rfm_thumbQueue->next!=NULL) {   /* More items in queue */
       rfm_thumbQueue=g_list_next(rfm_thumbQueue);
-#ifdef DebugPrintf
-      printf("mkThumb return TRUE\n");
-#endif
+
+      g_debug("mkThumb return TRUE");
+
       return TRUE;
    }
    
    g_list_free_full(rfm_thumbQueue, (GDestroyNotify)free_thumbQueueData);
    rfm_thumbQueue=NULL;
    rfm_thumbScheduler=0;
-#ifdef DebugPrintf
-      printf("mkThumb return FALSE\n");
-#endif
+
+   g_debug("mkThumb return FALSE");
+
    return FALSE;  /* Finished thumb queue */
 }
 
@@ -1266,15 +1264,15 @@ static void iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue(void)
          /* Try to load any existing thumbnail */
 	int ld=load_thumbnail(thumbData->thumb_name);
 	 if ( ld == 0) { /* Success: thumbnail exists in cache and is valid */
-#ifdef DebugPrintf
-	   printf("thumbnail %s exists for %s\n",thumbData->thumb_name, thumbData->path);
-#endif
+
+	   g_debug("thumbnail %s exists for %s",thumbData->thumb_name, thumbData->path);
+
            free_thumbQueueData(thumbData);
          } else { /* Thumbnail doesn't exist or is out of date */
            rfm_thumbQueue = g_list_append(rfm_thumbQueue, thumbData);
-#ifdef DebugPrintf
-	   printf("thumbnail %s creation enqueued for %s; load_thumbnail failure code:%d.\n",thumbData->thumb_name,thumbData->path,ld);
-#endif
+
+	   g_debug("thumbnail %s creation enqueued for %s; load_thumbnail failure code:%d.",thumbData->thumb_name,thumbData->path,ld);
+
          }
       }
       valid=gtk_tree_model_iter_next(GTK_TREE_MODEL(store), &iter);
@@ -1343,9 +1341,9 @@ static void Iterate_through_fileAttribute_list_to_insert_into_store()
 #endif
 			  COL_MIME_SORT,fileAttributes->mime_sort,
                           -1);
-#ifdef DebugPrintf
-      printf("Inserted into store:%s\n",fileAttributes->display_name);
-#endif
+
+      g_debug("Inserted into store:%s",fileAttributes->display_name);
+
       if (rfm_prePath!=NULL && g_strcmp0(rfm_prePath, fileAttributes->path)==0) {
          treePath=gtk_tree_model_get_path(GTK_TREE_MODEL(store), &iter);
          if (treeview) {
@@ -1368,9 +1366,9 @@ static void readGitCommitMsgFromGitLogCmdAndInsertIntoHashTable(RFM_ChildAttribs
    gchar * commitMsg=childAttribs->stdOut;
    commitMsg[strcspn(commitMsg, "\n")] = 0;
    g_hash_table_insert(gitCommitMsg, g_strdup(childAttribs->customCallbackUserData), g_strdup(commitMsg));
-#ifdef DebugPrintf
-   printf("gitCommitMsg:%s,%s\n",childAttribs->customCallbackUserData,commitMsg);
-#endif
+
+   g_debug("gitCommitMsg:%s,%s",childAttribs->customCallbackUserData,commitMsg);
+
 }
 
 static void load_GitTrackedFiles_into_HashTable()
@@ -1381,9 +1379,9 @@ static void load_GitTrackedFiles_into_HashTable()
 
   if (g_spawn_sync(rfm_curPath, git_root_cmd, NULL, 0, NULL, NULL,&child_stdout, &child_stderr, 0, NULL)) {
     git_root = g_strdup(strtok(child_stdout, "\n"));
-#ifdef DebugPrintf
-      printf("git root:%s\n",git_root);
-#endif
+
+    g_debug("git root:%s",git_root);
+
     g_free(child_stdout);
     g_free(child_stderr);
   } else {
@@ -1399,9 +1397,9 @@ static void load_GitTrackedFiles_into_HashTable()
     while (oneline!=NULL){
       gchar * fullpath=g_build_filename(git_root,g_strdup(oneline),NULL);         
       g_hash_table_insert(gitTrackedFiles,fullpath,g_strdup(""));
-#ifdef DebugPrintf
-      printf("gitTrackedFile:%s\n",fullpath);
-#endif
+
+      g_debug("gitTrackedFile:%s",fullpath);
+
 
       if (showGitCommitMsg) {
            // get git commit msg for current file with git log --oneline and store into hashtable
@@ -1432,9 +1430,9 @@ static void load_GitTrackedFiles_into_HashTable()
         gchar * filename=g_utf8_substring(oneline, 3, strlen(oneline));
       gchar *fullpath=g_build_filename(git_root,g_strdup(filename),NULL);         
 	g_hash_table_insert(gitTrackedFiles,fullpath,g_strdup(status));
-#ifdef DebugPrintf
-	printf("gitTrackedFile Status:%s,%s\n",status,fullpath);
-#endif
+
+	g_debug("gitTrackedFile Status:%s,%s",status,fullpath);
+
 	//      }
       oneline=strtok(NULL, "\n");
     }
@@ -1507,9 +1505,9 @@ static gboolean fill_fileAttributeList_with_filenames_from_pipeline_stdin_and_th
     fileAttributes = get_fileAttributes_for_a_file(name->data, mtimeThreshold, mount_hash);
     if (fileAttributes != NULL) {
       rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
-#ifdef DebugPrintf
-      printf("appended into rfm_fileAttributeList:%s\n", (char*)name->data);
-#endif
+
+      g_debug("appended into rfm_fileAttributeList:%s", (char*)name->data);
+
     }
     name=g_list_next(name);
     i++;
@@ -1588,9 +1586,8 @@ static void set_curPath_is_git_repo(gpointer *child_attribs)
   }
   if(treeview) gtk_tree_view_column_set_visible(colGitStatus,curPath_is_git_repo);
   
-#ifdef DebugPrintf
-  printf("curPath_is_git_repo:%d\n",curPath_is_git_repo);
-#endif
+
+  g_debug("curPath_is_git_repo:%d",curPath_is_git_repo);
 }
 #endif
 
@@ -2632,15 +2629,13 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
    gtk_container_add(GTK_CONTAINER(sw), _view);
    gtk_widget_grab_focus(_view);
 
-#ifdef DebugPrintf
    if (!treeview) {
-     printf("gtk_icon_view_get_column_spacing:%d\n",gtk_icon_view_get_column_spacing((GtkIconView *)_view));
-     printf("gtk_icon_view_get_item_padding:%d\n", gtk_icon_view_get_item_padding((GtkIconView *)_view));
-     printf("gtk_icon_view_get_spacing:%d\n", gtk_icon_view_get_spacing((GtkIconView *)_view));
-     printf("gtk_icon_view_get_item_width:%d\n", gtk_icon_view_get_item_width((GtkIconView *)_view));
-     printf("gtk_icon_view_get_margin:%d\n", gtk_icon_view_get_margin((GtkIconView *)_view));
+     g_debug("gtk_icon_view_get_column_spacing:%d",gtk_icon_view_get_column_spacing((GtkIconView *)_view));
+     g_debug("gtk_icon_view_get_item_padding:%d", gtk_icon_view_get_item_padding((GtkIconView *)_view));
+     g_debug("gtk_icon_view_get_spacing:%d", gtk_icon_view_get_spacing((GtkIconView *)_view));
+     g_debug("gtk_icon_view_get_item_width:%d", gtk_icon_view_get_item_width((GtkIconView *)_view));
+     g_debug("gtk_icon_view_get_margin:%d", gtk_icon_view_get_margin((GtkIconView *)_view));
    }
-#endif
    
    if (readFromPipeStdIn) {
      /*a single cell will be too wide if width is set automatically, one cell can take a whole row, don't know why*/
@@ -2742,9 +2737,9 @@ static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer user_d
             /* Update thumbnails in the current view */
             if (event->mask & IN_MOVED_TO || event->mask & IN_CREATE) { /* Only update thumbnail move - not interested in temporary files */
               load_thumbnail(event->name);
-#ifdef DebugPrintf
-	      printf("thumbnail %s loaded in inotify_handler\n",event->name);
-#endif
+
+	      g_debug("thumbnail %s loaded in inotify_handler",event->name);
+
             }
          }
          else {   /* Must be from rfm_curPath_wd */
@@ -3018,12 +3013,11 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
    else
      set_rfm_curPath(initDir);
 
-#ifdef DebugPrintf
-   printf("initDir: %s\n",initDir);
-   printf("rfm_curPath: %s\n",rfm_curPath);
-   printf("rfm_homePath: %s\n",rfm_homePath);
-   printf("rfm_thumbDir: %s\n",rfm_thumbDir);
-#endif
+   g_debug("initDir: %s",initDir);
+   g_debug("rfm_curPath: %s",rfm_curPath);
+   g_debug("rfm_homePath: %s",rfm_homePath);
+   g_debug("rfm_thumbDir: %s",rfm_thumbDir);
+
    
    refresh_store(rfmCtx);
 
@@ -3102,6 +3096,8 @@ int main(int argc, char *argv[])
    char *initDir=NULL;
    struct stat statbuf;
    char cwd[1024]; /* Could use MAX_PATH here from limits.h, but still not guaranteed to be max */
+
+   g_log_set_handler (G_LOG_DOMAIN, G_LOG_LEVEL_MASK | G_LOG_FLAG_FATAL| G_LOG_FLAG_RECURSION, g_log_default_handler, NULL);
    RFM_ctx *rfmCtx=calloc(1,sizeof(RFM_ctx));
    if (rfmCtx==NULL) return 1;
 #ifdef DragAndDropSupport
@@ -3119,9 +3115,9 @@ int main(int argc, char *argv[])
 
    static char buf[PATH_MAX];
    int rslt = readlink("/proc/self/fd/0", buf, PATH_MAX);
-#ifdef DebugPrintf
-   printf("readlink for /proc/self/fd/0: %s\n",buf);
-#endif
+
+   g_debug("readlink for /proc/self/fd/0: %s",buf);
+
    if (strlen(buf)>4 && g_strcmp0(g_utf8_substring(buf, 0, 4),"pipe")==0){
 	 readFromPipeStdIn=1;
          if (getcwd(cwd, sizeof(cwd)) != NULL) /* getcwd returns NULL if cwd[] not big enough! */
@@ -3144,9 +3140,9 @@ int main(int argc, char *argv[])
 	   
 	   name[strcspn(name, "\n")] = 0; //name[strlen(name)] = '\0'; //manual set the last char to NULL to eliminate the trailing \n from fgets
 	   FileNameListWithAbsolutePath_FromPipeStdin=g_list_prepend(FileNameListWithAbsolutePath_FromPipeStdin, name);
-#ifdef DebugPrintf
-           printf("appended into FileNameListWithAbsolutePath_FromPipeStdin:%s\n", name);
-#endif
+
+           g_debug("appended into FileNameListWithAbsolutePath_FromPipeStdin:%s", name);
+
 	   name=calloc(1,name_size);
          }
          if (FileNameListWithAbsolutePath_FromPipeStdin != NULL) {

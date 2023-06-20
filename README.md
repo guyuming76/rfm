@@ -71,6 +71,21 @@ Firefox 下载界面有个"open containning folder" 按钮，用文件管理器�
 
 #一些TroubleShooting记录#
 
+##显示调试信息##
+
+```
+export G_MESSAGES_DEBUG=rfm
+#或者 export G_MESSAGES_DEBUG=all
+```
+对于 G_LOG_DOMAIN rfm, 我没有做进一步细分，如果需要过滤可以 grep, 比如需要看包含g_spawn 的调试输出：
+
+```
+G_MESSAGES_DEBUG=rfm rfm|grep g_spawn
+```
+
+参见：
+https://blog.gtk.org/2017/05/04/logging-and-more/
+
 ##gentoo上gdk-pixbuf这个包及其USE flag ##
 
 我在gentoo笔记本上.jpg文件图标无法生成：

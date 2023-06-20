@@ -1,6 +1,5 @@
 /* Config file for rfm */
 
-//#define DebugPrintf
 
 /*#define RFM_ICON_THEME "elementary"*/
 /*#define RFM_SINGLE_CLICK "True"*/
