@@ -106,7 +106,6 @@ typedef struct {
 typedef struct {
    GtkWidget *menu;
    GtkWidget **action;
-   GtkWidget *separator[1];
 } RFM_fileMenu;
 
 typedef struct {
@@ -2275,7 +2274,6 @@ static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx)
      gtk_widget_hide(fileMenu->action[4]);
    }
 #endif
-   gtk_widget_show(fileMenu->separator[0]);
 
    for(i=RFM_N_BUILT_IN; i<G_N_ELEMENTS(run_actions); i++) {
       if (showMenuItem[i]>0)
@@ -2414,7 +2412,6 @@ static gboolean view_button_press(GtkWidget *widget, GdkEvent *event, RFM_ctx *r
 static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixbufs, RFM_ctx *rfmCtx)
 {
    GtkToolItem *userButton;
-   GtkToolItem *separatorItem;
    GtkWidget *buttonImage=NULL; /* Temp store for button image; gtk_tool_button_new() appears to take the reference */
    guint i;
 
@@ -2466,9 +2463,6 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
      gtk_tool_item_set_tooltip_text(PageDown_button,"MOD+PgDn");
    }
 
-   separatorItem=gtk_separator_tool_item_new();
-   gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), separatorItem, -1);
-
    for (i = 0; i < G_N_ELEMENTS(tool_buttons); i++) {
        GdkPixbuf *buttonIcon;
        buttonIcon=gtk_icon_theme_load_icon(icon_theme, tool_buttons[i].buttonIcon, RFM_TOOL_SIZE, 0, NULL);
@@ -2480,9 +2474,6 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
        g_signal_connect(userButton, "clicked", G_CALLBACK(exec_user_tool),&tool_buttons[i]);
    }
      
-   separatorItem=gtk_separator_tool_item_new();
-   gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), separatorItem, -1);
-
    if (defaultPixbufs->menu==NULL)
      buttonImage=NULL;
    else
