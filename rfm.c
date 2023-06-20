@@ -1573,7 +1573,6 @@ static void refresh_store(RFM_ctx *rfmCtx)
 }
 
 
-
 #ifdef GitIntegration
 static void set_curPath_is_git_repo(gpointer *child_attribs)
 {
@@ -1585,7 +1584,6 @@ static void set_curPath_is_git_repo(gpointer *child_attribs)
   }
   if(treeview) gtk_tree_view_column_set_visible(colGitStatus,curPath_is_git_repo);
   
-
   g_debug("curPath_is_git_repo:%d",curPath_is_git_repo);
 }
 #endif
@@ -1622,11 +1620,6 @@ static void set_rfm_curPath(gchar* path)
        //check if rfm_curPath is inside git work directory async
        //this is async, so if something wrong with git commands, refresh_store will still run,just that git information is not loaded for file.
        //but since it's async, is it possible that curPath_is_git_repo not set before refresh_store? user need to manually refresh, it can be confusing, but better than not being able to finish refreshing store due to git issue.
-       /* RFM_ChildAttribs *child_attribs=child_attribs=malloc(sizeof(RFM_ChildAttribs)); */
-       /* child_attribs->customCallBackFunc=set_curPath_is_git_repo; */
-       /* child_attribs->customCallbackUserData=child_attribs; */
-       /* child_attribs->runOpts=RFM_EXEC_OUPUT_READ_BY_PROGRAM; */
-       /* if (!g_spawn_async_with_pipes_wrapper(git_inside_work_tree_cmd, child_attribs)) free_child_attribs(child_attribs); */
        g_spawn_wrapper(git_inside_work_tree_cmd, NULL, 0, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, TRUE, set_curPath_is_git_repo, NULL);
 #endif
      }
