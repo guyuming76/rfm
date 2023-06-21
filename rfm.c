@@ -206,7 +206,7 @@ static GtkTargetList *target_list;
 #endif
 static GtkWidget *window=NULL;      /* Main window */
 static GtkWidget *rfm_main_box;
-static GtkWidget *sw; //scroll window
+static GtkWidget *sw = NULL; //scroll window
 static GtkWidget *icon_or_tree_view;
 #ifdef GitIntegration
 static GtkTreeViewColumn *colGitStatus;
@@ -239,8 +239,8 @@ static GtkToolItem *info_button;
 static GtkToolItem *PageUp_button;
 static GtkToolItem *PageDown_button;
 static GtkToolItem *SwitchView_button;
-static GtkAccelGroup *agMain;
-static GtkWidget *tool_bar;
+static GtkAccelGroup *agMain = NULL;
+static GtkWidget *tool_bar = NULL;
 static RFM_defaultPixbufs *defaultPixbufs=NULL;
 
 static GtkIconTheme *icon_theme;
@@ -291,6 +291,8 @@ static gboolean g_spawn_wrapper_(GList *file_list, long n_args, char *dest_path,
 static void g_spawn_wrapper_for_selected_fileList_(RFM_ChildAttribs *childAttribs);
 
 static void switch_view(GtkToolItem *item, RFM_ctx *rfmCtx);
+static GtkWidget *add_view(RFM_ctx *rfmCtx);
+static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixbufs, RFM_ctx *rfmCtx);
 
 /* Free functions*/
 static void free_thumbQueueData(RFM_ThumbQueueData *thumbData);
@@ -1553,6 +1555,13 @@ static gint sort_func(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, gpoin
 
 static void refresh_store(RFM_ctx *rfmCtx)
 {
+   gtk_widget_hide(rfm_main_box);
+   if (agMain) {
+     gtk_window_remove_accel_group(GTK_WINDOW(window), agMain);
+   }
+   if (sw) gtk_widget_destroy(sw);
+   if (tool_bar) gtk_widget_destroy(tool_bar);
+  
    rfm_stop_all(rfmCtx);
    clear_store();
    
@@ -1568,6 +1577,10 @@ static void refresh_store(RFM_ctx *rfmCtx)
      
      rfm_readDirSheduler=g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, (GSourceFunc)read_one_DirItem_into_fileAttributeList_in_each_call_and_insert_all_into_store_in_last_call, dir, (GDestroyNotify)g_dir_close);
   }
+
+   add_toolbar(rfm_main_box, defaultPixbufs, rfmCtx);
+   icon_or_tree_view = add_view(rfmCtx);
+   gtk_widget_show_all(window);
 }
 
 
@@ -1593,8 +1606,13 @@ static void set_rfm_curPath(gchar* path)
    int rfm_new_wd;
 
    if (readFromPipeStdIn) {
-     rfm_curPath = g_strdup(path);
+       if (rfm_curPath != path) {
+         g_free(rfm_curPath);
+         rfm_curPath = g_strdup(path);
+       }
+
    }else{
+
      rfm_new_wd=inotify_add_watch(rfm_inotify_fd, path, INOTIFY_MASK);
      if (rfm_new_wd < 0) {
        perror("RFM: set_rfm_curPath(): inotify_add_watch()");
@@ -1602,24 +1620,21 @@ static void set_rfm_curPath(gchar* path)
        show_msgbox(msg, "Warning", GTK_MESSAGE_WARNING);
        g_free(msg);
      } else {
-       inotify_rm_watch(rfm_inotify_fd, rfm_curPath_wd);
-       rfm_curPath_wd = rfm_new_wd;
+
        if (rfm_curPath != path) {
          g_free(rfm_curPath);
          rfm_curPath = g_strdup(path);
        }
-       gtk_window_set_title(GTK_WINDOW(window), rfm_curPath);
-       gtk_widget_set_sensitive(GTK_WIDGET(up_button),
-				strcmp(rfm_curPath, G_DIR_SEPARATOR_S) != 0);
-       gtk_widget_set_sensitive(GTK_WIDGET(home_button),
-				strcmp(rfm_curPath, rfm_homePath) != 0);
 
 #ifdef GitIntegration
-       //check if rfm_curPath is inside git work directory async
-       //this is async, so if something wrong with git commands, refresh_store will still run,just that git information is not loaded for file.
-       //but since it's async, is it possible that curPath_is_git_repo not set before refresh_store? user need to manually refresh, it can be confusing, but better than not being able to finish refreshing store due to git issue.
-       g_spawn_wrapper(git_inside_work_tree_cmd, NULL, 0, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, TRUE, set_curPath_is_git_repo, NULL);
+       g_spawn_wrapper(git_inside_work_tree_cmd, NULL, 0, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, FALSE, set_curPath_is_git_repo, NULL);
 #endif
+       // inotify_rm_watch will trigger refresh_store in inotify_handler
+       // and it will destory and recreate view base on conditions such as whether curPath_is_git_repo
+      
+       inotify_rm_watch(rfm_inotify_fd, rfm_curPath_wd);
+       rfm_curPath_wd = rfm_new_wd;
+       gtk_window_set_title(GTK_WINDOW(window), rfm_curPath);
      }
    }
 }
@@ -2410,7 +2425,8 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
    gtk_toolbar_set_style(GTK_TOOLBAR(tool_bar), GTK_TOOLBAR_ICONS);
    gtk_box_pack_start(GTK_BOX(rfm_main_box), tool_bar, FALSE, FALSE, 0);
 
-   agMain = gtk_accel_group_new();
+
+   if (!agMain) agMain = gtk_accel_group_new();
    gtk_window_add_accel_group(GTK_WINDOW(window), agMain);
 
    SwitchView_button=gtk_tool_button_new(NULL, SwitchView);
@@ -2419,7 +2435,6 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
    gtk_widget_add_accelerator(GTK_WIDGET(SwitchView_button), "clicked", agMain,GDK_KEY_slash,MOD_KEY, GTK_ACCEL_VISIBLE);
    gtk_tool_item_set_tooltip_text(SwitchView_button,"MOD+/");
 
-   
    if (!readFromPipeStdIn) {
      buttonImage = gtk_image_new_from_pixbuf(defaultPixbufs->up);
      up_button = gtk_tool_button_new(buttonImage, Up);
@@ -2428,10 +2443,8 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
      g_signal_connect(up_button, "clicked", G_CALLBACK(up_clicked), NULL);
      gtk_widget_add_accelerator(GTK_WIDGET(up_button), "clicked", agMain,GDK_KEY_Up, MOD_KEY, GTK_ACCEL_VISIBLE);
      gtk_tool_item_set_tooltip_text(up_button,"MOD+up arrow");
-
-
+     gtk_widget_set_sensitive(GTK_WIDGET(up_button), strcmp(rfm_curPath, G_DIR_SEPARATOR_S) != 0);
    }
-
 
    buttonImage=gtk_image_new_from_pixbuf(defaultPixbufs->refresh);
    refresh_button=gtk_tool_button_new(buttonImage, "Refresh");
@@ -2494,6 +2507,7 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
      gtk_tool_item_set_is_important(home_button, TRUE);
      gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), home_button, -1);
      g_signal_connect(home_button, "clicked", G_CALLBACK(home_clicked), NULL);
+     gtk_widget_set_sensitive(GTK_WIDGET(home_button),strcmp(rfm_curPath, rfm_homePath) != 0);
      //gtk_widget_add_accelerator(GTK_WIDGET(home_button), "clicked", agMain,GDK_KEY_Home, MOD_KEY, GTK_ACCEL_VISIBLE);
      //gtk_tool_item_set_tooltip_text(home_button,"MOD+Home");
    }
@@ -2759,6 +2773,7 @@ static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer user_d
          rfmCtx->delayedRefresh_GSourceID=g_timeout_add(RFM_INOTIFY_TIMEOUT, delayed_refreshAll, user_data);
       break;
       case 2: /* Refresh imediately: refresh_store() will remove delayedRefresh_GSourceID if required */
+	 g_debug("refresh_store imediately from inotify_handler");
          refresh_store(rfmCtx);
       break;
       default: /* Refresh not required */
@@ -2906,7 +2921,6 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
 
    window=gtk_window_new(GTK_WINDOW_TOPLEVEL);
    gtk_window_set_default_size(GTK_WINDOW(window), 640, 400);
-   gtk_window_set_title(GTK_WINDOW(window), rfm_curPath);
 
    rfm_main_box=gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
    gtk_container_add(GTK_CONTAINER(window), rfm_main_box);
@@ -2984,9 +2998,6 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
 
    treemodel=GTK_TREE_MODEL(store);
    
-   add_toolbar(rfm_main_box, defaultPixbufs, rfmCtx);
-   icon_or_tree_view=add_view(rfmCtx);
-
    g_signal_connect(window,"destroy", G_CALLBACK(cleanup), rfmCtx);
 
 
@@ -3000,15 +3011,12 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
    g_debug("rfm_homePath: %s",rfm_homePath);
    g_debug("rfm_thumbDir: %s",rfm_thumbDir);
 
-   
-   refresh_store(rfmCtx);
-
    if (!readFromPipeStdIn){
      GIOChannel *channel_stdin = g_io_channel_unix_new (0);
      g_io_add_watch_full(channel_stdin,0,G_IO_IN,gio_in_stdin,NULL,(GDestroyNotify)g_free);
    }
-   
-   gtk_widget_show_all(window);
+
+   refresh_store(rfmCtx);
    return 0;
 }
 
