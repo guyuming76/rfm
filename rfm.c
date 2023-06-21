@@ -24,8 +24,6 @@
 #include <mntent.h>
 #include <icons.h>
 
-// #define DragAndDropSupport
-#define GitIntegration //if i put this in config.h, type definition won't be able to reference this,although config.h seems to be a better location for this. In project DWL, this kind of conditional compilation switch is defined in config.mk
 
 #define PROG_NAME "rfm"
 #ifdef DragAndDropSupport

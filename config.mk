@@ -3,3 +3,9 @@ PREFIX = /usr/local
 
 languageInclude = Chinese.h
 #languageInclude = English.h
+
+GitIntegration = -DGitIntegration
+#GitIntegration =
+
+DragAndDropSupport = 
+#DragAndDropSupport = -DDragAndDropSupport
