@@ -1428,9 +1428,8 @@ static void load_GitTrackedFiles_into_HashTable()
       //      if (g_strcmp0("??", status)){
         gchar * filename=g_utf8_substring(oneline, 3, strlen(oneline));
       gchar *fullpath=g_build_filename(git_root,g_strdup(filename),NULL);         
-	g_hash_table_insert(gitTrackedFiles,fullpath,g_strdup(status));
-
 	g_debug("gitTrackedFile Status:%s,%s",status,fullpath);
+	g_hash_table_insert(gitTrackedFiles,fullpath,g_strdup(status));
 
 	//      }
       oneline=strtok(NULL, "\n");

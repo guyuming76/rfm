@@ -22,7 +22,7 @@ CFLAGS = -g -Wall -std=c11 -O0 ${GTK_CFLAGS} ${INCS} ${CPPFLAGS}
 LDFLAGS = -g ${LIBS}
 
 # compiler and linker
-CC = clang
+CC = gcc
 
 all: options rfm
 
