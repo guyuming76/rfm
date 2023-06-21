@@ -586,27 +586,27 @@ static RFM_defaultPixbufs *load_default_pixbufs(void)
    return defaultPixbufs;
 }
 
+
 static void show_msgbox(gchar *msg, gchar *title, gint type)
 {
-  //GtkWidget *dialog;
+   GtkWidget *dialog;
    gchar *utf8_string=g_locale_to_utf8(msg, -1, NULL, NULL, NULL);
 
    if (utf8_string==NULL)
-     //dialog=gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_DESTROY_WITH_PARENT, GTK_MESSAGE_WARNING, GTK_BUTTONS_OK, "%s", "Can't convert message text to UTF8!");
-     printf("%s", "Can't convert message text to UTF8!");
+      dialog=gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_DESTROY_WITH_PARENT, GTK_MESSAGE_WARNING, GTK_BUTTONS_OK, "%s", "Can't convert message text to UTF8!");
    else {
-     //dialog=gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_DESTROY_WITH_PARENT, type, GTK_BUTTONS_OK, NULL);
-     //gtk_message_dialog_set_markup(GTK_MESSAGE_DIALOG(dialog), utf8_string);
-     printf("%s",utf8_string);
+      dialog=gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_DESTROY_WITH_PARENT, type, GTK_BUTTONS_OK, NULL);
+      gtk_message_dialog_set_markup(GTK_MESSAGE_DIALOG(dialog), utf8_string);
    }
 
-   //gtk_window_set_title(GTK_WINDOW(dialog), title);
-   //g_signal_connect_swapped (dialog, "response", G_CALLBACK(gtk_widget_destroy), dialog);
-   //gtk_widget_show_all(dialog);
-   //if (type==GTK_MESSAGE_ERROR)
-   //   gtk_dialog_run(GTK_DIALOG(dialog)); /* Show a modal dialog for errors/warnings */
-   //g_free(utf8_string);
+   gtk_window_set_title(GTK_WINDOW(dialog), title);
+   g_signal_connect_swapped (dialog, "response", G_CALLBACK(gtk_widget_destroy), dialog);
+   gtk_widget_show_all(dialog);
+   if (type==GTK_MESSAGE_ERROR)
+      gtk_dialog_run(GTK_DIALOG(dialog)); /* Show a modal dialog for errors/warnings */
+   g_free(utf8_string);
 }
+
 
 #ifdef DragAndDropSupport
 static int show_actionbox(gchar *msg, gchar *title)
@@ -1614,7 +1614,7 @@ static void set_rfm_curPath(gchar* path)
 
      rfm_new_wd=inotify_add_watch(rfm_inotify_fd, path, INOTIFY_MASK);
      if (rfm_new_wd < 0) {
-       perror("RFM: set_rfm_curPath(): inotify_add_watch()");
+       g_warning("set_rfm_curPath(): inotify_add_watch() failed for %s",path);
        msg=g_strdup_printf("%s:\n\nCan't enter directory!", path);
        show_msgbox(msg, "Warning", GTK_MESSAGE_WARNING);
        g_free(msg);
@@ -3053,6 +3053,13 @@ int main(int argc, char *argv[])
    char cwd[1024]; /* Could use MAX_PATH here from limits.h, but still not guaranteed to be max */
 
    g_log_set_handler (G_LOG_DOMAIN, G_LOG_LEVEL_MASK | G_LOG_FLAG_FATAL| G_LOG_FLAG_RECURSION, g_log_default_handler, NULL);
+
+   g_debug("test g_debug");
+   g_info("test g_info");
+   g_warning("test g_warning");
+   //g_error("test g_error");
+   //g_critical("test g_critical");
+   
    RFM_ctx *rfmCtx=calloc(1,sizeof(RFM_ctx));
    if (rfmCtx==NULL) return 1;
 #ifdef DragAndDropSupport
