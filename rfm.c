@@ -1437,7 +1437,7 @@ static void load_GitTrackedFiles_into_HashTable()
   }
   g_free(child_stdout);
   g_free(child_stderr);
-
+  g_free(git_root);
 }
 #endif
 
