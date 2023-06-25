@@ -146,6 +146,10 @@ typedef struct {  /* Update free_fileAttributes() and malloc_fileAttributes() if
    guint64 file_size;
    gchar * mime_sort;
 
+   gchar * mtime;
+   gchar * atime;
+   gchar * ctime;
+
 } RFM_FileAttributes;
 
 typedef struct {
@@ -1119,6 +1123,9 @@ static void free_fileAttributes(RFM_FileAttributes *fileAttributes) {
    g_free(fileAttributes->group);
    g_free(fileAttributes->file_mode_str);
    //g_free(fileAttributes->mime_sort);
+   g_free(fileAttributes->mtime);
+   g_free(fileAttributes->atime);
+   g_free(fileAttributes->ctime);
    g_free(fileAttributes);
 }
 
@@ -1317,21 +1324,24 @@ static void Iterate_through_fileAttribute_list_to_insert_into_store()
       gchar * git_commit_msg=g_hash_table_lookup(gitCommitMsg,fileAttributes->path);
 #endif
       fileAttributes->mime_sort=g_strjoin(NULL,fileAttributes->mime_root,fileAttributes->mime_sub_type,NULL);
+      fileAttributes->mtime=yyyymmddhhmmss(fileAttributes->file_mtime);
+      fileAttributes->atime=yyyymmddhhmmss(fileAttributes->file_atime);
+      fileAttributes->ctime=yyyymmddhhmmss(fileAttributes->file_ctime);
       gtk_list_store_insert_with_values(store, &iter, -1,
                           COL_MODE_STR, fileAttributes->file_mode_str,
                           COL_DISPLAY_NAME, fileAttributes->display_name,
 			  COL_FILENAME,fileAttributes->file_name,
                           COL_PIXBUF, fileAttributes->pixbuf,
                           COL_MTIME, fileAttributes->file_mtime,
-			  COL_MTIME_STR,yyyymmddhhmmss(fileAttributes->file_mtime),
+			  COL_MTIME_STR,fileAttributes->mtime,
              		  COL_SIZE,fileAttributes->file_size,
                           COL_ATTR, fileAttributes,
                           COL_OWNER,fileAttributes->owner,
 			  COL_GROUP,fileAttributes->group,
                           COL_MIME_ROOT,fileAttributes->mime_root,
 			  COL_MIME_SUB,fileAttributes->mime_sub_type,
-			  COL_ATIME_STR,yyyymmddhhmmss(fileAttributes->file_atime),
-			  COL_CTIME_STR,yyyymmddhhmmss(fileAttributes->file_ctime),
+			  COL_ATIME_STR,fileAttributes->atime,
+                          COL_CTIME_STR,fileAttributes->ctime,
 #ifdef GitIntegration
                           COL_GIT_STATUS_STR,gitStatus,
 			  COL_GIT_COMMIT_MSG,git_commit_msg,
