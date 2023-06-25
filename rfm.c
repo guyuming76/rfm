@@ -1122,7 +1122,7 @@ static void free_fileAttributes(RFM_FileAttributes *fileAttributes) {
    g_free(fileAttributes->owner);
    g_free(fileAttributes->group);
    g_free(fileAttributes->file_mode_str);
-   //g_free(fileAttributes->mime_sort);
+   g_free(fileAttributes->mime_sort);
    g_free(fileAttributes->mtime);
    g_free(fileAttributes->atime);
    g_free(fileAttributes->ctime);
