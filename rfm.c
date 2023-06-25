@@ -834,7 +834,8 @@ static gchar **build_cmd_vector(const char **cmd, GList *file_list, long n_args,
 
    v[j]=dest_path; /* This may be NULL anyway */
    v[++j]=NULL;
-   
+
+   g_list_free(file_list);
    return v;
 }
 
@@ -1391,7 +1392,7 @@ static void load_GitTrackedFiles_into_HashTable()
 
     gchar * oneline=strtok(child_stdout,"\n");
     while (oneline!=NULL){
-      gchar * fullpath=g_build_filename(git_root,g_strdup(oneline),NULL);         
+      gchar * fullpath=g_build_filename(git_root,oneline,NULL);         
       g_hash_table_insert(gitTrackedFiles,fullpath,g_strdup(""));
 
       g_debug("gitTrackedFile:%s",fullpath);
@@ -1424,9 +1425,9 @@ static void load_GitTrackedFiles_into_HashTable()
       gchar * status=g_utf8_substring(oneline, 0, 2);
       //      if (g_strcmp0("??", status)){
         gchar * filename=g_utf8_substring(oneline, 3, strlen(oneline));
-      gchar *fullpath=g_build_filename(git_root,g_strdup(filename),NULL);         
+      gchar *fullpath=g_build_filename(git_root,filename,NULL);         
 	g_debug("gitTrackedFile Status:%s,%s",status,fullpath);
-	g_hash_table_insert(gitTrackedFiles,fullpath,g_strdup(status));
+	g_hash_table_insert(gitTrackedFiles,fullpath,status);
 
 	//      }
       oneline=strtok(NULL, "\n");
