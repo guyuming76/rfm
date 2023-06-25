@@ -1465,6 +1465,7 @@ static gboolean read_one_DirItem_into_fileAttributeList_in_each_call_and_insert_
          if (fileAttributes!=NULL)
             rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
       }
+      g_hash_table_destroy(mount_hash);
       return TRUE;   /* Return TRUE if more items */
    }
    else {   /* No more items */
@@ -1477,6 +1478,7 @@ static gboolean read_one_DirItem_into_fileAttributeList_in_each_call_and_insert_
    }
 
    rfm_readDirSheduler=0;
+   g_hash_table_destroy(mount_hash);
    return FALSE;
 }
 
@@ -1525,6 +1527,7 @@ static gboolean fill_fileAttributeList_with_filenames_from_pipeline_stdin_and_th
       g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR))
   iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue();
 
+  g_hash_table_destroy(mount_hash);
   return TRUE;
 }
 
