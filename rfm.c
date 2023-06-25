@@ -885,11 +885,8 @@ static gboolean g_spawn_wrapper_(GList *file_list, long n_args, char *dest_path,
 	    ret = FALSE;
           };
         } else {
-          child_attribs->name=g_strdup(v[0]); //since show_child_output will use these value, set to prevent segfault
+
 	  child_attribs->pid=-1;
-	  child_attribs->spawn_async=FALSE;
-	  child_attribs->stdOut=NULL;
-	  child_attribs->stdErr=NULL;
 	  child_attribs->exitcode=0;
 	  child_attribs->status=-1;
 
