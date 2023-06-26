@@ -7,7 +7,7 @@
 #define RFM_ICON_SIZE 48
 #define RFM_THUMBNAIL_SIZE 128 /* Maximum size for thumb dir normal is 128 */
 #define RFM_THUMBNAIL_LARGE_SIZE  RFM_THUMBNAIL_SIZE * 2
-#define RFM_MX_MSGBOX_CHARS 1500 /* Maximum chars for RFM_EXEC_SYNC_MARKUP output; messages exceeding this will be displayed using RFM_EXEC_SYNC_TEXT_BOX mode */
+#define RFM_MX_MSGBOX_CHARS 1500 /* Maximum chars for show_msg output; messages exceeding this will be displayed in parent stdout */
 #define RFM_MX_ARGS 128 /* Maximum allowed number of command line arguments in action commands below */
 #define RFM_MOUNT_MEDIA_PATH "/run/media" /* Where specified mount handler mounts filesystems (e.g. udisksctl mount) */
 #define RFM_MTIME_OFFSET 60      /* Display modified files as bold text (age in seconds) */
@@ -77,10 +77,7 @@ static const char *git_log_cmd[] = { rfmBinPath "/rfmVTforCMD_hold.sh","/usr/bin
  *        Any stdout may be displayed by defining the run option.
  * Run options are:
  *   RFM_EXEC_NONE   - run and forget; program is expected to show its own output
- *   RFM_EXEC_TEXT   - run and show output in a fixed font, scrolled text window
- *   RFM_EXEC_PANGO  - run and show output in a dialog window supporting pango markup
  *   RFM_EXEC_PLAIN  - run and show output in a plain text dialog window
- *   RFM_EXEC_INTERNAL - same as RFM_EXEC_PLAIN; intended for required commands cp, mv, rm
  *   RFM_EXEC_MOUNT  - same as RFM_EXEC_PLAIN; this should be specified for the mount command.
  *                     causes the filer to auto switch on success to the directory defined by
  *                     #define RFM_MOUNT_MEDIA_PATH.
@@ -88,14 +85,14 @@ static const char *git_log_cmd[] = { rfmBinPath "/rfmVTforCMD_hold.sh","/usr/bin
  */
 static RFM_RunActions run_actions[] = {
    /* name           mime root        mime sub type             argument          run options */
-   { RunActionCopy,         "*",              "*",                    f_cp,             RFM_EXEC_INTERNAL },
-   { RunActionMove,         "*",              "*",                    f_mv,             RFM_EXEC_INTERNAL },
-   { RunActionDelete,       "*",              "*",                    f_rm,             RFM_EXEC_INTERNAL },
+   { RunActionCopy,         "*",              "*",                    f_cp,             RFM_EXEC_NONE },
+   { RunActionMove,         "*",              "*",                    f_mv,             RFM_EXEC_NONE },
+   { RunActionDelete,       "*",              "*",                    f_rm,             RFM_EXEC_NONE },
 #ifdef GitIntegration
-   { RunActionGitStage,    "*",              "*",                    git_stage_cmd,    RFM_EXEC_INTERNAL },
+   { RunActionGitStage,    "*",              "*",                    git_stage_cmd,    RFM_EXEC_NONE },
    { "git log",      "*",              "*",                    git_log_cmd,      RFM_EXEC_NONE },
 #endif
-   { "Properties",   "*",              "*",                    properties,       RFM_EXEC_PANGO },
+   { "Properties",   "*",              "*",                    properties,       RFM_EXEC_STDOUT },
    { "Open with...", "*",              "*",                    open_with,        RFM_EXEC_NONE },
    { "Open",         "image",          "*",                    show_image,       RFM_EXEC_NONE },
    { "Rotate",       "image",          "jpeg",                 exiftran,         RFM_EXEC_NONE },
@@ -110,7 +107,7 @@ static RFM_RunActions run_actions[] = {
    { "extract",      "application",    "x-compressed-tar",     extract_archive,  RFM_EXEC_NONE },
    { "extract",      "application",    "x-bzip-compressed-tar",extract_archive,  RFM_EXEC_NONE },
    { "extract",      "application",    "x-xz-compressed-tar",  extract_archive,  RFM_EXEC_NONE },
-   { "extract",      "application",    "x-zstd-compressed-tar", extract_archive,  RFM_EXEC_NONE },
+   { "extract",      "application",    "x-zstd-compressed-tar", extract_archive, RFM_EXEC_NONE },
    { "extract",      "application",    "zip",                  extract_archive,  RFM_EXEC_NONE },
    { "extract",      "application",    "x-rpm",                extract_archive,  RFM_EXEC_NONE },
    { "View",         "application",    "pdf",                  mupdf,            RFM_EXEC_NONE },
@@ -121,8 +118,8 @@ static RFM_RunActions run_actions[] = {
    { "Play",         "audio",          "*",                    play_audio,       RFM_EXEC_NONE },
    { "flac info",    "audio",          "flac",                 metaflac,         RFM_EXEC_PLAIN },
    { "info",         "audio",          "*",                    av_info,          RFM_EXEC_PLAIN },
-   { "stats",        "audio",          "*",                    audioSpect,       RFM_EXEC_PANGO },
-   { "count",        "inode",          "directory",            du,               RFM_EXEC_PLAIN },
+   { "stats",        "audio",          "*",                    audioSpect,       RFM_EXEC_STDOUT },
+   { "count",        "inode",          "directory",            du,               RFM_EXEC_STDOUT },
    { "archive",      "inode",          "directory",            create_archive,   RFM_EXEC_NONE },
    { "mount",        "inode",          "mount-point",          mount,            RFM_EXEC_PLAIN },
    { "unmount",      "inode",          "mount-point",          umount,           RFM_EXEC_PLAIN },
@@ -131,7 +128,7 @@ static RFM_RunActions run_actions[] = {
    { "edit",         "text",           "*",                    textEdit,         RFM_EXEC_NONE },
    { "Open",         "text",           "html",                 www,              RFM_EXEC_NONE },
    { "Play",         "video",          "*",                    play_video,       RFM_EXEC_NONE },
-   { "info",         "video",          "*",                    av_info,          RFM_EXEC_TEXT },
+   { "info",         "video",          "*",                    av_info,          RFM_EXEC_PLAIN },
    { "View",         "font",           "*",                    ftview,           RFM_EXEC_NONE },
 };
 

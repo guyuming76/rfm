@@ -193,7 +193,6 @@ enum {
 
 enum {
    RFM_EXEC_NONE, // according to find-reference, these seem to mean that no stdout in child process is needed by rfm
-   RFM_EXEC_TEXT, // according to find-reference, these affects the way child process stdout shown on rfm dialog
    RFM_EXEC_PANGO,
    RFM_EXEC_PLAIN,
    RFM_EXEC_INTERNAL, //i see Rodney use this in config.def.h for commands like copy move, but i don't know what it mean precisely,and i don't see program logic that reference this value, so i add RFM_EXEC_OUTPUT_HANDLED_HERE
@@ -277,7 +276,6 @@ static gboolean showGitCommitMsg=TRUE;
 
 /* Functions */
 static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer rfmCtx);
-static void show_text(gchar *text, gchar *title, gint type);
 static void show_msgbox(gchar *msg, gchar *title, gint type);
 static int read_char_pipe(gint fd, ssize_t block_size, char **buffer);
 static void die(const char *errstr, ...);
@@ -476,23 +474,17 @@ static void show_child_output(RFM_ChildAttribs *child_attribs)
    
    /* Show any output we have regardless of error status */
    if (child_attribs->stdOut!=NULL) {
-      if (child_attribs->runOpts==RFM_EXEC_STDOUT)
+     if (child_attribs->runOpts==RFM_EXEC_STDOUT || strlen(child_attribs->stdOut) > RFM_MX_MSGBOX_CHARS)
 	 printf("%s\n",child_attribs->stdOut);
-      else if (child_attribs->runOpts==RFM_EXEC_TEXT || strlen(child_attribs->stdOut) > RFM_MX_MSGBOX_CHARS)
-         show_text(child_attribs->stdOut, child_attribs->name, child_attribs->runOpts);
       else
          show_msgbox(child_attribs->stdOut, child_attribs->name, GTK_MESSAGE_INFO);
    }
 
    if (child_attribs->stdErr!=NULL && strlen(child_attribs->stdErr)>0) {
-      if (child_attribs->runOpts==RFM_EXEC_STDOUT){
+      if (child_attribs->runOpts==RFM_EXEC_STDOUT || strlen(child_attribs->stdErr) > RFM_MX_MSGBOX_CHARS){
          msg=g_strdup_printf("%s (%i): Finished with exit code %i.\n\n%s", child_attribs->name, child_attribs->pid, child_attribs->exitcode, child_attribs->stdErr);
 	 printf("%s\n",msg);
-      }else if (strlen(child_attribs->stdErr) > RFM_MX_MSGBOX_CHARS) {
-         msg=g_strdup_printf("%s (%i): Finished with exit code %i", child_attribs->name, child_attribs->pid, child_attribs->exitcode);
-         show_text(child_attribs->stdErr, msg, RFM_EXEC_TEXT);
-      }
-      else {
+      } else {
          msg=g_strdup_printf("%s (%i): Finished with exit code %i.\n\n%s", child_attribs->name, child_attribs->pid, child_attribs->exitcode, child_attribs->stdErr);
          show_msgbox(msg, child_attribs->name, GTK_MESSAGE_ERROR);
       }
@@ -643,70 +635,8 @@ static int show_actionbox(gchar *msg, gchar *title)
    gtk_widget_destroy(dialog);
    return response_id;
 }
-#endif
 
-static void show_text(gchar *text, gchar *title, gint type)
-{
-  //GtkWidget *text_view;
-  //GtkWidget *sw;
-  //GtkWidget *search_entry;
-  //GtkTextBuffer *buffer=gtk_text_buffer_new(NULL);
-  //GtkTextIter startIter;
-   gchar *utf8_string=g_locale_to_utf8(text, -1, NULL, NULL, NULL);
-   //GtkWidget *text_window=gtk_window_new(GTK_WINDOW_TOPLEVEL);
-   //GtkWidget *vbox=gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 
-   //gtk_window_set_default_size(GTK_WINDOW(text_window), 640, 400);
-   //gtk_window_set_title(GTK_WINDOW(text_window), title);
-   //gtk_container_add(GTK_CONTAINER(text_window), vbox);
-
-   if (utf8_string==NULL) {
-      show_msgbox("Can't convert text to utf8\n", "Error", GTK_MESSAGE_ERROR);
-      return;
-   }
-
-   if (type==RFM_EXEC_PANGO) {
-     //gtk_text_buffer_get_start_iter(buffer, &startIter);
-     //gtk_text_buffer_insert_markup(buffer, &startIter, utf8_string, -1);
-     printf("%s",utf8_string);
-   }
-   else
-     //gtk_text_buffer_set_text(buffer, utf8_string, -1);
-     printf("%s",utf8_string);
-
-   //sw=gtk_scrolled_window_new(NULL, NULL);
-   //gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(sw), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
-   //gtk_scrolled_window_set_max_content_width(GTK_SCROLLED_WINDOW(sw), 1024);
-   //gtk_scrolled_window_set_max_content_height(GTK_SCROLLED_WINDOW(sw), 768);
-   //gtk_widget_set_hexpand(sw, TRUE);
-   //gtk_widget_set_vexpand(sw, TRUE);
-
-   //text_view=gtk_text_view_new_with_buffer(buffer);
-   //gtk_text_view_set_editable(GTK_TEXT_VIEW(text_view), FALSE);
-   //gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW(text_view), GTK_WRAP_NONE);
-   //gtk_text_view_set_cursor_visible(GTK_TEXT_VIEW(text_view), FALSE);
-   //gtk_text_view_set_monospace(GTK_TEXT_VIEW(text_view), TRUE);
-
-   //search_entry=gtk_entry_new();
-   //gtk_entry_set_activates_default(GTK_ENTRY(search_entry), FALSE);
-   //gtk_entry_set_icon_from_icon_name(GTK_ENTRY(search_entry), GTK_ENTRY_ICON_PRIMARY, "edit-find");
-   //gtk_entry_set_input_hints (GTK_ENTRY(search_entry), GTK_INPUT_HINT_NO_EMOJI);
-   
-   //g_signal_connect (text_view, "key-press-event", G_CALLBACK(text_view_key_press), search_entry);
-   //g_signal_connect(search_entry, "activate", G_CALLBACK(search_text_buffer), text_view);
-   //gtk_text_buffer_create_tag(buffer, "highlight", "background", "yellow", "foreground", "black", NULL);
-
-   //gtk_container_add(GTK_CONTAINER(sw), text_view);
-   //gtk_container_add(GTK_CONTAINER(vbox), sw);
-   //gtk_container_add(GTK_CONTAINER(vbox), search_entry);
-
-   //g_object_unref(buffer);
-   //g_free(utf8_string);
-   //gtk_widget_show_all(text_window);
-   //gtk_widget_grab_focus(search_entry);
-}
-
-#ifdef DragAndDropSupport
 static gint cp_mv_check_path(char *src_path, char *dest_path, gpointer move)
 {
    gchar *src_basename=g_path_get_basename(src_path);
