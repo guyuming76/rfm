@@ -87,11 +87,11 @@ static const char *git_log_cmd[] = { rfmBinPath "/rfmVTforCMD_hold.sh","/usr/bin
 static RFM_RunActions run_actions[] = {
    /* name           mime root        mime sub type             argument          run options */
    { RunActionCopy,         "*",              "*",                    f_cp,             RFM_EXEC_NONE },
-   { RunActionMove,         "*",              "*",                    f_mv,             RFM_EXEC_NONE },
-   { RunActionDelete,       "*",              "*",                    f_rm,             RFM_EXEC_NONE },
+   { RunActionMove,         "*",              "*",                    f_mv,             RFM_EXEC_STDOUT },
+   { RunActionDelete,       "*",              "*",                    f_rm,             RFM_EXEC_STDOUT },
    { RunActionCopySelection,"*",              "*",                    cp_selection_to_clipboard, RFM_EXEC_NONE },
 #ifdef GitIntegration
-   { RunActionGitStage,    "*",              "*",                    git_stage_cmd,    RFM_EXEC_NONE },
+   { RunActionGitStage,    "*",              "*",                    git_stage_cmd,    RFM_EXEC_STDOUT },
    { "git log",      "*",              "*",                    git_log_cmd,      RFM_EXEC_NONE },
 #endif
    { "Properties",   "*",              "*",                    properties,       RFM_EXEC_STDOUT },
