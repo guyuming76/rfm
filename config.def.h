@@ -18,6 +18,7 @@
 static const char *f_rm[]   = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmRemove.sh",NULL };
 static const char *f_cp[]   = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmCopy.sh", NULL };
 static const char *f_mv[]   = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmMove.sh", NULL };
+static const char *cp_selection_to_clipboard[] = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmCopySelectionToClipboard.sh",NULL};
 #ifdef DragAndDropSupport
 static const char *f_cp_DnD[]   = { "/bin/cp", "-p", "-R", "-f", NULL };
 static const char *f_mv_DnD[]   = { "/bin/mv", "-f", NULL };
@@ -88,6 +89,7 @@ static RFM_RunActions run_actions[] = {
    { RunActionCopy,         "*",              "*",                    f_cp,             RFM_EXEC_NONE },
    { RunActionMove,         "*",              "*",                    f_mv,             RFM_EXEC_NONE },
    { RunActionDelete,       "*",              "*",                    f_rm,             RFM_EXEC_NONE },
+   { RunActionCopySelection,"*",              "*",                    cp_selection_to_clipboard, RFM_EXEC_NONE },
 #ifdef GitIntegration
    { RunActionGitStage,    "*",              "*",                    git_stage_cmd,    RFM_EXEC_NONE },
    { "git log",      "*",              "*",                    git_log_cmd,      RFM_EXEC_NONE },

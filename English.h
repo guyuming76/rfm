@@ -7,3 +7,7 @@
 #define RunActionMove "Move"
 #define RunActionDelete "Delete"
 #define RunActionGitStage "git stage"
+#define RunActionCopySelection "copy selected file names to clipboard"
+#define Copy "Copy"
+#define Paste "Paste"
+#define Move "Move"

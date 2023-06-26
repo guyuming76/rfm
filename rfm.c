@@ -36,9 +36,9 @@
 #endif
 #define PIPE_SZ 65535      /* Kernel pipe size */
 #ifdef GitIntegration
-#define RFM_N_BUILT_IN 5   /* Number of built in actions */
+#define RFM_N_BUILT_IN 6   /* Number of built in actions */
 #else
-#define RFM_N_BUILT_IN 3
+#define RFM_N_BUILT_IN _LP64
 #endif
 
 typedef struct {
@@ -242,6 +242,10 @@ static GtkToolItem *info_button;
 static GtkToolItem *PageUp_button;
 static GtkToolItem *PageDown_button;
 static GtkToolItem *SwitchView_button;
+/* static GtkToolItem *pasteSelectionTo_button; */
+/* static GtkToolItem *copySelection_button;; */
+/* static GtkToolItem *moveSelectionTo_button; */
+
 static GtkAccelGroup *agMain = NULL;
 static GtkWidget *tool_bar = NULL;
 static RFM_defaultPixbufs *defaultPixbufs=NULL;
@@ -2041,7 +2045,7 @@ static void drag_data_get_handl(GtkWidget *widget, GdkDragContext *context, GtkS
 #endif
 
 
-static void copy_curPath_to_clipboard(GtkWidget *menuitem, gpointer user_data)
+static void copy_to_clipboard(GtkWidget *menuitem, gpointer user_data)
 {
    /* Clipboards: GDK_SELECTION_CLIPBOARD, GDK_SELECTION_PRIMARY, GDK_SELECTION_SECONDARY */
    //https://specifications.freedesktop.org/clipboards-spec/clipboards-0.1.txt
@@ -2058,7 +2062,12 @@ cut/copy. PRIMARY is an "easter egg" for expert users, regular users
 can just ignore it; it's normally pastable only via
 middle-mouse-click.  */
    GtkClipboard *clipboard = gtk_clipboard_get(GDK_SELECTION_CLIPBOARD);
-   gtk_clipboard_set_text(clipboard, rfm_curPath, -1);
+   GList *selectionList=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
+   if (selectionList==NULL)
+     gtk_clipboard_set_text(clipboard, rfm_curPath, -1);
+   //TODO: 
+   /* else */
+   /*   gtk_clipboard_set_with_data(${1:GtkClipboard *clipboard}, ${2:const GtkTargetEntry *targets}, ${3:guint n_targets}, ${4:GtkClipboardGetFunc get_func}, ${5:GtkClipboardClearFunc clear_func}, ${6:gpointer user_data}); */
 }
 
 
@@ -2211,13 +2220,14 @@ static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx)
    gtk_widget_show(fileMenu->action[0]);  /* Copy */
    gtk_widget_show(fileMenu->action[1]);  /* Move */
    gtk_widget_show(fileMenu->action[2]);  /* Delete */
+   gtk_widget_show(fileMenu->action[3]);  /* Delete */
 #ifdef GitIntegration
    if(curPath_is_git_repo) {
-     gtk_widget_show(fileMenu->action[3]);
      gtk_widget_show(fileMenu->action[4]);
+     gtk_widget_show(fileMenu->action[5]);
    }else{
-     gtk_widget_hide(fileMenu->action[3]);
      gtk_widget_hide(fileMenu->action[4]);
+     gtk_widget_hide(fileMenu->action[5]);
    }
 #endif
 
@@ -2268,7 +2278,7 @@ static RFM_rootMenu *setup_root_menu(void)
    rootMenu->copyPath=gtk_menu_item_new_with_label("Copy Path");
    gtk_widget_show(rootMenu->copyPath);
    gtk_menu_shell_append(GTK_MENU_SHELL(rootMenu->menu), rootMenu->copyPath);
-   g_signal_connect(rootMenu->copyPath, "activate", G_CALLBACK(copy_curPath_to_clipboard), NULL);
+   g_signal_connect(rootMenu->copyPath, "activate", G_CALLBACK(copy_to_clipboard), NULL);
    
    return rootMenu;
 }
@@ -2428,12 +2438,26 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
    gtk_widget_add_accelerator(GTK_WIDGET(menu_button), "clicked", agMain,GDK_KEY_Menu,MOD_KEY, GTK_ACCEL_VISIBLE);
    gtk_tool_item_set_tooltip_text(menu_button,"MOD+Menu");
 
+   /* copySelection_button=gtk_tool_button_new(NULL, Copy); */
+   /* gtk_tool_item_set_is_important(copySelection_button, TRUE); */
+   /* gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), copySelection_button, -1); */
+   /* g_signal_connect(stop_button, "clicked", G_CALLBACK(copy_to_clipboard), rfmCtx); */
+   
+   /* moveSelectionTo_button=gtk_tool_button_new(NULL, Move); */
+   /* gtk_tool_item_set_is_important(moveSelectionTo_button, TRUE); */
+   /* gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), moveSelectionTo_button, -1); */
+   /* g_signal_connect(stop_button, "clicked", G_CALLBACK(stop_clicked), rfmCtx); */
+
+   /* pasteSelectionTo_button=gtk_tool_button_new(NULL, Paste); */
+   /* gtk_tool_item_set_is_important(pasteSelectionTo_button, TRUE); */
+   /* gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), pasteSelectionTo_button, -1); */
+   /* g_signal_connect(stop_button, "clicked", G_CALLBACK(stop_clicked), rfmCtx); */
+
    buttonImage=gtk_image_new_from_pixbuf(defaultPixbufs->stop);
    stop_button=gtk_tool_button_new(buttonImage, "Stop");
    gtk_tool_item_set_is_important(stop_button, TRUE);
    gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), stop_button, -1);
    g_signal_connect(stop_button, "clicked", G_CALLBACK(stop_clicked), rfmCtx);
-
    
    buttonImage=gtk_image_new_from_pixbuf(defaultPixbufs->info);
    info_button=gtk_tool_button_new(buttonImage,"Info");
