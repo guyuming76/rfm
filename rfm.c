@@ -839,7 +839,6 @@ static gchar **build_cmd_vector(const char **cmd, GList *file_list, long n_args,
    v[j]=dest_path; /* This may be NULL anyway */
    v[++j]=NULL;
 
-   g_list_free(file_list);
    return v;
 }
 
@@ -950,7 +949,7 @@ static int load_thumbnail(gchar *key)
       return 1;   /* Tree path not found */
       
    gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, treePath);
-   g_free(treePath);
+   gtk_tree_path_free(treePath);
    thumb_path=g_build_filename(rfm_thumbDir, key, NULL);
    pixbuf=gdk_pixbuf_new_from_file(thumb_path, NULL);
    g_free(thumb_path);
