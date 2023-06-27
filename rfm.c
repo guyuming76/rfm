@@ -276,11 +276,7 @@ static void free_default_pixbufs(RFM_defaultPixbufs *defaultPixbufs);
 static char * yyyymmddhhmmss(time_t nSeconds) {
     struct tm * pTM=localtime(&nSeconds);
     char * psDateTime=calloc(20,sizeof(char));
-
-    /* datetime format: yyyymmdd:HHMMSS */
-    sprintf(psDateTime, "%04d-%02d-%02d %02d:%02d:%02d",
-            pTM->tm_year + 1900, pTM->tm_mon + 1, pTM->tm_mday,
-            pTM->tm_hour, pTM->tm_min, pTM->tm_sec);
+    strftime(psDateTime, sizeof(psDateTime),"%Y-%m-%d,%H:%M:%S" , pTM);
     return psDateTime;
 }
 
@@ -1385,7 +1381,6 @@ static void set_curPath_is_git_repo(gpointer *child_attribs)
   }else{
     curPath_is_git_repo=FALSE;
   }
-  if(treeview) gtk_tree_view_column_set_visible(colGitStatus,curPath_is_git_repo);
   
   g_debug("curPath_is_git_repo:%d",curPath_is_git_repo);
 }
