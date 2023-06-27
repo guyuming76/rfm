@@ -1452,7 +1452,7 @@ static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointe
    
    if (!fileAttributes->is_dir) {
 
-      for(i=RFM_N_BUILT_IN; i<G_N_ELEMENTS(run_actions); i++) {
+      for(i=0; i<G_N_ELEMENTS(run_actions); i++) {
          if (strcmp(fileAttributes->mime_root, run_actions[i].runRoot)==0) {
             if (strcmp(fileAttributes->mime_sub_type, run_actions[i].runSub)==0 || strncmp("*", run_actions[i].runSub, 1)==0) { /* Exact match */
                r_idx=i;
@@ -1756,7 +1756,7 @@ static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx)
    if (rfmCtx->showMimeType==1)
       g_info("%s: %s-%s", selection_fileAttributes->file_name, selection_fileAttributes->mime_root, selection_fileAttributes->mime_sub_type);
 
-   for(i=RFM_N_BUILT_IN; i<G_N_ELEMENTS(run_actions); i++) {
+   for(i=0; i<G_N_ELEMENTS(run_actions); i++) {
       if (match_mimeSub) { /* All selected files are the same type */
          if (strcmp(selection_fileAttributes->mime_root, run_actions[i].runRoot)==0 && strcmp(selection_fileAttributes->mime_sub_type, run_actions[i].runSub)==0)
             showMenuItem[i]++; /* Exact match */
@@ -1769,22 +1769,7 @@ static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx)
          showMenuItem[i]++;   /* Run actions to show for all files */
    }
 
-   /* Show built in actions */
-   gtk_widget_show(fileMenu->action[0]);  /* Copy */
-   gtk_widget_show(fileMenu->action[1]);  /* Move */
-   gtk_widget_show(fileMenu->action[2]);  /* Delete */
-   gtk_widget_show(fileMenu->action[3]);  /* Delete */
-#ifdef GitIntegration
-   if(curPath_is_git_repo) {
-     gtk_widget_show(fileMenu->action[4]);
-     gtk_widget_show(fileMenu->action[5]);
-   }else{
-     gtk_widget_hide(fileMenu->action[4]);
-     gtk_widget_hide(fileMenu->action[5]);
-   }
-#endif
-
-   for(i=RFM_N_BUILT_IN; i<G_N_ELEMENTS(run_actions); i++) {
+   for(i=0; i<G_N_ELEMENTS(run_actions); i++) {
       if (showMenuItem[i]>0)
          gtk_widget_show(fileMenu->action[i]);
       else
