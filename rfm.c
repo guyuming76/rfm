@@ -71,7 +71,7 @@ typedef struct {
    gchar *buttonName;
    gchar *buttonIcon;
    void (*func)(gpointer);
-   const gchar **args;
+   const gchar **RunCmd;
    gboolean readFromPipe;
    gboolean curPath;
    guint Accel;
@@ -2361,7 +2361,7 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
        if(tool_buttons[i].tooltip!=NULL) gtk_tool_item_set_tooltip_text(userButton,tool_buttons[i].tooltip);
 
       RFM_ChildAttribs *child_attribs = calloc(1,sizeof(RFM_ChildAttribs));
-      child_attribs->RunCmd = tool_buttons[i].args;
+      child_attribs->RunCmd = tool_buttons[i].RunCmd;
       child_attribs->runOpts = RFM_EXEC_STDOUT;
       child_attribs->stdOut = NULL;
       child_attribs->stdErr = NULL;

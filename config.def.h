@@ -86,12 +86,12 @@ static const char *git_log_cmd[] = { rfmBinPath "/rfmVTforCMD_hold.sh","/usr/bin
  */
 static RFM_RunActions run_actions[] = {
    /* name           mime root        mime sub type             argument          run options */
-   { RunActionCopy,         "*",              "*",                    f_cp,             RFM_EXEC_NONE },
-   { RunActionMove,         "*",              "*",                    f_mv,             RFM_EXEC_STDOUT },
-   { RunActionDelete,       "*",              "*",                    f_rm,             RFM_EXEC_STDOUT },
-   { RunActionCopySelection,"*",              "*",                    cp_selection_to_clipboard, RFM_EXEC_NONE },
+   { RunActionCopy,  "*",              "*",                    f_cp,             RFM_EXEC_NONE },
+   { RunActionMove,  "*",              "*",                    f_mv,             RFM_EXEC_STDOUT },
+   { RunActionDelete, "*",             "*",                    f_rm,             RFM_EXEC_STDOUT },
+   { RunActionCopySelection, "*",      "*",                    cp_selection_to_clipboard, RFM_EXEC_NONE },
 #ifdef GitIntegration
-   { RunActionGitStage,    "*",              "*",                    git_stage_cmd,    RFM_EXEC_STDOUT },
+   { RunActionGitStage,  "*",          "*",                    git_stage_cmd,    RFM_EXEC_STDOUT },
    { "git log",      "*",              "*",                    git_log_cmd,      RFM_EXEC_NONE },
 #endif
    { "Properties",   "*",              "*",                    properties,       RFM_EXEC_STDOUT },
@@ -137,11 +137,13 @@ static RFM_RunActions run_actions[] = {
 /* Toolbar button definitions
  * icon is the name (not including .png) of an icon in the current theme.
  * function is the name of a function to be defined here. If function is NULL,
- * the argument is assumed to be a shell command. All commands are run
- * async - no stdout / stderr is shown. The current working directory for
+ * the RunCmd is assumed to be a shell command. All commands are run
+ * async. The current working directory for
  * the command environment is changed to the currently displayed directory.
  * If function is not NULL, arguments may be passed as a const char *arg[].
- */
+ * If both RunCmd and function is not NULL, function is run as callback after RunCmd finishs
+ *
+ * The difference between Toolbar button and file menu RunActions is that RunActions is for selected files while Toolbar RunCmd won't deal with selected files, it is for current directory */
 
 //static const char *dev_disk_path[]= { "/dev/disk" };
 //static void show_disk_devices(const char **path) {
@@ -149,7 +151,7 @@ static RFM_RunActions run_actions[] = {
 //}
 
 static RFM_ToolButtons tool_buttons[] = {
-   /* name           icon                       function    		argument           readFromPipe    curPath    Accel                  tooltip*/
+   /* name           icon                       function    		RunCmd             readFromPipe    curPath    Accel                  tooltip*/
    { SwitchView,     NULL,                      switch_view,            NULL,              TRUE,           TRUE,      GDK_KEY_slash,         "MOD+/"},
    { Up,             "go-up",                   up_clicked,             NULL,              FALSE,          TRUE,      GDK_KEY_Up,            "MOD+up arrow"},
    { "Refresh",      "view-refresh",            refresh_clicked,        NULL,              TRUE,           TRUE,      0,                      NULL  },
