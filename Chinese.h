@@ -6,7 +6,7 @@
 #define RunActionCopy "复制"
 #define RunActionMove "移动"
 #define RunActionDelete "删除"
-#define RunActionGitStage "git暂存"
+#define RunActionGitStage "git 暂存"
 #define RunActionCopySelection "复制选中文件名至剪贴板"
 #define Copy "复制"
 #define Paste "粘帖"
