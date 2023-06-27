@@ -218,28 +218,58 @@ static GList *CurrentDisplayingPage_ForFileNameListFromPipeStdIn;
 static gint DisplayingPageSize_ForFileNameListFromPipeStdIn=20;
 
 #ifdef GitIntegration
-static GHashTable *gitTrackedFiles;
 // value " M " for modified
 // value "M " for staged
 // value "MM" for both modified and staged
 // value "??" for untracked
 // the same as git status --porcelain
+static GHashTable *gitTrackedFiles;
 static GHashTable *gitCommitMsg; //filePath and commit
 static gboolean curPath_is_git_repo=FALSE;
 static gboolean showGitCommitMsg=TRUE;
 #endif
 
 
-/* Functions */
-static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer rfmCtx);
-static void show_msgbox(gchar *msg, gchar *title, gint type);
-static int read_char_pipe(gint fd, ssize_t block_size, char **buffer);
-static void die(const char *errstr, ...);
-static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx);
-static void show_child_output(RFM_ChildAttribs *child_attribs);
-static void set_rfm_curPath(gchar* path);
-static void refresh_store(RFM_ctx *rfmCtx);
 
+static void show_msgbox(gchar *msg, gchar *title, gint type);
+static void die(const char *errstr, ...);
+static RFM_defaultPixbufs *load_default_pixbufs(void);
+static void set_rfm_curPath(gchar *path);
+static int setup(char *initDir, RFM_ctx *rfmCtx);
+
+static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer rfmCtx);
+static gboolean delayed_refreshAll(gpointer user_data);
+static void refresh_store(RFM_ctx *rfmCtx);
+static gboolean fill_fileAttributeList_with_filenames_from_pipeline_stdin_and_then_insert_into_store();
+static gboolean read_one_DirItem_into_fileAttributeList_in_each_call_and_insert_all_into_store_in_last_call(GDir *dir);
+static void Iterate_through_fileAttribute_list_to_insert_into_store();
+static RFM_FileAttributes *malloc_fileAttributes(void);
+static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guint64 mtimeThreshold, GHashTable *mount_hash);
+static GHashTable *get_mount_points(void);
+static gboolean mounts_handler(GUnixMountMonitor *monitor, gpointer rfmCtx);
+#ifdef GitIntegration
+static void readGitCommitMsgFromGitLogCmdAndInsertIntoHashTable(RFM_ChildAttribs * childAttribs);
+static void load_GitTrackedFiles_into_HashTable();
+#endif
+static void iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue(void);
+static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter);
+static gint find_thumbnailer(gchar *mime_root, gchar *mime_sub_type);
+static int load_thumbnail(gchar *key);
+static void rfm_saveThumbnail(GdkPixbuf *thumb, RFM_ThumbQueueData *thumbData);
+static gboolean mkThumb();
+
+static GtkWidget *add_view(RFM_ctx *rfmCtx);
+static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixbufs, RFM_ctx *rfmCtx);
+static gboolean view_key_press(GtkWidget *widget, GdkEvent *event,RFM_ctx *rfmCtx);
+static gboolean view_button_press(GtkWidget *widget, GdkEvent *event,RFM_ctx *rfmCtx);
+static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointer user_data);
+static void row_activated(GtkTreeView *tree_view, GtkTreePath *tree_path,GtkTreeViewColumn *col, gpointer user_data);
+static GList* get_view_selection_list(GtkWidget * view, gboolean treeview, GtkTreeModel ** model);
+static void set_view_selection_list(GtkWidget *view, gboolean treeview,GList *selectionList);
+static gboolean path_is_selected(GtkWidget *widget, gboolean treeview, GtkTreePath *path);
+
+//callback function for tool_buttons. Its possible to make function such as home_clicked as callback directly, instead of use exec_user_tool as a wrapper. However,i would add GtkToolItems as first parameter for so many different callback functions then.
+static void exec_user_tool(GtkToolItem *item, RFM_ChildAttribs *childAttribs);
 static void up_clicked(gpointer user_data);
 static void home_clicked(gpointer user_data);
 static void refresh_clicked(RFM_ctx *rfmCtx);
@@ -248,26 +278,34 @@ static void NextPage(RFM_ctx *rfmCtx);
 static void info_clicked(gpointer user_data);
 static void stop_clicked(RFM_ctx *rfmCtx);
 static void tool_menu_clicked(RFM_ctx *rfmCtx);
+static void switch_view(RFM_ctx *rfmCtx);
 
+//callback function for file menu
+static void file_menu_exec(GtkMenuItem *menuitem, RFM_ChildAttribs *childAttribs);
+static RFM_fileMenu *setup_file_menu(RFM_ctx * rfmCtx);
 static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx);
-static GHashTable *get_mount_points(void);
 
+static RFM_rootMenu *setup_root_menu(void);
+static void copy_curPath_to_clipboard(GtkWidget *menuitem, gpointer user_data);
+
+static void g_spawn_wrapper_for_selected_fileList_(RFM_ChildAttribs *childAttribs);
 static gboolean g_spawn_wrapper(const char **action, GList *file_list, long n_args, int run_opts, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData);
 static gboolean g_spawn_wrapper_(GList *file_list, long n_args, char *dest_path, RFM_ChildAttribs * childAttribs);
-static void g_spawn_wrapper_for_selected_fileList_(RFM_ChildAttribs *childAttribs);
-
-static void switch_view(GtkToolItem *item, RFM_ctx *rfmCtx);
-static GtkWidget *add_view(RFM_ctx *rfmCtx);
-static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixbufs, RFM_ctx *rfmCtx);
+static gchar **build_cmd_vector(const char **cmd, GList *file_list, long n_args, char *dest_path);
+static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *child_attribs);
+static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_data);
+static void child_handler_to_set_finished_status_for_child_supervisor(GPid pid, gint status, RFM_ChildAttribs *child_attribs);
+static gboolean ShowChildOutput_ExecCallback_freeChildAttribs(RFM_ChildAttribs * child_attribs);
+static void show_child_output(RFM_ChildAttribs *child_attribs);
+static int read_char_pipe(gint fd, ssize_t block_size, char **buffer);
 
 /* Free functions*/
 static void free_thumbQueueData(RFM_ThumbQueueData *thumbData);
 static void free_child_attribs(RFM_ChildAttribs *child_attribs);
 static void free_fileAttributes(RFM_FileAttributes *fileAttributes);
-static RFM_FileAttributes *malloc_fileAttributes(void);
 static void free_default_pixbufs(RFM_defaultPixbufs *defaultPixbufs);
+static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx);
 
-/* TODO: Function definitions */
 
 #include "config.h"
 
@@ -808,6 +846,7 @@ static void rfm_saveThumbnail(GdkPixbuf *thumb, RFM_ThumbQueueData *thumbData)
    }
 }
 
+//called by gtk idle time scheduler and create one thumbnail a time for the enqueued in rfm_thumbQueue;
 static gboolean mkThumb()
 {
    RFM_ThumbQueueData *thumbData;
@@ -1487,6 +1526,7 @@ static GList* get_view_selection_list(GtkWidget * view, gboolean treeview, GtkTr
    }
 }
 
+/*Helper function to set selected items from iconview or treeview*/
 static void set_view_selection_list(GtkWidget *view, gboolean treeview,GList *selectionList) {
   selectionList=g_list_first(selectionList);
   while (selectionList != NULL) {
@@ -1589,7 +1629,7 @@ static void get_path_at_view_pos(GtkWidget* view, gboolean treeview,gint x,gint 
     *retval = gtk_icon_view_get_path_at_pos(GTK_ICON_VIEW(view), x, y);
 }
 
-
+//helper function due to different selection APIs of treeview and iconview
 static gboolean path_is_selected(GtkWidget *widget, gboolean treeview, GtkTreePath *path) {
   if (treeview)
     return gtk_tree_selection_path_is_selected(gtk_tree_view_get_selection(GTK_TREE_VIEW(widget)), path);
@@ -2005,7 +2045,7 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
    return _view;
 }
 
-static void switch_view(GtkToolItem *item, RFM_ctx *rfmCtx) {
+static void switch_view(RFM_ctx *rfmCtx) {
   GList *  selectionList=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
   gtk_widget_hide(rfm_main_box);
   gtk_widget_destroy(sw);
