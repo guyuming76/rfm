@@ -1701,7 +1701,7 @@ static void info_clicked(gpointer user_data)
    }
 
    msg=g_string_free(string,FALSE);
-   show_msgbox(msg, "Running Processes", GTK_MESSAGE_INFO);
+   printf("%s\n",msg);
    g_free(msg);
 }
 
