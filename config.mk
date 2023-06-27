@@ -7,5 +7,3 @@ languageInclude = Chinese.h
 GitIntegration = -DGitIntegration
 #GitIntegration =
 
-DragAndDropSupport = 
-#DragAndDropSupport = -DDragAndDropSupport

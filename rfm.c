@@ -26,14 +26,7 @@
 
 
 #define PROG_NAME "rfm"
-#ifdef DragAndDropSupport
-#define DND_ACTION_MASK GDK_ACTION_ASK|GDK_ACTION_COPY|GDK_ACTION_MOVE
-#endif
 #define INOTIFY_MASK IN_MOVE|IN_CREATE|IN_CLOSE_WRITE|IN_DELETE|IN_DELETE_SELF|IN_MOVE_SELF
-#ifdef DragAndDropSupport
-#define TARGET_URI_LIST 0
-#define N_TARGETS 1        /* G_N_ELEMENTS(target_entry) */
-#endif
 #define PIPE_SZ 65535      /* Kernel pipe size */
 #ifdef GitIntegration
 #define RFM_N_BUILT_IN 6   /* Number of built in actions */
@@ -95,16 +88,6 @@ typedef struct {
    gint exitcode;
 } RFM_ChildAttribs;
 
-#ifdef DragAndDropSupport
-typedef struct {
-   GtkWidget *menu;
-   GtkWidget *copy;
-   GtkWidget *move;
-   GdkEvent *drop_event;   /* The latest drop event */
-   GList *dropData;        /* List of files dropped */
-} RFM_dndMenu;
-#endif
-
 typedef struct {
    GtkWidget *menu;
    GtkWidget **action;
@@ -118,9 +101,6 @@ typedef struct {
 } RFM_rootMenu;
 
 typedef struct {
-#ifdef DragAndDropSupport
-   gboolean    rfm_localDrag;
-#endif
    gint        rfm_sortColumn;   /* The column in the tree model to sort on */
    GUnixMountMonitor *rfm_mountMonitor;   /* Reference for monitor mount events */
    gint        showMimeType;              /* Display detected mime type on stdout when a file is right-clicked: toggled via -i option */
@@ -199,12 +179,6 @@ enum {
    RFM_EXEC_STDOUT,
 };
 
-#ifdef DragAndDropSupport
-static GtkTargetEntry target_entry[] = {
-   {"text/uri-list", 0, TARGET_URI_LIST}
-};
-static GtkTargetList *target_list;
-#endif
 static GtkWidget *window=NULL;      /* Main window */
 static GtkWidget *rfm_main_box;
 static GtkWidget *sw = NULL; //scroll window
@@ -583,98 +557,6 @@ static void show_msgbox(gchar *msg, gchar *title, gint type)
       gtk_dialog_run(GTK_DIALOG(dialog)); /* Show a modal dialog for errors/warnings */
    g_free(utf8_string);
 }
-
-
-#ifdef DragAndDropSupport
-static int show_actionbox(gchar *msg, gchar *title)
-{
-   GtkWidget *dialog;
-   GtkWidget *content_area;
-   GtkWidget *title_label;
-   GtkWidget *dialog_label;
-   gint response_id=GTK_RESPONSE_CANCEL;
-   gchar *title_markup=NULL;
-
-   dialog=gtk_dialog_new_with_buttons(title, GTK_WINDOW(window), GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
-                                       "_Cancel", GTK_RESPONSE_CANCEL,
-                                       "_No", GTK_RESPONSE_NO,
-                                       "_Yes", GTK_RESPONSE_YES,
-                                       "_All", GTK_RESPONSE_ACCEPT,
-                                       NULL);
-   gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_OK);
-   dialog_label=gtk_label_new(NULL);
-   title_label=gtk_label_new(NULL);
-   title_markup=g_strdup_printf("%s%s%s","\n<b><span size=\"large\">",title,":</span></b>\n");
-   gtk_label_set_markup(GTK_LABEL(title_label),title_markup);
-   g_free(title_markup);
-   gtk_label_set_markup(GTK_LABEL(dialog_label),msg);
-   content_area=gtk_dialog_get_content_area(GTK_DIALOG(dialog));
-   gtk_container_add(GTK_CONTAINER(content_area), title_label);
-   gtk_container_add(GTK_CONTAINER(content_area), dialog_label);
-   gtk_widget_show_all(dialog);
-   response_id=gtk_dialog_run(GTK_DIALOG(dialog));
-   gtk_widget_destroy(dialog);
-   return response_id;
-}
-
-
-static gint cp_mv_check_path(char *src_path, char *dest_path, gpointer move)
-{
-   gchar *src_basename=g_path_get_basename(src_path);
-   gchar *dest_basename=g_path_get_basename(dest_path);
-   gchar *dest_item=NULL;
-   gchar prefixString[32];
-   gchar *dialog_label=NULL;
-   gchar *dialog_title=NULL;
-   gint response_id=GTK_RESPONSE_YES;
-   gboolean item_exists=TRUE;
-   struct stat src_info;
-   struct stat dest_info;
-   long long size_diff=0;
-
-   if (stat(dest_path, &dest_info)==0) {
-      if (S_ISDIR(dest_info.st_mode)) {
-         dest_item=g_strdup_printf("%s/%s",dest_path,src_basename);
-         if (stat(dest_item, &dest_info)==0) {
-            g_free(dest_basename);
-            dest_basename=g_strdup(src_basename);
-         }
-         else
-            item_exists=FALSE;
-         g_free(dest_item);
-      }
-   }
-   else
-      item_exists=FALSE;
-
-   if (item_exists==TRUE) {
-      if (stat(src_path, &src_info)!=0) return GTK_RESPONSE_CANCEL;
-      if (dest_info.st_mtime-src_info.st_mtime > 0)
-         strcpy(prefixString,"A <b>newer</b>");
-      else if (dest_info.st_mtime - src_info.st_mtime < 0)
-         strcpy(prefixString,"An <b>older</b>");
-      else
-         strcpy(prefixString,"The");
-      if (S_ISDIR(dest_info.st_mode) && S_ISDIR(src_info.st_mode))
-         dialog_label=g_strdup_printf("%s directory %s exists in the destination path.\nMerge contents (existing files may be replaced)?\n",prefixString,dest_basename);
-      else {
-         size_diff=src_info.st_size-dest_info.st_size;
-         dialog_label=g_strdup_printf("%s item <b>%s</b> exists in the destination path.\nOverwrite (net size change = %lli bytes)?\n",prefixString,dest_basename,size_diff);
-      }
-
-      if (move==NULL)
-         dialog_title=g_strdup_printf("Copy %s",src_basename);
-      else
-         dialog_title=g_strdup_printf("Move %s",src_basename);
-      response_id=show_actionbox(dialog_label, dialog_title);
-      g_free(dialog_label);
-      g_free(dialog_title);
-   }
-   g_free(src_basename);
-   g_free(dest_basename);
-   return response_id;
-}
-#endif
 
 
 static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *child_attribs)
@@ -1627,33 +1509,6 @@ static void set_view_selection_list(GtkWidget *view, gboolean treeview,GList *se
   }
 }
 
-#ifdef DragAndDropSupport
-static gchar **selection_list_to_uri(GtkWidget *widget, RFM_ctx *rfmCtx)
-{
-   gchar **uriList;
-   guint32 i=0;
-   GtkTreeIter iter;
-   GList *listElement;
-   GList *selectionList=get_view_selection_list(widget,treeview, &treemodel);
-   RFM_FileAttributes *fileAttributes;
-
-   uriList=malloc((1+g_list_length(selectionList))*sizeof(gchar *));
-   if (uriList!=NULL) {
-      listElement=g_list_first(selectionList);
-      while (listElement != NULL) {
-         gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, listElement->data);
-         gtk_tree_model_get(GTK_TREE_MODEL(store), &iter, COL_ATTR, &fileAttributes, -1);
-         uriList[i]=g_filename_to_uri(fileAttributes->path, NULL, NULL);
-         listElement=g_list_next(listElement);
-         i++;
-      }
-      uriList[i]=NULL;
-   }
-   g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
-   return uriList;
-}
-#endif
-
 static void up_clicked(gpointer user_data)
 {
    gchar *dir_name;
@@ -1736,101 +1591,6 @@ static void exec_user_tool(GtkToolItem *item, RFM_ChildAttribs *childAttribs)
 }
 
 
-
-#ifdef DragAndDropSupport
-
-static void cp_mv_file(RFM_ctx * doMove, GList *fileList)
-/*there used to be a parameter call doCopy here, when doCopy==NULL, means move. But now, i need to pass rfmCtx here, and only when we do move, we need rfmCtx, so, i pass rfmCtx into doMove when move, and NULL when copy*/
-{
-   GList *listElement=NULL;
-   gint response_id=GTK_RESPONSE_CANCEL;
-   gint i;
-   GList *selected_files=NULL;
-   gchar *dest_path=NULL;
-
-   /* Destination path is stored in the first element */
-   listElement=g_list_first(fileList);
-   dest_path=g_strdup(listElement->data);
-   listElement=g_list_next(listElement);
-   
-   i=0;
-   while (listElement!=NULL) {
-      if (response_id!=GTK_RESPONSE_ACCEPT)
-	response_id=cp_mv_check_path(listElement->data, dest_path, doMove); 
-      if (response_id==GTK_RESPONSE_YES || response_id==GTK_RESPONSE_ACCEPT) {
-         selected_files=g_list_append(selected_files, g_strdup(listElement->data));
-         i++;
-      }
-      else if (response_id==GTK_RESPONSE_CANCEL)
-          break;
-      listElement=g_list_next(listElement);
-   }
-
-   if (selected_files!=NULL) {
-      if (response_id!=GTK_RESPONSE_CANCEL) {
-	if (doMove==NULL || !readFromPipeStdIn) /*for copy, the source iconview won't change, we don't need to refresh with refresh_store, for move with inotify hander on source iconview, we also don't need to refresh manually*/
-	    g_spawn_wrapper(f_cp_DnD, selected_files, i, RFM_EXEC_INTERNAL, dest_path,TRUE,NULL,NULL);
-	else {
-	    g_spawn_wrapper(f_mv_DnD, selected_files, i, RFM_EXEC_INTERNAL, dest_path,TRUE,refresh_store,doMove);
-         }
-      }
-      g_list_free_full(selected_files, (GDestroyNotify)g_free);
-   }
-   g_free(dest_path);
-}
-
-
-static void dnd_menu_cp_mv(GtkWidget *menuitem, gpointer rfmCtx)
-{
-   RFM_dndMenu *dndMenu=g_object_get_data(G_OBJECT(window),"rfm_dnd_menu");
-
-   if (menuitem == dndMenu->copy) {
-     cp_mv_file(NULL, dndMenu->dropData);
-   } else {
-     cp_mv_file(rfmCtx, dndMenu->dropData);
-   }
-}
-
-
-static GList *uriListToGList(gchar *uri_list[])
-{
-   gchar *scheme=NULL;
-   gchar *file_host=NULL;
-   gchar *file_path=NULL;
-   GList *file_list=NULL;
-   guint16 i;
-   gboolean list_valid=TRUE;
-
-   /* Check source files */
-   for (i=0; uri_list[i]!=NULL && i<65000; i++) {
-      scheme=g_uri_parse_scheme(uri_list[i]);
-      if (scheme==NULL || strcmp(scheme, "file")!=0)
-         list_valid=FALSE;
-      g_free(scheme);
-
-      file_path=g_filename_from_uri(uri_list[i], &file_host, NULL);
-      if (file_host!=NULL) {
-         // TODO: should use int gethostname(char *name, size_t len) here; g_get_host_name has problems
-         // e.g. caches name and doesn't monitor for changes
-         if (strncmp(file_host, "localhost", 9)!=0 && strcmp(file_host, g_get_host_name())!=0)
-            list_valid=FALSE;
-         g_free(file_host);
-      }
-      if (list_valid==FALSE || file_path==NULL)
-         break;
-
-      file_list=g_list_prepend(file_list, file_path);
-      file_path=NULL; /* reference passed to GList - don't free */
-   }
-   if (list_valid==TRUE)
-      return file_list;
-
-   if (file_list!=NULL)
-      g_list_free_full(file_list, (GDestroyNotify)g_free);
-   return NULL;
-}
-#endif
-
 /* Helper function to get treepath from treeview or iconview. This return value needs to be freed */
 static void get_path_at_view_pos(GtkWidget* view, gboolean treeview,gint x,gint y, GtkTreePath ** retval)
 {
@@ -1841,179 +1601,12 @@ static void get_path_at_view_pos(GtkWidget* view, gboolean treeview,gint x,gint 
 }
 
 
-#ifdef DragAndDropSupport
-/* Receive data after requesting send from drag_drop_handl */
-static void drag_data_received_handl(GtkWidget *widget, GdkDragContext *context, gint x, gint y, GtkSelectionData *selection_data, guint target_type, guint time, RFM_ctx *rfmCtx)
-{
-   gchar **uri_list=NULL;
-   gchar *dest_path=NULL;
-   GtkTreePath *tree_path;
-   GtkTreeIter iter;
-   GdkDragAction src_actions;
-   GdkDragAction selected_action;
-   gint bx,by;
-   RFM_dndMenu *dndMenu=g_object_get_data(G_OBJECT(window), "rfm_dnd_menu");
-   RFM_FileAttributes *fileAttributes;
-
-   if (target_type!=TARGET_URI_LIST) {
-      show_msgbox("Only URI lists accepted\n", "Error", GTK_MESSAGE_ERROR);
-      gtk_drag_finish(context, FALSE, FALSE, time);
-      return;
-   }
-
-   uri_list=gtk_selection_data_get_uris(selection_data);
-   if (uri_list==NULL) {
-      show_msgbox("Can't get file data\n", "Error", GTK_MESSAGE_ERROR);
-      gtk_drag_finish(context, FALSE, FALSE, time);
-      return;
-   }
-
-   /* Setup destination */
-   if (treeview)
-     gtk_tree_view_convert_widget_to_bin_window_coords(GTK_TREE_VIEW(widget), x, y, &bx, &by);
-   else
-     gtk_icon_view_convert_widget_to_bin_window_coords(GTK_ICON_VIEW(widget), x, y, &bx, &by);
-   get_path_at_view_pos(widget,treeview,bx,by,&tree_path);
-   
-   if (tree_path!=NULL) {
-      gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, tree_path);
-      gtk_tree_model_get(GTK_TREE_MODEL(store), &iter, COL_ATTR, &fileAttributes, -1);
-      gtk_tree_path_free(tree_path);
-      if (fileAttributes->is_dir)
-         dest_path=g_strdup(fileAttributes->path);
-   }
-
-   if (dest_path==NULL)
-      dest_path=g_strdup(rfm_curPath);
-
-   if (dndMenu->dropData!=NULL) {
-      g_list_free_full(dndMenu->dropData, (GDestroyNotify)g_free);
-      dndMenu->dropData=NULL; /* Initialise list */
-   }
-   dndMenu->dropData=uriListToGList(uri_list);
-
-   g_strfreev(uri_list);
-
-   if (dndMenu->dropData!=NULL) {
-      dndMenu->dropData=g_list_prepend(dndMenu->dropData, dest_path);   /* Store the destination path in the first element */
-      dest_path=NULL; /* reference passed to GList - don't free */
-      /* src_actions holds the bit mask of possible actions if
-       * suggested_action is GDK_ACTION_ASK. We ignore suggested
-       * action and always ask - see drag_motion_handl().
-       */
-      src_actions=gdk_drag_context_get_actions(context);
-      selected_action=gdk_drag_context_get_selected_action(context);
-      if (selected_action!=GDK_ACTION_ASK)
-         g_warning ("drag_data_received_handl(): selected action is not ask!\n");
-      gtk_widget_set_sensitive(GTK_WIDGET(dndMenu->copy), FALSE);
-      gtk_widget_set_sensitive(GTK_WIDGET(dndMenu->move), FALSE);
-
-      if (src_actions&GDK_ACTION_COPY)
-         gtk_widget_set_sensitive(GTK_WIDGET(dndMenu->copy), TRUE);
-      if (src_actions&GDK_ACTION_MOVE)
-         gtk_widget_set_sensitive(GTK_WIDGET(dndMenu->move), TRUE);
-      /* this doesn't work in weston: but using 'NULL' for the event does! */
-      gtk_menu_popup_at_pointer(GTK_MENU(dndMenu->menu), dndMenu->drop_event);
-      gtk_drag_finish(context, TRUE, FALSE, time);
-      return;
-   }
-
-   g_free(dest_path);
-   gtk_drag_finish(context, FALSE, FALSE, time);
-   show_msgbox("Only URI lists of local files accepted\n", "Error", GTK_MESSAGE_ERROR);
-}
-#endif
-
-
 static gboolean path_is_selected(GtkWidget *widget, gboolean treeview, GtkTreePath *path) {
   if (treeview)
     return gtk_tree_selection_path_is_selected(gtk_tree_view_get_selection(GTK_TREE_VIEW(widget)), path);
   else
     return gtk_icon_view_path_is_selected(GTK_ICON_VIEW(widget), path);
 }
-
-#ifdef DragAndDropSupport
-/* Called when item is dragged over iconview */
-static gboolean drag_motion_handl(GtkWidget *widget, GdkDragContext *context, gint x, gint y, guint time, RFM_ctx *rfmCtx)
-{
-   GtkTreePath *tree_path;
-   GtkTreeIter iter;
-   gboolean is_dir=FALSE;
-   gint bx,by;
-   RFM_FileAttributes *fileAttributes;
-
-   if (treeview)
-     gtk_tree_view_convert_widget_to_bin_window_coords(GTK_TREE_VIEW(widget), x, y, &bx, &by);
-   else
-     gtk_icon_view_convert_widget_to_bin_window_coords(GTK_ICON_VIEW(widget), x, y, &bx, &by);
-   get_path_at_view_pos(widget, treeview, bx, by, &tree_path);
-  
-   if (tree_path!=NULL) {
-      /* Don't drop on self */
-     if (! path_is_selected(widget, treeview, tree_path)) {
-         gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, tree_path);
-         gtk_tree_model_get(GTK_TREE_MODEL (store), &iter, COL_ATTR, &fileAttributes, -1);
-         is_dir=fileAttributes->is_dir;
-         if (is_dir)
-	   if (treeview)
-	      gtk_tree_view_set_drag_dest_row(GTK_TREE_VIEW(widget), tree_path, GTK_TREE_VIEW_DROP_INTO_OR_AFTER);
-	   else
-              gtk_icon_view_set_drag_dest_item (GTK_ICON_VIEW(widget), tree_path, GTK_ICON_VIEW_DROP_INTO);
-         else
-	    if(treeview)
-	      gtk_tree_view_set_drag_dest_row(GTK_TREE_VIEW(widget), NULL, GTK_TREE_VIEW_DROP_INTO_OR_AFTER);
-	    else
-              gtk_icon_view_set_drag_dest_item (GTK_ICON_VIEW(widget), NULL, GTK_ICON_VIEW_DROP_INTO);
-      }
-      gtk_tree_path_free(tree_path);
-   }
-
-   if (!is_dir && rfmCtx->rfm_localDrag)
-      gdk_drag_status(context, 0, time); /* Don't drop on source window */
-   else
-      gdk_drag_status(context, GDK_ACTION_ASK, time); /* Always ask */
-   return TRUE;
-}
-
-/* Called when a drop occurs on iconview: then request data from drag initiator */
-static gboolean drag_drop_handl(GtkWidget *widget, GdkDragContext *context, gint x, gint y, guint time, gpointer user_data)
-{
-   GdkAtom target_type;
-   RFM_dndMenu *dndMenu=g_object_get_data(G_OBJECT(window),"rfm_dnd_menu");
-
-   target_type = gtk_drag_dest_find_target(widget, context,NULL);
-   if (target_type == GDK_NONE) {
-      show_msgbox("Only text/uri-lists accepted!\n", "Error", GTK_MESSAGE_ERROR);
-      gtk_drag_finish(context,FALSE,FALSE,time);
-      return FALSE; /* Can't handle incoming data */
-   }
-   if (dndMenu->drop_event!=NULL)
-      gdk_event_free(dndMenu->drop_event);
-   dndMenu->drop_event=gtk_get_current_event();
-
-   gtk_drag_get_data(widget, context, target_type, time); /* Call back: drag_data_received_handl() above */
-   return TRUE;
-}
-
-static void drag_local_handl(GtkWidget *widget, GdkDragContext *context, RFM_ctx *rfmCtx)
-{
-   rfmCtx->rfm_localDrag=!(rfmCtx->rfm_localDrag);
-}
-
-/* Send data to drop target after receiving a request for data */
-static void drag_data_get_handl(GtkWidget *widget, GdkDragContext *context, GtkSelectionData *selection_data, guint target_type, guint time, RFM_ctx *rfmCtx)
-{
-   gchar **uriList;  /* Do not free: pointers owned by GList rfm_fileAttributeList */
-
-   if (target_type==TARGET_URI_LIST) {
-      uriList=selection_list_to_uri(widget, rfmCtx);
-      gtk_selection_data_set_uris(selection_data, uriList); /* uriList can be NULL */
-   }
-   else
-      g_warning("drag_data_get_handl: Target type not available\n");
-}
-#endif
-
 
 static void copy_curPath_to_clipboard(GtkWidget *menuitem, gpointer user_data)
 {
@@ -2208,30 +1801,6 @@ static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx)
    return TRUE;
 }
 
-#ifdef DragAndDropSupport
-static RFM_dndMenu *setup_dnd_menu(RFM_ctx * rfmCtx)
-{
-   RFM_dndMenu *dndMenu=NULL;
-   if(!(dndMenu=calloc(1, sizeof(RFM_dndMenu))))
-      return NULL;
-
-   dndMenu->drop_event=NULL;
-   dndMenu->menu=gtk_menu_new();
-   
-   dndMenu->copy=gtk_menu_item_new_with_label("Copy");
-   gtk_widget_show(dndMenu->copy);
-   gtk_menu_shell_append(GTK_MENU_SHELL (dndMenu->menu),dndMenu->copy);
-   g_signal_connect(dndMenu->copy, "activate", G_CALLBACK (dnd_menu_cp_mv), rfmCtx);
-
-   dndMenu->move=gtk_menu_item_new_with_label("Move");
-   gtk_widget_show(dndMenu->move);
-   gtk_menu_shell_append(GTK_MENU_SHELL (dndMenu->menu), dndMenu->move);
-   g_signal_connect(dndMenu->move, "activate", G_CALLBACK (dnd_menu_cp_mv), rfmCtx);
-   
-   dndMenu->dropData=NULL;
-   return dndMenu;
-}
-#endif
 
 static RFM_rootMenu *setup_root_menu(void)
 {
@@ -2263,10 +1832,6 @@ static gboolean view_button_press(GtkWidget *widget, GdkEvent *event, RFM_ctx *r
    gboolean ret_val=FALSE;
    RFM_rootMenu *rootMenu;
    GdkEventButton *eb=(GdkEventButton*)event;
-#ifdef DragAndDropSupport
-   GList *selectionList;
-   GList *first=NULL;
-#endif
 
    if (eb->type!=GDK_BUTTON_PRESS)
       return FALSE;  /* Only accept single clicks here: item_activated() handles double click */
@@ -2276,28 +1841,6 @@ static gboolean view_button_press(GtkWidget *widget, GdkEvent *event, RFM_ctx *r
 
    get_path_at_view_pos(widget,treeview,eb->x,eb->y,&tree_path);
    switch (eb->button) {
-#ifdef DragAndDropSupport
-      case 1:  /* Custom DnD start if multiple items selected */
-         if (tree_path) {
-	    selectionList=get_view_selection_list(widget,treeview,&treemodel);
-            first=g_list_first(selectionList);
-            if (path_is_selected(widget, treeview, tree_path) && first->next!=NULL) {
-              if (treeview){
-		 gtk_tree_view_unset_rows_drag_source(GTK_TREE_VIEW(widget));
-	      }else
-	         gtk_icon_view_unset_model_drag_source(GTK_ICON_VIEW(widget));
-               gtk_drag_begin_with_coordinates(widget, target_list, DND_ACTION_MASK , 1, event, eb->x, eb->y);
-               ret_val=TRUE;
-            }
-            else
-	       if(treeview)
-		 gtk_tree_view_enable_model_drag_source(GTK_TREE_VIEW(widget), GDK_BUTTON1_MASK, target_entry, N_TARGETS, DND_ACTION_MASK); 
-	       else
-                 gtk_icon_view_enable_model_drag_source(GTK_ICON_VIEW(widget), GDK_BUTTON1_MASK, target_entry, N_TARGETS, DND_ACTION_MASK); 
-            g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
-         }
-      break;
-#endif
       case 3:  /* Button 3 selections */
          if (tree_path) {
 	   if (! path_is_selected(widget,treeview, tree_path)) {
@@ -2457,26 +2000,9 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
      gtk_icon_view_set_markup_column(GTK_ICON_VIEW(_view),COL_DISPLAY_NAME);
      gtk_icon_view_set_pixbuf_column(GTK_ICON_VIEW(_view), COL_PIXBUF);
    }
-#ifdef DragAndDropSupport
-   gtk_drag_dest_set(_view, 0, target_entry, N_TARGETS, DND_ACTION_MASK);
-#endif
    #ifdef RFM_SINGLE_CLICK
    gtk_icon_view_set_activate_on_single_click(GTK_ICON_VIEW(icon_view), TRUE);
    #endif
-#ifdef DragAndDropSupport
-   /* Source DnD signals */
-   g_signal_connect(_view, "drag-data-get", G_CALLBACK(drag_data_get_handl), rfmCtx);
-   g_signal_connect(_view, "drag-begin", G_CALLBACK(drag_local_handl), rfmCtx);
-   g_signal_connect(_view, "drag-end", G_CALLBACK(drag_local_handl), rfmCtx);
-
-   if (!readFromPipeStdIn) {
-
-     /* Destination DnD signals */
-     g_signal_connect(_view, "drag-drop", G_CALLBACK(drag_drop_handl),rfmCtx);
-     g_signal_connect(_view, "drag-data-received",G_CALLBACK(drag_data_received_handl), NULL);
-     g_signal_connect(_view, "drag-motion", G_CALLBACK(drag_motion_handl),rfmCtx);
-   }
-#endif
 //   g_signal_connect (icon_view, "selection-changed", G_CALLBACK (selection_changed), rfmCtx);
    g_signal_connect(_view, "button-press-event", G_CALLBACK(view_button_press), rfmCtx);
    g_signal_connect(_view, "key-press-event", G_CALLBACK(view_key_press), rfmCtx);
@@ -2769,9 +2295,6 @@ gio_in_stdin (GIOChannel *gio, GIOCondition condition, gpointer data)
 
 static int setup(char *initDir, RFM_ctx *rfmCtx)
 {
-#ifdef DragAndDropSupport
-   RFM_dndMenu *dndMenu=NULL;
-#endif
    RFM_fileMenu *fileMenu=NULL;
    RFM_rootMenu *rootMenu=NULL;
 
@@ -2808,10 +2331,6 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
    g_signal_connect (rfmCtx->rfm_mountMonitor, "mountpoints-changed", G_CALLBACK (mounts_handler), rfmCtx); /* fstab changed */
 
    init_inotify(rfmCtx);
-#ifdef DragAndDropSupport
-   /* Initialise dnd */
-   target_list=gtk_target_list_new(target_entry, N_TARGETS);
-#endif
 
    #ifdef RFM_ICON_THEME
       icon_theme=gtk_icon_theme_new();
@@ -2821,15 +2340,9 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
    #endif
 
    fileMenu=setup_file_menu(rfmCtx); /* TODO: WARNING: This can return NULL! */
-#ifdef DragAndDropSupport
-   dndMenu=setup_dnd_menu(rfmCtx);
-#endif
    rootMenu=setup_root_menu();
    defaultPixbufs=load_default_pixbufs(); /* TODO: WARNING: This can return NULL! */
    g_object_set_data(G_OBJECT(window),"rfm_file_menu",fileMenu);
-#ifdef DragAndDropSupport
-   g_object_set_data_full(G_OBJECT(window),"rfm_dnd_menu",dndMenu,(GDestroyNotify)g_free);
-#endif
    g_object_set_data_full(G_OBJECT(window),"rfm_root_menu",rootMenu,(GDestroyNotify)g_free);
    g_object_set_data_full(G_OBJECT(window),"rfm_default_pixbufs",defaultPixbufs,(GDestroyNotify)free_default_pixbufs);
 
@@ -2888,10 +2401,6 @@ static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx)
    }
    close(rfm_inotify_fd);
    
-#ifdef DragAndDropSupport
-   gtk_target_list_unref(target_list);
-#endif
-
    gtk_main_quit();
 
 }
@@ -2922,9 +2431,6 @@ int main(int argc, char *argv[])
    
    RFM_ctx *rfmCtx=calloc(1,sizeof(RFM_ctx));
    if (rfmCtx==NULL) return 1;
-#ifdef DragAndDropSupport
-   rfmCtx->rfm_localDrag=FALSE;
-#endif
    rfmCtx->rfm_sortColumn=GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID;
    rfmCtx->rfm_mountMonitor=g_unix_mount_monitor_get();
    rfmCtx->showMimeType=0;

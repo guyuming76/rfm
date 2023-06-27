@@ -21,10 +21,6 @@ static const char *f_mv[]   = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmMov
 static const char *cp_selection_to_clipboard[] = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmCopySelectionToClipboard.sh",NULL};
 static const char *cp_clipboard_to_curPath[] = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmCopyClipboardToCurPath.sh",NULL };
 static const char *mv_clipboard_to_curPath[] = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmMoveClipboardToCurPath.sh",NULL };
-#ifdef DragAndDropSupport
-static const char *f_cp_DnD[]   = { "/bin/cp", "-p", "-R", "-f", NULL };
-static const char *f_mv_DnD[]   = { "/bin/mv", "-f", NULL };
-#endif
 
 /* Run action commands: called as run_action <list of paths to selected files> */
 static const char *play_video[] = { "/usr/bin/mpv", NULL };
