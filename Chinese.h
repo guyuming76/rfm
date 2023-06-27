@@ -10,4 +10,4 @@
 #define RunActionCopySelection "复制选中文件名至剪贴板"
 #define Copy "复制"
 #define Paste "粘帖"
-#define Move "移动"
+#define MoveTo "移动到"

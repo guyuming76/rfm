@@ -19,6 +19,8 @@ static const char *f_rm[]   = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmRem
 static const char *f_cp[]   = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmCopy.sh", NULL };
 static const char *f_mv[]   = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmMove.sh", NULL };
 static const char *cp_selection_to_clipboard[] = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmCopySelectionToClipboard.sh",NULL};
+static const char *cp_clipboard_to_curPath[] = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmCopyClipboardToCurPath.sh",NULL };
+static const char *mv_clipboard_to_curPath[] = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmMoveClipboardToCurPath.sh",NULL };
 #ifdef DragAndDropSupport
 static const char *f_cp_DnD[]   = { "/bin/cp", "-p", "-R", "-f", NULL };
 static const char *f_mv_DnD[]   = { "/bin/mv", "-f", NULL };
@@ -155,6 +157,8 @@ static RFM_ToolButtons tool_buttons[] = {
    { SwitchView,     NULL,                      switch_view,            NULL,              TRUE,           TRUE,      GDK_KEY_slash,         "MOD+/"},
    { Up,             "go-up",                   up_clicked,             NULL,              FALSE,          TRUE,      GDK_KEY_Up,            "MOD+up arrow"},
    { "Refresh",      "view-refresh",            refresh_clicked,        NULL,              TRUE,           TRUE,      0,                      NULL  },
+   { Paste,          NULL,                      NULL,                   cp_clipboard_to_curPath, FALSE,    TRUE,      GDK_KEY_V,             "MOD+v"}, 
+   { MoveTo,         NULL,                      NULL,                   mv_clipboard_to_curPath, FALSE,    TRUE,      GDK_KEY_X,             "MOD+x"}, 
    { PageUp,         NULL,                      PreviousPage,           NULL,              TRUE,           FALSE,     GDK_KEY_Page_Up,       "MOD+PgUp"},
    { PageDown,       NULL,                      NextPage,               NULL,              TRUE,           FALSE,     GDK_KEY_Page_Down,     "MOD+PgDn"},
    { "Terminal",     "utilities-terminal",      NULL,                   term_cmd,          TRUE,           TRUE,      0,                      NULL  },

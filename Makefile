@@ -63,6 +63,8 @@ install: all
 	@cp -f scripts/rfmProperties.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmOpenWith_.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmCopySelectionToClipboard_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmCopySelectionToClipboard.sh
+	@cp -f scripts/rfmCopyClipboardToCurPath_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmCopyClipboardToCurPath.sh
+	@cp -f scripts/rfmMoveClipboardToCurPath_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmMoveClipboardToCurPath.sh
 #	@cp -f scripts/rfmNewFile.sh ${DESTDIR}${PREFIX}/bin
 #	@cp -f scripts/rfmNewDir.sh ${DESTDIR}${PREFIX}/bin
 #	@cp -f rfm.desktop /usr/share/applications/rfm.desktop  
@@ -77,6 +79,8 @@ install: all
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmProperties.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmOpenWith_.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmCopySelectionToClipboard.sh
+	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmCopyClipboardToCurPath.sh
+	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmMoveClipboardToCurPath.sh
 #	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmNewFile.sh
 #	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmNewDir.sh
 
@@ -92,6 +96,8 @@ uninstall:
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmProperties.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmOpenWith_.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmCopySelectionToClipboard.sh
+	@rm -f ${DESTDIR}${PREFIX}/bin/rfmCopyClipboardToCurPath.sh
+	@rm -f ${DESTDIR}${PREFIX}/bin/rfmMoveClipboardToCurPath.sh
 #	@rm -f ${DESTDIR}${PREFIX}/bin/rfmNewFile.sh
 #	@rm -f ${DESTDIR}${PREFIX}/bin/rfmNewDir.sh
 

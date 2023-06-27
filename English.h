@@ -10,4 +10,4 @@
 #define RunActionCopySelection "copy selected file names to clipboard"
 #define Copy "Copy"
 #define Paste "Paste"
-#define Move "Move"
+#define MoveTo "MoveTo"
