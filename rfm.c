@@ -166,7 +166,6 @@ enum {
 
 enum {
    RFM_EXEC_NONE, // according to find-reference, these seem to mean that no stdout in child process is needed by rfm
-   RFM_EXEC_PANGO,
    RFM_EXEC_PLAIN,
    RFM_EXEC_INTERNAL, //i see Rodney use this in config.def.h for commands like copy move, but i don't know what it mean precisely,and i don't see program logic that reference this value, so i add RFM_EXEC_OUTPUT_HANDLED_HERE
    RFM_EXEC_MOUNT,
