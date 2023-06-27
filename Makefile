@@ -59,7 +59,7 @@ install: all
 	@cp -f scripts/rfmVTforCMD_hold.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmCopy.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmMove_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmMove.sh
-	@cp -f scripts/rfmRemove.sh ${DESTDIR}${PREFIX}/bin
+	@cp -f scripts/rfmRemove_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmRemove.sh
 	@cp -f scripts/rfmProperties.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmOpenWith_.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmCopySelectionToClipboard_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmCopySelectionToClipboard.sh
