@@ -70,8 +70,12 @@ typedef struct {
 typedef struct {
    gchar *buttonName;
    gchar *buttonIcon;
-   void (*func)(const gchar **args);
+   void (*func)(gpointer);
    const gchar **args;
+   gboolean readFromPipe;
+   gboolean curPath;
+   guint Accel;
+   gchar *tooltip;
 } RFM_ToolButtons;
 
 typedef struct {
@@ -160,12 +164,6 @@ typedef struct {
    GdkPixbuf *mounted;
    GdkPixbuf *symlink;
    GdkPixbuf *broken;
-   GdkPixbuf *up;
-   GdkPixbuf *home;
-   GdkPixbuf *stop;
-   GdkPixbuf *refresh;
-   GdkPixbuf *menu;
-   GdkPixbuf *info;
 } RFM_defaultPixbufs;
 
 enum {
@@ -232,20 +230,6 @@ static int rfm_thumbnail_wd;  /* Thumbnail watch */
 static gchar *rfm_curPath=NULL;  /* The current directory */
 static gchar *rfm_prePath=NULL;  /* Previous directory: only set when up button is pressed, otherwise should be NULL */
 
-static GtkToolItem *up_button;
-static GtkToolItem *home_button;
-
-static GtkToolItem *stop_button;
-static GtkToolItem *refresh_button;;
-static GtkToolItem *menu_button;
-static GtkToolItem *info_button;
-static GtkToolItem *PageUp_button;
-static GtkToolItem *PageDown_button;
-static GtkToolItem *SwitchView_button;
-/* static GtkToolItem *pasteSelectionTo_button; */
-/* static GtkToolItem *copySelection_button;; */
-/* static GtkToolItem *moveSelectionTo_button; */
-
 static GtkAccelGroup *agMain = NULL;
 static GtkWidget *tool_bar = NULL;
 static RFM_defaultPixbufs *defaultPixbufs=NULL;
@@ -287,8 +271,16 @@ static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx);
 static void show_child_output(RFM_ChildAttribs *child_attribs);
 static void set_rfm_curPath(gchar* path);
 static void refresh_store(RFM_ctx *rfmCtx);
-static void up_clicked(GtkToolItem *item, gpointer user_data);
-static void home_clicked(GtkToolItem *item, gpointer user_data);
+
+static void up_clicked(gpointer user_data);
+static void home_clicked(gpointer user_data);
+static void refresh_clicked(RFM_ctx *rfmCtx);
+static void PreviousPage(RFM_ctx *rfmCtx);
+static void NextPage(RFM_ctx *rfmCtx);
+static void info_clicked(gpointer user_data);
+static void stop_clicked(RFM_ctx *rfmCtx);
+static void tool_menu_clicked(RFM_ctx *rfmCtx);
+
 static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx);
 static GHashTable *get_mount_points(void);
 
@@ -442,9 +434,8 @@ static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_
    g_spawn_close_pid(child_attribs->pid);
 
    rfm_childList=g_list_remove(rfm_childList, child_attribs);
-   if (rfm_childList==NULL)
-      gtk_widget_set_sensitive(GTK_WIDGET(info_button), FALSE);
-   // the above two line was called somewhere inside ShowchildOutput_Execcallback before, but in order to share ShowchildOutput_Execcallback between async and sync, the calling is moved a little bit earlier as it is here now.
+   /* if (rfm_childList==NULL) */
+   /*    gtk_widget_set_sensitive(GTK_WIDGET(info_button), FALSE); */
 
    ShowChildOutput_ExecCallback_freeChildAttribs(child_attribs);
    return FALSE;
@@ -568,21 +559,7 @@ static RFM_defaultPixbufs *load_default_pixbufs(void)
 
    g_object_unref(umount_pixbuf);
    g_object_unref(mount_pixbuf);
-   
-   /* Tool bar icons */
-   defaultPixbufs->up=gtk_icon_theme_load_icon(icon_theme, "go-up", RFM_TOOL_SIZE, 0, NULL);
-   defaultPixbufs->home=gtk_icon_theme_load_icon(icon_theme, "go-home", RFM_TOOL_SIZE, 0, NULL);
-   defaultPixbufs->stop=gtk_icon_theme_load_icon(icon_theme, "process-stop", RFM_TOOL_SIZE, 0, NULL);
-   defaultPixbufs->refresh=gtk_icon_theme_load_icon(icon_theme, "view-refresh", RFM_TOOL_SIZE, 0, NULL);
-   defaultPixbufs->menu=gtk_icon_theme_load_icon(icon_theme, "open-menu", RFM_TOOL_SIZE, 0, NULL);
-   defaultPixbufs->info=gtk_icon_theme_load_icon(icon_theme, "dialog-information", RFM_TOOL_SIZE, 0, NULL);
-
-   if (defaultPixbufs->up==NULL) defaultPixbufs->up=gdk_pixbuf_new_from_xpm_data(RFM_icon_up);
-   if (defaultPixbufs->home==NULL) defaultPixbufs->home=gdk_pixbuf_new_from_xpm_data(RFM_icon_home);
-   if (defaultPixbufs->stop==NULL) defaultPixbufs->stop=gdk_pixbuf_new_from_xpm_data(RFM_icon_stop);
-   if (defaultPixbufs->refresh==NULL) defaultPixbufs->refresh=gdk_pixbuf_new_from_xpm_data(RFM_icon_refresh);
-   if (defaultPixbufs->info==NULL) defaultPixbufs->info=gdk_pixbuf_new_from_xpm_data(RFM_icon_information);
-   
+  
    return defaultPixbufs;
 }
 
@@ -718,16 +695,15 @@ static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *ch
          if (! g_unix_set_fd_nonblocking(child_attribs->stdErr_fd, TRUE, NULL))
             g_warning("Can't set child stderr to non-blocking mode.");
 
-         child_attribs->name=g_strdup(v[0]);
+         if(child_attribs->name==NULL) child_attribs->name=g_strdup(v[0]);
          child_attribs->status=-1;  /* -1 indicates child is running; set to wait wstatus on exit */
-	 child_attribs->spawn_async=TRUE;
 	 child_attribs->exitcode=0;
 
 
          g_timeout_add(100, (GSourceFunc)g_spawn_async_with_pipes_wrapper_child_supervisor, (void*)child_attribs);
          g_child_watch_add(child_attribs->pid, (GChildWatchFunc)child_handler_to_set_finished_status_for_child_supervisor, child_attribs);
          rfm_childList=g_list_prepend(rfm_childList, child_attribs);
-         gtk_widget_set_sensitive(GTK_WIDGET(info_button), TRUE);
+         //gtk_widget_set_sensitive(GTK_WIDGET(info_button), TRUE);
       }
    }
    return rv;
@@ -1432,9 +1408,9 @@ static void TurnPage(RFM_ctx *rfmCtx, gboolean next) {
   }
 }
 
-static void NextPage(GtkToolItem *item, RFM_ctx *rfmCtx) { TurnPage(rfmCtx, TRUE); }
+static void NextPage(RFM_ctx *rfmCtx) { TurnPage(rfmCtx, TRUE); }
 
-static void PreviousPage(GtkToolItem *item, RFM_ctx *rfmCtx) { TurnPage(rfmCtx, FALSE); }
+static void PreviousPage(RFM_ctx *rfmCtx) { TurnPage(rfmCtx, FALSE); }
 
 static gboolean fill_fileAttributeList_with_filenames_from_pipeline_stdin_and_then_insert_into_store() {
   time_t mtimeThreshold=time(NULL)-RFM_MTIME_OFFSET;
@@ -1500,11 +1476,7 @@ static gint sort_func(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, gpoin
 static void refresh_store(RFM_ctx *rfmCtx)
 {
    gtk_widget_hide(rfm_main_box);
-   if (agMain) {
-     gtk_window_remove_accel_group(GTK_WINDOW(window), agMain);
-   }
    if (sw) gtk_widget_destroy(sw);
-   if (tool_bar) gtk_widget_destroy(tool_bar);
   
    rfm_stop_all(rfmCtx);
    clear_store();
@@ -1522,7 +1494,6 @@ static void refresh_store(RFM_ctx *rfmCtx)
      rfm_readDirSheduler=g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, (GSourceFunc)read_one_DirItem_into_fileAttributeList_in_each_call_and_insert_all_into_store_in_last_call, dir, (GDestroyNotify)g_dir_close);
   }
 
-   add_toolbar(rfm_main_box, defaultPixbufs, rfmCtx);
    icon_or_tree_view = add_view(rfmCtx);
    gtk_widget_show_all(window);
 }
@@ -1683,7 +1654,7 @@ static gchar **selection_list_to_uri(GtkWidget *widget, RFM_ctx *rfmCtx)
 }
 #endif
 
-static void up_clicked(GtkToolItem *item, gpointer user_data)
+static void up_clicked(gpointer user_data)
 {
    gchar *dir_name;
 
@@ -1695,34 +1666,22 @@ static void up_clicked(GtkToolItem *item, gpointer user_data)
    g_free(dir_name);
 }
 
-static void home_clicked(GtkToolItem *item, gpointer user_data)
+static void home_clicked(gpointer user_data)
 {
    set_rfm_curPath(rfm_homePath);
 }
 
-static void stop_clicked(GtkToolItem *item, RFM_ctx *rfmCtx)
+static void stop_clicked(RFM_ctx *rfmCtx)
 {
    rfm_stop_all(rfmCtx);
 }
 
-static void refresh_clicked(GtkToolItem *item, RFM_ctx *rfmCtx)
+static void refresh_clicked(RFM_ctx *rfmCtx)
 {
    refresh_store(rfmCtx);
 }
 
-/* static void refresh_other(GtkToolItem *item, GdkEventButton *event, RFM_ctx *rfmCtx) */
-/* { */
-/*    if (event->button==3) { */
-/*       if (gtk_tree_sortable_get_sort_column_id(GTK_TREE_SORTABLE(store),NULL,NULL)==FALSE) */
-/*          rfmCtx->rfm_sortColumn=COL_MTIME; /\* Sort in mtime order *\/ */
-/*       else */
-/*          rfmCtx->rfm_sortColumn=GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID; */
-   
-/*       refresh_clicked(item, rfmCtx); */
-/*    } */
-/* } */
-
-static void info_clicked(GtkToolItem *item, gpointer user_data)
+static void info_clicked(gpointer user_data)
 {
    GList *listElement=NULL;
    GString   *string=NULL;
@@ -1746,7 +1705,7 @@ static void info_clicked(GtkToolItem *item, gpointer user_data)
    g_free(msg);
 }
 
-static void tool_menu_clicked(GtkToolItem *item, RFM_ctx *rfmCtx)
+static void tool_menu_clicked(RFM_ctx *rfmCtx)
 {
    GdkEvent *event=gtk_get_current_event();
    RFM_rootMenu *rootMenu;
@@ -1757,12 +1716,23 @@ static void tool_menu_clicked(GtkToolItem *item, RFM_ctx *rfmCtx)
    }
 }
 
-static void exec_user_tool(GtkToolItem *item, RFM_ToolButtons *tool)
+static void exec_user_tool(GtkToolItem *item, RFM_ChildAttribs *childAttribs)
 {
-   if (tool->func==NULL) /* Assume argument is a shell exec */
-      g_spawn_async(rfm_curPath, (gchar**)tool->args, NULL, 0, NULL, NULL, NULL, NULL);
-   else /* Argument is an internal function */
-      tool->func(tool->args);
+   if (childAttribs->RunCmd==NULL) /* Argument is an internal function */
+     childAttribs->customCallBackFunc(childAttribs->customCallbackUserData);
+   else { /* Assume argument is a shell exec */
+     RFM_ChildAttribs *child_attribs=calloc(1, sizeof(RFM_ChildAttribs));
+     child_attribs->customCallBackFunc=childAttribs->customCallBackFunc;
+     child_attribs->customCallbackUserData=childAttribs->customCallbackUserData;
+     child_attribs->runOpts=childAttribs->runOpts;
+     child_attribs->RunCmd = childAttribs->RunCmd;
+     child_attribs->stdOut = NULL;
+     child_attribs->stdErr = NULL;
+     child_attribs->spawn_async = childAttribs->spawn_async;
+     child_attribs->name=g_strdup(childAttribs->name);
+
+     g_spawn_wrapper_(NULL, 0, NULL, child_attribs);
+   }
 }
 
 
@@ -2045,7 +2015,7 @@ static void drag_data_get_handl(GtkWidget *widget, GdkDragContext *context, GtkS
 #endif
 
 
-static void copy_to_clipboard(GtkWidget *menuitem, gpointer user_data)
+static void copy_curPath_to_clipboard(GtkWidget *menuitem, gpointer user_data)
 {
    /* Clipboards: GDK_SELECTION_CLIPBOARD, GDK_SELECTION_PRIMARY, GDK_SELECTION_SECONDARY */
    //https://specifications.freedesktop.org/clipboards-spec/clipboards-0.1.txt
@@ -2062,12 +2032,7 @@ cut/copy. PRIMARY is an "easter egg" for expert users, regular users
 can just ignore it; it's normally pastable only via
 middle-mouse-click.  */
    GtkClipboard *clipboard = gtk_clipboard_get(GDK_SELECTION_CLIPBOARD);
-   GList *selectionList=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
-   if (selectionList==NULL)
-     gtk_clipboard_set_text(clipboard, rfm_curPath, -1);
-   //TODO: 
-   /* else */
-   /*   gtk_clipboard_set_with_data(${1:GtkClipboard *clipboard}, ${2:const GtkTargetEntry *targets}, ${3:guint n_targets}, ${4:GtkClipboardGetFunc get_func}, ${5:GtkClipboardClearFunc clear_func}, ${6:gpointer user_data}); */
+   gtk_clipboard_set_text(clipboard, rfm_curPath, -1);
 }
 
 
@@ -2278,7 +2243,7 @@ static RFM_rootMenu *setup_root_menu(void)
    rootMenu->copyPath=gtk_menu_item_new_with_label("Copy Path");
    gtk_widget_show(rootMenu->copyPath);
    gtk_menu_shell_append(GTK_MENU_SHELL(rootMenu->menu), rootMenu->copyPath);
-   g_signal_connect(rootMenu->copyPath, "activate", G_CALLBACK(copy_to_clipboard), NULL);
+   g_signal_connect(rootMenu->copyPath, "activate", G_CALLBACK(copy_curPath_to_clipboard), NULL);
    
    return rootMenu;
 }
@@ -2375,106 +2340,41 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
    gtk_toolbar_set_style(GTK_TOOLBAR(tool_bar), GTK_TOOLBAR_ICONS);
    gtk_box_pack_start(GTK_BOX(rfm_main_box), tool_bar, FALSE, FALSE, 0);
 
-
    if (!agMain) agMain = gtk_accel_group_new();
    gtk_window_add_accel_group(GTK_WINDOW(window), agMain);
 
-   SwitchView_button=gtk_tool_button_new(NULL, SwitchView);
-   gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), SwitchView_button, -1);
-   g_signal_connect(SwitchView_button, "clicked", G_CALLBACK(switch_view), rfmCtx);
-   gtk_widget_add_accelerator(GTK_WIDGET(SwitchView_button), "clicked", agMain,GDK_KEY_slash,MOD_KEY, GTK_ACCEL_VISIBLE);
-   gtk_tool_item_set_tooltip_text(SwitchView_button,"MOD+/");
-
-   if (!readFromPipeStdIn) {
-     buttonImage = gtk_image_new_from_pixbuf(defaultPixbufs->up);
-     up_button = gtk_tool_button_new(buttonImage, Up);
-     gtk_tool_item_set_is_important(up_button, TRUE);
-     gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), up_button, -1);
-     g_signal_connect(up_button, "clicked", G_CALLBACK(up_clicked), NULL);
-     gtk_widget_add_accelerator(GTK_WIDGET(up_button), "clicked", agMain,GDK_KEY_Up, MOD_KEY, GTK_ACCEL_VISIBLE);
-     gtk_tool_item_set_tooltip_text(up_button,"MOD+up arrow");
-     gtk_widget_set_sensitive(GTK_WIDGET(up_button), strcmp(rfm_curPath, G_DIR_SEPARATOR_S) != 0);
-   }
-
-   buttonImage=gtk_image_new_from_pixbuf(defaultPixbufs->refresh);
-   refresh_button=gtk_tool_button_new(buttonImage, "Refresh");
-   gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), refresh_button, -1);
-   g_signal_connect(refresh_button, "clicked", G_CALLBACK(refresh_clicked), rfmCtx);
-   //g_signal_connect(refresh_button, "button-press-event", G_CALLBACK(refresh_other), rfmCtx);
-
-   if (readFromPipeStdIn) {
-     PageUp_button=gtk_tool_button_new(NULL, PageUp);
-     gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), PageUp_button, -1);
-     g_signal_connect(PageUp_button, "clicked", G_CALLBACK(PreviousPage), rfmCtx);
-
-     PageDown_button=gtk_tool_button_new(NULL, PageDown);
-     gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), PageDown_button, -1);
-     g_signal_connect(PageDown_button, "clicked", G_CALLBACK(NextPage), rfmCtx);
-
-     gtk_widget_add_accelerator(GTK_WIDGET(PageUp_button), "clicked", agMain,GDK_KEY_Page_Up,MOD_KEY, GTK_ACCEL_VISIBLE);
-     gtk_widget_add_accelerator(GTK_WIDGET(PageDown_button), "clicked", agMain,GDK_KEY_Page_Down,MOD_KEY, GTK_ACCEL_VISIBLE);
-     gtk_tool_item_set_tooltip_text(PageUp_button,"MOD+PgUp");
-     gtk_tool_item_set_tooltip_text(PageDown_button,"MOD+PgDn");
-   }
-
    for (i = 0; i < G_N_ELEMENTS(tool_buttons); i++) {
-       GdkPixbuf *buttonIcon;
-       buttonIcon=gtk_icon_theme_load_icon(icon_theme, tool_buttons[i].buttonIcon, RFM_TOOL_SIZE, 0, NULL);
-       buttonImage=gtk_image_new_from_pixbuf(buttonIcon);
-       g_object_unref(buttonIcon);
+     if ((readFromPipeStdIn && tool_buttons[i].readFromPipe) || (!readFromPipeStdIn && tool_buttons[i].curPath)){
+       GdkPixbuf *buttonIcon=NULL;
+       if (tool_buttons[i].buttonIcon!=NULL) buttonIcon=gtk_icon_theme_load_icon(icon_theme, tool_buttons[i].buttonIcon, RFM_TOOL_SIZE, 0, NULL);
+       if (buttonIcon==NULL)
+	 buttonImage=NULL;
+       else{
+	 buttonImage=gtk_image_new_from_pixbuf(buttonIcon);
+	 g_object_unref(buttonIcon);
+       }
 
        userButton=gtk_tool_button_new(buttonImage, tool_buttons[i].buttonName);
        gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), userButton, -1);
-       g_signal_connect(userButton, "clicked", G_CALLBACK(exec_user_tool),&tool_buttons[i]);
+
+       if(tool_buttons[i].Accel) gtk_widget_add_accelerator(GTK_WIDGET(userButton), "clicked", agMain,tool_buttons[i].Accel, MOD_KEY, GTK_ACCEL_VISIBLE);
+       if(tool_buttons[i].tooltip!=NULL) gtk_tool_item_set_tooltip_text(userButton,tool_buttons[i].tooltip);
+
+      RFM_ChildAttribs *child_attribs = calloc(1,sizeof(RFM_ChildAttribs));
+      child_attribs->RunCmd = tool_buttons[i].args;
+      child_attribs->runOpts = RFM_EXEC_STDOUT;
+      child_attribs->stdOut = NULL;
+      child_attribs->stdErr = NULL;
+      child_attribs->spawn_async = TRUE;
+      child_attribs->name = g_strdup(tool_buttons[i].buttonName);
+      child_attribs->customCallBackFunc = tool_buttons[i].func;
+      child_attribs->customCallbackUserData = rfmCtx;
+
+      g_signal_connect(userButton, "clicked", G_CALLBACK(exec_user_tool),child_attribs);
+
+     }
    }
-     
-   if (defaultPixbufs->menu==NULL)
-     buttonImage=NULL;
-   else
-     buttonImage = gtk_image_new_from_pixbuf(defaultPixbufs->menu);
-   menu_button = gtk_tool_button_new(buttonImage, Menu);
-   gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), menu_button, -1);
-   g_signal_connect(menu_button, "clicked", G_CALLBACK(tool_menu_clicked), rfmCtx);
-   gtk_widget_add_accelerator(GTK_WIDGET(menu_button), "clicked", agMain,GDK_KEY_Menu,MOD_KEY, GTK_ACCEL_VISIBLE);
-   gtk_tool_item_set_tooltip_text(menu_button,"MOD+Menu");
 
-   /* copySelection_button=gtk_tool_button_new(NULL, Copy); */
-   /* gtk_tool_item_set_is_important(copySelection_button, TRUE); */
-   /* gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), copySelection_button, -1); */
-   /* g_signal_connect(stop_button, "clicked", G_CALLBACK(copy_to_clipboard), rfmCtx); */
-   
-   /* moveSelectionTo_button=gtk_tool_button_new(NULL, Move); */
-   /* gtk_tool_item_set_is_important(moveSelectionTo_button, TRUE); */
-   /* gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), moveSelectionTo_button, -1); */
-   /* g_signal_connect(stop_button, "clicked", G_CALLBACK(stop_clicked), rfmCtx); */
-
-   /* pasteSelectionTo_button=gtk_tool_button_new(NULL, Paste); */
-   /* gtk_tool_item_set_is_important(pasteSelectionTo_button, TRUE); */
-   /* gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), pasteSelectionTo_button, -1); */
-   /* g_signal_connect(stop_button, "clicked", G_CALLBACK(stop_clicked), rfmCtx); */
-
-   buttonImage=gtk_image_new_from_pixbuf(defaultPixbufs->stop);
-   stop_button=gtk_tool_button_new(buttonImage, "Stop");
-   gtk_tool_item_set_is_important(stop_button, TRUE);
-   gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), stop_button, -1);
-   g_signal_connect(stop_button, "clicked", G_CALLBACK(stop_clicked), rfmCtx);
-   
-   buttonImage=gtk_image_new_from_pixbuf(defaultPixbufs->info);
-   info_button=gtk_tool_button_new(buttonImage,"Info");
-   gtk_widget_set_sensitive(GTK_WIDGET(info_button),FALSE);
-   gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), info_button, -1);
-   g_signal_connect(info_button, "clicked", G_CALLBACK(info_clicked), NULL);
-
-   if (!readFromPipeStdIn) {
-     buttonImage = gtk_image_new_from_pixbuf(defaultPixbufs->home);
-     home_button = gtk_tool_button_new(buttonImage, "Home");
-     gtk_tool_item_set_is_important(home_button, TRUE);
-     gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), home_button, -1);
-     g_signal_connect(home_button, "clicked", G_CALLBACK(home_clicked), NULL);
-     gtk_widget_set_sensitive(GTK_WIDGET(home_button),strcmp(rfm_curPath, rfm_homePath) != 0);
-     //gtk_widget_add_accelerator(GTK_WIDGET(home_button), "clicked", agMain,GDK_KEY_Home, MOD_KEY, GTK_ACCEL_VISIBLE);
-     //gtk_tool_item_set_tooltip_text(home_button,"MOD+Home");
-   }
 }
 
 static GtkWidget *add_view(RFM_ctx *rfmCtx)
@@ -2826,12 +2726,6 @@ static void free_default_pixbufs(RFM_defaultPixbufs *defaultPixbufs)
    g_object_unref(defaultPixbufs->unmounted);
    g_object_unref(defaultPixbufs->mounted);
    g_object_unref(defaultPixbufs->symlink);
-   g_object_unref(defaultPixbufs->up);
-   g_object_unref(defaultPixbufs->home);
-   g_object_unref(defaultPixbufs->stop);
-   g_object_unref(defaultPixbufs->refresh);
-   if (defaultPixbufs->menu!=NULL) g_object_unref(defaultPixbufs->menu);
-   g_object_unref(defaultPixbufs->info);
    g_free(defaultPixbufs);
 }
 
@@ -2980,6 +2874,7 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
      g_io_add_watch_full(channel_stdin,0,G_IO_IN,gio_in_stdin,NULL,(GDestroyNotify)g_free);
    }
 
+   add_toolbar(rfm_main_box, defaultPixbufs, rfmCtx);
    refresh_store(rfmCtx);
    return 0;
 }

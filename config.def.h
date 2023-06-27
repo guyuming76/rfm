@@ -52,8 +52,8 @@ static const char *ftview[] = { "/usr/bin/ftview", "14", NULL }; /* pacman -S fr
 static const char *ffmpegThumb[] =  { "/usr/bin/ffmpeg", "-i","", "-frames", "1", "-s", "256x256",NULL  };
 
     /* Tool button commands */
-static const char *term_cmd[]  = { "/usr/bin/alacritty", NULL };
-static const char *new_rfm[]  = { rfmBinPath "/rfm", NULL };
+static const char *term_cmd[]  = { "/usr/bin/foot", NULL };
+static const char *new_rfm[]  = { rfmBinPath "/rfmVTforCMD.sh", rfmBinPath "/rfm", NULL };
 
 #ifdef GitIntegration
 static const char *git_inside_work_tree_cmd[] = {"/usr/bin/git", "rev-parse","--is-inside-work-tree", NULL};
@@ -149,9 +149,18 @@ static RFM_RunActions run_actions[] = {
 //}
 
 static RFM_ToolButtons tool_buttons[] = {
-   /* name           icon                       function    		argument*/
-   { "Terminal",     "utilities-terminal",      NULL,                   term_cmd },
-   { "rfm",          "system-file-manager",     NULL,                   new_rfm },
+   /* name           icon                       function    		argument           readFromPipe    curPath    Accel                  tooltip*/
+   { SwitchView,     NULL,                      switch_view,            NULL,              TRUE,           TRUE,      GDK_KEY_slash,         "MOD+/"},
+   { Up,             "go-up",                   up_clicked,             NULL,              FALSE,          TRUE,      GDK_KEY_Up,            "MOD+up arrow"},
+   { "Refresh",      "view-refresh",            refresh_clicked,        NULL,              TRUE,           TRUE,      0,                      NULL  },
+   { PageUp,         NULL,                      PreviousPage,           NULL,              TRUE,           FALSE,     GDK_KEY_Page_Up,       "MOD+PgUp"},
+   { PageDown,       NULL,                      NextPage,               NULL,              TRUE,           FALSE,     GDK_KEY_Page_Down,     "MOD+PgDn"},
+   { "Terminal",     "utilities-terminal",      NULL,                   term_cmd,          TRUE,           TRUE,      0,                      NULL  },
+   { "rfm",          "system-file-manager",     NULL,                   new_rfm,           TRUE,           TRUE,      0,                      NULL  },
+   { Menu,           "open-menu",               tool_menu_clicked,      NULL,              TRUE,           TRUE,      GDK_KEY_Menu,          "MOD+menu"},
+   { "Stop",         "process-stop",            stop_clicked,           NULL,              TRUE,           TRUE,      0,                      NULL  },
+   { "Info",         "dialog-information",      info_clicked,           NULL,              TRUE,           TRUE,      0,                      NULL  },
+   { "Home",         "go-home",                 home_clicked,           NULL,              FALSE,          TRUE,      0,                      NULL  },
 // { "mounts",       "drive-harddisk",          show_disk_devices,      dev_disk_path },
 };
 
