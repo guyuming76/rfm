@@ -82,6 +82,14 @@ static const char *git_log_cmd[] = { rfmBinPath "/rfmVTforCMD_hold.sh","/usr/bin
  *                     #define RFM_MOUNT_MEDIA_PATH.
  *   RFM_EXEC_STDOUT - run and show output in stdout of parent process.
  */
+
+#ifdef GitIntegration
+#define RFM_N_BUILT_IN 6   /* Number of built in actions */
+#else
+#define RFM_N_BUILT_IN 4
+#endif
+
+
 static RFM_RunActions run_actions[] = {
    /* name           mime root        mime sub type             argument          run options */
    { RunActionCopy,  "*",              "*",                    f_cp,             RFM_EXEC_NONE },

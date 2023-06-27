@@ -28,11 +28,6 @@
 #define PROG_NAME "rfm"
 #define INOTIFY_MASK IN_MOVE|IN_CREATE|IN_CLOSE_WRITE|IN_DELETE|IN_DELETE_SELF|IN_MOVE_SELF
 #define PIPE_SZ 65535      /* Kernel pipe size */
-#ifdef GitIntegration
-#define RFM_N_BUILT_IN 6   /* Number of built in actions */
-#else
-#define RFM_N_BUILT_IN _LP64
-#endif
 
 typedef struct {
    gchar *path;
