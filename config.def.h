@@ -65,8 +65,7 @@ static const char *git_log_cmd[] = { rfmBinPath "/rfmVTforCMD_hold.sh","/usr/bin
 
 
 /* Run actions
- * NOTES: The first three MUST be the built in commands for cp, mv and rm, respectively.
- *        The first matched mime type will become the default action for that kind of file
+ * NOTES: The first matched mime type will become the default action for that kind of file
  *        (i.e. double click opens)
  *        If the mime root is "*", the action will be shown for all files, but will
  *        NEVER be the default action for any file type.
@@ -139,7 +138,9 @@ static RFM_RunActions run_actions[] = {
  * the RunCmd is assumed to be a shell command. All commands are run
  * async. The current working directory for
  * the command environment is changed to the currently displayed directory.
- * If function is not NULL, arguments may be passed as a const char *arg[].
+ * 
+ * TODO: currently for functions, parameters are all rfmCtx if any. In future, we may need another column to specify a global variable as parameter for function. And we need to make rfmCtx global for this.
+ * TODO: do we need a RunOption column here as the file menu items?
  * If both RunCmd and function is not NULL, function is run as callback after RunCmd finishs
  *
  * The difference between Toolbar button and file menu RunActions is that RunActions is for selected files while Toolbar RunCmd won't deal with selected files, it is for current directory */
