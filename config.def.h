@@ -61,6 +61,7 @@ static const char *git_stage_cmd[] = {"/usr/bin/git","stage",NULL};
 static const char *git_root_cmd[] = {"/usr/bin/git","rev-parse", "--show-toplevel",NULL};
 static const char *git_commit_message_cmd[] = {"/usr/bin/git","log","--oneline",NULL};
 static const char *git_log_cmd[] = { rfmBinPath "/rfmVTforCMD_hold.sh","/usr/bin/git","log",NULL};
+static const char *tig_cmd[] = { rfmBinPath "/rfmVTforCMD.sh","/usr/bin/tig",NULL};
 #endif
 
 
@@ -91,6 +92,7 @@ static RFM_RunActions run_actions[] = {
 #ifdef GitIntegration
    { RunActionGitStage,  "*",          "*",                    git_stage_cmd,    RFM_EXEC_STDOUT },
    { "git log",      "*",              "*",                    git_log_cmd,      RFM_EXEC_NONE },
+   { "tig",          "*",              "*",                    tig_cmd,          RFM_EXEC_NONE },
 #endif
    { "Properties",   "*",              "*",                    properties,       RFM_EXEC_STDOUT },
    { "Open with...", "*",              "*",                    open_with,        RFM_EXEC_NONE },
