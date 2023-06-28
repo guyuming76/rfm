@@ -43,7 +43,8 @@ typedef struct {
 typedef struct {
    gchar *thumbRoot;
    gchar *thumbSub;
-   GdkPixbuf *(*func)(RFM_ThumbQueueData * thumbData);
+  //GdkPixbuf *(*func)(RFM_ThumbQueueData * thumbData);
+   const gchar **thumbCmd;
 } RFM_Thumbnailers;
 
 
@@ -853,14 +854,20 @@ static void rfm_saveThumbnail(GdkPixbuf *thumb, RFM_ThumbQueueData *thumbData)
 static gboolean mkThumb()
 {
    RFM_ThumbQueueData *thumbData;
-   GdkPixbuf *thumb;
+   GdkPixbuf *thumb=NULL;
    GError *pixbufErr=NULL;
 
    thumbData=(RFM_ThumbQueueData*)rfm_thumbQueue->data;
-   if (thumbnailers[thumbData->t_idx].func==NULL)
+   if (thumbnailers[thumbData->t_idx].thumbCmd==NULL)
       thumb=gdk_pixbuf_new_from_file_at_scale(thumbData->path, thumbData->thumb_size, thumbData->thumb_size, TRUE, &pixbufErr);
-   else
-      thumb=thumbnailers[thumbData->t_idx].func(thumbData);
+   else {
+      gchar *thumb_path=g_build_filename(rfm_thumbDir, thumbData->thumb_name, NULL);
+      GList * input_files=NULL;
+      input_files=g_list_prepend(input_files, g_strdup(thumbData->path));
+      g_spawn_wrapper(thumbnailers[thumbData->t_idx].thumbCmd, input_files, 1, RFM_EXEC_NONE, thumb_path, FALSE, NULL, NULL);
+      g_list_free(input_files);
+   }
+   
    if (thumb!=NULL) {
       rfm_saveThumbnail(thumb, thumbData);
 

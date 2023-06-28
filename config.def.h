@@ -177,31 +177,14 @@ static RFM_ToolButtons tool_buttons[] = {
  * static const RFM_Thumbnailers thumbnailers[]={{ NULL, NULL, NULL }};
  * Use thumbnail function set to NULL for built-in thumbnailer (gdk_pixbuf):
  * static const RFM_Thumbnailers thumbnailers[]={{ "image", "*", NULL }};
- * For other thumbnails, a function may be defined to handle that kind of thumbnail.
- * The function prototype is
- * GdkPixbuf *(func)(gchar *path, gint size);
- * where path is the path and filename of the file to be thumbnailed, and size is
- * the size of the thumbnail (RFM_THUMBNAIL_SIZE will be passed).
- * The function should return the thumbnail as a pixbuf.
- */
+ * For other thumbnails, const gchar *thumbCmd  may be defined to handle that kind of thumbnail with shell command.
+*/
 
-
-//#include "libdcmthumb/dcmThumb.h"
-static gpointer ffmpeg4Thumb(RFM_ThumbQueueData * thumbData)
-{
-  gchar *thumb_path=g_build_filename(rfm_thumbDir, thumbData->thumb_name, NULL);
-  //gchar *input_file=strcat("-i ", thumbData->path);
-  GList * input_files=NULL;
-  input_files=g_list_prepend(input_files, g_strdup(thumbData->path));
-  g_spawn_wrapper(ffmpegThumb, input_files, 1, RFM_EXEC_NONE, thumb_path, FALSE, NULL, NULL);
-  g_list_free(input_files);
-  return NULL;
-}
 
 static const RFM_Thumbnailers thumbnailers[] = {
-    /* mime root      mime sub type        thumbnail function */
+    /* mime root      mime sub type        thumbCmd */
     {"image", "*", NULL},
-    {"video","mp4",ffmpeg4Thumb},
+    {"video","mp4",ffmpegThumb},
     //   { "application",  "dicom",             dcmThumb},
 };
 
