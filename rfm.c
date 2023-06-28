@@ -1255,16 +1255,12 @@ static void load_GitTrackedFiles_into_HashTable()
     gchar *oneline=strtok(child_stdout,"\n");
     while (oneline!=NULL && strlen(oneline)>3){
       //first 2 char of oneline is git status
-      gchar *status=calloc(3,sizeof(gchar));
-      strncpy(status, oneline, 2);
+      gchar *status=g_strndup(oneline, 2);
       //copy rest of oneline into filename
-      gchar *beginfilename = oneline + 3*sizeof(gchar);
-      gchar *filename=calloc(strlen(oneline)-2,sizeof(gchar));
-      strncpy(filename,beginfilename,strlen(oneline)-3);
-      
+      gchar *beginfilename = oneline + 3;
+      gchar *filename=g_strndup(beginfilename,strlen(oneline)-3);
       gchar *fullpath=g_build_filename(git_root,filename,NULL);         
       g_debug("gitTrackedFile Status:%s,%s",status,fullpath);
-      g_hash_table_insert(gitTrackedFiles,fullpath,status);
 
       if (g_strcmp0(" D", status)==0){
 	//add item into fileattributelist so that user can git stage on it
@@ -1278,10 +1274,11 @@ static void load_GitTrackedFiles_into_HashTable()
 	  fileAttributes->path=g_strdup(fullpath);
 	  fileAttributes->mime_root=g_strdup("na");
 	  fileAttributes->mime_sub_type=g_strdup("na");
-
 	  rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
 	}
       }
+      
+      g_hash_table_insert(gitTrackedFiles,fullpath,status);
       g_free(filename);
       oneline=strtok(NULL, "\n");
     }
