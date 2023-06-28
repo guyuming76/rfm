@@ -1262,13 +1262,13 @@ static void load_GitTrackedFiles_into_HashTable()
       gchar *fullpath=g_build_filename(git_root,filename,NULL);         
       g_debug("gitTrackedFile Status:%s,%s",status,fullpath);
 
-      if (g_strcmp0(" D", status)==0){
+      if (g_strcmp0(" D", status)==0 || g_strcmp0("D ", status)==0){
 	//add item into fileattributelist so that user can git stage on it
 	RFM_FileAttributes *fileAttributes=malloc_fileAttributes();
 	if (fileAttributes==NULL)
 	  g_warning("malloc_fileAttributes failed");
 	else{//if the file is rfm ignord file, we still add it into display here,but this may be changed.
-	  fileAttributes->pixbuf=g_object_ref(defaultPixbufs->dir);
+	  fileAttributes->pixbuf=g_object_ref(defaultPixbufs->broken);
 	  fileAttributes->file_name=g_strdup(filename);
 	  fileAttributes->display_name=g_strdup(filename);
 	  fileAttributes->path=g_strdup(fullpath);
