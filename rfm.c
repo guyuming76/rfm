@@ -53,6 +53,7 @@ typedef struct {
    gchar *runSub;
    const gchar **runCmdName;
    gint  runOpts;
+   gboolean (*showCondition)();
 } RFM_RunActions;
 
 typedef struct {
@@ -225,7 +226,8 @@ static gint DisplayingPageSize_ForFileNameListFromPipeStdIn=20;
 // the same as git status --porcelain
 static GHashTable *gitTrackedFiles;
 static GHashTable *gitCommitMsg; //filePath and commit
-static gboolean curPath_is_git_repo=FALSE;
+static gboolean curPath_is_git_repo = FALSE;
+static gboolean cur_path_is_git_repo(){return curPath_is_git_repo;}
 static gboolean showGitCommitMsg=TRUE;
 #endif
 
@@ -1823,7 +1825,7 @@ static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx)
    }
 
    for(i=0; i<G_N_ELEMENTS(run_actions); i++) {
-      if (showMenuItem[i]>0)
+      if (showMenuItem[i]>0 && (run_actions[i].showCondition == NULL || run_actions[i].showCondition()))
          gtk_widget_show(fileMenu->action[i]);
       else
          gtk_widget_hide(fileMenu->action[i]);
