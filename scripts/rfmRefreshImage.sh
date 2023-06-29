@@ -1,21 +1,12 @@
 #!/bin/bash
 
-if [ $# -gt 1 ]
+# imv 有时启动子进程 imv-wayland 来显示图片，imv-msg需要和这个子进程号通信，所以我下面用了 tail -n1 来选取最后一个满足条件的进程
+imv_pid=$(ps -u|grep imv |grep for_rfm |grep -v grep|tail -n1|awk '{print $2}')
+
+if test -z "$imv_pid"
 then
-	#rfm传入多个文件，则全部通过管道传给imv，用户使用键盘左右键翻图片
-	echo "$@"|xargs imv
+	echo "$@" | xargs imv for_rfm
 else
-	#rfm传入单个文件，则找到现有 imv 进程，刷新显示图片
-	imv_pid=$(ps -u|grep -e imv -e for_rfm |grep -v grep|awk '{print $2}')
-
-	if test -z "$imv_pid" 
-	then  
-    	imv $1 for_rfm 
-	else   
-    	imv-msg $imv_pid close
-    	imv-msg $imv_pid open $1
-	fi 
-
-	#[[ -z "$imv_pid" ]] && echo "empty" || echo $imv_pid
-
+    	imv-msg $imv_pid close all
+	imv-msg $imv_pid open "$@"
 fi
