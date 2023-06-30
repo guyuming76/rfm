@@ -8,6 +8,7 @@
  *            OR use the supplied Makefile.
  */
 
+#include "gdk/gdkkeysyms.h"
 #define _GNU_SOURCE
 
 #include <stdlib.h>
@@ -1863,7 +1864,10 @@ static gboolean view_key_press(GtkWidget *widget, GdkEvent *event,RFM_ctx *rfmCt
   GdkEventKey *ek=(GdkEventKey *)event;
   if (ek->keyval==GDK_KEY_Menu)
     return popup_file_menu(event, rfmCtx);
-  else
+  else if (ek->keyval==GDK_KEY_q){
+    gtk_main_quit();
+    return TRUE;
+  } else
     return FALSE;
 }
 
