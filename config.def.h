@@ -44,7 +44,6 @@ static const char *man[]        = { "/usr/bin/groff", "-man", "-Tutf8", NULL };
 static const char *java[]       = { "/usr/bin/java", "-jar", NULL };
 static const char *audioSpect[] = { "/usr/local/bin/spectrogram.sh", NULL };
 static const char *open_with[]  = { rfmBinPath "/open_with_dmenu.sh", NULL };
-static const char *exiftran[]   = { "/usr/bin/exiftran", "-a", "-i", NULL };  /* pacman -S fbida */
 static const char *gnumeric[]   = { "/usr/bin/gnumeric", NULL };
 static const char *ftview[] = { "/usr/bin/ftview", "14", NULL }; /* pacman -S freetype2-demos */
 static const char *ffmpegThumb[] =  { "/usr/bin/ffmpeg", "-i","", "-frames", "1", "-s", "256x256",NULL  };
@@ -98,7 +97,6 @@ static RFM_RunActions run_actions[] = {
    { "Properties",   "*",              "*",                    properties,       	RFM_EXEC_STDOUT,	NULL },
    { "Open with...", "*",              "*",                    open_with,        	RFM_EXEC_NONE,		NULL },
    { "Open",         "image",          "*",                    show_image,       	RFM_EXEC_NONE,		NULL },
-   { "Rotate",       "image",          "jpeg",                 exiftran,         	RFM_EXEC_NONE,		NULL },
    { "Open",         "application",    "vnd.oasis.opendocument.text",          soffice,  RFM_EXEC_NONE,		NULL },
    { "Open",         "application",    "vnd.oasis.opendocument.spreadsheet",   soffice,  RFM_EXEC_NONE,		NULL },
    { "Open",         "application",    "vnd.openxmlformats-officedocument.wordprocessingml.document", soffice, RFM_EXEC_NONE, NULL },
