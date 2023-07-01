@@ -2568,8 +2568,9 @@ int main(int argc, char *argv[])
 	 break;
 
       case 'h':
-	 printf("Usage: %s [-h] || [-d <full path>] [-i] [-v] [-l] [-p<custom pagesize>] [-m]\n\n",PROG_NAME);
- 	 printf("-p      read file name list from StdIn, through pipeline, this -p can be omitted, for example:    locate 20230420|grep .png|rfm\n");
+	 printf("Usage: %s [-h] || [-d <full path>] [-i] [-v] [-l] [-p<custom pagesize>] [-m]\n",PROG_NAME);
+	 printf("       q to quit rfm\n\n");
+ 	 printf("-p      read file name list from StdIn, through pipeline, this -p can be omitted, for example:\n        locate 20230420|grep .png|rfm\n");
 	 printf("-px      when read filename list from pipeline, show only x number of items in a batch, for example: -p9\n");
 	 printf("-d       specify full path, such as /home/somebody/documents, instead of default current working directory\n");
 	 printf("-i       show mime type\n");
