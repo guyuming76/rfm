@@ -83,8 +83,8 @@ static const char *git_show_pics_cmd[] = { rfmBinPath "/rfmVTforCMD.sh", rfmBinP
  *   RFM_EXEC_STDOUT - run and show output in stdout of parent process.
  */
 
-static RFM_RunActions run_actions[] = {
-   /* name           mime root        mime sub type             argument          	run options 		showCondition	*/
+static RFM_RunAction run_actions[] = {
+   /* name           mime root        mime sub type            runCmdName          	run options 		showCondition	*/
    { RunActionCopy,  "*",              "*",                    f_cp,             	RFM_EXEC_NONE, 		NULL },
    { RunActionMove,  "*",              "*",                    f_mv,             	RFM_EXEC_STDOUT,	NULL },
    { RunActionDelete, "*",             "*",                    f_rm,             	RFM_EXEC_STDOUT,	NULL },
