@@ -1622,11 +1622,9 @@ static void tool_menu_clicked(RFM_ctx *rfmCtx)
 {
    GdkEvent *event=gtk_get_current_event();
    RFM_rootMenu *rootMenu;
-   
-   if (popup_file_menu(event, rfmCtx)==FALSE) {
-      rootMenu=g_object_get_data(G_OBJECT(window), "rfm_root_menu");
-      gtk_menu_popup_at_pointer(GTK_MENU(rootMenu->menu), event);
-   }
+
+   rootMenu=g_object_get_data(G_OBJECT(window), "rfm_root_menu");
+   gtk_menu_popup_at_pointer(GTK_MENU(rootMenu->menu), event);
 }
 
 static void exec_user_tool(GtkToolItem *item, RFM_ChildAttribs *childAttribs)
