@@ -98,13 +98,13 @@ typedef struct {
    GtkWidget *copyPath;
 } RFM_rootMenu;
 
+//I don't understand why Rodney need this ctx type. it's only instantiated in main, so, all members can be changed into global variable, and many function parameter can be removed. However, if there would be any important usage, adding the removed function parameters will be time taking. So, just keep as is, although it makes current code confusing.
 typedef struct {
    gint        rfm_sortColumn;   /* The column in the tree model to sort on */
    GUnixMountMonitor *rfm_mountMonitor;   /* Reference for monitor mount events */
    gint        showMimeType;              /* Display detected mime type on stdout when a file is right-clicked: toggled via -i option */
    guint       delayedRefresh_GSourceID;  /* Main loop source ID for refresh_store() delayed refresh timer */
 } RFM_ctx;
-//I don't understand why Rodney need this ctx type. it's only instantiated in main, so, all members can be changed into global variable, and many function parameter can be removed. However, if there would be any important usage, adding the removed function parameters will be time taking. So, just keep as is, although it makes current code confusing.
 
 typedef struct {  /* Update free_fileAttributes() and malloc_fileAttributes() if new items are added */
    gchar *path;
@@ -112,12 +112,12 @@ typedef struct {  /* Update free_fileAttributes() and malloc_fileAttributes() if
    gchar *display_name;
    gboolean is_dir;
    gboolean is_mountPoint;
+   gchar *icon_name;
    GdkPixbuf *pixbuf;
    gchar *mime_root;
    gchar *mime_sub_type;
    gboolean is_symlink;
    guint64 file_mtime;
-   gchar *icon_name;
 
    gchar *owner;
    gchar *group;
@@ -172,7 +172,8 @@ enum {
    RFM_EXEC_PLAIN,
    RFM_EXEC_INTERNAL, //i see Rodney use this in config.def.h for commands like copy move, but i don't know what it mean precisely,and i don't see program logic that reference this value, so i add RFM_EXEC_OUTPUT_HANDLED_HERE
    RFM_EXEC_MOUNT,
-   RFM_EXEC_OUPUT_READ_BY_PROGRAM, // I need to read stdout of child process in rfm, but do not need to show to enduser, except in debugprintf. With g_spawn_wrapper, no matter in sync or async mode, with RFM_EXEC_OUPUT_READ_BY_PROGRAM, callback function can have RFM_childAttribs, and RFM_childAttribs->stdout
+   RFM_EXEC_OUPUT_READ_BY_PROGRAM, // I need to read stdout of child process in rfm, but do not need to show to end user. With g_spawn_wrapper, no matter in sync or async mode, with RFM_EXEC_OUPUT_READ_BY_PROGRAM, callback function can have RFM_childAttribs, and RFM_childAttribs->stdout
+   //TODO: the last sentence in comment above is confusing, i don't remember what it mean myself.
    RFM_EXEC_STDOUT,
 };
 
@@ -215,7 +216,12 @@ static GtkTreeModel *treemodel=NULL;
 static gboolean treeview=FALSE;
 static gboolean moreColumnsInTreeview=FALSE;
 
-static gboolean readFromPipeStdIn=FALSE;  /* if true, means to fill store with data from something like  ls |xargs rfm -p, or locate blablablaa |xargs rfm -p, instead of from a directory*/
+// if true, means that rfm read file names in following way:
+//      ls|xargs realpath|rfm
+// or
+//      locate blablablaa |rfm
+// , instead of from a directory
+static gboolean rfmReadFileNamesFromPipeStdIn=FALSE;
 static GList *FileNameListWithAbsolutePath_FromPipeStdin=NULL;
 static GList *CurrentDisplayingPage_ForFileNameListFromPipeStdIn;
 static gint DisplayingPageSize_ForFileNameListFromPipeStdIn=20;
@@ -228,11 +234,10 @@ static gint DisplayingPageSize_ForFileNameListFromPipeStdIn=20;
 // the same as git status --porcelain
 static GHashTable *gitTrackedFiles;
 static GHashTable *gitCommitMsg; //filePath and commit
+static gboolean showGitCommitMsg = TRUE;
 static gboolean curPath_is_git_repo = FALSE;
 static gboolean cur_path_is_git_repo(){return curPath_is_git_repo;}
-static gboolean showGitCommitMsg=TRUE;
 #endif
-
 
 
 static void show_msgbox(gchar *msg, gchar *title, gint type);
@@ -921,7 +926,7 @@ static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter)
       return NULL;  /* Don't show thumbnails for files types with no thumbnailer */
    }
 
-   if (readFromPipeStdIn) {
+   if (rfmReadFileNamesFromPipeStdIn) {
      thumbData->thumb_size = RFM_THUMBNAIL_LARGE_SIZE;
    } else {
      thumbData->thumb_size = RFM_THUMBNAIL_SIZE;
@@ -1421,7 +1426,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
    rfm_stop_all(rfmCtx);
    clear_store();
    
-   if (readFromPipeStdIn) {
+   if (rfmReadFileNamesFromPipeStdIn) {
      fill_fileAttributeList_with_filenames_from_pipeline_stdin_and_then_insert_into_store();
 
    } else {
@@ -1459,7 +1464,7 @@ static void set_rfm_curPath(gchar* path)
    char *msg;
    int rfm_new_wd;
 
-   if (readFromPipeStdIn) {
+   if (rfmReadFileNamesFromPipeStdIn) {
        if (rfm_curPath != path) {
          g_free(rfm_curPath);
          rfm_curPath = g_strdup(path);
@@ -1759,7 +1764,7 @@ static RFM_fileMenu *setup_file_menu(RFM_ctx * rfmCtx){
       child_attribs->spawn_async = TRUE;
       child_attribs->name = g_strdup(run_actions[i].runName);
       if ((g_strcmp0(child_attribs->name, RunActionGitStage)==0) ||
-	  (readFromPipeStdIn &&
+	  (rfmReadFileNamesFromPipeStdIn &&
 	       ((g_strcmp0(child_attribs->name, RunActionMove)==0
 	       ||g_strcmp0(child_attribs->name, RunActionDelete)==0)))){
 
@@ -1931,7 +1936,7 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
    gtk_window_add_accel_group(GTK_WINDOW(window), agMain);
 
    for (i = 0; i < G_N_ELEMENTS(tool_buttons); i++) {
-     if ((readFromPipeStdIn && tool_buttons[i].readFromPipe) || (!readFromPipeStdIn && tool_buttons[i].curPath)){
+     if ((rfmReadFileNamesFromPipeStdIn && tool_buttons[i].readFromPipe) || (!rfmReadFileNamesFromPipeStdIn && tool_buttons[i].curPath)){
        GdkPixbuf *buttonIcon=NULL;
        if (tool_buttons[i].buttonIcon!=NULL) buttonIcon=gtk_icon_theme_load_icon(icon_theme, tool_buttons[i].buttonIcon, RFM_TOOL_SIZE, 0, NULL);
        if (buttonIcon==NULL)
@@ -2067,7 +2072,7 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
      g_debug("gtk_icon_view_get_margin:%d", gtk_icon_view_get_margin((GtkIconView *)_view));
    }
    
-   if (readFromPipeStdIn) {
+   if (rfmReadFileNamesFromPipeStdIn) {
      /*a single cell will be too wide if width is set automatically, one cell can take a whole row, don't know why*/
      if (!treeview) gtk_icon_view_set_item_width((GtkIconView *)_view,RFM_THUMBNAIL_LARGE_SIZE);
    }
@@ -2352,7 +2357,7 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
 
    rfm_homePath=g_strdup(g_get_home_dir());
    
-   if (readFromPipeStdIn)
+   if (rfmReadFileNamesFromPipeStdIn)
      rfm_thumbDir=g_build_filename(g_get_user_cache_dir(), "thumbnails", "large", NULL);
    else
      rfm_thumbDir=g_build_filename(g_get_user_cache_dir(), "thumbnails", "normal", NULL);
@@ -2426,7 +2431,7 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
    g_debug("rfm_homePath: %s",rfm_homePath);
    g_debug("rfm_thumbDir: %s",rfm_thumbDir);
 
-   if (!readFromPipeStdIn){
+   if (!rfmReadFileNamesFromPipeStdIn){
      GIOChannel *channel_stdin = g_io_channel_unix_new (0);
      g_io_add_watch_full(channel_stdin,0,G_IO_IN,gio_in_stdin,NULL,(GDestroyNotify)g_free);
    }
@@ -2491,7 +2496,7 @@ int main(int argc, char *argv[])
    g_debug("readlink for /proc/self/fd/0: %s",buf);
 
    if (strlen(buf)>4 && g_strcmp0(g_utf8_substring(buf, 0, 4),"pipe")==0){
-	 readFromPipeStdIn=1;
+	 rfmReadFileNamesFromPipeStdIn=1;
          if (getcwd(cwd, sizeof(cwd)) != NULL) /* getcwd returns NULL if cwd[] not big enough! */
             initDir=cwd;
          else
@@ -2551,7 +2556,7 @@ int main(int argc, char *argv[])
          printf("%s-%s, Copyright (C) Rodney Padgett, with minors modification by guyuming, see LICENSE for details\n", PROG_NAME, VERSION);
          return 0;
       case 'p':
-	 if (readFromPipeStdIn){
+	 if (rfmReadFileNamesFromPipeStdIn){
 	   gchar *pagesize=argv[c] + 2 * sizeof(gchar);
 	   int ps=atoi(pagesize);
 	   if (ps!=0) DisplayingPageSize_ForFileNameListFromPipeStdIn=ps;
