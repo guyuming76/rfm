@@ -2506,25 +2506,21 @@ int main(int argc, char *argv[])
          else
             die("ERROR: %s: getcwd() failed.\n", PROG_NAME);
 
-
          int name_size=sizeof(gchar) * PATH_MAX;
          gchar *name=calloc(1,name_size);
          while (fgets(name, name_size, stdin) != NULL) {
-	   if (name[0] != '/') {
-	     gchar *absoluteAddr = canonicalize_file_name(name);
-	     g_free(name);
-	     name=absoluteAddr;
-	   }
-	   printf("%s",name);
+   	   g_debug("%s",name);
+           name[strcspn(name, "\n")] = 0; //name[strlen(name)] = '\0'; //manual set the last char to NULL to eliminate the trailing \n from fgets
+	   gchar *absoluteAddr = canonicalize_file_name(name);
+	   g_free(name);
+
 	   /* locate something|grep .jpg|rfm &           is ok
            with
 	   locate something|grep .jpg|rfm & exit      , the command window will close, but then, when i press enter on a thumbnail to open IMV, it always open a new IMV instead of using an existing one. So, i must keep the command window open. Since the command window is open, i can just print the filenames so that user can see the contents of stdin*/
-	   
-	   
-	   name[strcspn(name, "\n")] = 0; //name[strlen(name)] = '\0'; //manual set the last char to NULL to eliminate the trailing \n from fgets
-	   FileNameListWithAbsolutePath_FromPipeStdin=g_list_prepend(FileNameListWithAbsolutePath_FromPipeStdin, name);
+  
+	   FileNameListWithAbsolutePath_FromPipeStdin=g_list_prepend(FileNameListWithAbsolutePath_FromPipeStdin, absoluteAddr);
 
-           g_debug("appended into FileNameListWithAbsolutePath_FromPipeStdin:%s", name);
+           g_debug("appended into FileNameListWithAbsolutePath_FromPipeStdin:%s", absoluteAddr);
 
 	   name=calloc(1,name_size);
          }
