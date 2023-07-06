@@ -245,6 +245,10 @@ static void die(const char *errstr, ...);
 static RFM_defaultPixbufs *load_default_pixbufs(void);
 static void set_rfm_curPath(gchar *path);
 static int setup(char *initDir, RFM_ctx *rfmCtx);
+//read input from parent process stdin , and handle input such as
+//cd .
+//cd /tmp
+static gboolean gio_in_stdin (GIOChannel *gio, GIOCondition condition, gpointer data);
 
 static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer rfmCtx);
 static void inotify_insert_item(gchar *name, gboolean is_dir);
@@ -2315,7 +2319,7 @@ gio_in_stdin (GIOChannel *gio, GIOCondition condition, gpointer data)
   
         ret = g_io_channel_read_line (gio, &msg, &len, NULL, &err);  
         if (ret == G_IO_STATUS_ERROR)  
-                g_error ("Error reading: %s\n", err->message);  
+                g_warning("Error reading: %s\n", err->message);  
   
         //printf ("Read %u bytes: %s\n", len, msg);
 	if (len>3 && g_strcmp0(g_utf8_substring(msg, 0, 3),"cd ")==0){
