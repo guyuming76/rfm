@@ -2511,7 +2511,9 @@ int main(int argc, char *argv[])
          gchar *name=calloc(1,name_size);
          while (fgets(name, name_size, stdin) != NULL) {
 	   if (name[0] != '/') {
-	       die("ERROR: currently, when read from stdin via pipe, we only accept absolute path in filename!\n",PROG_NAME);
+	     gchar *absoluteAddr = canonicalize_file_name(name);
+	     g_free(name);
+	     name=absoluteAddr;
 	   }
 	   printf("%s",name);
 	   /* locate something|grep .jpg|rfm &           is ok
