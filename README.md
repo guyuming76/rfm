@@ -47,6 +47,13 @@ ls|xargs readlink -f|rfm
 ls|xargs realpath|rfm
 ```
 
+更新20230706:接受相对路径文件名作为管道输入(代码调用canonicalize_file_name函数,同上面realpath命令):
+```
+ls | rfm
+#有时ls会多列输出,要用参数 -w1 指明显示一列
+ls -w1 |rfm
+```
+
 
 多张图片git stage 操作也比较稍嫌麻烦，当然我可以用类似如下命令一次stage多个当天的图片文件：
 
