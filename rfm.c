@@ -9,6 +9,7 @@
  */
 
 #include "gdk/gdkkeysyms.h"
+#include <linux/limits.h>
 #define _GNU_SOURCE
 
 #include <stdlib.h>
@@ -2506,13 +2507,12 @@ int main(int argc, char *argv[])
          else
             die("ERROR: %s: getcwd() failed.\n", PROG_NAME);
 
-         int name_size=sizeof(gchar) * PATH_MAX;
-         gchar *name=calloc(1,name_size);
-         while (fgets(name, name_size, stdin) != NULL) {
-   	   g_debug("%s",name);
-           name[strcspn(name, "\n")] = 0; //name[strlen(name)] = '\0'; //manual set the last char to NULL to eliminate the trailing \n from fgets
-	   gchar *absoluteAddr = canonicalize_file_name(name);
-	   g_free(name);
+         gchar *oneline_stdin=calloc(1,PATH_MAX);
+         while (fgets(oneline_stdin, PATH_MAX, stdin) != NULL) {
+   	   g_debug("%s",oneline_stdin);
+           oneline_stdin[strcspn(oneline_stdin, "\n")] = 0; //name[strlen(name)] = '\0'; //manual set the last char to NULL to eliminate the trailing \n from fgets
+	   gchar *absoluteAddr = canonicalize_file_name(oneline_stdin);
+	   g_free(oneline_stdin);
 
 	   /* locate something|grep .jpg|rfm &           is ok
            with
@@ -2522,7 +2522,7 @@ int main(int argc, char *argv[])
 
            g_debug("appended into FileNameListWithAbsolutePath_FromPipeStdin:%s", absoluteAddr);
 
-	   name=calloc(1,name_size);
+	   oneline_stdin=calloc(1,PATH_MAX);
          }
          if (FileNameListWithAbsolutePath_FromPipeStdin != NULL) {
            FileNameListWithAbsolutePath_FromPipeStdin = g_list_reverse(FileNameListWithAbsolutePath_FromPipeStdin);
@@ -2604,4 +2604,3 @@ int main(int argc, char *argv[])
       die("ERROR: %s: setup() failed\n", PROG_NAME);
    return 0;
 }
-
