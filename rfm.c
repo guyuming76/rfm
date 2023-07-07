@@ -246,6 +246,7 @@ static void die(const char *errstr, ...);
 static RFM_defaultPixbufs *load_default_pixbufs(void);
 static void set_rfm_curPath(gchar *path);
 static int setup(char *initDir, RFM_ctx *rfmCtx);
+static void ReadFromPipeStdinIfAny();
 //read input from parent process stdin , and handle input such as
 //cd .
 //cd /tmp
@@ -2469,6 +2470,7 @@ static void die(const char *errstr, ...) {
    exit(EXIT_FAILURE);
 }
 
+
 int main(int argc, char *argv[])
 {
    char *initDir=NULL;
@@ -2495,38 +2497,7 @@ int main(int argc, char *argv[])
    else
       rfm_do_thumbs=1;
 
-   static char buf[PATH_MAX];
-   int rslt = readlink("/proc/self/fd/0", buf, PATH_MAX);
-
-   g_debug("readlink for /proc/self/fd/0: %s",buf);
-
-   if (strlen(buf)>4 && g_strcmp0(g_utf8_substring(buf, 0, 4),"pipe")==0){
-	 rfmReadFileNamesFromPipeStdIn=1;
-
-         gchar *oneline_stdin=calloc(1,PATH_MAX);
-         while (fgets(oneline_stdin, PATH_MAX, stdin) != NULL) {
-   	   g_debug("%s",oneline_stdin);
-           oneline_stdin[strcspn(oneline_stdin, "\n")] = 0; //name[strlen(name)] = '\0'; //manual set the last char to NULL to eliminate the trailing \n from fgets
-	   gchar *absoluteAddr = canonicalize_file_name(oneline_stdin);
-	   g_free(oneline_stdin);
-
-	   /* locate something|grep .jpg|rfm &           is ok
-           with
-	   locate something|grep .jpg|rfm & exit      , the command window will close, but then, when i press enter on a thumbnail to open IMV, it always open a new IMV instead of using an existing one. So, i must keep the command window open. Since the command window is open, i can just print the filenames so that user can see the contents of stdin*/
-  
-	   FileNameListWithAbsolutePath_FromPipeStdin=g_list_prepend(FileNameListWithAbsolutePath_FromPipeStdin, absoluteAddr);
-
-           g_debug("appended into FileNameListWithAbsolutePath_FromPipeStdin:%s", absoluteAddr);
-
-	   oneline_stdin=calloc(1,PATH_MAX);
-         }
-         if (FileNameListWithAbsolutePath_FromPipeStdin != NULL) {
-           FileNameListWithAbsolutePath_FromPipeStdin = g_list_reverse(FileNameListWithAbsolutePath_FromPipeStdin);
-           FileNameListWithAbsolutePath_FromPipeStdin = g_list_first(FileNameListWithAbsolutePath_FromPipeStdin);
-         }
-         CurrentDisplayingPage_ForFileNameListFromPipeStdIn=FileNameListWithAbsolutePath_FromPipeStdin;
-     
-   }
+   ReadFromPipeStdinIfAny();
    
    int c=1;
    while (c<argc  && argv[c][0]=='-') {
@@ -2599,4 +2570,40 @@ int main(int argc, char *argv[])
    else
       die("ERROR: %s: setup() failed\n", PROG_NAME);
    return 0;
+}
+
+static void ReadFromPipeStdinIfAny()
+{
+   static char buf[PATH_MAX];
+   int rslt = readlink("/proc/self/fd/0", buf, PATH_MAX);
+
+   g_debug("readlink for /proc/self/fd/0: %s",buf);
+
+   if (strlen(buf)>4 && g_strcmp0(g_utf8_substring(buf, 0, 4),"pipe")==0){
+	 rfmReadFileNamesFromPipeStdIn=1;
+
+         gchar *oneline_stdin=calloc(1,PATH_MAX);
+         while (fgets(oneline_stdin, PATH_MAX, stdin) != NULL) {
+   	   g_debug("%s",oneline_stdin);
+           oneline_stdin[strcspn(oneline_stdin, "\n")] = 0; //name[strlen(name)] = '\0'; //manual set the last char to NULL to eliminate the trailing \n from fgets
+	   gchar *absoluteAddr = canonicalize_file_name(oneline_stdin);
+	   g_free(oneline_stdin);
+
+	   /* locate something|grep .jpg|rfm &           is ok
+           with
+	   locate something|grep .jpg|rfm & exit      , the command window will close, but then, when i press enter on a thumbnail to open IMV, it always open a new IMV instead of using an existing one. So, i must keep the command window open. Since the command window is open, i can just print the filenames so that user can see the contents of stdin*/
+  
+	   FileNameListWithAbsolutePath_FromPipeStdin=g_list_prepend(FileNameListWithAbsolutePath_FromPipeStdin, absoluteAddr);
+
+           g_debug("appended into FileNameListWithAbsolutePath_FromPipeStdin:%s", absoluteAddr);
+
+	   oneline_stdin=calloc(1,PATH_MAX);
+         }
+         if (FileNameListWithAbsolutePath_FromPipeStdin != NULL) {
+           FileNameListWithAbsolutePath_FromPipeStdin = g_list_reverse(FileNameListWithAbsolutePath_FromPipeStdin);
+           FileNameListWithAbsolutePath_FromPipeStdin = g_list_first(FileNameListWithAbsolutePath_FromPipeStdin);
+         }
+         CurrentDisplayingPage_ForFileNameListFromPipeStdIn=FileNameListWithAbsolutePath_FromPipeStdin;
+     
+   }
 }
