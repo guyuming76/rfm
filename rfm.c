@@ -2473,7 +2473,7 @@ int main(int argc, char *argv[])
 {
    char *initDir=NULL;
    struct stat statbuf;
-   char cwd[1024]; /* Could use MAX_PATH here from limits.h, but still not guaranteed to be max */
+   char cwd[PATH_MAX];
 
    g_log_set_handler (G_LOG_DOMAIN, G_LOG_LEVEL_MASK | G_LOG_FLAG_FATAL| G_LOG_FLAG_RECURSION, g_log_default_handler, NULL);
 
@@ -2502,10 +2502,6 @@ int main(int argc, char *argv[])
 
    if (strlen(buf)>4 && g_strcmp0(g_utf8_substring(buf, 0, 4),"pipe")==0){
 	 rfmReadFileNamesFromPipeStdIn=1;
-         if (getcwd(cwd, sizeof(cwd)) != NULL) /* getcwd returns NULL if cwd[] not big enough! */
-            initDir=cwd;
-         else
-            die("ERROR: %s: getcwd() failed.\n", PROG_NAME);
 
          gchar *oneline_stdin=calloc(1,PATH_MAX);
          while (fgets(oneline_stdin, PATH_MAX, stdin) != NULL) {
