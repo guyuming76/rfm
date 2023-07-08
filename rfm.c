@@ -1255,7 +1255,7 @@ static void load_GitTrackedFiles_into_HashTable()
            // get git commit msg for current file with git log --oneline and store into hashtable
 	   // seems that iterate with git log cmd can have long delay, async way might be better, but just try sync first
 	GList *file_list=NULL;
-	file_list=g_list_append(file_list, oneline);
+	file_list=g_list_append(file_list, fullpath);
 	if(!g_spawn_wrapper(git_commit_message_cmd, file_list,1,RFM_EXEC_OUPUT_READ_BY_PROGRAM ,NULL, FALSE, readGitCommitMsgFromGitLogCmdAndInsertIntoHashTable, g_strdup(fullpath))){
 	  
 	}
