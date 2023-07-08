@@ -2503,8 +2503,8 @@ int main(int argc, char *argv[])
    while (c<argc  && argv[c][0]=='-') {
       switch (argv[c][1]) {
       case 'd':
-	 if (argc<=(c+1) || argv[c+1][0]!='/')
-            die("ERROR: %s: A full path is required for the -d option.\n", PROG_NAME);
+	 if (argc<=(c+1))
+            die("ERROR: %s: A directory path is required for the -d option.\n", PROG_NAME);
          int i=strlen(argv[c+1])-1;
          if (i!=0 && argv[c+1][i]=='/')
             argv[c+1][i]='\0';
@@ -2514,7 +2514,7 @@ int main(int argc, char *argv[])
          if (stat(argv[c+1],&statbuf)!=0) die("ERROR: %s: Can't stat %s\n", PROG_NAME, argv[c+1]);
          if (! S_ISDIR(statbuf.st_mode) || access(argv[c+1], R_OK | X_OK)!=0)
             die("ERROR: %s: Can't enter %s\n", PROG_NAME, argv[c+1]);
-         initDir=argv[c+1];
+         initDir=canonicalize_file_name(argv[c+1]);
 	 c++;
 
          break;
