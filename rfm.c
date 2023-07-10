@@ -234,8 +234,7 @@ static gint DisplayingPageSize_ForFileNameListFromPipeStdIn=20;
 // value "??" for untracked
 // the same as git status --porcelain
 static GHashTable *gitTrackedFiles;
-static GHashTable *gitCommitMsg; //filePath and commit
-static gboolean showGitCommitMsg = TRUE;
+GList *asynProcessListForGitCommitMsg=NULL;
 static gboolean curPath_is_git_repo = FALSE;
 static gboolean cur_path_is_git_repo(){return curPath_is_git_repo;}
 #endif
@@ -1164,7 +1163,7 @@ static void Iterate_through_fileAttribute_list_to_insert_into_store()
 
 #ifdef GitIntegration
       gchar * gitStatus=g_hash_table_lookup(gitTrackedFiles, fileAttributes->path);
-      gchar * git_commit_msg=g_hash_table_lookup(gitCommitMsg,fileAttributes->path);
+      //gchar * git_commit_msg=g_hash_table_lookup(gitCommitMsg,fileAttributes->path);
 #endif
       fileAttributes->mime_sort=g_strjoin(NULL,fileAttributes->mime_root,fileAttributes->mime_sub_type,NULL);
       fileAttributes->mtime=yyyymmddhhmmss(fileAttributes->file_mtime);
@@ -1187,7 +1186,7 @@ static void Iterate_through_fileAttribute_list_to_insert_into_store()
                           COL_CTIME_STR,fileAttributes->ctime,
 #ifdef GitIntegration
                           COL_GIT_STATUS_STR,gitStatus,
-			  COL_GIT_COMMIT_MSG,git_commit_msg,
+					//COL_GIT_COMMIT_MSG,git_commit_msg,
 #endif
 			  COL_MIME_SORT,fileAttributes->mime_sort,
                           -1);
@@ -1215,7 +1214,7 @@ static void Iterate_through_fileAttribute_list_to_insert_into_store()
 static void readGitCommitMsgFromGitLogCmdAndInsertIntoHashTable(RFM_ChildAttribs * childAttribs){
    gchar * commitMsg=childAttribs->stdOut;
    commitMsg[strcspn(commitMsg, "\n")] = 0;
-   g_hash_table_insert(gitCommitMsg, g_strdup(childAttribs->customCallbackUserData), g_strdup(commitMsg));
+   //g_hash_table_insert(gitCommitMsg, g_strdup(childAttribs->customCallbackUserData), g_strdup(commitMsg));
 
    g_debug("gitCommitMsg:%s,%s",childAttribs->customCallbackUserData,commitMsg);
 
@@ -1251,15 +1250,15 @@ static void load_GitTrackedFiles_into_HashTable()
       g_debug("gitTrackedFile:%s",fullpath);
 
 
-      if (showGitCommitMsg) {
-           // get git commit msg for current file with git log --oneline and store into hashtable
-	   // seems that iterate with git log cmd can have long delay, async way might be better, but just try sync first
-	GList *file_list=NULL;
-	file_list=g_list_append(file_list, fullpath);
-	if(!g_spawn_wrapper(git_commit_message_cmd, file_list,1,RFM_EXEC_OUPUT_READ_BY_PROGRAM ,NULL, FALSE, readGitCommitMsgFromGitLogCmdAndInsertIntoHashTable, g_strdup(fullpath))){
+      /* if (showGitCommitMsg) { */
+      /*      // get git commit msg for current file with git log --oneline and store into hashtable */
+      /* 	   // seems that iterate with git log cmd can have long delay, async way might be better, but just try sync first */
+      /* 	GList *file_list=NULL; */
+      /* 	file_list=g_list_append(file_list, fullpath); */
+      /* 	if(!g_spawn_wrapper(git_commit_message_cmd, file_list,1,RFM_EXEC_OUPUT_READ_BY_PROGRAM ,NULL, FALSE, readGitCommitMsgFromGitLogCmdAndInsertIntoHashTable, g_strdup(fullpath))){ */
 	  
-	}
-      }
+      /* 	} */
+      /* } */
            
       oneline=strtok(NULL, "\n");
     }
@@ -1398,7 +1397,7 @@ static void clear_store(void)
    g_hash_table_remove_all(thumb_hash);
 #ifdef GitIntegration
    g_hash_table_remove_all(gitTrackedFiles);
-   g_hash_table_remove_all(gitCommitMsg);
+   //g_hash_table_remove_all(gitCommitMsg);
 #endif
    
    gtk_list_store_clear(store); /* This will g_free and g_object_unref */
@@ -2372,7 +2371,7 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
 
 #ifdef GitIntegration
    gitTrackedFiles=g_hash_table_new_full(g_str_hash, g_str_equal,g_free, g_free);
-   gitCommitMsg=g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
+   //gitCommitMsg=g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
 #endif 
 
    if (rfm_do_thumbs==1 && !g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR)) {
