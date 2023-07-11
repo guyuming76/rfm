@@ -258,6 +258,7 @@ static void refresh_store(RFM_ctx *rfmCtx);
 static gboolean fill_fileAttributeList_with_filenames_from_pipeline_stdin_and_then_insert_into_store();
 static gboolean read_one_DirItem_into_fileAttributeList_in_each_call_and_insert_all_into_store_in_last_call(GDir *dir);
 static void Iterate_through_fileAttribute_list_to_insert_into_store();
+static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes);
 static RFM_FileAttributes *malloc_fileAttributes(void);
 static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guint64 mtimeThreshold, GHashTable *mount_hash);
 static GHashTable *get_mount_points(void);
@@ -1138,17 +1139,23 @@ static void iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_and_l
 static void Iterate_through_fileAttribute_list_to_insert_into_store()
 {
    GList *listElement;
-   GtkTreeIter iter;
-   GtkTreePath *treePath=NULL;
-   GdkPixbuf *theme_pixbuf=NULL;
-   RFM_defaultPixbufs *defaultPixbufs=g_object_get_data(G_OBJECT(window),"rfm_default_pixbufs");
    RFM_FileAttributes *fileAttributes;
-
    if (rfm_fileAttributeList==NULL) return;
-
    listElement=g_list_first(rfm_fileAttributeList);
    while (listElement != NULL) {
       fileAttributes=(RFM_FileAttributes*)listElement->data;
+      Insert_fileAttributes_into_store(fileAttributes);
+   listElement=g_list_next(listElement);
+   }
+}
+
+static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes)
+{
+      GtkTreeIter iter;
+      GtkTreePath *treePath=NULL;
+      GdkPixbuf *theme_pixbuf=NULL;
+      RFM_defaultPixbufs *defaultPixbufs=g_object_get_data(G_OBJECT(window),"rfm_default_pixbufs");
+
       if (fileAttributes->icon_name!=NULL) {
          /* Fall back to generic icon if possible: GTK_ICON_LOOKUP_GENERIC_FALLBACK doesn't always work, e.g. flac files */
          if (!gtk_icon_theme_has_icon(icon_theme, fileAttributes->icon_name)) {
@@ -1215,9 +1222,8 @@ static void Iterate_through_fileAttribute_list_to_insert_into_store()
          g_free(rfm_prePath);
          rfm_prePath=NULL; /* No need to check any more paths once found */
       }
-   listElement=g_list_next(listElement);
-   }
 }
+
 
 #ifdef GitIntegration
 static void readGitCommitMsgFromGitLogCmdAndInsertIntoHashTable(RFM_ChildAttribs * childAttribs){
