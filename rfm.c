@@ -495,7 +495,7 @@ static void show_child_output(RFM_ChildAttribs *child_attribs)
    if (child_attribs->stdErr!=NULL && strlen(child_attribs->stdErr)>0) {
       if (child_attribs->runOpts==RFM_EXEC_STDOUT || strlen(child_attribs->stdErr) > RFM_MX_MSGBOX_CHARS){
          msg=g_strdup_printf("%s (%i): Finished with exit code %i.\n\n%s", child_attribs->name, child_attribs->pid, child_attribs->exitcode, child_attribs->stdErr);
-	 g_warning("%s\n",msg);
+	 g_warning("%s",msg);
       } else {
          msg=g_strdup_printf("%s (%i): Finished with exit code %i.\n\n%s", child_attribs->name, child_attribs->pid, child_attribs->exitcode, child_attribs->stdErr);
          show_msgbox(msg, child_attribs->name, GTK_MESSAGE_ERROR);
@@ -1242,7 +1242,7 @@ static void load_GitTrackedFiles_into_HashTable()
     g_free(child_stdout);
     g_free(child_stderr);
   } else {
-    g_warning("%s\n", child_stderr);
+    g_warning("%s", child_stderr);
     g_free(child_stdout);
     g_free(child_stderr);   
     return;
@@ -1259,7 +1259,7 @@ static void load_GitTrackedFiles_into_HashTable()
     }
   }
   else{
-    g_warning("%s\n",child_stderr);
+    g_warning("%s",child_stderr);
   }
   g_free(child_stdout);
   g_free(child_stderr);
@@ -1299,7 +1299,7 @@ static void load_GitTrackedFiles_into_HashTable()
     }
   }
   else{
-    g_warning("%s\n",child_stderr);
+    g_warning("%s",child_stderr);
   }
   g_free(child_stdout);
   g_free(child_stderr);
