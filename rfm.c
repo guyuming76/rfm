@@ -256,7 +256,7 @@ static void inotify_insert_item(gchar *name, gboolean is_dir);
 static gboolean delayed_refreshAll(gpointer user_data);
 static void refresh_store(RFM_ctx *rfmCtx);
 static gboolean fill_fileAttributeList_with_filenames_from_pipeline_stdin_and_then_insert_into_store();
-static gboolean read_one_DirItem_into_fileAttributeList_in_each_call_and_insert_all_into_store_in_last_call(GDir *dir);
+static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store_in_each_call(GDir *dir);
 static void Iterate_through_fileAttribute_list_to_insert_into_store();
 static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes);
 static RFM_FileAttributes *malloc_fileAttributes(void);
@@ -1313,7 +1313,7 @@ static void load_GitTrackedFiles_into_HashTable()
 }
 #endif
 
-static gboolean read_one_DirItem_into_fileAttributeList_in_each_call_and_insert_all_into_store_in_last_call(GDir *dir) {
+static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store_in_each_call(GDir *dir) {
    const gchar *name=NULL;
    time_t mtimeThreshold=time(NULL)-RFM_MTIME_OFFSET;
    RFM_FileAttributes *fileAttributes;
@@ -1323,20 +1323,16 @@ static gboolean read_one_DirItem_into_fileAttributeList_in_each_call_and_insert_
    if (name!=NULL) {
      if (!ignored_filename(name)) {
          fileAttributes=get_fileAttributes_for_a_file(name, mtimeThreshold, mount_hash);
-         if (fileAttributes!=NULL)
+         if (fileAttributes!=NULL){
             rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
+	    Insert_fileAttributes_into_store(fileAttributes);
+	 }
       }
       g_hash_table_destroy(mount_hash);
       return TRUE;   /* Return TRUE if more items */
    }
-   else {   /* No more items */
-#ifdef GitIntegration
-     if (curPath_is_git_repo) load_GitTrackedFiles_into_HashTable();
-#endif
-      Iterate_through_fileAttribute_list_to_insert_into_store();
-      if (rfm_do_thumbs==1 && g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR))
-         iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_and_load_gitCommitMsg_ifdef_GitIntegration();
-   }
+   else if (rfm_do_thumbs==1 && g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR))    /* No more items */
+     iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_and_load_gitCommitMsg_ifdef_GitIntegration();
 
    rfm_readDirSheduler=0;
    g_hash_table_destroy(mount_hash);
@@ -1441,8 +1437,11 @@ static void refresh_store(RFM_ctx *rfmCtx)
      GDir *dir=NULL;
      dir=g_dir_open(rfm_curPath, 0, NULL);
      if (!dir) return;
-     
-     rfm_readDirSheduler=g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, (GSourceFunc)read_one_DirItem_into_fileAttributeList_in_each_call_and_insert_all_into_store_in_last_call, dir, (GDestroyNotify)g_dir_close);
+
+#ifdef GitIntegration
+     if (curPath_is_git_repo) load_GitTrackedFiles_into_HashTable();
+#endif
+     rfm_readDirSheduler=g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, (GSourceFunc)read_one_DirItem_into_fileAttributeList_and_insert_into_store_in_each_call, dir, (GDestroyNotify)g_dir_close);
   }
 
    icon_or_tree_view = add_view(rfmCtx);
