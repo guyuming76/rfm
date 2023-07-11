@@ -900,7 +900,7 @@ static gboolean mkThumb()
    g_list_free_full(rfm_thumbQueue, (GDestroyNotify)free_thumbQueueData);
    rfm_thumbQueue=NULL;
    rfm_thumbScheduler=0;
-   g_debug("mkThumb return FALSE after:%s",thumbData->thumb_name);
+   g_debug("mkThumb return FALSE,which means mkThumb finished");
    return FALSE;  /* Finished thumb queue */
 }
 
