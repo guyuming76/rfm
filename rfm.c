@@ -149,6 +149,7 @@ enum {
    COL_MODE_STR,
    COL_DISPLAY_NAME,
    COL_FILENAME,
+   COL_FULL_PATH,
    COL_PIXBUF,
    COL_MTIME,
    COL_MTIME_STR,
@@ -234,7 +235,6 @@ static gint DisplayingPageSize_ForFileNameListFromPipeStdIn=20;
 // value "??" for untracked
 // the same as git status --porcelain
 static GHashTable *gitTrackedFiles;
-GList *asynProcessListForGitCommitMsg=NULL;
 static gboolean curPath_is_git_repo = FALSE;
 static gboolean cur_path_is_git_repo(){return curPath_is_git_repo;}
 #endif
@@ -1102,8 +1102,10 @@ static void iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue(void)
    GtkTreeIter iter;
    gboolean valid;
    RFM_ThumbQueueData *thumbData=NULL;
-
-   valid=gtk_tree_model_get_iter_first(GTK_TREE_MODEL(store), &iter);
+#ifdef GitIntegration
+   GtkTreeIter ** iterPointerPointer;
+#endif
+   valid=gtk_tree_model_get_iter_first(treemodel, &iter);
    while (valid) {
       thumbData=get_thumbData(&iter); /* Returns NULL if thumbnail not handled */
       if (thumbData!=NULL) {
@@ -1121,7 +1123,21 @@ static void iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue(void)
 
          }
       }
-      valid=gtk_tree_model_iter_next(GTK_TREE_MODEL(store), &iter);
+#ifdef GitIntegration
+      if (curPath_is_git_repo){
+	//gchar* fullpath=calloc(PATH_MAX, sizeof(gchar));
+	GValue full_path=G_VALUE_INIT;
+	gtk_tree_model_get_value(treemodel, &iter, COL_FULL_PATH, &full_path);
+	GList *file_list = NULL;
+	file_list = g_list_append(file_list,g_value_get_string(&full_path));
+	iterPointerPointer=calloc(1, sizeof(GtkTreeIter**));//This will be passed into childAttribs, which will be freed in g_spawn_wrapper. but we shall not free iter, so i use pointer to pointer here.
+	*iterPointerPointer=&iter;
+	if(!g_spawn_wrapper(git_commit_message_cmd, file_list,1,RFM_EXEC_OUPUT_READ_BY_PROGRAM ,NULL, FALSE, readGitCommitMsgFromGitLogCmdAndInsertIntoHashTable, iterPointerPointer)){
+
+	}
+      }
+#endif
+      valid=gtk_tree_model_iter_next(treemodel, &iter);
    }
    if (rfm_thumbQueue!=NULL)
       rfm_thumbScheduler=g_idle_add((GSourceFunc)mkThumb, NULL);
@@ -1173,6 +1189,7 @@ static void Iterate_through_fileAttribute_list_to_insert_into_store()
                           COL_MODE_STR, fileAttributes->file_mode_str,
                           COL_DISPLAY_NAME, fileAttributes->display_name,
 			  COL_FILENAME,fileAttributes->file_name,
+			  COL_FULL_PATH,fileAttributes->path,
                           COL_PIXBUF, fileAttributes->pixbuf,
                           COL_MTIME, fileAttributes->file_mtime,
 			  COL_MTIME_STR,fileAttributes->mtime,
@@ -1214,10 +1231,9 @@ static void Iterate_through_fileAttribute_list_to_insert_into_store()
 static void readGitCommitMsgFromGitLogCmdAndInsertIntoHashTable(RFM_ChildAttribs * childAttribs){
    gchar * commitMsg=childAttribs->stdOut;
    commitMsg[strcspn(commitMsg, "\n")] = 0;
-   //g_hash_table_insert(gitCommitMsg, g_strdup(childAttribs->customCallbackUserData), g_strdup(commitMsg));
-
-   g_debug("gitCommitMsg:%s,%s",childAttribs->customCallbackUserData,commitMsg);
-
+   g_debug("gitCommitMsg:%s",commitMsg);
+   GtkTreeIter *iter= *(GtkTreeIter**)(childAttribs->customCallbackUserData);
+   gtk_list_store_set(store,iter,COL_GIT_COMMIT_MSG, commitMsg, -1);
 }
 
 static void load_GitTrackedFiles_into_HashTable()
@@ -2135,6 +2151,7 @@ static void inotify_insert_item(gchar *name, gboolean is_dir)
 				     //                     COL_MODE_STR, fileAttributes->file_mode_str,
                        COL_DISPLAY_NAME, fileAttributes->display_name,
 		       COL_FILENAME,fileAttributes->file_name,
+		       COL_FULL_PATH,fileAttributes->path,
                        COL_PIXBUF, fileAttributes->pixbuf,
                        COL_MTIME, fileAttributes->file_mtime,
 				     //		       COL_MTIME_STR,yyyymmddhhmmss(fileAttributes->file_mtime),
@@ -2404,6 +2421,7 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
                               G_TYPE_STRING,     //MODE_STR
                               G_TYPE_STRING,    /* Displayed name */
 			      G_TYPE_STRING,    //filename
+			      G_TYPE_STRING,    //fullpath 
                               GDK_TYPE_PIXBUF,  /* Displayed icon */
                               G_TYPE_UINT64,    /* File mtime: time_t is currently 32 bit signed */
 			      G_TYPE_STRING, //MTIME_STR
