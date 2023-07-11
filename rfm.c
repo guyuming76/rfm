@@ -258,7 +258,7 @@ static void refresh_store(RFM_ctx *rfmCtx);
 static gboolean fill_fileAttributeList_with_filenames_from_pipeline_stdin_and_then_insert_into_store();
 static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store_in_each_call(GDir *dir);
 static void Iterate_through_fileAttribute_list_to_insert_into_store();
-static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes);
+static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,GtkTreeIter *iter);
 static RFM_FileAttributes *malloc_fileAttributes(void);
 static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guint64 mtimeThreshold, GHashTable *mount_hash);
 static GHashTable *get_mount_points(void);
@@ -1146,18 +1146,18 @@ static void Iterate_through_fileAttribute_list_to_insert_into_store()
 {
    GList *listElement;
    RFM_FileAttributes *fileAttributes;
+   GtkTreeIter *iter;
    if (rfm_fileAttributeList==NULL) return;
    listElement=g_list_first(rfm_fileAttributeList);
    while (listElement != NULL) {
       fileAttributes=(RFM_FileAttributes*)listElement->data;
-      Insert_fileAttributes_into_store(fileAttributes);
+      Insert_fileAttributes_into_store(fileAttributes,iter);
    listElement=g_list_next(listElement);
    }
 }
 
-static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes)
+static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes, GtkTreeIter *iter)
 {
-      GtkTreeIter iter;
       GtkTreePath *treePath=NULL;
       GdkPixbuf *theme_pixbuf=NULL;
       RFM_defaultPixbufs *defaultPixbufs=g_object_get_data(G_OBJECT(window),"rfm_default_pixbufs");
@@ -1190,7 +1190,7 @@ static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes)
       fileAttributes->mtime=yyyymmddhhmmss(fileAttributes->file_mtime);
       fileAttributes->atime=yyyymmddhhmmss(fileAttributes->file_atime);
       fileAttributes->ctime=yyyymmddhhmmss(fileAttributes->file_ctime);
-      gtk_list_store_insert_with_values(store, &iter, -1,
+      gtk_list_store_insert_with_values(store, iter, -1,
                           COL_MODE_STR, fileAttributes->file_mode_str,
                           COL_DISPLAY_NAME, fileAttributes->display_name,
 			  COL_FILENAME,fileAttributes->file_name,
@@ -1216,7 +1216,7 @@ static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes)
       g_debug("Inserted into store:%s",fileAttributes->display_name);
 
       if (rfm_prePath!=NULL && g_strcmp0(rfm_prePath, fileAttributes->path)==0) {
-         treePath=gtk_tree_model_get_path(GTK_TREE_MODEL(store), &iter);
+         treePath=gtk_tree_model_get_path(GTK_TREE_MODEL(store), iter);
          if (treeview) {
 	   gtk_tree_view_set_cursor(GTK_TREE_VIEW(icon_or_tree_view),treePath,NULL,FALSE);
            gtk_tree_view_scroll_to_cell(GTK_TREE_VIEW(icon_or_tree_view),treePath,NULL,FALSE,0,0);
@@ -1323,6 +1323,7 @@ static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store_in
    const gchar *name=NULL;
    time_t mtimeThreshold=time(NULL)-RFM_MTIME_OFFSET;
    RFM_FileAttributes *fileAttributes;
+   GtkTreeIter * iter;
    GHashTable *mount_hash=get_mount_points();
 
    name=g_dir_read_name(dir);
@@ -1331,7 +1332,7 @@ static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store_in
          fileAttributes=get_fileAttributes_for_a_file(name, mtimeThreshold, mount_hash);
          if (fileAttributes!=NULL){
             rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
-	    Insert_fileAttributes_into_store(fileAttributes);
+	    Insert_fileAttributes_into_store(fileAttributes,iter);
 	 }
       }
       g_hash_table_destroy(mount_hash);
