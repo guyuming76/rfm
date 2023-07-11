@@ -495,7 +495,7 @@ static void show_child_output(RFM_ChildAttribs *child_attribs)
    if (child_attribs->stdErr!=NULL && strlen(child_attribs->stdErr)>0) {
       if (child_attribs->runOpts==RFM_EXEC_STDOUT || strlen(child_attribs->stdErr) > RFM_MX_MSGBOX_CHARS){
          msg=g_strdup_printf("%s (%i): Finished with exit code %i.\n\n%s", child_attribs->name, child_attribs->pid, child_attribs->exitcode, child_attribs->stdErr);
-	 printf("%s\n",msg);
+	 g_warning("%s\n",msg);
       } else {
          msg=g_strdup_printf("%s (%i): Finished with exit code %i.\n\n%s", child_attribs->name, child_attribs->pid, child_attribs->exitcode, child_attribs->stdErr);
          show_msgbox(msg, child_attribs->name, GTK_MESSAGE_ERROR);
@@ -1250,7 +1250,7 @@ static void load_GitTrackedFiles_into_HashTable()
     g_free(child_stdout);
     g_free(child_stderr);
   } else {
-    printf("%s\n", child_stderr);
+    g_warning("%s\n", child_stderr);
     g_free(child_stdout);
     g_free(child_stderr);   
     return;
@@ -1262,25 +1262,12 @@ static void load_GitTrackedFiles_into_HashTable()
     while (oneline!=NULL){
       gchar * fullpath=g_build_filename(git_root,oneline,NULL);         
       g_hash_table_insert(gitTrackedFiles,fullpath,g_strdup(""));
-
       g_debug("gitTrackedFile:%s",fullpath);
-
-
-      /* if (showGitCommitMsg) { */
-      /*      // get git commit msg for current file with git log --oneline and store into hashtable */
-      /* 	   // seems that iterate with git log cmd can have long delay, async way might be better, but just try sync first */
-      /* 	GList *file_list=NULL; */
-      /* 	file_list=g_list_append(file_list, fullpath); */
-      /* 	if(!g_spawn_wrapper(git_commit_message_cmd, file_list,1,RFM_EXEC_OUPUT_READ_BY_PROGRAM ,NULL, FALSE, readGitCommitMsgFromGitLogCmdAndInsertIntoHashTable, g_strdup(fullpath))){ */
-	  
-      /* 	} */
-      /* } */
-           
       oneline=strtok(NULL, "\n");
     }
   }
   else{
-    printf("%s\n",child_stderr);
+    g_warning("%s\n",child_stderr);
   }
   g_free(child_stdout);
   g_free(child_stderr);
@@ -1320,7 +1307,7 @@ static void load_GitTrackedFiles_into_HashTable()
     }
   }
   else{
-    printf("%s\n",child_stderr);
+    g_warning("%s\n",child_stderr);
   }
   g_free(child_stdout);
   g_free(child_stderr);
