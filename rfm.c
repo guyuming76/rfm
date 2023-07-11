@@ -266,7 +266,7 @@ static gboolean mounts_handler(GUnixMountMonitor *monitor, gpointer rfmCtx);
 static void readGitCommitMsgFromGitLogCmdAndInsertIntoHashTable(RFM_ChildAttribs * childAttribs);
 static void load_GitTrackedFiles_into_HashTable();
 #endif
-static void iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue(void);
+static void iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_and_load_gitCommitMsg_ifdef_GitIntegration(void);
 static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter);
 static gint find_thumbnailer(gchar *mime_root, gchar *mime_sub_type);
 static int load_thumbnail(gchar *key);
@@ -1097,7 +1097,7 @@ static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guin
    return fileAttributes;
 }
 
-static void iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue(void)
+static void iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_and_load_gitCommitMsg_ifdef_GitIntegration(void)
 {
    GtkTreeIter iter;
    gboolean valid;
@@ -1350,7 +1350,7 @@ static gboolean read_one_DirItem_into_fileAttributeList_in_each_call_and_insert_
 #endif
       Iterate_through_fileAttribute_list_to_insert_into_store();
       if (rfm_do_thumbs==1 && g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR))
-         iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue();
+         iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_and_load_gitCommitMsg_ifdef_GitIntegration();
    }
 
    rfm_readDirSheduler=0;
@@ -1401,7 +1401,7 @@ static gboolean fill_fileAttributeList_with_filenames_from_pipeline_stdin_and_th
   Iterate_through_fileAttribute_list_to_insert_into_store();
   if (rfm_do_thumbs == 1 &&
       g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR))
-  iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue();
+  iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_and_load_gitCommitMsg_ifdef_GitIntegration();
 
   g_hash_table_destroy(mount_hash);
   return TRUE;
