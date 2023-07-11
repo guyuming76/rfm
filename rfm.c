@@ -266,8 +266,10 @@ static gboolean mounts_handler(GUnixMountMonitor *monitor, gpointer rfmCtx);
 #ifdef GitIntegration
 static void readGitCommitMsgFromGitLogCmdAndInsertIntoHashTable(RFM_ChildAttribs * childAttribs);
 static void load_GitTrackedFiles_into_HashTable();
+static void load_gitCommitMsg_for_store_row(GtkTreeIter iter);
 #endif
 static void iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_and_load_gitCommitMsg_ifdef_GitIntegration(void);
+static void load_thumbnail_or_enqueue_thumbQueue_for_store_row(GtkTreeIter iter);
 static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter);
 static gint find_thumbnailer(gchar *mime_root, gchar *mime_sub_type);
 static int load_thumbnail(gchar *key);
@@ -1094,47 +1096,51 @@ static void iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_and_l
 {
    GtkTreeIter iter;
    gboolean valid;
-   RFM_ThumbQueueData *thumbData=NULL;
-#ifdef GitIntegration
-   GtkTreeIter ** iterPointerPointer;
-#endif
+
    valid=gtk_tree_model_get_iter_first(treemodel, &iter);
    while (valid) {
+     load_thumbnail_or_enqueue_thumbQueue_for_store_row(iter);
+     load_gitCommitMsg_for_store_row(iter);
+
+     valid=gtk_tree_model_iter_next(treemodel, &iter);
+   }
+   if (rfm_thumbQueue!=NULL)
+      rfm_thumbScheduler=g_idle_add((GSourceFunc)mkThumb, NULL);
+}
+
+
+static void load_thumbnail_or_enqueue_thumbQueue_for_store_row(GtkTreeIter iter){
+   RFM_ThumbQueueData *thumbData=NULL;
       thumbData=get_thumbData(&iter); /* Returns NULL if thumbnail not handled */
       if (thumbData!=NULL) {
          /* Try to load any existing thumbnail */
 	int ld=load_thumbnail(thumbData->thumb_name);
 	 if ( ld == 0) { /* Success: thumbnail exists in cache and is valid */
-
 	   g_debug("thumbnail %s exists for %s",thumbData->thumb_name, thumbData->path);
-
            free_thumbQueueData(thumbData);
          } else { /* Thumbnail doesn't exist or is out of date */
            rfm_thumbQueue = g_list_append(rfm_thumbQueue, thumbData);
-
 	   g_debug("thumbnail %s creation enqueued for %s; load_thumbnail failure code:%d.",thumbData->thumb_name,thumbData->path,ld);
-
          }
       }
+}
+
 #ifdef GitIntegration
+static void load_gitCommitMsg_for_store_row(GtkTreeIter iter){
       if (curPath_is_git_repo){
 	//gchar* fullpath=calloc(PATH_MAX, sizeof(gchar));
 	GValue full_path=G_VALUE_INIT;
 	gtk_tree_model_get_value(treemodel, &iter, COL_FULL_PATH, &full_path);
 	GList *file_list = NULL;
 	file_list = g_list_append(file_list,g_value_get_string(&full_path));
-	iterPointerPointer=calloc(1, sizeof(GtkTreeIter**));//This will be passed into childAttribs, which will be freed in g_spawn_wrapper. but we shall not free iter, so i use pointer to pointer here.
+	GtkTreeIter **iterPointerPointer=calloc(1, sizeof(GtkTreeIter**));//This will be passed into childAttribs, which will be freed in g_spawn_wrapper. but we shall not free iter, so i use pointer to pointer here.
 	*iterPointerPointer=&iter;
 	if(!g_spawn_wrapper(git_commit_message_cmd, file_list,1,RFM_EXEC_OUPUT_READ_BY_PROGRAM ,NULL, FALSE, readGitCommitMsgFromGitLogCmdAndInsertIntoHashTable, iterPointerPointer)){
 
 	}
       }
-#endif
-      valid=gtk_tree_model_iter_next(treemodel, &iter);
-   }
-   if (rfm_thumbQueue!=NULL)
-      rfm_thumbScheduler=g_idle_add((GSourceFunc)mkThumb, NULL);
 }
+#endif
 
 static void Iterate_through_fileAttribute_list_to_insert_into_store()
 {
