@@ -869,9 +869,21 @@ static gboolean mkThumb()
    GError *pixbufErr=NULL;
 
    thumbData=(RFM_ThumbQueueData*)rfm_thumbQueue->data;
-   if (thumbnailers[thumbData->t_idx].thumbCmd==NULL)
+   if (thumbnailers[thumbData->t_idx].thumbCmd==NULL){
       thumb=gdk_pixbuf_new_from_file_at_scale(thumbData->path, thumbData->thumb_size, thumbData->thumb_size, TRUE, &pixbufErr);
-   else {
+      if (thumb!=NULL) {
+	rfm_saveThumbnail(thumb, thumbData);
+	g_debug("thumbnail saved for %s",thumbData->thumb_name);
+	g_object_unref(thumb);
+      }else{
+	if (pixbufErr==NULL)
+	  g_warning("thumbnail null returned by gdk_pixbuf_new_from_file_at_scale for %s",thumbData->thumb_name);
+	else{
+	  g_warning("thumbnail null returned by gdk_pixbuf_new_from_file_at_scale for %s. GError code:%d, GError msg:%s",thumbData->thumb_name,pixbufErr->code,pixbufErr->message);
+	  g_error_free(pixbufErr);
+	}
+      }
+   }else {
       gchar *thumb_path=g_build_filename(rfm_thumbDir, thumbData->thumb_name, NULL);
       GList * input_files=NULL;
       input_files=g_list_prepend(input_files, g_strdup(thumbData->path));
@@ -879,36 +891,16 @@ static gboolean mkThumb()
       g_list_free(input_files);
    }
    
-   if (thumb!=NULL) {
-      rfm_saveThumbnail(thumb, thumbData);
-
-      g_debug("thumbnail %s saved.",thumbData->thumb_name);
-
-      g_object_unref(thumb);
-   }else{
-      if (pixbufErr==NULL)
-        printf("thumbnail null\n");
-      else{
-        printf("thumbnail null, GError code:%d, GError msg:%s\n",pixbufErr->code,pixbufErr->message);
-	g_error_free(pixbufErr);
-      }
-   }
-
-
    if (rfm_thumbQueue->next!=NULL) {   /* More items in queue */
       rfm_thumbQueue=g_list_next(rfm_thumbQueue);
-
-      g_debug("mkThumb return TRUE");
-
+      g_debug("mkThumb return TRUE after:%s",thumbData->thumb_name);
       return TRUE;
    }
    
    g_list_free_full(rfm_thumbQueue, (GDestroyNotify)free_thumbQueueData);
    rfm_thumbQueue=NULL;
    rfm_thumbScheduler=0;
-
-   g_debug("mkThumb return FALSE");
-
+   g_debug("mkThumb return FALSE after:%s",thumbData->thumb_name);
    return FALSE;  /* Finished thumb queue */
 }
 
