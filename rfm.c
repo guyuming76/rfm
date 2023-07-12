@@ -1100,8 +1100,9 @@ static void iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_and_l
    valid=gtk_tree_model_get_iter_first(treemodel, &iter);
    while (valid) {
      load_thumbnail_or_enqueue_thumbQueue_for_store_row(&iter);
+#ifdef GitIntegration
      load_gitCommitMsg_for_store_row(&iter);
-
+#endif
      valid=gtk_tree_model_iter_next(treemodel, &iter);
    }
    if (rfm_thumbQueue!=NULL)
@@ -1393,10 +1394,10 @@ static gboolean fill_fileAttributeList_with_filenames_from_pipeline_stdin_and_th
   }
   rfm_fileAttributeList=g_list_reverse(rfm_fileAttributeList);
 
+  //We can load thumbnail and gitCommitMsg one by one right after one row of store inserted, as we do in read_one_DirItem_into_fileAttributeList_and_insert_into_store_in_each_cal. But since for pipeline, we have the paging mechanism, we won't have too much rows loaded in a batch, so, we keep the old way of loading thumbnails and gitCommitMsg in batch here. 
   Iterate_through_fileAttribute_list_to_insert_into_store();
-  if (rfm_do_thumbs == 1 &&
-      g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR))
-  iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_and_load_gitCommitMsg_ifdef_GitIntegration();
+  if (rfm_do_thumbs == 1 && g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR))
+    iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_and_load_gitCommitMsg_ifdef_GitIntegration();
 
   g_hash_table_destroy(mount_hash);
   return TRUE;
