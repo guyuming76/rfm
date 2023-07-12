@@ -1147,12 +1147,12 @@ static void Iterate_through_fileAttribute_list_to_insert_into_store()
 {
    GList *listElement;
    RFM_FileAttributes *fileAttributes;
-   GtkTreeIter *iter;
+   GtkTreeIter iter;
    if (rfm_fileAttributeList==NULL) return;
    listElement=g_list_first(rfm_fileAttributeList);
    while (listElement != NULL) {
       fileAttributes=(RFM_FileAttributes*)listElement->data;
-      Insert_fileAttributes_into_store(fileAttributes,iter);
+      Insert_fileAttributes_into_store(fileAttributes, &iter);
    listElement=g_list_next(listElement);
    }
 }
