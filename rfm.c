@@ -1323,7 +1323,6 @@ static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store_in
    const gchar *name=NULL;
    time_t mtimeThreshold=time(NULL)-RFM_MTIME_OFFSET;
    RFM_FileAttributes *fileAttributes;
-   GtkTreeIter * iter;
    GHashTable *mount_hash=get_mount_points();
 
    name=g_dir_read_name(dir);
@@ -1331,16 +1330,23 @@ static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store_in
      if (!ignored_filename(name)) {
          fileAttributes=get_fileAttributes_for_a_file(name, mtimeThreshold, mount_hash);
          if (fileAttributes!=NULL){
+	    GtkTreeIter iter;
             rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
-	    iter=NULL;
-	    Insert_fileAttributes_into_store(fileAttributes,iter);
+	    Insert_fileAttributes_into_store(fileAttributes,&iter);
+	    if (rfm_do_thumbs==1 && g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR)){
+	      load_thumbnail_or_enqueue_thumbQueue_for_store_row(&iter);
+#ifdef GitIntegration
+              load_gitCommitMsg_for_store_row(&iter);
+#endif
+	    }
 	 }
       }
       g_hash_table_destroy(mount_hash);
       return TRUE;   /* Return TRUE if more items */
    }
-   else if (rfm_do_thumbs==1 && g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR))    /* No more items */
-     iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_and_load_gitCommitMsg_ifdef_GitIntegration();
+   else if (rfm_thumbQueue!=NULL)
+      rfm_thumbScheduler=g_idle_add((GSourceFunc)mkThumb, NULL);
+
 
    rfm_readDirSheduler=0;
    g_hash_table_destroy(mount_hash);
