@@ -96,7 +96,7 @@ static RFM_RunAction run_actions[] = {
 #endif
    { "Properties",   "*",              "*",                    properties,       	RFM_EXEC_STDOUT,	NULL },
    { "Open with...", "*",              "*",                    open_with,        	RFM_EXEC_NONE,		NULL },
-   { "Open",         "image",          "*",                    show_image,       	RFM_EXEC_NONE,		NULL },
+   { "Open",         "image",          "*",                    show_image,       	RFM_EXEC_STDOUT,	NULL },
    { "Open",         "application",    "vnd.oasis.opendocument.text",          soffice,  RFM_EXEC_NONE,		NULL },
    { "Open",         "application",    "vnd.oasis.opendocument.spreadsheet",   soffice,  RFM_EXEC_NONE,		NULL },
    { "Open",         "application",    "vnd.openxmlformats-officedocument.wordprocessingml.document", soffice, RFM_EXEC_NONE, NULL },
