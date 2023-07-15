@@ -1442,20 +1442,19 @@ static void refresh_store(RFM_ctx *rfmCtx)
   
    rfm_stop_all(rfmCtx);
    clear_store();
+
+#ifdef GitIntegration
+   if (curPath_is_git_repo) load_GitTrackedFiles_into_HashTable();
+#endif
    
    if (rfmReadFileNamesFromPipeStdIn) {
      fill_fileAttributeList_with_filenames_from_pipeline_stdin_and_then_insert_into_store();
-
    } else {
      gtk_tree_sortable_set_default_sort_func(GTK_TREE_SORTABLE(store), sort_func, NULL, NULL);
      gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(store), rfmCtx->rfm_sortColumn, GTK_SORT_ASCENDING);
      GDir *dir=NULL;
      dir=g_dir_open(rfm_curPath, 0, NULL);
      if (!dir) return;
-
-#ifdef GitIntegration
-     if (curPath_is_git_repo) load_GitTrackedFiles_into_HashTable();
-#endif
      rfm_readDirSheduler=g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, (GSourceFunc)read_one_DirItem_into_fileAttributeList_and_insert_into_store_in_each_call, dir, (GDestroyNotify)g_dir_close);
   }
 
@@ -1505,9 +1504,6 @@ static void set_rfm_curPath(gchar* path)
          rfm_curPath = g_strdup(path);
        }
 
-#ifdef GitIntegration
-       g_spawn_wrapper(git_inside_work_tree_cmd, NULL, 0, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, FALSE, set_curPath_is_git_repo, NULL);
-#endif
        // inotify_rm_watch will trigger refresh_store in inotify_handler
        // and it will destory and recreate view base on conditions such as whether curPath_is_git_repo
       
@@ -1516,6 +1512,10 @@ static void set_rfm_curPath(gchar* path)
        gtk_window_set_title(GTK_WINDOW(window), rfm_curPath);
      }
    }
+#ifdef GitIntegration
+   g_spawn_wrapper(git_inside_work_tree_cmd, NULL, 0, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, FALSE, set_curPath_is_git_repo, NULL);
+#endif
+
 }
 
 
