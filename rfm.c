@@ -2601,20 +2601,17 @@ static void ReadFromPipeStdinIfAny()
          gchar *oneline_stdin=calloc(1,PATH_MAX);
          while (fgets(oneline_stdin, PATH_MAX, stdin) != NULL) {
    	   g_debug("%s",oneline_stdin);
-           oneline_stdin[strcspn(oneline_stdin, "\n")] = 0; //name[strlen(name)] = '\0'; //manual set the last char to NULL to eliminate the trailing \n from fgets
-	   gchar *absoluteAddr = canonicalize_file_name(oneline_stdin);
-
-	   /* locate something|grep .jpg|rfm &           is ok
-           with
-	   locate something|grep .jpg|rfm & exit      , the command window will close, but then, when i press enter on a thumbnail to open IMV, it always open a new IMV instead of using an existing one. So, i must keep the command window open. Since the command window is open, i can just print the filenames so that user can see the contents of stdin*/
+           oneline_stdin[strcspn(oneline_stdin, "\n")] = 0; //manual set the last char to NULL to eliminate the trailing \n from fgets
+	   if (!ignored_filename(oneline_stdin)){
+	     gchar *absoluteAddr = canonicalize_file_name(oneline_stdin);
   
-	   if (absoluteAddr==NULL)
-	     g_warning("canonicalize_file_name(%s) return NULL",oneline_stdin);
-	   else{
-	     FileNameListWithAbsolutePath_FromPipeStdin=g_list_prepend(FileNameListWithAbsolutePath_FromPipeStdin, absoluteAddr);
-	     g_debug("appended into FileNameListWithAbsolutePath_FromPipeStdin:%s", absoluteAddr);
+	     if (absoluteAddr==NULL)
+	       g_warning("canonicalize_file_name(%s) return NULL",oneline_stdin);
+	     else{
+	       FileNameListWithAbsolutePath_FromPipeStdin=g_list_prepend(FileNameListWithAbsolutePath_FromPipeStdin, absoluteAddr);
+	       g_debug("appended into FileNameListWithAbsolutePath_FromPipeStdin:%s", absoluteAddr);
+	     }
 	   }
-
 	   g_free(oneline_stdin);
 	   oneline_stdin=calloc(1,PATH_MAX);
          }

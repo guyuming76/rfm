@@ -40,9 +40,9 @@ alias locatepwd='locate $(pwd)'
  locatepwd|grep .md$|rfm
 ```
 
-更新20230715:可以用如下命令打开当前目录下(包含子目录)的文件. grep那一段是为了滤除包含/.的隐藏文件,比如git仓库下的git目录.
+更新20230715:可以用如下命令打开当前目录下(包含子目录)的文件. 
 ```
-find |grep -v "\/\."|rfm -p100 -l
+find |rfm -p100 -l
 ```
 
 也可以用[其他方法获取文件完整路径](https://blog.csdn.net/yaxuan88521/article/details/128172956),比如：
