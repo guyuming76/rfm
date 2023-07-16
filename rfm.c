@@ -224,7 +224,7 @@ static gboolean moreColumnsInTreeview=FALSE;
 //      locate blablablaa |rfm
 // , instead of from a directory
 static gboolean rfmReadFileNamesFromPipeStdIn=FALSE;
-static GList *FileNameListWithAbsolutePath_FromPipeStdin=NULL;
+static GList *FileNameList_FromPipeStdin=NULL;
 static GList *CurrentDisplayingPage_ForFileNameListFromPipeStdIn;
 static gint DisplayingPageSize_ForFileNameListFromPipeStdIn=20;
 
@@ -970,7 +970,7 @@ static RFM_FileAttributes *malloc_fileAttributes(void)
 {
    RFM_FileAttributes *fileAttributes=calloc(1,sizeof(RFM_FileAttributes));
    if (fileAttributes==NULL)
-      return NULL;
+     g_error("calloc failed!");
 
    /* fileAttributes->path=NULL; */
    /* fileAttributes->file_name=NULL; */
@@ -1003,12 +1003,18 @@ static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guin
    gint i;
    RFM_FileAttributes *fileAttributes=malloc_fileAttributes();
 
-   if (fileAttributes==NULL)
-      return NULL;
-   if (name[0]=='/') {
-     fileAttributes->path = g_build_filename(name, NULL); /* Absolute path from pipeline*/
-   } else {
-     fileAttributes->path = g_build_filename(rfm_curPath, name, NULL);
+   gchar *absoluteaddr;
+   if (name[0]=='/')
+     absoluteaddr = canonicalize_file_name(g_build_filename(name, NULL)); /*if mlocate index not updated with updatedb, address returned by locate will return NULL after canonicalize */
+   else
+     absoluteaddr = canonicalize_file_name(g_build_filename(rfm_curPath, name, NULL));
+     //address returned by find can be ./blabla, and g_build_filename return something like /rfm/./blabla, so, need to be canonicalized here
+   if (absoluteaddr==NULL){
+     g_warning("invalid address:%s",name);
+     return NULL;
+   }else{
+     fileAttributes->path=absoluteaddr;
+     g_debug("fileAttributes->path:%s",fileAttributes->path);
    }
    //attibuteList=g_strdup_printf("%s,%s,%s,%s",G_FILE_ATTRIBUTE_STANDARD_TYPE, G_FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE, G_FILE_ATTRIBUTE_TIME_MODIFIED, G_FILE_ATTRIBUTE_STANDARD_IS_SYMLINK);
    file=g_file_new_for_path(fileAttributes->path);
@@ -1385,9 +1391,7 @@ static gboolean fill_fileAttributeList_with_filenames_from_pipeline_stdin_and_th
     fileAttributes = get_fileAttributes_for_a_file(name->data, mtimeThreshold, mount_hash);
     if (fileAttributes != NULL) {
       rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
-
       g_debug("appended into rfm_fileAttributeList:%s", (char*)name->data);
-
     }
     name=g_list_next(name);
     i++;
@@ -2603,23 +2607,16 @@ static void ReadFromPipeStdinIfAny()
    	   g_debug("%s",oneline_stdin);
            oneline_stdin[strcspn(oneline_stdin, "\n")] = 0; //manual set the last char to NULL to eliminate the trailing \n from fgets
 	   if (!ignored_filename(oneline_stdin)){
-	     gchar *absoluteAddr = canonicalize_file_name(oneline_stdin);
-  
-	     if (absoluteAddr==NULL)
-	       g_warning("canonicalize_file_name(%s) return NULL",oneline_stdin);
-	     else{
-	       FileNameListWithAbsolutePath_FromPipeStdin=g_list_prepend(FileNameListWithAbsolutePath_FromPipeStdin, absoluteAddr);
-	       g_debug("appended into FileNameListWithAbsolutePath_FromPipeStdin:%s", absoluteAddr);
-	     }
+	       FileNameList_FromPipeStdin=g_list_prepend(FileNameList_FromPipeStdin, oneline_stdin);
+	       g_debug("appended into FileNameListWithAbsolutePath_FromPipeStdin:%s", oneline_stdin);
 	   }
-	   g_free(oneline_stdin);
 	   oneline_stdin=calloc(1,PATH_MAX);
          }
-         if (FileNameListWithAbsolutePath_FromPipeStdin != NULL) {
-           FileNameListWithAbsolutePath_FromPipeStdin = g_list_reverse(FileNameListWithAbsolutePath_FromPipeStdin);
-           FileNameListWithAbsolutePath_FromPipeStdin = g_list_first(FileNameListWithAbsolutePath_FromPipeStdin);
+         if (FileNameList_FromPipeStdin != NULL) {
+           FileNameList_FromPipeStdin = g_list_reverse(FileNameList_FromPipeStdin);
+           FileNameList_FromPipeStdin = g_list_first(FileNameList_FromPipeStdin);
          }
-         CurrentDisplayingPage_ForFileNameListFromPipeStdIn=FileNameListWithAbsolutePath_FromPipeStdin;
+         CurrentDisplayingPage_ForFileNameListFromPipeStdIn=FileNameList_FromPipeStdin;
      
    }
 }
