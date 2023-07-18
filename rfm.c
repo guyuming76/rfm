@@ -92,13 +92,6 @@ typedef struct {
    GtkWidget **action;
 } RFM_fileMenu;
 
-typedef struct {
-   GtkWidget *menu;
-   GtkWidget *newFile;
-   GtkWidget *newDir;
-   GtkWidget *copyPath;
-} RFM_rootMenu;
-
 //I don't understand why Rodney need this ctx type. it's only instantiated in main, so, all members can be changed into global variable, and many function parameter can be removed. However, if there would be any important usage, adding the removed function parameters will be time taking. So, just keep as is, although it makes current code confusing.
 typedef struct {
    gint        rfm_sortColumn;   /* The column in the tree model to sort on */
@@ -303,7 +296,6 @@ static void file_menu_exec(GtkMenuItem *menuitem, RFM_ChildAttribs *childAttribs
 static RFM_fileMenu *setup_file_menu(RFM_ctx * rfmCtx);
 static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx);
 
-static RFM_rootMenu *setup_root_menu(void);
 static void copy_curPath_to_clipboard(GtkWidget *menuitem, gpointer user_data);
 
 static void g_spawn_wrapper_for_selected_fileList_(RFM_ChildAttribs *childAttribs);
@@ -1647,15 +1639,6 @@ static void info_clicked(gpointer user_data)
    g_free(msg);
 }
 
-static void tool_menu_clicked(RFM_ctx *rfmCtx)
-{
-   GdkEvent *event=gtk_get_current_event();
-   RFM_rootMenu *rootMenu;
-
-   rootMenu=g_object_get_data(G_OBJECT(window), "rfm_root_menu");
-   gtk_menu_popup_at_pointer(GTK_MENU(rootMenu->menu), event);
-}
-
 static void exec_user_tool(GtkToolItem *item, RFM_ChildAttribs *childAttribs)
 {
    if (childAttribs->RunCmd==NULL) /* Argument is an internal function */
@@ -1872,21 +1855,6 @@ static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx)
 }
 
 
-static RFM_rootMenu *setup_root_menu(void)
-{
-   RFM_rootMenu *rootMenu=NULL;
-   if(!(rootMenu=calloc(1, sizeof(RFM_rootMenu))))
-      return NULL;
-   rootMenu->menu=gtk_menu_new();
-   
-   rootMenu->copyPath=gtk_menu_item_new_with_label("Copy Path");
-   gtk_widget_show(rootMenu->copyPath);
-   gtk_menu_shell_append(GTK_MENU_SHELL(rootMenu->menu), rootMenu->copyPath);
-   g_signal_connect(rootMenu->copyPath, "activate", G_CALLBACK(copy_curPath_to_clipboard), NULL);
-   
-   return rootMenu;
-}
-
 static gboolean view_key_press(GtkWidget *widget, GdkEvent *event,RFM_ctx *rfmCtx) {
   GdkEventKey *ek=(GdkEventKey *)event;
   if (ek->keyval==GDK_KEY_Menu)
@@ -1903,7 +1871,6 @@ static gboolean view_button_press(GtkWidget *widget, GdkEvent *event, RFM_ctx *r
 {
    GtkTreePath *tree_path=NULL;
    gboolean ret_val=FALSE;
-   RFM_rootMenu *rootMenu;
    GdkEventButton *eb=(GdkEventButton*)event;
 
    if (eb->type!=GDK_BUTTON_PRESS)
@@ -1933,8 +1900,6 @@ static gboolean view_button_press(GtkWidget *widget, GdkEvent *event, RFM_ctx *r
 	      gtk_tree_selection_unselect_all(gtk_tree_view_get_selection(GTK_TREE_VIEW(widget)));
 	    else
               gtk_icon_view_unselect_all(GTK_ICON_VIEW(widget));
-            rootMenu=g_object_get_data(G_OBJECT(window), "rfm_root_menu");
-            gtk_menu_popup_at_pointer(GTK_MENU(rootMenu->menu), event);
             ret_val=TRUE;
          }
       break;
@@ -2370,7 +2335,6 @@ gio_in_stdin (GIOChannel *gio, GIOCondition condition, gpointer data)
 static int setup(char *initDir, RFM_ctx *rfmCtx)
 {
    RFM_fileMenu *fileMenu=NULL;
-   RFM_rootMenu *rootMenu=NULL;
 
    gtk_init(NULL, NULL);
 
@@ -2414,10 +2378,8 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
    #endif
 
    fileMenu=setup_file_menu(rfmCtx); /* TODO: WARNING: This can return NULL! */
-   rootMenu=setup_root_menu();
    defaultPixbufs=load_default_pixbufs(); /* TODO: WARNING: This can return NULL! */
    g_object_set_data(G_OBJECT(window),"rfm_file_menu",fileMenu);
-   g_object_set_data_full(G_OBJECT(window),"rfm_root_menu",rootMenu,(GDestroyNotify)g_free);
    g_object_set_data_full(G_OBJECT(window),"rfm_default_pixbufs",defaultPixbufs,(GDestroyNotify)free_default_pixbufs);
 
    store=gtk_list_store_new(NUM_COLS,

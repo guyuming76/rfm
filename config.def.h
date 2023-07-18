@@ -162,10 +162,10 @@ static RFM_ToolButtons tool_buttons[] = {
    { PageDown,       NULL,                      NextPage,               NULL,              TRUE,           FALSE,     GDK_KEY_Page_Down,     "MOD+PgDn"},
    { "Terminal",     "utilities-terminal",      NULL,                   term_cmd,          TRUE,           TRUE,      0,                      NULL  },
    { "rfm",          "system-file-manager",     NULL,                   new_rfm,           TRUE,           TRUE,      0,                      NULL  },
-   { Menu,           "open-menu",               tool_menu_clicked,      NULL,              TRUE,           TRUE,      GDK_KEY_Menu,          "MOD+menu"},
    { "Stop",         "process-stop",            stop_clicked,           NULL,              TRUE,           TRUE,      0,                      NULL  },
    { "Info",         "dialog-information",      info_clicked,           NULL,              TRUE,           TRUE,      0,                      NULL  },
    { "Home",         "go-home",                 home_clicked,           NULL,              FALSE,          TRUE,      0,                      NULL  },
+   { "cpPath",       NULL,                      copy_curPath_to_clipboard, NULL,           TRUE,           TRUE,      0,                      "copy current path to clipboard" },
 // { "mounts",       "drive-harddisk",          show_disk_devices,      dev_disk_path },
 };
 
