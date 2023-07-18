@@ -62,6 +62,7 @@ static const char *git_commit_message_cmd[] = {"/usr/bin/git","log","-1","--onel
 static const char *git_log_cmd[] = { rfmBinPath "/rfmVTforCMD_hold.sh","/usr/bin/git","log",NULL};
 static const char *tig_cmd[] = { rfmBinPath "/rfmVTforCMD.sh","/usr/bin/tig",NULL};
 static const char *git_show_pics_cmd[] = { rfmBinPath "/rfmVTforCMD.sh", rfmBinPath "/rfmGitShowPictures.sh",NULL};
+static const char *git_commit[] = { rfmBinPath "/rfmVTforCMD.sh", rfmBinPath "/rfmGitCommit.sh",NULL};
 #endif
 
 
@@ -165,6 +166,9 @@ static RFM_ToolButtons tool_buttons[] = {
    { "Stop",         "process-stop",            stop_clicked,           NULL,              TRUE,           TRUE,      0,                      NULL  },
    { "Info",         "dialog-information",      info_clicked,           NULL,              TRUE,           TRUE,      0,                      NULL  },
    { "Home",         "go-home",                 home_clicked,           NULL,              FALSE,          TRUE,      0,                      NULL  },
+#ifdef GitIntegration
+   { "gitCommit",    NULL,                      NULL,                   git_commit,        TRUE,           TRUE,      0,                      NULL  },
+#endif
    { "cpPath",       NULL,                      copy_curPath_to_clipboard, NULL,           TRUE,           TRUE,      0,                      "copy current path to clipboard" },
 // { "mounts",       "drive-harddisk",          show_disk_devices,      dev_disk_path },
 };
