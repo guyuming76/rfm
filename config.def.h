@@ -153,23 +153,23 @@ static RFM_RunAction run_actions[] = {
 //}
 
 static RFM_ToolButtons tool_buttons[] = {
-   /* name           icon                       function    		RunCmd             readFromPipe    curPath    Accel                  tooltip*/
-   { SwitchView,     NULL,                      switch_view,            NULL,              TRUE,           TRUE,      GDK_KEY_slash,         "MOD+/"},
-   { Up,             "go-up",                   up_clicked,             NULL,              FALSE,          TRUE,      GDK_KEY_Up,            "MOD+up arrow"},
-   { "Refresh",      "view-refresh",            refresh_clicked,        NULL,              TRUE,           TRUE,      0,                      NULL  },
-   { Paste,          NULL,                      NULL,                   cp_clipboard_to_curPath, FALSE,    TRUE,      GDK_KEY_V,             "MOD+v"}, 
-   { MoveTo,         NULL,                      NULL,                   mv_clipboard_to_curPath, FALSE,    TRUE,      GDK_KEY_X,             "MOD+x"}, 
-   { PageUp,         NULL,                      PreviousPage,           NULL,              TRUE,           FALSE,     GDK_KEY_Page_Up,       "MOD+PgUp"},
-   { PageDown,       NULL,                      NextPage,               NULL,              TRUE,           FALSE,     GDK_KEY_Page_Down,     "MOD+PgDn"},
-   { "Terminal",     "utilities-terminal",      NULL,                   term_cmd,          TRUE,           TRUE,      0,                      NULL  },
-   { "rfm",          "system-file-manager",     NULL,                   new_rfm,           TRUE,           TRUE,      0,                      NULL  },
-   { "Stop",         "process-stop",            stop_clicked,           NULL,              TRUE,           TRUE,      0,                      NULL  },
-   { "Info",         "dialog-information",      info_clicked,           NULL,              TRUE,           TRUE,      0,                      NULL  },
-   { "Home",         "go-home",                 home_clicked,           NULL,              FALSE,          TRUE,      0,                      NULL  },
+   /* name           icon                       function    		RunCmd             readFromPipe    curPath    Accel                  tooltip                showCondition*/
+   { SwitchView,     NULL,                      switch_view,            NULL,              TRUE,           TRUE,      GDK_KEY_slash,         "MOD+/",                 NULL},
+   { Up,             "go-up",                   up_clicked,             NULL,              FALSE,          TRUE,      GDK_KEY_Up,            "MOD+up arrow",          NULL},
+   { "Refresh",      "view-refresh",            refresh_clicked,        NULL,              TRUE,           TRUE,      0,                      NULL,                   NULL},
+   { Paste,          NULL,                      NULL,                   cp_clipboard_to_curPath, FALSE,    TRUE,      GDK_KEY_V,             "MOD+v",                 NULL},
+   { MoveTo,         NULL,                      NULL,                   mv_clipboard_to_curPath, FALSE,    TRUE,      GDK_KEY_X,             "MOD+x",                 NULL},
+   { PageUp,         NULL,                      PreviousPage,           NULL,              TRUE,           FALSE,     GDK_KEY_Page_Up,       "MOD+PgUp",              NULL},
+   { PageDown,       NULL,                      NextPage,               NULL,              TRUE,           FALSE,     GDK_KEY_Page_Down,     "MOD+PgDn",              NULL},
+   { "Terminal",     "utilities-terminal",      NULL,                   term_cmd,          TRUE,           TRUE,      0,                      NULL,                   NULL},
+   { "rfm",          "system-file-manager",     NULL,                   new_rfm,           TRUE,           TRUE,      0,                      NULL,                   NULL},
+   { "Stop",         "process-stop",            stop_clicked,           NULL,              TRUE,           TRUE,      0,                      NULL,                   NULL},
+   { "Info",         "dialog-information",      info_clicked,           NULL,              TRUE,           TRUE,      0,                      NULL,                   NULL},
+   { "Home",         "go-home",                 home_clicked,           NULL,              FALSE,          TRUE,      0,                      NULL,                   NULL},
 #ifdef GitIntegration
-   { "gitCommit",    NULL,                      NULL,                   git_commit,        TRUE,           TRUE,      0,                      NULL  },
+   { "gitCommit",    NULL,                      NULL,                   git_commit,        TRUE,           TRUE,      0,                      NULL,                   cur_path_is_git_repo  },
 #endif
-   { "cpPath",       NULL,                      copy_curPath_to_clipboard, NULL,           TRUE,           TRUE,      0,                      "copy current path to clipboard" },
+   { "cpPath",       NULL,                      copy_curPath_to_clipboard, NULL,           TRUE,           TRUE,      0,                      "copy current path to clipboard", NULL},
 // { "mounts",       "drive-harddisk",          show_disk_devices,      dev_disk_path },
 };
 

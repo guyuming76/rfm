@@ -68,6 +68,7 @@ typedef struct {
    gboolean curPath;
    guint Accel;
    gchar *tooltip;
+   gboolean (*showCondition)();
 } RFM_ToolButtons;
 
 typedef struct {
@@ -91,6 +92,11 @@ typedef struct {
    GtkWidget *menu;
    GtkWidget **action;
 } RFM_fileMenu;
+
+typedef struct {
+  GtkWidget *toolbar;
+  GtkWidget **buttons;
+} RFM_toolbar;
 
 //I don't understand why Rodney need this ctx type. it's only instantiated in main, so, all members can be changed into global variable, and many function parameter can be removed. However, if there would be any important usage, adding the removed function parameters will be time taking. So, just keep as is, although it makes current code confusing.
 typedef struct {
@@ -198,7 +204,7 @@ static gchar *rfm_curPath=NULL;  /* The current directory */
 static gchar *rfm_prePath=NULL;  /* Previous directory: only set when up button is pressed, otherwise should be NULL */
 
 static GtkAccelGroup *agMain = NULL;
-static GtkWidget *tool_bar = NULL;
+static RFM_toolbar *tool_bar = NULL;
 static RFM_defaultPixbufs *defaultPixbufs=NULL;
 
 static GtkIconTheme *icon_theme;
@@ -271,6 +277,7 @@ static gboolean mkThumb();
 
 static GtkWidget *add_view(RFM_ctx *rfmCtx);
 static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixbufs, RFM_ctx *rfmCtx);
+static void refresh_toolbar();
 static gboolean view_key_press(GtkWidget *widget, GdkEvent *event,RFM_ctx *rfmCtx);
 static gboolean view_button_press(GtkWidget *widget, GdkEvent *event,RFM_ctx *rfmCtx);
 static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointer user_data);
@@ -1456,6 +1463,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
 
    icon_or_tree_view = add_view(rfmCtx);
    gtk_widget_show_all(window);
+   refresh_toolbar();
 }
 
 
@@ -1911,20 +1919,37 @@ static gboolean view_button_press(GtkWidget *widget, GdkEvent *event, RFM_ctx *r
    return ret_val;
 }
 
+static void refresh_toolbar()
+{
+   for (uint i = 0; i < G_N_ELEMENTS(tool_buttons); i++) {
+     if ((rfmReadFileNamesFromPipeStdIn && tool_buttons[i].readFromPipe) || (!rfmReadFileNamesFromPipeStdIn && tool_buttons[i].curPath)){
+       if (tool_buttons[i].showCondition == NULL || tool_buttons[i].showCondition())
+	 gtk_widget_show(tool_bar->buttons[i]);
+       else
+	 gtk_widget_hide(tool_bar->buttons[i]);
+     }
+   }
+}
+
 static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixbufs, RFM_ctx *rfmCtx)
 {
-   GtkToolItem *userButton;
    GtkWidget *buttonImage=NULL; /* Temp store for button image; gtk_tool_button_new() appears to take the reference */
-   guint i;
 
-   tool_bar=gtk_toolbar_new();
-   gtk_toolbar_set_style(GTK_TOOLBAR(tool_bar), GTK_TOOLBAR_ICONS);
-   gtk_box_pack_start(GTK_BOX(rfm_main_box), tool_bar, FALSE, FALSE, 0);
+   if(!(tool_bar = calloc(1, sizeof(RFM_toolbar))))
+      return NULL;
+   if(!(tool_bar->buttons = calloc(G_N_ELEMENTS(tool_buttons), sizeof(tool_bar->buttons)))) {
+      free(tool_bar);
+      return NULL;
+   }
+
+   tool_bar->toolbar=gtk_toolbar_new();
+   gtk_toolbar_set_style(GTK_TOOLBAR(tool_bar->toolbar), GTK_TOOLBAR_ICONS);
+   gtk_box_pack_start(GTK_BOX(rfm_main_box), tool_bar->toolbar, FALSE, FALSE, 0);
 
    if (!agMain) agMain = gtk_accel_group_new();
    gtk_window_add_accel_group(GTK_WINDOW(window), agMain);
 
-   for (i = 0; i < G_N_ELEMENTS(tool_buttons); i++) {
+   for (uint i = 0; i < G_N_ELEMENTS(tool_buttons); i++) {
      if ((rfmReadFileNamesFromPipeStdIn && tool_buttons[i].readFromPipe) || (!rfmReadFileNamesFromPipeStdIn && tool_buttons[i].curPath)){
        GdkPixbuf *buttonIcon=NULL;
        if (tool_buttons[i].buttonIcon!=NULL) buttonIcon=gtk_icon_theme_load_icon(icon_theme, tool_buttons[i].buttonIcon, RFM_TOOL_SIZE, 0, NULL);
@@ -1935,11 +1960,11 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
 	 g_object_unref(buttonIcon);
        }
 
-       userButton=gtk_tool_button_new(buttonImage, tool_buttons[i].buttonName);
-       gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), userButton, -1);
+       tool_bar->buttons[i]=gtk_tool_button_new(buttonImage, tool_buttons[i].buttonName);
+       gtk_toolbar_insert(GTK_TOOLBAR(tool_bar->toolbar), tool_bar->buttons[i], -1);
 
-       if(tool_buttons[i].Accel) gtk_widget_add_accelerator(GTK_WIDGET(userButton), "clicked", agMain,tool_buttons[i].Accel, MOD_KEY, GTK_ACCEL_VISIBLE);
-       if(tool_buttons[i].tooltip!=NULL) gtk_tool_item_set_tooltip_text(userButton,tool_buttons[i].tooltip);
+       if(tool_buttons[i].Accel) gtk_widget_add_accelerator(GTK_WIDGET(tool_bar->buttons[i]), "clicked", agMain,tool_buttons[i].Accel, MOD_KEY, GTK_ACCEL_VISIBLE);
+       if(tool_buttons[i].tooltip!=NULL) gtk_tool_item_set_tooltip_text(tool_bar->buttons[i],tool_buttons[i].tooltip);
 
       RFM_ChildAttribs *child_attribs = calloc(1,sizeof(RFM_ChildAttribs));
       child_attribs->RunCmd = tool_buttons[i].RunCmd;
@@ -1951,7 +1976,7 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
       child_attribs->customCallBackFunc = tool_buttons[i].func;
       child_attribs->customCallbackUserData = rfmCtx;
 
-      g_signal_connect(userButton, "clicked", G_CALLBACK(exec_user_tool),child_attribs);
+      g_signal_connect(tool_bar->buttons[i], "clicked", G_CALLBACK(exec_user_tool),child_attribs);
 
      }
    }
