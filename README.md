@@ -40,23 +40,25 @@ alias locatepwd='locate $(pwd)'
  locatepwd|grep .md$|rfm
 ```
 
-更新20230715:可以用如下命令打开当前目录下(包含子目录)的文件. 
-```
-find |rfm -p100 -l
-```
-
-也可以用[其他方法获取文件完整路径](https://blog.csdn.net/yaxuan88521/article/details/128172956),比如：
-
-```
-ls|xargs readlink -f|rfm
-ls|xargs realpath|rfm
-```
 
 更新20230706:接受相对路径文件名作为管道输入(代码调用canonicalize_file_name函数,同上面realpath命令):
 ```
 ls | rfm
 #有时ls会多列输出,要用参数 -w1 指明显示一列
 ls -w1 |rfm
+```
+
+更新20230715:可以用如下命令打开当前目录下(包含子目录)的文件, 显示git 状态和commit message. 
+```
+find |rfm -p100 -l
+```
+
+
+也可以用[其他方法获取文件完整路径](https://blog.csdn.net/yaxuan88521/article/details/128172956),比如：
+
+```
+ls|xargs readlink -f|rfm
+ls|xargs realpath|rfm
 ```
 
 
