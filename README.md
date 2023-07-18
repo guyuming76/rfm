@@ -105,7 +105,7 @@ G_MESSAGES_DEBUG=rfm rfm|grep g_spawn
 参见：
 https://blog.gtk.org/2017/05/04/logging-and-more/
 
-##gentoo上gdk-pixbuf这个包及其USE flag ##
+## gentoo上gdk-pixbuf这个包及其USE flag ##
 
 我在gentoo笔记本上.jpg文件图标无法生成：
 ```thumbnail null, GError code:3, GError msg:Couldn’t recognize the image file format for file “/home/guyuming/plant/IMG_20230513_145210.jpg”```
