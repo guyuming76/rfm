@@ -398,7 +398,8 @@ static void free_child_attribs(RFM_ChildAttribs *child_attribs)
    g_free(child_attribs->stdOut);
    g_free(child_attribs->stdErr);
    g_free(child_attribs->name);
-   g_free(child_attribs->customCallbackUserData);
+   //TODO: how can we memcpy the content of customCallbackUserData and free it here?
+   //g_free(child_attribs->customCallbackUserData);
    g_free(child_attribs);
 }
 
@@ -1189,7 +1190,7 @@ static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,
       }
 
 #ifdef GitIntegration
-      gchar * gitStatus=g_hash_table_lookup(gitTrackedFiles, fileAttributes->path);
+      gchar * gitStatus=g_strdup(g_hash_table_lookup(gitTrackedFiles, fileAttributes->path));
       //gchar * git_commit_msg=g_hash_table_lookup(gitCommitMsg,fileAttributes->path);
 #endif
       fileAttributes->mime_sort=g_strjoin(NULL,fileAttributes->mime_root,fileAttributes->mime_sub_type,NULL);
@@ -1410,12 +1411,11 @@ static gboolean fill_fileAttributeList_with_filenames_from_pipeline_stdin_and_th
 static void clear_store(void)
 {
    g_hash_table_remove_all(thumb_hash);
+   gtk_list_store_clear(store); /* This will g_free and g_object_unref */
 #ifdef GitIntegration
    g_hash_table_remove_all(gitTrackedFiles);
    //g_hash_table_remove_all(gitCommitMsg);
 #endif
-   
-   gtk_list_store_clear(store); /* This will g_free and g_object_unref */
    g_list_free_full(rfm_fileAttributeList, (GDestroyNotify)free_fileAttributes);
    rfm_fileAttributeList=NULL;
 }
