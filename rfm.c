@@ -54,7 +54,7 @@ typedef struct {
    gchar *runName;
    gchar *runRoot;
    gchar *runSub;
-   const gchar **runCmdName;
+   const gchar **runCmd;
    gint  runOpts;
    gboolean (*showCondition)();
 } RFM_RunAction;
@@ -1553,7 +1553,7 @@ static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointe
       }
 
       if (r_idx != -1)
-         g_spawn_wrapper(run_actions[r_idx].runCmdName, file_list, 2, run_actions[r_idx].runOpts, NULL,TRUE,NULL,NULL);
+         g_spawn_wrapper(run_actions[r_idx].runCmd, file_list, 2, run_actions[r_idx].runOpts, NULL,TRUE,NULL,NULL);
       else {
          msg=g_strdup_printf("No run action defined for mime type:\n %s/%s\n", fileAttributes->mime_root, fileAttributes->mime_sub_type);
          show_msgbox(msg, "Run Action", GTK_MESSAGE_INFO);
@@ -1762,7 +1762,7 @@ static RFM_fileMenu *setup_file_menu(RFM_ctx * rfmCtx){
       // this child_attribs will be freed by g_spawn_wrapper call tree if menuitem clicked,
       // and it will be copied to a new instance in file_menu_exec.
       // but if menuitem not clicked? currently, setup_file_menu won't be called many times, so, it will be freed after application quit, no need to free manually.
-      child_attribs->RunCmd = run_actions[i].runCmdName;      
+      child_attribs->RunCmd = run_actions[i].runCmd;      
       child_attribs->runOpts = run_actions[i].runOpts;
       child_attribs->stdOut = NULL;
       child_attribs->stdErr = NULL;

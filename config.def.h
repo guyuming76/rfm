@@ -85,7 +85,7 @@ static const char *git_commit[] = { rfmBinPath "/rfmVTforCMD.sh", rfmBinPath "/r
  */
 
 static RFM_RunAction run_actions[] = {
-   /* name           mime root        mime sub type            runCmdName          	run options 		showCondition	*/
+   /* name           mime root        mime sub type            runCmd            	run options 		showCondition	*/
    { RunActionCopy,  "*",              "*",                    f_cp,             	RFM_EXEC_NONE, 		NULL },
    { RunActionMove,  "*",              "*",                    f_mv,             	RFM_EXEC_STDOUT,	NULL },
    { RunActionDelete, "*",             "*",                    f_rm,             	RFM_EXEC_STDOUT,	NULL },
