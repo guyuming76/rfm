@@ -167,7 +167,7 @@ static RFM_ToolButtons tool_buttons[] = {
    { "Info",         "dialog-information",      info_clicked,           NULL,              TRUE,           TRUE,      0,                      NULL,                   NULL},
    { "Home",         "go-home",                 home_clicked,           NULL,              FALSE,          TRUE,      0,                      NULL,                   NULL},
 #ifdef GitIntegration
-   { "gitCommit",    NULL,                      NULL,                   git_commit,        TRUE,           TRUE,      0,                      NULL,                   cur_path_is_git_repo  },
+   { "gitCommit",    NULL,                      refresh_store,          git_commit,        TRUE,           TRUE,      0,                      NULL,                   cur_path_is_git_repo  },
 #endif
    { "cpPath",       NULL,                      copy_curPath_to_clipboard, NULL,           TRUE,           TRUE,      0,                      "copy current path to clipboard", NULL},
 // { "mounts",       "drive-harddisk",          show_disk_devices,      dev_disk_path },
