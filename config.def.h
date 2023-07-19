@@ -66,7 +66,7 @@ static const char *git_commit[] = { rfmBinPath "/rfmVTforCMD.sh", rfmBinPath "/r
 #endif
 
 
-/* Run actions
+/* Menu Items
  * NOTES: The first matched mime type will become the default action for that kind of file
  *        (i.e. double click opens)
  *        If the mime root is "*", the action will be shown for all files, but will
@@ -84,7 +84,7 @@ static const char *git_commit[] = { rfmBinPath "/rfmVTforCMD.sh", rfmBinPath "/r
  *   RFM_EXEC_STDOUT - run and show output in stdout of parent process.
  */
 
-static RFM_RunAction run_actions[] = {
+static RFM_MenuItem run_actions[] = {
    /* name           mime root        mime sub type            runCmd            	run options 		showCondition	*/
    { RunActionCopy,  "*",              "*",                    f_cp,             	RFM_EXEC_NONE, 		NULL },
    { RunActionMove,  "*",              "*",                    f_mv,             	RFM_EXEC_STDOUT,	NULL },

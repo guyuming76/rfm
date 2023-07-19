@@ -57,7 +57,7 @@ typedef struct {
    const gchar **runCmd;
    gint  runOpts;
    gboolean (*showCondition)();
-} RFM_RunAction;
+} RFM_MenuItem;
 
 typedef struct {
    gchar *buttonName;
