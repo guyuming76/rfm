@@ -263,7 +263,7 @@ static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guin
 static GHashTable *get_mount_points(void);
 static gboolean mounts_handler(GUnixMountMonitor *monitor, gpointer rfmCtx);
 #ifdef GitIntegration
-static void readGitCommitMsgFromGitLogCmdAndInsertIntoHashTable(RFM_ChildAttribs * childAttribs);
+static void readGitCommitMsgFromGitLogCmdAndUpdateStore(RFM_ChildAttribs * childAttribs);
 static void load_GitTrackedFiles_into_HashTable();
 static void load_gitCommitMsg_for_store_row(GtkTreeIter *iter);
 #endif
@@ -1142,7 +1142,7 @@ static void load_gitCommitMsg_for_store_row(GtkTreeIter *iter){
 	file_list = g_list_append(file_list,g_value_get_string(&full_path));
 	GtkTreeIter **iterPointerPointer=calloc(1, sizeof(GtkTreeIter**));//This will be passed into childAttribs, which will be freed in g_spawn_wrapper. but we shall not free iter, so i use pointer to pointer here.
 	*iterPointerPointer=iter;
-	if(!g_spawn_wrapper(git_commit_message_cmd, file_list,1,RFM_EXEC_OUPUT_READ_BY_PROGRAM ,NULL, FALSE, readGitCommitMsgFromGitLogCmdAndInsertIntoHashTable, iterPointerPointer)){
+	if(!g_spawn_wrapper(git_commit_message_cmd, file_list,1,RFM_EXEC_OUPUT_READ_BY_PROGRAM ,NULL, FALSE, readGitCommitMsgFromGitLogCmdAndUpdateStore, iterPointerPointer)){
 
 	}
       }
@@ -1239,7 +1239,7 @@ static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,
 
 
 #ifdef GitIntegration
-static void readGitCommitMsgFromGitLogCmdAndInsertIntoHashTable(RFM_ChildAttribs * childAttribs){
+static void readGitCommitMsgFromGitLogCmdAndUpdateStore(RFM_ChildAttribs * childAttribs){
    gchar * commitMsg=childAttribs->stdOut;
    commitMsg[strcspn(commitMsg, "\n")] = 0;
    g_debug("gitCommitMsg:%s",commitMsg);
