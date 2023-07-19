@@ -152,7 +152,7 @@ static RFM_RunAction run_actions[] = {
 //   set_rfm_curPath((char*)path[0]);
 //}
 
-static RFM_ToolButtons tool_buttons[] = {
+static RFM_ToolButton tool_buttons[] = {
    /* name           icon                       function    		RunCmd             readFromPipe    curPath    Accel                  tooltip                showCondition*/
    { SwitchView,     NULL,                      switch_view,            NULL,              TRUE,           TRUE,      GDK_KEY_slash,         "MOD+/",                 NULL},
    { Up,             "go-up",                   up_clicked,             NULL,              FALSE,          TRUE,      GDK_KEY_Up,            "MOD+up arrow",          NULL},

@@ -69,7 +69,7 @@ typedef struct {
    guint Accel;
    gchar *tooltip;
    gboolean (*showCondition)();
-} RFM_ToolButtons;
+} RFM_ToolButton;
 
 typedef struct {
    gchar *name;
