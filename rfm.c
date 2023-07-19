@@ -254,6 +254,8 @@ static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer rfmCtx
 static void inotify_insert_item(gchar *name, gboolean is_dir);
 static gboolean delayed_refreshAll(gpointer user_data);
 static void refresh_store(RFM_ctx *rfmCtx);
+static void clear_store(void);
+static void rfm_stop_all(RFM_ctx *rfmCtx);
 static gboolean fill_fileAttributeList_with_filenames_from_pipeline_stdin_and_then_insert_into_store();
 static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store_in_each_call(GDir *dir);
 static void Iterate_through_fileAttribute_list_to_insert_into_store();
@@ -290,11 +292,9 @@ static gboolean path_is_selected(GtkWidget *widget, gboolean treeview, GtkTreePa
 static void exec_user_tool(GtkToolItem *item, RFM_ChildAttribs *childAttribs);
 static void up_clicked(gpointer user_data);
 static void home_clicked(gpointer user_data);
-static void refresh_clicked(RFM_ctx *rfmCtx);
 static void PreviousPage(RFM_ctx *rfmCtx);
 static void NextPage(RFM_ctx *rfmCtx);
 static void info_clicked(gpointer user_data);
-static void stop_clicked(RFM_ctx *rfmCtx);
 static void tool_menu_clicked(RFM_ctx *rfmCtx);
 static void switch_view(RFM_ctx *rfmCtx);
 
@@ -1611,16 +1611,6 @@ static void up_clicked(gpointer user_data)
 static void home_clicked(gpointer user_data)
 {
    set_rfm_curPath(rfm_homePath);
-}
-
-static void stop_clicked(RFM_ctx *rfmCtx)
-{
-   rfm_stop_all(rfmCtx);
-}
-
-static void refresh_clicked(RFM_ctx *rfmCtx)
-{
-   refresh_store(rfmCtx);
 }
 
 static void info_clicked(gpointer user_data)
