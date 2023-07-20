@@ -47,7 +47,7 @@ typedef struct {
    gchar *thumbSub;
   //GdkPixbuf *(*func)(RFM_ThumbQueueData * thumbData);
    const gchar **thumbCmd;
-} RFM_Thumbnailers;
+} RFM_Thumbnailer;
 
 
 typedef struct {
@@ -497,7 +497,7 @@ static void show_child_output(RFM_ChildAttribs *child_attribs)
 
    if (child_attribs->stdErr!=NULL && strlen(child_attribs->stdErr)>0) {
       if (child_attribs->runOpts==RFM_EXEC_STDOUT || strlen(child_attribs->stdErr) > RFM_MX_MSGBOX_CHARS){
-         msg=g_strdup_printf("%s (%i): Finished with exit code %i.\n\n%s", child_attribs->name, child_attribs->pid, child_attribs->exitcode, child_attribs->stdErr);
+         msg=g_strdup_printf("%s (%i): Finished with exit code %i.\n%s", child_attribs->name, child_attribs->pid, child_attribs->exitcode, child_attribs->stdErr);
 	 g_warning("%s",msg);
       } else {
          msg=g_strdup_printf("%s (%i): Finished with exit code %i.\n\n%s", child_attribs->name, child_attribs->pid, child_attribs->exitcode, child_attribs->stdErr);

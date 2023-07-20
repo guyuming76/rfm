@@ -183,7 +183,7 @@ static RFM_ToolButton tool_buttons[] = {
 */
 
 
-static const RFM_Thumbnailers thumbnailers[] = {
+static const RFM_Thumbnailer thumbnailers[] = {
     /* mime root      mime sub type        thumbCmd */
     {"image", "*", NULL},
     {"video","mp4",ffmpegThumb},
