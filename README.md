@@ -89,6 +89,11 @@ GDK_BACKEND=x11 rfm
 Firefox 下载界面有个"open containning folder" 按钮，用文件管理器打开下载目录。我图形界面用DWL,没有KDE啥的设置默认文件管理器的功能。可以编辑 /usr/share/applications/mimeinfo.cache 文件，找到 inode/directory= 这一行，然后把 rfm.desktop 设置为等号后面第一项。我的rfm Makefile里面包含了rfm.desktop文件的安装。[参见](https://askubuntu.com/questions/267514/open-containing-folder-in-firefox-does-not-use-my-default-file-manager)
 
 
+#使用rfm配合emacs lsp-mode 查看源码#
+
+emacs lsp-mode 查看源码需要 compile_commands.json 文件, 我自己尝试的结果是需要在这个文件所在目录下启动emacs (为啥不能从任意目录下启动emacs,然后参数指明compile_commands.json文件路径?).
+可以在这个目录下启动rfm, 然后在目录间导航,找到感兴趣的源码文件在rfm里用emacs打开,这时,emacs进程的PWD环境变量值是当初rfm启动所在目录,而不一定是当前rfm里显示内容的目录,所以emacs可以方便找到compile_commands.json文件
+
 
 #一些TroubleShooting记录#
 
