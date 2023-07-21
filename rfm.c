@@ -312,7 +312,7 @@ static gchar **build_cmd_vector(const char **cmd, GList *file_list, long n_args,
 static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *child_attribs);
 static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_data);
 static void child_handler_to_set_finished_status_for_child_supervisor(GPid pid, gint status, RFM_ChildAttribs *child_attribs);
-static gboolean ShowChildOutput_ExecCallback_freeChildAttribs(RFM_ChildAttribs * child_attribs);
+static gboolean ExecCallback_freeChildAttribs(RFM_ChildAttribs * child_attribs);
 static void show_child_output(RFM_ChildAttribs *child_attribs);
 static int read_char_pipe(gint fd, ssize_t block_size, char **buffer);
 
@@ -422,9 +422,7 @@ static void rfm_stop_all(RFM_ctx *rfmCtx) {
 }
 
 
-static gboolean ShowChildOutput_ExecCallback_freeChildAttribs(RFM_ChildAttribs * child_attribs){
-   if (child_attribs->runOpts!=RFM_EXEC_OUPUT_READ_BY_PROGRAM) show_child_output(child_attribs);
-
+static gboolean ExecCallback_freeChildAttribs(RFM_ChildAttribs * child_attribs){
    if(child_attribs->exitcode==0 && (child_attribs->customCallBackFunc)!=NULL){
      if (child_attribs->runOpts!=RFM_EXEC_OUPUT_READ_BY_PROGRAM){
        //for old callback such as refresh_store, there is no need for child_attribs->stdout, so pass in customcallbackuserdata as parameter to remain compatible.
@@ -446,9 +444,10 @@ static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_
 
    read_char_pipe(child_attribs->stdOut_fd, PIPE_SZ, &child_attribs->stdOut);
    read_char_pipe(child_attribs->stdErr_fd, PIPE_SZ, &child_attribs->stdErr);
+   if (child_attribs->runOpts!=RFM_EXEC_OUPUT_READ_BY_PROGRAM) show_child_output(child_attribs);
    if (child_attribs->status==-1)
-      return TRUE;
-
+       return TRUE;
+   
    close(child_attribs->stdOut_fd);
    close(child_attribs->stdErr_fd);
    g_spawn_close_pid(child_attribs->pid);
@@ -457,7 +456,25 @@ static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_
    /* if (rfm_childList==NULL) */
    /*    gtk_widget_set_sensitive(GTK_WIDGET(info_button), FALSE); */
 
-   ShowChildOutput_ExecCallback_freeChildAttribs(child_attribs);
+   GError *err=NULL;
+   char * msg=NULL;
+
+   //for g_spawn_sync, the lass parameter is GError *, so why pass in NULL there and get it here instead?
+   if (g_spawn_check_wait_status(child_attribs->status, &err) && child_attribs->runOpts==RFM_EXEC_MOUNT)
+      set_rfm_curPath(RFM_MOUNT_MEDIA_PATH);
+
+   if (err!=NULL) {
+      child_attribs->exitcode = err->code;
+      if (g_error_matches(err, G_SPAWN_ERROR, G_SPAWN_ERROR_FAILED)) {
+	 msg=g_strdup_printf("%s (pid: %i): stopped: %s", child_attribs->name, child_attribs->pid, err->message);
+         show_msgbox(msg, child_attribs->name, GTK_MESSAGE_ERROR);
+         g_free(msg);
+      }
+      g_error_free(err);
+   }
+
+
+   ExecCallback_freeChildAttribs(child_attribs);
    return FALSE;
 }
 
@@ -469,33 +486,17 @@ static void child_handler_to_set_finished_status_for_child_supervisor(GPid pid, 
 static void show_child_output(RFM_ChildAttribs *child_attribs)
 {
    gchar *msg=NULL;
-   GError *err=NULL;
-
-   //for g_spawn_sync, the lass parameter is GError *, so why pass in NULL there and get it here instead?
-   if (g_spawn_check_wait_status(child_attribs->status, &err) && child_attribs->runOpts==RFM_EXEC_MOUNT)
-      set_rfm_curPath(RFM_MOUNT_MEDIA_PATH);
-
-   if (err!=NULL) {
-      child_attribs->exitcode = err->code;
-      
-      if (g_error_matches(err, G_SPAWN_ERROR, G_SPAWN_ERROR_FAILED)) {
-	 msg=g_strdup_printf("%s (pid: %i): stopped: %s", child_attribs->name, child_attribs->pid, err->message);
-         show_msgbox(msg, child_attribs->name, GTK_MESSAGE_ERROR);
-         g_free(msg);
-      }
-
-      g_error_free(err);
-   }
    
    /* Show any output we have regardless of error status */
-   if (child_attribs->stdOut!=NULL) {
+   if (child_attribs->stdOut!=NULL && child_attribs->stdOut[0]!=0) {
      if (child_attribs->runOpts==RFM_EXEC_STDOUT || strlen(child_attribs->stdOut) > RFM_MX_MSGBOX_CHARS)
-	 printf("%s\n",child_attribs->stdOut);
+	 printf("%s",child_attribs->stdOut);
       else
          show_msgbox(child_attribs->stdOut, child_attribs->name, GTK_MESSAGE_INFO);
+     child_attribs->stdOut[0]=0;
    }
 
-   if (child_attribs->stdErr!=NULL && strlen(child_attribs->stdErr)>0) {
+   if (child_attribs->stdErr!=NULL && child_attribs->stdErr[0]!=0 && strlen(child_attribs->stdErr)>0) {
       if (child_attribs->runOpts==RFM_EXEC_STDOUT || strlen(child_attribs->stdErr) > RFM_MX_MSGBOX_CHARS){
          msg=g_strdup_printf("%s (%i): Finished with exit code %i.\n%s", child_attribs->name, child_attribs->pid, child_attribs->exitcode, child_attribs->stdErr);
 	 g_warning("%s",msg);
@@ -504,6 +505,7 @@ static void show_child_output(RFM_ChildAttribs *child_attribs)
          show_msgbox(msg, child_attribs->name, GTK_MESSAGE_ERROR);
       }
       g_free(msg);
+      child_attribs->stdErr[0]=0;
    }
 }
 
@@ -740,7 +742,7 @@ static gboolean g_spawn_wrapper_(GList *file_list, long n_args, char *dest_path,
 	    free_child_attribs(child_attribs);
 	    ret = FALSE;
 	  } 
-	  ShowChildOutput_ExecCallback_freeChildAttribs(child_attribs);
+	  ExecCallback_freeChildAttribs(child_attribs);
          }
       }
       free(v);
