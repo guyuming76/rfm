@@ -2478,7 +2478,7 @@ int main(int argc, char *argv[])
 
    g_debug("test g_debug");
    g_info("test g_info");
-   g_warning("test g_warning");
+   g_warning("test g_warning. set env G_MESSAGES_DEBUG=rfm if you want to see g_debug output");
    //g_error("test g_error");
    //g_critical("test g_critical");
    
