@@ -1295,6 +1295,13 @@ static void load_GitTrackedFiles_into_HashTable()
       //copy rest of oneline into filename
       gchar *beginfilename = oneline + 3;
       gchar *filename=g_strndup(beginfilename,strlen(oneline)-3);
+      //TODO: remove ending "/"
+      //when i mkdir test in gitreporoot
+      //cd test
+      //touch testfile.md
+      //i can see ?? test/ in git status --porcelain result
+      //but the same file path in fileattributes does not have ending /, so , they won't match
+      //BTW, git status --porcelain don't have something like ?? test/testfile.md, is it a git issue?
       gchar *fullpath=g_build_filename(git_root,filename,NULL);         
       g_debug("gitTrackedFile Status:%s,%s",status,fullpath);
 
