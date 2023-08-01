@@ -11,3 +11,4 @@
 #define Copy "复制"
 #define Paste "粘帖"
 #define MoveTo "移至此"
+#define RunActionChangeOwner "更改所有者"

@@ -21,6 +21,7 @@ static const char *f_mv[]   = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmMov
 static const char *cp_selection_to_clipboard[] = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmCopySelectionToClipboard.sh",NULL};
 static const char *cp_clipboard_to_curPath[] = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmCopyClipboardToCurPath.sh",NULL };
 static const char *mv_clipboard_to_curPath[] = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmMoveClipboardToCurPath.sh",NULL };
+static const char *change_owner[] = { rfmBinPath "/rfmVTforCMD.sh", rfmBinPath "/rfmChangeOwner.sh",NULL };
 
 /* Run action commands: called as run_action <list of paths to selected files> */
 static const char *play_video[] = { "/usr/bin/mpv", NULL };
@@ -97,6 +98,7 @@ static RFM_MenuItem run_actions[] = {
 #endif
    { "Properties",   "*",              "*",                    properties,       	RFM_EXEC_STDOUT,	NULL },
    { "Open with...", "*",              "*",                    open_with,        	RFM_EXEC_NONE,		NULL },
+   { RunActionChangeOwner,"*",         "*",                    change_owner,            RFM_EXEC_NONE,          NULL },
    { "Open",         "image",          "*",                    show_image,       	RFM_EXEC_STDOUT,	NULL },
    { "Open",         "application",    "vnd.oasis.opendocument.text",          soffice,  RFM_EXEC_NONE,		NULL },
    { "Open",         "application",    "vnd.oasis.opendocument.spreadsheet",   soffice,  RFM_EXEC_NONE,		NULL },

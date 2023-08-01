@@ -11,3 +11,4 @@
 #define Copy "Copy"
 #define Paste "Paste"
 #define MoveTo "MoveToHere"
+#define RunActionChangeOwner "ChangeOwner"
