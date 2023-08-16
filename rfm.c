@@ -741,7 +741,7 @@ static gboolean g_spawn_wrapper_(GList *file_list, long n_args, char *dest_path,
             g_warning("g_spawn_sync: %s failed to execute. Check command in config.h!", v[0]);
 	    free_child_attribs(child_attribs);
 	    ret = FALSE;
-	  } 
+	  }
 	  ExecCallback_freeChildAttribs(child_attribs);
          }
       }
@@ -1527,6 +1527,7 @@ static void set_rfm_curPath(gchar* path)
    }
 #ifdef GitIntegration
    g_spawn_wrapper(git_inside_work_tree_cmd, NULL, 0, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, FALSE, set_curPath_is_git_repo, NULL);
+   //TODO: get current branch name with git branch --show-current
 #endif
 
 }
@@ -2350,6 +2351,8 @@ gio_in_stdin (GIOChannel *gio, GIOCondition condition, gpointer data)
 	    }
 	  }
 
+	}else if (len=0){ //user just press enter 
+	  //TODO:spawn a bash process with stdin stdout stderr redirected here
 	}
 	
         g_free (msg);  
