@@ -64,6 +64,7 @@ static const char *git_log_cmd[] = { rfmBinPath "/rfmVTforCMD_hold.sh","/usr/bin
 static const char *tig_cmd[] = { rfmBinPath "/rfmVTforCMD.sh","/usr/bin/tig",NULL};
 static const char *git_show_pics_cmd[] = { rfmBinPath "/rfmVTforCMD.sh", rfmBinPath "/rfmGitShowPictures.sh",NULL};
 static const char *git_commit[] = { rfmBinPath "/rfmVTforCMD.sh", rfmBinPath "/rfmGitCommit.sh",NULL};
+static const char *git_current_branch_cmd[] =  { "/usr/bin/git","branch","--show-current",NULL };
 #endif
 
 

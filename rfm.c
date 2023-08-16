@@ -1488,6 +1488,22 @@ static void set_curPath_is_git_repo(gpointer *child_attribs)
   
   g_debug("curPath_is_git_repo:%d",curPath_is_git_repo);
 }
+
+static void set_window_title_with_git_branch(gpointer *child_attribs) {
+  char *child_StdOut=((RFM_ChildAttribs *)child_attribs)->stdOut;
+  if(child_StdOut!=NULL) {
+    child_StdOut[strcspn(child_StdOut, "\n")] = 0;
+    g_debug("git current branch:%d",child_StdOut);
+    gchar * title=g_strdup_printf("%s [%s]",rfm_curPath,child_StdOut);
+    gtk_window_set_title(GTK_WINDOW(window), title);
+    g_free(title);
+  }else{
+    g_warning("failed to get git current branch!");
+  }
+  
+
+
+}
 #endif
 
 
@@ -1527,7 +1543,8 @@ static void set_rfm_curPath(gchar* path)
    }
 #ifdef GitIntegration
    g_spawn_wrapper(git_inside_work_tree_cmd, NULL, 0, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, FALSE, set_curPath_is_git_repo, NULL);
-   //TODO: get current branch name with git branch --show-current
+   if (curPath_is_git_repo)
+      g_spawn_wrapper(git_current_branch_cmd, NULL, 0, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, TRUE, set_window_title_with_git_branch, NULL);
 #endif
 
 }
