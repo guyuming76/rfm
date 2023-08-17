@@ -688,6 +688,11 @@ static gchar **build_cmd_vector(const char **cmd, GList *file_list, long n_args,
    return v;
 }
 
+void GSpawnChildSetupFunc_setenv(gpointer user_data) {
+      RFM_ChildAttribs* child_attribs=(RFM_ChildAttribs*) user_data;
+      //if (rfm_curPath!=NULL) setenv("PWD",rfm_curPath,TRUE);
+      //working_directory won't update child process PWD env, which inherits parents PWD env,why?
+}
 
 #define PRINT_STR_ARRAY(v)  for (int i=0;v[i];i++) printf("%s ",v[i]);printf("\n");
 
@@ -708,19 +713,19 @@ static gboolean g_spawn_wrapper_(GList *file_list, long n_args, char *dest_path,
       if (child_attribs->runOpts==RFM_EXEC_NONE) {
         if (child_attribs->spawn_async) {
 
-          g_debug("g_spawn_async, workingdir:%s, argv:%s, G_SPAWN_STDOUT_TO_DEV_NULL|G_SPAWN_STDERR_TO_DEV_NULL",rfm_curPath,v[0]);
+          g_debug("g_spawn_async, workingdir:%s, argv:%s, G_SPAWN_STDOUT_TO_DEV_NULL",rfm_curPath,v[0]);
 
-          if (!g_spawn_async(rfm_curPath, v, NULL, G_SPAWN_STDOUT_TO_DEV_NULL|G_SPAWN_STDERR_TO_DEV_NULL, NULL, NULL, NULL, NULL)){
+          if (!g_spawn_async(rfm_curPath, v,NULL, G_SPAWN_STDOUT_TO_DEV_NULL, GSpawnChildSetupFunc_setenv,child_attribs, NULL, NULL)){
             g_warning("g_spawn_wrapper with option RFM_EXEC_NONE: %s failed to execute. Check command in config.h!", v[0]);
 	    ret = FALSE;
 	  }
 	  //for RFM_EXEC_NONE since no child PID is returned, no way to g_child_add_watch, so, no callbackfunc invoke here
         } else {
 
-          g_debug("g_spawn_sync, workingdir:%s, argv:%s, G_SPAWN_STDOUT_TO_DEV_NULL|G_SPAWN_STDERR_TO_DEV_NULL",rfm_curPath,v[0]);
+          g_debug("g_spawn_sync, workingdir:%s, argv:%s, G_SPAWN_STDOUT_TO_DEV_NULL",rfm_curPath,v[0]);
 
 
-          if (!g_spawn_sync(rfm_curPath, v, NULL, G_SPAWN_STDERR_TO_DEV_NULL|G_SPAWN_STDOUT_TO_DEV_NULL, NULL, NULL, NULL, NULL,NULL,NULL)){
+          if (!g_spawn_sync(rfm_curPath, v, NULL, G_SPAWN_STDOUT_TO_DEV_NULL, NULL, NULL, NULL, NULL,NULL,NULL)){
             g_warning("g_spawn_wrapper with option RFM_EXEC_NONE: %s failed to execute. Check command in config.h!", v[0]);
 	    ret = FALSE;
 	  };
@@ -2369,15 +2374,24 @@ gio_in_stdin (GIOChannel *gio, GIOCondition condition, gpointer data)
 	    if (S_ISDIR(addr_info.st_mode)) {
 	      char * destpath = NULL;
 	      destpath = canonicalize_file_name(addr);
-	      if (destpath!=NULL){
-		g_debug("canonicalized destpath: %s",destpath);
-		set_rfm_curPath(destpath);
-		g_free(destpath);
-	      }
-	    }
-	  }
-
-	}else if (len=0){ //user just press enter 
+              if (destpath != NULL) {
+               g_debug("canonicalized destpath: %s", destpath);
+               set_rfm_curPath(destpath);
+               g_free(destpath);
+              }
+            }
+          }
+        }else if (g_strcmp0(g_utf8_substring(msg, 0, 6),"setpwd")==0) {
+	  setenv("PWD",rfm_curPath,1);
+	  printf("%s\n",getenv("PWD"));
+        }else if (g_strcmp0(g_utf8_substring(msg, 0, 3),"pwd")==0) {
+	  printf("%s\n",getenv("PWD"));
+        }else if (g_strcmp0(g_utf8_substring(msg, 0, 1),"\n")==0) {
+	  printf("commands for current window:\n");
+	  printf("    pwd       get rfm env PWD\n");
+	  printf("    setpwd   set rfm env PWD with current directory\n");
+	  printf("    cd .        go to env PWD\n");
+        }else { 
 	  //TODO:spawn a bash process with stdin stdout stderr redirected here
 	}
 	
