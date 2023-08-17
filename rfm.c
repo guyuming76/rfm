@@ -288,7 +288,8 @@ static GList* get_view_selection_list(GtkWidget * view, gboolean treeview, GtkTr
 static void set_view_selection_list(GtkWidget *view, gboolean treeview,GList *selectionList);
 static gboolean path_is_selected(GtkWidget *widget, gboolean treeview, GtkTreePath *path);
 
-//callback function for tool_buttons. Its possible to make function such as home_clicked as callback directly, instead of use exec_user_tool as a wrapper. However,i would add GtkToolItems as first parameter for so many different callback functions then.
+/* callback function for tool_buttons. Its possible to make function such as home_clicked as callback directly, instead of use exec_user_tool as a wrapper. However,i would add GtkToolItems as first parameter for so many different callback functions then. */
+/* since g_spawn_wrapper will free child_attribs, and we don't want the childAttribs object associated with UI interface item to be freed, we duplicate childAttribs here. */
 static void exec_user_tool(GtkToolItem *item, RFM_ChildAttribs *childAttribs);
 static void up_clicked(gpointer user_data);
 static void home_clicked(gpointer user_data);
@@ -297,8 +298,8 @@ static void NextPage(RFM_ctx *rfmCtx);
 static void info_clicked(gpointer user_data);
 static void tool_menu_clicked(RFM_ctx *rfmCtx);
 static void switch_view(RFM_ctx *rfmCtx);
-
-//callback function for file menu
+/* callback function for file menu */
+/* since g_spawn_wrapper will free child_attribs, and we don't want the childAttribs object associated with UI interface item to be freed, we duplicate childAttribs here. */
 static void file_menu_exec(GtkMenuItem *menuitem, RFM_ChildAttribs *childAttribs);
 static RFM_fileMenu *setup_file_menu(RFM_ctx * rfmCtx);
 static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx);
@@ -306,8 +307,13 @@ static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx);
 static void copy_curPath_to_clipboard(GtkWidget *menuitem, gpointer user_data);
 
 static void g_spawn_wrapper_for_selected_fileList_(RFM_ChildAttribs *childAttribs);
+/* instantiate childAttribs and call g_spawn_wrapper_ */
 static gboolean g_spawn_wrapper(const char **action, GList *file_list, long n_args, int run_opts, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData);
+/* call build_cmd_vector to create the argv parameter for g_spawn_* */
+/* call different g_spawn_* functions based on child_attribs->spawn_async and child_attribs->runOpts */
+/* free child_attribs */
 static gboolean g_spawn_wrapper_(GList *file_list, long n_args, char *dest_path, RFM_ChildAttribs * childAttribs);
+/* create argv parameter for g_spawn functions  */
 static gchar **build_cmd_vector(const char **cmd, GList *file_list, long n_args, char *dest_path);
 static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *child_attribs);
 static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_data);
@@ -684,6 +690,7 @@ static gchar **build_cmd_vector(const char **cmd, GList *file_list, long n_args,
 
 
 #define PRINT_STR_ARRAY(v)  for (int i=0;v[i];i++) printf("%s ",v[i]);printf("\n");
+
 static gboolean g_spawn_wrapper_(GList *file_list, long n_args, char *dest_path, RFM_ChildAttribs * child_attribs)
 {
    gchar **v=NULL;
@@ -1664,6 +1671,7 @@ static void info_clicked(gpointer user_data)
    g_free(msg);
 }
 
+
 static void exec_user_tool(GtkToolItem *item, RFM_ChildAttribs *childAttribs)
 {
    if (childAttribs->RunCmd==NULL) /* Argument is an internal function */
@@ -1746,7 +1754,6 @@ static void g_spawn_wrapper_for_selected_fileList_(RFM_ChildAttribs *childAttrib
       g_list_free(actionFileList); /* Do not free list elements: owned by GList rfm_fileAttributeList */
    }
 }
-
 
 static void file_menu_exec(GtkMenuItem *menuitem, RFM_ChildAttribs *childAttribs)
 { 
@@ -2347,21 +2354,23 @@ gio_in_stdin (GIOChannel *gio, GIOCondition condition, gpointer data)
   
         ret = g_io_channel_read_line (gio, &msg, &len, NULL, &err);  
         if (ret == G_IO_STATUS_ERROR)  
-                g_warning("Error reading: %s\n", err->message);  
+                g_warning("Error reading: %s", err->message);  
   
-        //printf ("Read %u bytes: %s\n", len, msg);
+        g_debug ("Read length %u from GIOChannel: %s", len, msg);
 	if (len>3 && g_strcmp0(g_utf8_substring(msg, 0, 3),"cd ")==0){
 	  gchar * addr=g_utf8_substring(msg, 3, len-1); //ending charactor for msg is \n
-	  //printf ("addr (%s)\n", addr);
+	  g_debug("cd %s", addr);
 
 	  struct stat addr_info;
-
+	  //TODO: when we set_rfm_curPath, we don't change rfm environment variable PWD
+	  //so if we navigate to other path in rfm GUI and run cd . here, the path '.' will be canonicalized to PWD value, this is useful sometimes, for example, when we want to go back to the "original" folder, but this is also very confusing.
+	  //so, shall we consider update env PWD value for rfm in set_rfm_curPath?
           if (stat(addr, &addr_info)==0) {
 	    if (S_ISDIR(addr_info.st_mode)) {
 	      char * destpath = NULL;
 	      destpath = canonicalize_file_name(addr);
 	      if (destpath!=NULL){
-		//printf("destpath (%s)\n",destpath);
+		g_debug("canonicalized destpath: %s",destpath);
 		set_rfm_curPath(destpath);
 		g_free(destpath);
 	      }
