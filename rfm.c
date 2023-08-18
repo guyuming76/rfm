@@ -2367,9 +2367,10 @@ gio_in_stdin (GIOChannel *gio, GIOCondition condition, gpointer data)
 	  g_debug("cd %s", addr);
 
 	  struct stat addr_info;
-	  //TODO: when we set_rfm_curPath, we don't change rfm environment variable PWD
-	  //so if we navigate to other path in rfm GUI and run cd . here, the path '.' will be canonicalized to PWD value, this is useful sometimes, for example, when we want to go back to the "original" folder, but this is also very confusing.
+	  //when we set_rfm_curPath, we don't change rfm environment variable PWD
 	  //so, shall we consider update env PWD value for rfm in set_rfm_curPath?
+	  //The answer is we should not, since we sometime, with need PWD, which child process will inherit, to be different from the directory of files selected that will be used by child process.
+	  //Instead, we use the setpwd command.
           if (stat(addr, &addr_info)==0) {
 	    if (S_ISDIR(addr_info.st_mode)) {
 	      char * destpath = NULL;
@@ -2390,7 +2391,7 @@ gio_in_stdin (GIOChannel *gio, GIOCondition condition, gpointer data)
 	  printf("commands for current window:\n");
 	  printf("    pwd       get rfm env PWD\n");
 	  printf("    setpwd   set rfm env PWD with current directory\n");
-	  printf("    cd .        go to env PWD\n");
+	  //printf("    cd .        go to env PWD\n");
         }else { 
 	  //TODO:spawn a bash process with stdin stdout stderr redirected here
 	}
