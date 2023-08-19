@@ -2382,18 +2382,39 @@ gio_in_stdin (GIOChannel *gio, GIOCondition condition, gpointer data)
               }
             }
           }
-        }else if (g_strcmp0(g_utf8_substring(msg, 0, 6),"setpwd")==0) {
+        }else if (g_strcmp0(msg,"setpwd\n")==0) {
 	  setenv("PWD",rfm_curPath,1);
 	  printf("%s\n",getenv("PWD"));
-        }else if (g_strcmp0(g_utf8_substring(msg, 0, 3),"pwd")==0) {
+        }else if (g_strcmp0(msg, "pwd\n")==0) {
 	  printf("%s\n",getenv("PWD"));
-        }else if (g_strcmp0(g_utf8_substring(msg, 0, 1),"\n")==0) {
+        }else if (g_strcmp0(msg,"quit\n")==0) {
+	  gtk_main_quit();
+        }else if (g_strcmp0(msg,"\n")==0) {
 	  printf("commands for current window:\n");
 	  printf("    pwd       get rfm env PWD\n");
 	  printf("    setpwd   set rfm env PWD with current directory\n");
-	  //printf("    cd .        go to env PWD\n");
-        }else { 
-	  //TODO:spawn a bash process with stdin stdout stderr redirected here
+	  printf("    cd address      go to address, note that PWD is not changed, just open address in rfm\n");
+	  printf("    quit          quit rfm\n");
+        }else if (len>1){ //it contains \n
+	  // turn msg into gchar** runCmd
+	  gchar**runCmd = g_strsplit(g_utf8_substring(msg, 0, len-1), " ", RFM_MX_ARGS);
+
+	  // combine runCmd with selected files to get gchar** v
+
+	  // g_spawn_async_with_pipe  to exec cmd v with   G_SPAWN_CHILD_INHERITS_STDIN | G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR
+
+	  /* RFM_ChildAttribs *child_attribs = calloc(1,sizeof(RFM_ChildAttribs)); */
+	  /* child_attribs->RunCmd = runCmd; */
+	  /* child_attribs->runOpts = RFM_EXEC_STDOUT; */
+	  /* child_attribs->stdOut = NULL; */
+	  /* child_attribs->stdErr = NULL; */
+	  /* child_attribs->spawn_async = TRUE; */
+	  /* child_attribs->name = "stdin"; */
+	  /* child_attribs->customCallBackFunc = NULL; */
+	  /* child_attribs->customCallbackUserData = NULL; */
+
+	  /* g_spawn_async_with_pipes_wrapper(runCmd, child_attribs); */
+	  g_spawn_async_with_pipes(rfm_curPath, runCmd, NULL, G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN | G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR , NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	}
 	
         g_free (msg);  
