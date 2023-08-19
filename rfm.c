@@ -710,7 +710,7 @@ static gboolean g_spawn_wrapper_(GList *file_list, long n_args, char *dest_path,
 	if (child_attribs->spawn_async) {
           g_debug("g_spawn_wrapper_: g_spawn_async, workingdir:%s, argv:%s, G_SPAWN_STDOUT_TO_DEV_NULL",rfm_curPath,v[0]);
 	  child_attribs->pid=-1;
-          if (!g_spawn_async(rfm_curPath, v,NULL, G_SPAWN_STDOUT_TO_DEV_NULL, GSpawnChildSetupFunc_setenv,child_attribs, &child_attribs->pid, NULL)){
+          if (!g_spawn_async(rfm_curPath, v,NULL, child_attribs->runOpts, GSpawnChildSetupFunc_setenv,child_attribs, &child_attribs->pid, NULL)){
             g_warning("g_spawn_wrapper_ with option RFM_EXEC_NONE: %s failed to execute. Check command in config.h!", v[0]);
 	    ret = FALSE;
 	  }
@@ -720,7 +720,7 @@ static gboolean g_spawn_wrapper_(GList *file_list, long n_args, char *dest_path,
           g_debug("g_spawn_sync, workingdir:%s, argv:%s, G_SPAWN_STDOUT_TO_DEV_NULL",rfm_curPath,v[0]);
 
 	  child_attribs->status=-1;
-          if (!g_spawn_sync(rfm_curPath, v, NULL, G_SPAWN_STDOUT_TO_DEV_NULL, GSpawnChildSetupFunc_setenv,child_attribs, NULL, NULL,&child_attribs->status,NULL)){
+          if (!g_spawn_sync(rfm_curPath, v, NULL, child_attribs->runOpts, GSpawnChildSetupFunc_setenv,child_attribs, NULL, NULL,&child_attribs->status,NULL)){
             g_warning("g_spawn_wrapper_ with option RFM_EXEC_NONE: %s failed to execute. Check command in config.h!", v[0]);
 	    ret = FALSE;
 	  };
@@ -740,13 +740,7 @@ static gboolean g_spawn_wrapper_(GList *file_list, long n_args, char *dest_path,
 	  child_attribs->status=-1;
           g_debug("g_spawn_wrapper_: g_spawn_sync, workingdir:%s, argv:%s ",rfm_curPath,v[0]);
 
-	  GSpawnFlags flags;
-          if (child_attribs->runOpts == RFM_EXEC_OUPUT_READ_BY_PROGRAM) {
-	    flags=G_SPAWN_DEFAULT;
-          } else {
-	    flags=G_SPAWN_CHILD_INHERITS_STDIN | G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR;
-          }
-          if (!g_spawn_sync(rfm_curPath, v, NULL,flags, GSpawnChildSetupFunc_setenv,child_attribs, &child_attribs->stdOut, &child_attribs->stdErr,&child_attribs->status,NULL)){
+         if (!g_spawn_sync(rfm_curPath, v, NULL,child_attribs->runOpts, GSpawnChildSetupFunc_setenv,child_attribs, &child_attribs->stdOut, &child_attribs->stdErr,&child_attribs->status,NULL)){
             g_warning("g_spawn_wrapper_:  g_spawn_sync %s failed to execute. Check command in config.h!", v[0]);
 	    free_child_attribs(child_attribs);
 	    ret = FALSE;
