@@ -714,6 +714,11 @@ static gboolean g_spawn_wrapper_(GList *file_list, long n_args, char *dest_path,
 	            g_warning("g_spawn_wrapper_, RFM_EXEC_NONE: %s failed to execute. Check command in config.h!", v[0]);
 	            ret = FALSE;
 	        }
+		//TODO: even we do not care about child output, error, and no callback, we need somewhere to free_child_attribs here with async call
+		//one solution is to use g_spawn_async_with_pipes_wrapper here
+	        //another possible solution maybe for RFM_EXEC_NONE, do not free_child_attribs, and do not duplicate child_attribs after UI widget click, no matter for sync or async call.
+		// I prefer solution 1.
+		
 	        //for RFM_EXEC_NONE, by defintion, no callbackfunc invoke here
            } else {
 	        g_debug("g_spawn_wrapper_->g_spawn_sync, workingdir:%s, argv:%s, RFM_EXEC_NONE",rfm_curPath,v[0]);
@@ -742,8 +747,8 @@ static gboolean g_spawn_wrapper_(GList *file_list, long n_args, char *dest_path,
 	            g_warning("g_spawn_wrapper_->g_spawn_sync %s failed to execute. Check command in config.h!", v[0]);
 	            free_child_attribs(child_attribs);
 	            ret = FALSE;
-	       }
-	       ExecCallback_freeChildAttribs(child_attribs);
+	       }else
+	            ExecCallback_freeChildAttribs(child_attribs);
           }
       }
       free(v);
