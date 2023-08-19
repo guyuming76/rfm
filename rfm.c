@@ -704,49 +704,47 @@ static gboolean g_spawn_wrapper_(GList *file_list, long n_args, char *dest_path,
         PRINT_STR_ARRAY(v);
       }
       if (child_attribs->runOpts==RFM_EXEC_NONE) {
-	//TODO: RFM_EXEC_NONE first means G_SPAWN_STDOUT_TO_DEV_NULL here, but what to do with stdin and stderr?
-	//maybe goes to g_debug or a log file?
+	  //TODO: RFM_EXEC_NONE first means G_SPAWN_STDOUT_TO_DEV_NULL here, but what to do with stdin and stderr?
+	  //maybe goes to g_debug or a log file?
 
-	if (child_attribs->spawn_async) {
-          g_debug("g_spawn_wrapper_: g_spawn_async, workingdir:%s, argv:%s, G_SPAWN_STDOUT_TO_DEV_NULL",rfm_curPath,v[0]);
-	  child_attribs->pid=-1;
-          if (!g_spawn_async(rfm_curPath, v,NULL, child_attribs->runOpts, GSpawnChildSetupFunc_setenv,child_attribs, &child_attribs->pid, NULL)){
-            g_warning("g_spawn_wrapper_ with option RFM_EXEC_NONE: %s failed to execute. Check command in config.h!", v[0]);
-	    ret = FALSE;
-	  }
-	  //for RFM_EXEC_NONE since no child PID is returned, no way to g_child_add_watch, so, no callbackfunc invoke here
-        } else {
+	   if (child_attribs->spawn_async) {
+                g_debug("g_spawn_wrapper_->g_spawn_async, workingdir:%s, argv:%s, RFM_EXEC_NONE",rfm_curPath,v[0]);
+	        child_attribs->pid=-1;
+                if (!g_spawn_async(rfm_curPath, v,NULL, child_attribs->runOpts, GSpawnChildSetupFunc_setenv,child_attribs, &child_attribs->pid, NULL)){
+	            g_warning("g_spawn_wrapper_, RFM_EXEC_NONE: %s failed to execute. Check command in config.h!", v[0]);
+	            ret = FALSE;
+	        }
+	        //for RFM_EXEC_NONE, by defintion, no callbackfunc invoke here
+           } else {
+	        g_debug("g_spawn_wrapper_->g_spawn_sync, workingdir:%s, argv:%s, RFM_EXEC_NONE",rfm_curPath,v[0]);
+	        child_attribs->status=-1;
+	        if (!g_spawn_sync(rfm_curPath, v, NULL, child_attribs->runOpts, GSpawnChildSetupFunc_setenv,child_attribs, NULL, NULL,&child_attribs->status,NULL)){
+	            g_warning("g_spawn_wrapper_, RFM_EXEC_NONE: %s failed to execute. Check command in config.h!", v[0]);
+	            ret = FALSE;
+	        };
+	        //for sync, even if callback is possible here, won't do it to align with the definition of RFM_EXEC_NONE
+	        free_child_attribs(child_attribs);
+          }
 
-          g_debug("g_spawn_sync, workingdir:%s, argv:%s, G_SPAWN_STDOUT_TO_DEV_NULL",rfm_curPath,v[0]);
-
-	  child_attribs->status=-1;
-          if (!g_spawn_sync(rfm_curPath, v, NULL, child_attribs->runOpts, GSpawnChildSetupFunc_setenv,child_attribs, NULL, NULL,&child_attribs->status,NULL)){
-            g_warning("g_spawn_wrapper_ with option RFM_EXEC_NONE: %s failed to execute. Check command in config.h!", v[0]);
-	    ret = FALSE;
-	  };
-	  //for sync, even if callback is possible here, won't do it to align with the definition of RFM_EXEC_NONE
-	  free_child_attribs(child_attribs);
-        }
       } else { // ! RFM_EXEC_NONE
 
-	if (child_attribs->spawn_async){
-          if (!g_spawn_async_with_pipes_wrapper(v, child_attribs)) {
-            g_warning("g_spawn_wrapper_: g_spawn_async_with_pipes_wrapper: %s failed to execute. Check command in config.h!",v[0]);
-            free_child_attribs(child_attribs); //这里是失败的异步，成功的异步会在  child_supervisor_to_ReadStdout_ShowOutput_ExecCallback 里面 free
-	    ret = FALSE;
-          };
-        } else {
-	  child_attribs->exitcode=0;
-	  child_attribs->status=-1;
-          g_debug("g_spawn_wrapper_: g_spawn_sync, workingdir:%s, argv:%s ",rfm_curPath,v[0]);
-
-         if (!g_spawn_sync(rfm_curPath, v, NULL,child_attribs->runOpts, GSpawnChildSetupFunc_setenv,child_attribs, &child_attribs->stdOut, &child_attribs->stdErr,&child_attribs->status,NULL)){
-            g_warning("g_spawn_wrapper_:  g_spawn_sync %s failed to execute. Check command in config.h!", v[0]);
-	    free_child_attribs(child_attribs);
-	    ret = FALSE;
-	  }
-	  ExecCallback_freeChildAttribs(child_attribs);
-         }
+	  if (child_attribs->spawn_async){
+	       if (!g_spawn_async_with_pipes_wrapper(v, child_attribs)) {
+                   g_warning("g_spawn_wrapper_->g_spawn_async_with_pipes_wrapper: %s failed to execute. Check command in config.h!",v[0]);
+                   free_child_attribs(child_attribs); //这里是失败的异步，成功的异步会在  child_supervisor_to_ReadStdout_ShowOutput_ExecCallback 里面 free
+	           ret = FALSE;
+               };
+          } else {
+	       child_attribs->exitcode=0;
+	       child_attribs->status=-1;
+	       g_debug("g_spawn_wrapper_->g_spawn_sync, workingdir:%s, argv:%s ",rfm_curPath,v[0]);
+	       if (!g_spawn_sync(rfm_curPath, v, NULL,child_attribs->runOpts, GSpawnChildSetupFunc_setenv,child_attribs, &child_attribs->stdOut, &child_attribs->stdErr,&child_attribs->status,NULL)){
+	            g_warning("g_spawn_wrapper_->g_spawn_sync %s failed to execute. Check command in config.h!", v[0]);
+	            free_child_attribs(child_attribs);
+	            ret = FALSE;
+	       }
+	       ExecCallback_freeChildAttribs(child_attribs);
+          }
       }
       free(v);
    }
