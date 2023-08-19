@@ -74,7 +74,7 @@ typedef struct {
 typedef struct {
    gchar *name;
    const gchar **RunCmd;
-   gint  runOpts;
+   GSpawnFlags  runOpts;
    GPid  pid;
    gint  stdOut_fd;
    gint  stdErr_fd;
@@ -166,16 +166,6 @@ enum {
    COL_GIT_COMMIT_MSG,
 #endif  
    NUM_COLS
-};
-
-enum {
-   RFM_EXEC_NONE, // according to find-reference, these seem to mean that no stdout in child process is needed by rfm
-   RFM_EXEC_PLAIN,
-   RFM_EXEC_INTERNAL, //i see Rodney use this in config.def.h for commands like copy move, but i don't know what it mean precisely,and i don't see program logic that reference this value, so i add RFM_EXEC_OUTPUT_HANDLED_HERE
-   RFM_EXEC_MOUNT,
-   RFM_EXEC_OUPUT_READ_BY_PROGRAM, // I need to read stdout of child process in rfm, but do not need to show to end user. With g_spawn_wrapper, no matter in sync or async mode, with RFM_EXEC_OUPUT_READ_BY_PROGRAM, callback function can have RFM_childAttribs, and RFM_childAttribs->stdout
-   //TODO: the last sentence in comment above is confusing, i don't remember what it mean myself.
-   RFM_EXEC_STDOUT,
 };
 
 static GtkWidget *window=NULL;      /* Main window */
@@ -467,8 +457,10 @@ static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_
    char * msg=NULL;
 
    //for g_spawn_sync, the lass parameter is GError *, so why pass in NULL there and get it here instead?
-   if (g_spawn_check_wait_status(child_attribs->status, &err) && child_attribs->runOpts==RFM_EXEC_MOUNT)
-      set_rfm_curPath(RFM_MOUNT_MEDIA_PATH);
+   /* if (g_spawn_check_wait_status(child_attribs->status, &err) && child_attribs->runOpts==RFM_EXEC_MOUNT) */
+   /*    set_rfm_curPath(RFM_MOUNT_MEDIA_PATH); */
+   g_spawn_check_wait_status(child_attribs->status, &err);
+   //TODO: after i change runOpts to GSpawnFlags, RFM_EXEC_MOUNT won't work, i don't understand what it for, maybe later, we can use fields such as runCmd or some naming conventions in runaction or childAttribs to indicate this type.
 
    if (err!=NULL) {
       child_attribs->exitcode = err->code;

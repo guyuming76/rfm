@@ -79,12 +79,16 @@ static const char *git_current_branch_cmd[] =  { "/usr/bin/git","branch","--show
  *        Any stdout may be displayed by defining the run option.
  * Run options are:
  *   RFM_EXEC_NONE   - run and forget; program is expected to show its own output
- *   RFM_EXEC_PLAIN  - run and show output in a plain text dialog window
  *   RFM_EXEC_MOUNT  - same as RFM_EXEC_PLAIN; this should be specified for the mount command.
  *                     causes the filer to auto switch on success to the directory defined by
  *                     #define RFM_MOUNT_MEDIA_PATH.
  *   RFM_EXEC_STDOUT - run and show output in stdout of parent process.
  */
+
+#define   RFM_EXEC_NONE     G_SPAWN_STDOUT_TO_DEV_NULL
+#define   RFM_EXEC_STDOUT   G_SPAWN_CHILD_INHERITS_STDIN | G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR
+#define   RFM_EXEC_OUPUT_READ_BY_PROGRAM G_SPAWN_DEFAULT
+#define   RFM_EXEC_MOUNT   G_SPAWN_CHILD_INHERITS_STDIN | G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR  //TODO: i don't know what this mean yet.
 
 static RFM_MenuItem run_actions[] = {
    /* name           mime root        mime sub type            runCmd            	run options 		showCondition	*/
@@ -121,19 +125,19 @@ static RFM_MenuItem run_actions[] = {
    { "Run",          "application",    "x-java-archive",       java,             	RFM_EXEC_NONE,		NULL },
    { "Open as text", "application",    "*",                    textEdit,         	RFM_EXEC_NONE,		NULL },
    { "Play",         "audio",          "*",                    play_audio,       	RFM_EXEC_NONE,		NULL },
-   { "flac info",    "audio",          "flac",                 metaflac,         	RFM_EXEC_PLAIN,		NULL },
-   { "info",         "audio",          "*",                    av_info,          	RFM_EXEC_PLAIN,		NULL },
+   { "flac info",    "audio",          "flac",                 metaflac,         	RFM_EXEC_STDOUT,	NULL },
+   { "info",         "audio",          "*",                    av_info,          	RFM_EXEC_STDOUT,	NULL },
    { "stats",        "audio",          "*",                    audioSpect,       	RFM_EXEC_STDOUT,	NULL },
    { "count",        "inode",          "directory",            du,               	RFM_EXEC_STDOUT,	NULL },
    { "archive",      "inode",          "directory",            create_archive,   	RFM_EXEC_NONE,		NULL },
-   { "mount",        "inode",          "mount-point",          mount,            	RFM_EXEC_PLAIN,		NULL },
-   { "unmount",      "inode",          "mount-point",          umount,           	RFM_EXEC_PLAIN,		NULL },
+   { "mount",        "inode",          "mount-point",          mount,            	RFM_EXEC_STDOUT,	NULL },
+   { "unmount",      "inode",          "mount-point",          umount,           	RFM_EXEC_STDOUT,	NULL },
    { "mount",        "inode",          "blockdevice",          mount,            	RFM_EXEC_MOUNT,		NULL },
-   { "unmount",      "inode",          "blockdevice",          umount,           	RFM_EXEC_PLAIN,		NULL },
+   { "unmount",      "inode",          "blockdevice",          umount,           	RFM_EXEC_STDOUT,	NULL },
    { "edit",         "text",           "*",                    textEdit,         	RFM_EXEC_NONE,		NULL },
    { "Open",         "text",           "html",                 www,              	RFM_EXEC_NONE,		NULL },
    { "Play",         "video",          "*",                    play_video,       	RFM_EXEC_NONE,		NULL },
-   { "info",         "video",          "*",                    av_info,          	RFM_EXEC_PLAIN,		NULL },
+   { "info",         "video",          "*",                    av_info,          	RFM_EXEC_STDOUT,	NULL },
    { "View",         "font",           "*",                    ftview,           	RFM_EXEC_NONE,		NULL },
 };
 
