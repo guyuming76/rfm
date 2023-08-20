@@ -2359,14 +2359,17 @@ gio_in_stdin (GIOChannel *gio, GIOCondition condition, gpointer data)
 {  
         GIOStatus ret;  
         GError *err = NULL;  
-        gchar *msg;  
-        gsize len;  
+        gchar *msg = NULL;  
+        gsize len = 0;  
   
-        ret = g_io_channel_read_line (gio, &msg, &len, NULL, &err);  
-        if (ret == G_IO_STATUS_ERROR)  
-                g_warning("Error reading: %s", err->message);  
-  
+        ret = g_io_channel_read_line (gio, &msg, &len, NULL, &err);
         g_debug ("Read length %u from GIOChannel: %s", len, msg);
+
+	if (ret == G_IO_STATUS_ERROR || msg==NULL || len <= 0) {
+	  g_warning("Error reading: %s", err->message);
+	  return FALSE;
+        }
+
 	if (len>3 && g_strcmp0(g_utf8_substring(msg, 0, 3),"cd ")==0){
 	  gchar * addr=g_utf8_substring(msg, 3, len-1); //ending charactor for msg is \n
 	  g_debug("cd %s", addr);
