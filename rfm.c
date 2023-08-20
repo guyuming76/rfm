@@ -2366,7 +2366,7 @@ gio_in_stdin (GIOChannel *gio, GIOCondition condition, gpointer data)
         g_debug ("Read length %u from GIOChannel: %s", len, msg);
 
 	if (ret == G_IO_STATUS_ERROR || msg==NULL || len <= 0) {
-	  g_warning("Error reading: %s", err->message);
+	  if (err != NULL) g_warning("Error reading: %s", err->message);
 	  return FALSE;
         }
 
