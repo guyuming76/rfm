@@ -611,7 +611,7 @@ static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *ch
    gboolean rv=FALSE;
    if (child_attribs!=NULL) {
       child_attribs->pid=-1;
-      rv=g_spawn_async_with_pipes(rfm_curPath, v, NULL, G_SPAWN_DO_NOT_REAP_CHILD | child_attribs->runOpts,
+      rv=g_spawn_async_with_pipes(rfm_curPath, v, NULL, G_SPAWN_DO_NOT_REAP_CHILD,
 				  GSpawnChildSetupFunc_setenv,child_attribs,
                                   &child_attribs->pid, NULL, &child_attribs->stdOut_fd,
                                   &child_attribs->stdErr_fd, NULL);
