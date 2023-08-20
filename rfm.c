@@ -420,7 +420,7 @@ static void rfm_stop_all(RFM_ctx *rfmCtx) {
 
 
 static gboolean ExecCallback_freeChildAttribs(RFM_ChildAttribs * child_attribs){
-   if(child_attribs->runOpts!=RFM_EXEC_NONE && child_attribs->exitcode==0 && (child_attribs->customCallBackFunc)!=NULL){
+   if(child_attribs->exitcode==0 && (child_attribs->customCallBackFunc)!=NULL){
      if (child_attribs->runOpts!=RFM_EXEC_OUPUT_READ_BY_PROGRAM){
        //for old callback such as refresh_store, there is no need for child_attribs->stdout, so pass in customcallbackuserdata as parameter to remain compatible.
 
