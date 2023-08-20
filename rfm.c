@@ -2392,10 +2392,11 @@ gio_in_stdin (GIOChannel *gio, GIOCondition condition, gpointer data)
 	    g_list_free(actionFileList); /* Do not free list elements: owned by GList rfm_fileAttributeList */
 	  }
 
-	  //g_spawn_async_with_pipes(rfm_curPath, runCmd, NULL, G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN | G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR , NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	  // htop, bash, nano, etc. works in g_spawn_sync mode
-	  g_spawn_sync(rfm_curPath, runCmd, NULL, G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN | G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR , NULL, NULL, NULL, NULL, NULL, NULL);
-
+	  g_spawn_sync(rfm_curPath, v, NULL, G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN | G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR , NULL, NULL, NULL, NULL, NULL, NULL);
+	  
+	  //g_spawn_async_with_pipes(rfm_curPath, v, NULL, G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN | G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR , NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	  g_free(v);
 	}
 	
         g_free (msg);  
