@@ -2357,12 +2357,14 @@ gio_in_stdin (GIOChannel *gio, GIOCondition condition, gpointer data)
 	  printf("%s\n",getenv("PWD"));
         }else if (g_strcmp0(msg,"quit\n")==0) {
 	  gtk_main_quit();
-        }else if (g_strcmp0(msg,"\n")==0) {
+        }else if (g_strcmp0(msg,"help\n")==0) {
 	  printf("commands for current window:\n");
 	  printf("    pwd       get rfm env PWD\n");
 	  printf("    setpwd   set rfm env PWD with current directory\n");
 	  printf("    cd address      go to address, note that PWD is not changed, just open address in rfm\n");
 	  printf("    quit          quit rfm\n");
+        }else if (g_strcmp0(msg,"\n")==0) {
+	  refresh_store((RFM_ctx *)data);
         }else if (len>1){ //it contains \n
 	  // turn msg into gchar** runCmd
 	  gchar**runCmd = g_strsplit(g_utf8_substring(msg, 0, len-1), " ", RFM_MX_ARGS);
@@ -2489,7 +2491,7 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
 
    if (!rfmReadFileNamesFromPipeStdIn){
      GIOChannel *channel_stdin = g_io_channel_unix_new (0);
-     g_io_add_watch_full(channel_stdin,0,G_IO_IN,gio_in_stdin,NULL,(GDestroyNotify)g_free);
+     g_io_add_watch_full(channel_stdin,0,G_IO_IN,gio_in_stdin, rfmCtx, (GDestroyNotify)g_free);
    }
 
    add_toolbar(rfm_main_box, defaultPixbufs, rfmCtx);
