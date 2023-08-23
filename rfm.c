@@ -2422,7 +2422,9 @@ gio_in_stdin (GIOChannel *gio, GIOCondition condition, gpointer data)
 	  /* child_attribs->customCallbackUserData = NULL; */
 
 	  /* g_spawn_async_with_pipes_wrapper(runCmd, child_attribs); */
-	  g_spawn_async_with_pipes(rfm_curPath, runCmd, NULL, G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN | G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR , NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	  //g_spawn_async_with_pipes(rfm_curPath, runCmd, NULL, G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN | G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR , NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	  // htop, bash, nano, etc. works in g_spawn_sync mode
+	  g_spawn_sync(rfm_curPath, runCmd, NULL, G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN | G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR , NULL, NULL, NULL, NULL, NULL, NULL);
 	}
 	
         g_free (msg);  
