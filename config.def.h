@@ -162,7 +162,7 @@ static RFM_MenuItem run_actions[] = {
 static RFM_ToolButton tool_buttons[] = {
    /* name           icon                       function    		RunCmd             readFromPipe    curPath    Accel                  tooltip                showCondition*/
    { SwitchView,     NULL,                      switch_view,            NULL,              TRUE,           TRUE,      GDK_KEY_slash,         "MOD+/",                 NULL},
-   { SwitchPipeDir,  NULL,                      toggle_readFromPipe,    NULL,              TRUE,           TRUE,      0,                      NULL,                   NULL},
+   { SwitchPipeDir,  NULL,                      toggle_readFromPipe,    NULL,              TRUE,           TRUE,      0,                      NULL,                   readFromPipe },
    { Up,             "go-up",                   up_clicked,             NULL,              FALSE,          TRUE,      GDK_KEY_Up,            "MOD+up arrow",          NULL},
    { "Refresh",      "view-refresh",            refresh_store,          NULL,              TRUE,           TRUE,      0,                      NULL,                   NULL},
    { Paste,          NULL,                      NULL,                   cp_clipboard_to_curPath, FALSE,    TRUE,      GDK_KEY_V,             "MOD+v",                 NULL},
@@ -175,7 +175,7 @@ static RFM_ToolButton tool_buttons[] = {
    { "Info",         "dialog-information",      info_clicked,           NULL,              TRUE,           TRUE,      0,                      NULL,                   NULL},
    { "Home",         "go-home",                 home_clicked,           NULL,              FALSE,          TRUE,      0,                      NULL,                   NULL},
 #ifdef GitIntegration
-   { "gitCommit",    NULL,                      refresh_store,          git_commit,        TRUE,           TRUE,      0,                      NULL,                   cur_path_is_git_repo  },
+   { "gitCommit",    NULL,                      refresh_store,          git_commit,        FALSE,          TRUE,      0,                      NULL,                   cur_path_is_git_repo  },
 #endif
    { "cpPath",       NULL,                      copy_curPath_to_clipboard, NULL,           TRUE,           TRUE,      0,                      "copy current path to clipboard", NULL},
 // { "mounts",       "drive-harddisk",          show_disk_devices,      dev_disk_path },

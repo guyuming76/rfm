@@ -234,6 +234,7 @@ static void die(const char *errstr, ...);
 static RFM_defaultPixbufs *load_default_pixbufs(void);
 static void set_rfm_curPath(gchar *path);
 static int setup(char *initDir, RFM_ctx *rfmCtx);
+static gboolean readFromPipe() { return FileNameList_FromPipeStdin!=NULL;}
 static void ReadFromPipeStdinIfAny();
 //read input from parent process stdin , and handle input such as
 //cd .
@@ -2661,6 +2662,9 @@ static void ReadFromPipeStdinIfAny()
            FileNameList_FromPipeStdin = g_list_first(FileNameList_FromPipeStdin);
          }
          CurrentDisplayingPage_ForFileNameListFromPipeStdIn=FileNameList_FromPipeStdin;
-     
+
+	 //char * tty=ttyname(0);
+	 //close(0);
+	 //open(tty, O_RDWR);
    }
 }
