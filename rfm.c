@@ -288,6 +288,7 @@ static void NextPage(RFM_ctx *rfmCtx);
 static void info_clicked(gpointer user_data);
 static void tool_menu_clicked(RFM_ctx *rfmCtx);
 static void switch_view(RFM_ctx *rfmCtx);
+static void toggle_readFromPipe(RFM_ctx *rfmCtx);
 /* callback function for file menu */
 /* since g_spawn_wrapper will free child_attribs, and we don't want the childAttribs object associated with UI interface item to be freed, we duplicate childAttribs here. */
 static void file_menu_exec(GtkMenuItem *menuitem, RFM_ChildAttribs *childAttribs);
@@ -1494,7 +1495,7 @@ static void set_rfm_curPath(gchar* path)
          g_free(rfm_curPath);
          rfm_curPath = g_strdup(path);
        }
-
+       //inotify_rm_watch(rfm_inotify_fd, rfm_curPath_wd);
    }else{
 
      rfm_new_wd=inotify_add_watch(rfm_inotify_fd, path, INOTIFY_MASK);
@@ -1921,7 +1922,8 @@ static void refresh_toolbar()
 	 gtk_widget_show(tool_bar->buttons[i]);
        else
 	 gtk_widget_hide(tool_bar->buttons[i]);
-     }
+     }else
+       gtk_widget_hide(tool_bar->buttons[i]);
    }
 }
 
@@ -1944,7 +1946,7 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
    gtk_window_add_accel_group(GTK_WINDOW(window), agMain);
 
    for (uint i = 0; i < G_N_ELEMENTS(tool_buttons); i++) {
-     if ((rfmReadFileNamesFromPipeStdIn && tool_buttons[i].readFromPipe) || (!rfmReadFileNamesFromPipeStdIn && tool_buttons[i].curPath)){
+     //if ((rfmReadFileNamesFromPipeStdIn && tool_buttons[i].readFromPipe) || (!rfmReadFileNamesFromPipeStdIn && tool_buttons[i].curPath)){
        GdkPixbuf *buttonIcon=NULL;
        if (tool_buttons[i].buttonIcon!=NULL) buttonIcon=gtk_icon_theme_load_icon(icon_theme, tool_buttons[i].buttonIcon, RFM_TOOL_SIZE, 0, NULL);
        if (buttonIcon==NULL)
@@ -1972,7 +1974,7 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
 
       g_signal_connect(tool_bar->buttons[i], "clicked", G_CALLBACK(exec_user_tool),child_attribs);
 
-     }
+      //}
    }
 
 }
@@ -2098,6 +2100,13 @@ static void switch_view(RFM_ctx *rfmCtx) {
   set_view_selection_list(icon_or_tree_view, treeview, selectionList);
 }
 
+static void toggle_readFromPipe(RFM_ctx *rfmCtx)
+{
+  if (FileNameList_FromPipeStdin != NULL && rfm_curPath!= NULL) { 
+    rfmReadFileNamesFromPipeStdIn=!rfmReadFileNamesFromPipeStdIn;
+    refresh_store(rfmCtx);
+  }
+}
 
 static void inotify_insert_item(gchar *name, gboolean is_dir)
 {
@@ -2173,6 +2182,8 @@ static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer user_d
       return TRUE;
    }
 
+   if (rfmReadFileNamesFromPipeStdIn) return TRUE;
+   
    while (i<len) {
       struct inotify_event *event=(struct inotify_event *) (buffer+i);
       

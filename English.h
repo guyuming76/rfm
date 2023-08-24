@@ -12,3 +12,4 @@
 #define Paste "Paste"
 #define MoveTo "MoveToHere"
 #define RunActionChangeOwner "ChangeOwner"
+#define SwitchPipeDir  "Pipe/Dir"
