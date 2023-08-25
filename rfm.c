@@ -214,6 +214,7 @@ static gboolean moreColumnsInTreeview=FALSE;
 // , instead of from a directory
 static gboolean rfmReadFileNamesFromPipeStdIn=FALSE;
 static GList *FileNameList_FromPipeStdin=NULL;
+static char* pipefd="0";
 static GList *CurrentDisplayingPage_ForFileNameListFromPipeStdIn;
 static gint DisplayingPageSize_ForFileNameListFromPipeStdIn=20;
 
@@ -2507,6 +2508,8 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
      g_io_add_watch_full(channel_stdin,0,G_IO_IN,gio_in_stdin, rfmCtx, (GDestroyNotify)g_free);
    }
 
+   ReadFromPipeStdinIfAny(pipefd);
+
    add_toolbar(rfm_main_box, defaultPixbufs, rfmCtx);
    refresh_store(rfmCtx);
    return 0;
@@ -2562,8 +2565,7 @@ int main(int argc, char *argv[])
    else
       rfm_do_thumbs=1;
 
-   
-   char* pipefd="0";
+ 
    int c=1;
    while (c<argc) {
      if (argv[c][0]=='-'){
@@ -2627,8 +2629,6 @@ int main(int argc, char *argv[])
     c++;
    }
 
-   ReadFromPipeStdinIfAny(pipefd);
-
    if (initDir == NULL) {
        if (getcwd(cwd, sizeof(cwd)) != NULL) /* getcwd returns NULL if cwd[] not big enough! */
            initDir=cwd;
@@ -2671,7 +2671,8 @@ static void ReadFromPipeStdinIfAny(char * fd)
          }
          CurrentDisplayingPage_ForFileNameListFromPipeStdIn=FileNameList_FromPipeStdin;
 
-	 fclose(pipeStream);
+	 //fclose(pipeStream);
+
 	 //char * tty=ttyname(0);
    }
 }
