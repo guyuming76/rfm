@@ -235,7 +235,7 @@ static RFM_defaultPixbufs *load_default_pixbufs(void);
 static void set_rfm_curPath(gchar *path);
 static int setup(char *initDir, RFM_ctx *rfmCtx);
 static gboolean readFromPipe() { return FileNameList_FromPipeStdin!=NULL;}
-static void ReadFromPipeStdinIfAny();
+static void ReadFromPipeStdinIfAny(char *fd);
 //read input from parent process stdin , and handle input such as
 //cd .
 //cd /tmp
@@ -2562,10 +2562,11 @@ int main(int argc, char *argv[])
    else
       rfm_do_thumbs=1;
 
-   ReadFromPipeStdinIfAny();
    
+   char* pipefd="0";
    int c=1;
-   while (c<argc  && argv[c][0]=='-') {
+   while (c<argc) {
+     if (argv[c][0]=='-'){
       switch (argv[c][1]) {
       case 'd':
 	 if (argc<=(c+1))
@@ -2590,11 +2591,11 @@ int main(int argc, char *argv[])
          printf("%s-%s, Copyright (C) Rodney Padgett, with minors modification by guyuming, see LICENSE for details\n", PROG_NAME, VERSION);
          return 0;
       case 'p':
-	 if (rfmReadFileNamesFromPipeStdIn){
+	 //if (rfmReadFileNamesFromPipeStdIn){
 	   gchar *pagesize=argv[c] + 2 * sizeof(gchar);
 	   int ps=atoi(pagesize);
 	   if (ps!=0) DisplayingPageSize_ForFileNameListFromPipeStdIn=ps;
-	 }
+	 //}
          break;
 
       case 'l':
@@ -2619,9 +2620,14 @@ int main(int argc, char *argv[])
       default:
 	 die("invalid parameter, %s -h for help\n",PROG_NAME);
       }
-
-      c++;
+    }
+    else if (g_strcmp0(g_utf8_substring(argv[c], 0, 8),"/dev/fd/")==0) {
+      pipefd=g_utf8_substring(argv[c], 8, strlen(argv[c]));
+    }
+    c++;
    }
+
+   ReadFromPipeStdinIfAny(pipefd);
 
    if (initDir == NULL) {
        if (getcwd(cwd, sizeof(cwd)) != NULL) /* getcwd returns NULL if cwd[] not big enough! */
@@ -2637,18 +2643,20 @@ int main(int argc, char *argv[])
    return 0;
 }
 
-static void ReadFromPipeStdinIfAny()
+static void ReadFromPipeStdinIfAny(char * fd)
 {
    static char buf[PATH_MAX];
-   int rslt = readlink("/proc/self/fd/0", buf, PATH_MAX);
+   char name[50];
+   sprintf(name,"/proc/self/fd/%s",fd);
+   int rslt = readlink(name, buf, PATH_MAX);
 
-   g_debug("readlink for /proc/self/fd/0: %s",buf);
+   g_debug("readlink for %s: %s",name,buf);
 
    if (strlen(buf)>4 && g_strcmp0(g_utf8_substring(buf, 0, 4),"pipe")==0){
 	 rfmReadFileNamesFromPipeStdIn=1;
-
+	 FILE *pipeStream=fdopen(atoi(fd),"r");
          gchar *oneline_stdin=calloc(1,PATH_MAX);
-         while (fgets(oneline_stdin, PATH_MAX, stdin) != NULL) {
+         while (fgets(oneline_stdin, PATH_MAX,pipeStream ) != NULL) {
    	   g_debug("%s",oneline_stdin);
            oneline_stdin[strcspn(oneline_stdin, "\n")] = 0; //manual set the last char to NULL to eliminate the trailing \n from fgets
 	   if (!ignored_filename(oneline_stdin)){
@@ -2663,8 +2671,7 @@ static void ReadFromPipeStdinIfAny()
          }
          CurrentDisplayingPage_ForFileNameListFromPipeStdIn=FileNameList_FromPipeStdin;
 
+	 fclose(pipeStream);
 	 //char * tty=ttyname(0);
-	 //close(0);
-	 //open(tty, O_RDWR);
    }
 }
