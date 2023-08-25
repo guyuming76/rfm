@@ -2654,8 +2654,9 @@ static void ReadFromPipeStdinIfAny(char * fd)
 
    if (strlen(buf)>4 && g_strcmp0(g_utf8_substring(buf, 0, 4),"pipe")==0){
 	 rfmReadFileNamesFromPipeStdIn=1;
-	 FILE *pipeStream=fdopen(atoi(fd),"r");
-         gchar *oneline_stdin=calloc(1,PATH_MAX);
+	 gchar *oneline_stdin=calloc(1,PATH_MAX);
+	 FILE *pipeStream = stdin;
+	 if (atoi(fd) != 0) pipeStream = fdopen(atoi(fd),"r");
          while (fgets(oneline_stdin, PATH_MAX,pipeStream ) != NULL) {
    	   g_debug("%s",oneline_stdin);
            oneline_stdin[strcspn(oneline_stdin, "\n")] = 0; //manual set the last char to NULL to eliminate the trailing \n from fgets
@@ -2671,8 +2672,11 @@ static void ReadFromPipeStdinIfAny(char * fd)
          }
          CurrentDisplayingPage_ForFileNameListFromPipeStdIn=FileNameList_FromPipeStdin;
 
-	 //fclose(pipeStream);
-
-	 //char * tty=ttyname(0);
+         if (atoi(fd) == 0) { // open parent stdin to replace pipe, so that giochannel for parent stdin will work
+           char *tty = ttyname(1);
+	   int pts=open(tty,O_RDWR);
+	   dup2(pts,0);
+	   close(pts);
+         }
    }
 }
