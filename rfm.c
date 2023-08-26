@@ -213,9 +213,11 @@ static gboolean moreColumnsInTreeview=FALSE;
 //      locate blablablaa |rfm
 // , instead of from a directory
 static gboolean rfmReadFileNamesFromPipeStdIn=FALSE;
-static GList *FileNameList_FromPipeStdin=NULL;
+static GList *FileNameList_FromPipeStdin = NULL;
+static gint fileNum=0;
+static gint currentFileNum=0;
 static char* pipefd="0";
-static GList *CurrentDisplayingPage_ForFileNameListFromPipeStdIn;
+static GList *CurrentDisplayingPage_ForFileNameListFromPipeStdIn=NULL;
 static gint DisplayingPageSize_ForFileNameListFromPipeStdIn=20;
 
 #ifdef GitIntegration
@@ -226,7 +228,8 @@ static gint DisplayingPageSize_ForFileNameListFromPipeStdIn=20;
 // the same as git status --porcelain
 static GHashTable *gitTrackedFiles;
 static gboolean curPath_is_git_repo = FALSE;
-static gboolean cur_path_is_git_repo(){return curPath_is_git_repo;}
+static gboolean cur_path_is_git_repo() { return curPath_is_git_repo; }
+static void set_window_title_with_git_branch(gpointer *child_attribs);
 #endif
 
 
@@ -1361,6 +1364,8 @@ static void TurnPage(RFM_ctx *rfmCtx, gboolean next) {
   }
   if (name != NULL && name!=CurrentDisplayingPage_ForFileNameListFromPipeStdIn) {
     CurrentDisplayingPage_ForFileNameListFromPipeStdIn = name;
+    if (next) currentFileNum=currentFileNum + DisplayingPageSize_ForFileNameListFromPipeStdIn;
+    else currentFileNum=currentFileNum - DisplayingPageSize_ForFileNameListFromPipeStdIn;
     refresh_store(rfmCtx);
   }
 }
@@ -1438,8 +1443,10 @@ static void refresh_store(RFM_ctx *rfmCtx)
 #ifdef GitIntegration
    if (curPath_is_git_repo) load_GitTrackedFiles_into_HashTable();
 #endif
-   
+
+   gchar * title;
    if (rfmReadFileNamesFromPipeStdIn) {
+     title=g_strdup_printf(" %d/%d, page size for file from pipe:%d",currentFileNum,fileNum,DisplayingPageSize_ForFileNameListFromPipeStdIn);
      fill_fileAttributeList_with_filenames_from_pipeline_stdin_and_then_insert_into_store();
    } else {
      gtk_tree_sortable_set_default_sort_func(GTK_TREE_SORTABLE(store), sort_func, NULL, NULL);
@@ -1447,9 +1454,16 @@ static void refresh_store(RFM_ctx *rfmCtx)
      GDir *dir=NULL;
      dir=g_dir_open(rfm_curPath, 0, NULL);
      if (!dir) return;
+     title=g_strdup(rfm_curPath);
      rfm_readDirSheduler=g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, (GSourceFunc)read_one_DirItem_into_fileAttributeList_and_insert_into_store_in_each_call, dir, (GDestroyNotify)g_dir_close);
   }
+   gtk_window_set_title(GTK_WINDOW(window), title);
+#ifdef GitIntegration
+   if (!rfmReadFileNamesFromPipeStdIn && curPath_is_git_repo)
+      g_spawn_wrapper(git_current_branch_cmd, NULL, 0, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, TRUE, set_window_title_with_git_branch, NULL);
+#endif
 
+   g_free(title);
    icon_or_tree_view = add_view(rfmCtx);
    gtk_widget_show_all(window);
    refresh_toolbar();
@@ -1480,9 +1494,6 @@ static void set_window_title_with_git_branch(gpointer *child_attribs) {
   }else{
     g_warning("failed to get git current branch!");
   }
-  
-
-
 }
 #endif
 
@@ -1518,13 +1529,13 @@ static void set_rfm_curPath(gchar* path)
       
        inotify_rm_watch(rfm_inotify_fd, rfm_curPath_wd);
        rfm_curPath_wd = rfm_new_wd;
-       gtk_window_set_title(GTK_WINDOW(window), rfm_curPath);
+       //gtk_window_set_title(GTK_WINDOW(window), rfm_curPath);
      }
    }
 #ifdef GitIntegration
    g_spawn_wrapper(git_inside_work_tree_cmd, NULL, 0, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, FALSE, set_curPath_is_git_repo, NULL);
-   if (curPath_is_git_repo)
-      g_spawn_wrapper(git_current_branch_cmd, NULL, 0, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, TRUE, set_window_title_with_git_branch, NULL);
+   /* if (!rfmReadFileNamesFromPipeStdIn && curPath_is_git_repo) */
+   /*    g_spawn_wrapper(git_current_branch_cmd, NULL, 0, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, TRUE, set_window_title_with_git_branch, NULL); */
 #endif
 
 }
@@ -2492,12 +2503,6 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
    
    g_signal_connect(window,"destroy", G_CALLBACK(cleanup), rfmCtx);
 
-
-   if (initDir == NULL)
-     set_rfm_curPath(rfm_homePath);
-   else
-     set_rfm_curPath(initDir);
-
    g_debug("initDir: %s",initDir);
    g_debug("rfm_curPath: %s",rfm_curPath);
    g_debug("rfm_homePath: %s",rfm_homePath);
@@ -2509,6 +2514,11 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
    }
 
    ReadFromPipeStdinIfAny(pipefd);
+   
+   if (initDir == NULL)
+     set_rfm_curPath(rfm_homePath);
+   else
+     set_rfm_curPath(initDir);
 
    add_toolbar(rfm_main_box, defaultPixbufs, rfmCtx);
    refresh_store(rfmCtx);
@@ -2662,6 +2672,7 @@ static void ReadFromPipeStdinIfAny(char * fd)
            oneline_stdin[strcspn(oneline_stdin, "\n")] = 0; //manual set the last char to NULL to eliminate the trailing \n from fgets
 	   if (!ignored_filename(oneline_stdin)){
 	       FileNameList_FromPipeStdin=g_list_prepend(FileNameList_FromPipeStdin, oneline_stdin);
+	       fileNum++;
 	       g_debug("appended into FileNameListWithAbsolutePath_FromPipeStdin:%s", oneline_stdin);
 	   }
 	   oneline_stdin=calloc(1,PATH_MAX);
@@ -2669,8 +2680,9 @@ static void ReadFromPipeStdinIfAny(char * fd)
          if (FileNameList_FromPipeStdin != NULL) {
            FileNameList_FromPipeStdin = g_list_reverse(FileNameList_FromPipeStdin);
            FileNameList_FromPipeStdin = g_list_first(FileNameList_FromPipeStdin);
-         }
-         CurrentDisplayingPage_ForFileNameListFromPipeStdIn=FileNameList_FromPipeStdin;
+	   CurrentDisplayingPage_ForFileNameListFromPipeStdIn=FileNameList_FromPipeStdin;
+	   currentFileNum=1;
+	 }
 
          if (atoi(fd) == 0) { // open parent stdin to replace pipe, so that giochannel for parent stdin will work
            char *tty = ttyname(1);
