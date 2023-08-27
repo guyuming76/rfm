@@ -1878,7 +1878,13 @@ static gboolean view_key_press(GtkWidget *widget, GdkEvent *event,RFM_ctx *rfmCt
   else if (ek->keyval==GDK_KEY_q){
     gtk_main_quit();
     return TRUE;
-  } else
+  } else if (ek->keyval == GDK_KEY_Escape) {
+    if(treeview)
+      gtk_tree_selection_unselect_all(gtk_tree_view_get_selection(GTK_TREE_VIEW(icon_or_tree_view)));
+    else
+      gtk_icon_view_unselect_all(GTK_ICON_VIEW(icon_or_tree_view));
+    return TRUE;
+  }  else
     return FALSE;
 }
 
