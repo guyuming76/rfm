@@ -2606,7 +2606,7 @@ int main(int argc, char *argv[])
             rfmCtx->showMimeType=1;
          break;
       case 'v':
-         printf("%s-%s, Copyright (C) Rodney Padgett, with minors modification by guyuming, see LICENSE for details\n", PROG_NAME, VERSION);
+         printf("%s-%s, Copyright (C) Rodney Padgett, guyuming, see LICENSE for details\n", PROG_NAME, VERSION);
          return 0;
       case 'p':
 	 //if (rfmReadFileNamesFromPipeStdIn){
