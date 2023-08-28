@@ -2514,11 +2514,11 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
    g_debug("rfm_homePath: %s",rfm_homePath);
    g_debug("rfm_thumbDir: %s",rfm_thumbDir);
 
-   if (!rfmReadFileNamesFromPipeStdIn){
-     GIOChannel *channel_stdin = g_io_channel_unix_new (0);
-     g_io_add_watch_full(channel_stdin,0,G_IO_IN,gio_in_stdin, rfmCtx, (GDestroyNotify)g_free);
-   }
-
+   //GError * err=NULL;
+   GIOChannel *channel_stdin = g_io_channel_unix_new (0);
+   //g_io_channel_set_encoding(channel_stdin, "UTF-8", &err);
+   g_io_add_watch_full(channel_stdin,0,G_IO_IN,gio_in_stdin, rfmCtx, (GDestroyNotify)g_free);
+   
    ReadFromPipeStdinIfAny(pipefd);
    
    if (initDir == NULL)
