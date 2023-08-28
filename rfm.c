@@ -25,7 +25,7 @@
 #include <glib-unix.h>
 #include <mntent.h>
 #include <icons.h>
-
+#include <readline/readline.h>
 
 #define PROG_NAME "rfm"
 #define INOTIFY_MASK IN_MOVE|IN_CREATE|IN_CLOSE_WRITE|IN_DELETE|IN_DELETE_SELF|IN_MOVE_SELF
@@ -185,6 +185,8 @@ static GList *rfm_childList=NULL;
 
 static guint rfm_readDirSheduler=0;
 static guint rfm_thumbScheduler=0;
+static guint stdin_command_Scheduler=0;
+static GThread * readlineThread=NULL;
 
 static int rfm_inotify_fd;
 static int rfm_curPath_wd;    /* Current path (rfm_curPath) watch */
@@ -243,8 +245,8 @@ static void ReadFromPipeStdinIfAny(char *fd);
 //read input from parent process stdin , and handle input such as
 //cd .
 //cd /tmp
-static gboolean gio_in_stdin (GIOChannel *gio, GIOCondition condition, gpointer data);
-
+static void exec_stdin_command (gchar * msg);
+static void readlineInSeperateThread();
 static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer rfmCtx);
 static void inotify_insert_item(gchar *name, gboolean is_dir);
 static gboolean delayed_refreshAll(gpointer user_data);
@@ -2343,22 +2345,15 @@ static void free_default_pixbufs(RFM_defaultPixbufs *defaultPixbufs)
    g_free(defaultPixbufs);
 }
 
+static void readlineInSeperateThread() {
+        gchar * msg = readline(">");
+	stdin_command_Scheduler = g_idle_add(exec_stdin_command, msg);
+}
 
-static gboolean  
-gio_in_stdin (GIOChannel *gio, GIOCondition condition, gpointer data)  
+static void exec_stdin_command (gchar *msg)
 {  
-        GIOStatus ret;  
-        GError *err = NULL;  
-        gchar *msg = NULL;  
-        gsize len = 0;  
-  
-        ret = g_io_channel_read_line (gio, &msg, &len, NULL, &err);
-        g_debug ("Read length %u from GIOChannel: %s", len, msg);
-
-	if (ret == G_IO_STATUS_ERROR || msg==NULL || len <= 0) {
-	  if (err != NULL) g_warning("Error reading: %s", err->message);
-	  return FALSE;
-        }
+        gint len = len=strlen(msg);
+        g_debug ("Read length %u from stdin: %s", len, msg);
 
 	if (len>3 && g_strcmp0(g_utf8_substring(msg, 0, 3),"cd ")==0){
 	  gchar * addr=g_utf8_substring(msg, 3, len-1); //ending charactor for msg is \n
@@ -2380,24 +2375,24 @@ gio_in_stdin (GIOChannel *gio, GIOCondition condition, gpointer data)
               }
             }
           }
-        }else if (g_strcmp0(msg,"setpwd\n")==0) {
+        }else if (g_strcmp0(msg,"setpwd")==0) {
 	  setenv("PWD",rfm_curPath,1);
 	  printf("%s\n",getenv("PWD"));
-        }else if (g_strcmp0(msg, "pwd\n")==0) {
+        }else if (g_strcmp0(msg, "pwd")==0) {
 	  printf("%s\n",getenv("PWD"));
-        }else if (g_strcmp0(msg,"quit\n")==0) {
+        }else if (g_strcmp0(msg,"quit")==0) {
 	  gtk_main_quit();
-        }else if (g_strcmp0(msg,"help\n")==0) {
+        }else if (g_strcmp0(msg,"help")==0) {
 	  printf("commands for current window:\n");
 	  printf("    pwd       get rfm env PWD\n");
 	  printf("    setpwd   set rfm env PWD with current directory\n");
 	  printf("    cd address      go to address, note that PWD is not changed, just open address in rfm\n");
 	  printf("    quit          quit rfm\n");
-        }else if (g_strcmp0(msg,"\n")==0) {
-	  refresh_store((RFM_ctx *)data);
-        }else if (len>1){ //it contains \n
+        }else if (g_strcmp0(msg,"")==0) {
+	  //refresh_store();
+        }else if (len>0){
 	  // turn msg into gchar** runCmd
-	  gchar**runCmd = g_strsplit(g_utf8_substring(msg, 0, len-1), " ", RFM_MX_ARGS);
+	  gchar**runCmd = g_strsplit(msg, " ", RFM_MX_ARGS);
 	  gchar ** v = runCmd;
 
  	  // combine runCmd with selected files to get gchar** v
@@ -2425,13 +2420,13 @@ gio_in_stdin (GIOChannel *gio, GIOCondition condition, gpointer data)
 	  // htop, bash, nano, etc. works in g_spawn_sync mode
 	  g_spawn_sync(rfm_curPath, v, NULL, G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN | G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR , NULL, NULL, NULL, NULL, NULL, NULL);
 	  
-	  //g_spawn_async_with_pipes(rfm_curPath, v, NULL, G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN | G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR , NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	  g_free(v);
 	}
-	
-        g_free (msg);  
-        return TRUE;
-}  
+        g_free (msg);
+
+	g_thread_join(readlineThread);
+	readlineThread=g_thread_new("readline", readlineInSeperateThread, NULL);
+}
 
 static int setup(char *initDir, RFM_ctx *rfmCtx)
 {
@@ -2514,11 +2509,6 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
    g_debug("rfm_homePath: %s",rfm_homePath);
    g_debug("rfm_thumbDir: %s",rfm_thumbDir);
 
-   //GError * err=NULL;
-   GIOChannel *channel_stdin = g_io_channel_unix_new (0);
-   //g_io_channel_set_encoding(channel_stdin, "UTF-8", &err);
-   g_io_add_watch_full(channel_stdin,0,G_IO_IN,gio_in_stdin, rfmCtx, (GDestroyNotify)g_free);
-   
    ReadFromPipeStdinIfAny(pipefd);
    
    if (initDir == NULL)
@@ -2528,6 +2518,9 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
 
    add_toolbar(rfm_main_box, defaultPixbufs, rfmCtx);
    refresh_store(rfmCtx);
+
+   readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);
+
    return 0;
 }
 

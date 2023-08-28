@@ -15,7 +15,7 @@ CPPFLAGS += -D_FILE_OFFSET_BITS=64
 SRC = rfm.c
 OBJ = ${SRC:.c=.o}
 INCS = -I. -I/usr/include
-LIBS += -L/usr/lib `pkg-config --libs ${GTK_VERSION}`
+LIBS += -L/usr/lib `pkg-config --libs ${GTK_VERSION} readline`
 CPPFLAGS += -DVERSION=\"${VERSION}\"
 GTK_CFLAGS = `pkg-config --cflags ${GTK_VERSION}`
 CFLAGS = -g -Wall -std=c11 -O0 ${GTK_CFLAGS} ${INCS} ${CPPFLAGS}
