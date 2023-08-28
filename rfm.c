@@ -172,6 +172,7 @@ static GtkWidget *window=NULL;      /* Main window */
 static GtkWidget *rfm_main_box;
 static GtkWidget *sw = NULL; //scroll window
 static GtkWidget *icon_or_tree_view;
+static RFM_ctx *rfmCtx=NULL;
 #ifdef GitIntegration
 static GtkTreeViewColumn *colGitStatus;
 static GtkTreeViewColumn *colGitCommitMsg;
@@ -2389,7 +2390,7 @@ static void exec_stdin_command (gchar *msg)
 	  printf("    cd address      go to address, note that PWD is not changed, just open address in rfm\n");
 	  printf("    quit          quit rfm\n");
         }else if (g_strcmp0(msg,"")==0) {
-	  //refresh_store();
+	  refresh_store(rfmCtx);
         }else if (len>0){
 	  // turn msg into gchar** runCmd
 	  gchar**runCmd = g_strsplit(msg, " ", RFM_MX_ARGS);
@@ -2562,7 +2563,7 @@ int main(int argc, char *argv[])
    //g_error("test g_error");
    //g_critical("test g_critical");
    
-   RFM_ctx *rfmCtx=calloc(1,sizeof(RFM_ctx));
+   rfmCtx=calloc(1,sizeof(RFM_ctx));
    if (rfmCtx==NULL) return 1;
    rfmCtx->rfm_sortColumn=GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID;
    rfmCtx->rfm_mountMonitor=g_unix_mount_monitor_get();
