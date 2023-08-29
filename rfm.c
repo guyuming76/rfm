@@ -2368,7 +2368,7 @@ static void exec_stdin_command (gchar *msg)
 {
      	wordexp_t p;
 	int wordexpRetval;
-        gint len = len=strlen(msg);
+        gint len = strlen(msg);
         g_debug ("Read length %u from stdin: %s", len, msg);
 
 	if (len>3 && g_strcmp0(g_utf8_substring(msg, 0, 3),"cd ")==0){
