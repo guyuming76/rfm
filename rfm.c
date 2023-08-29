@@ -2374,6 +2374,7 @@ static void exec_stdin_command (gchar *msg)
               if (destpath != NULL) {
                g_debug("canonicalized destpath: %s", destpath);
                set_rfm_curPath(destpath);
+	       add_history(msg);
                g_free(destpath);
               }
             }
@@ -2421,7 +2422,8 @@ static void exec_stdin_command (gchar *msg)
 	  }
 
 	  // htop, bash, nano, etc. works in g_spawn_sync mode
-	  g_spawn_sync(rfm_curPath, v, NULL, G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN | G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR , NULL, NULL, NULL, NULL, NULL, NULL);
+	  if (g_spawn_sync(rfm_curPath, v, NULL, G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN | G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR , NULL, NULL, NULL, NULL, NULL, NULL))
+	    add_history(msg);
 	  
 	  g_free(v);
 	}
