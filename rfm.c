@@ -26,6 +26,7 @@
 #include <mntent.h>
 #include <icons.h>
 #include <readline/readline.h>
+#include <wordexp.h>
 
 #define PROG_NAME "rfm"
 #define INOTIFY_MASK IN_MOVE|IN_CREATE|IN_CLOSE_WRITE|IN_DELETE|IN_DELETE_SELF|IN_MOVE_SELF
@@ -294,7 +295,6 @@ static void home_clicked(gpointer user_data);
 static void PreviousPage(RFM_ctx *rfmCtx);
 static void NextPage(RFM_ctx *rfmCtx);
 static void info_clicked(gpointer user_data);
-static void tool_menu_clicked(RFM_ctx *rfmCtx);
 static void switch_view(RFM_ctx *rfmCtx);
 static void toggle_readFromPipe(RFM_ctx *rfmCtx);
 /* callback function for file menu */
@@ -1954,10 +1954,10 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
    GtkWidget *buttonImage=NULL; /* Temp store for button image; gtk_tool_button_new() appears to take the reference */
 
    if(!(tool_bar = calloc(1, sizeof(RFM_toolbar))))
-      return NULL;
+      return;
    if(!(tool_bar->buttons = calloc(G_N_ELEMENTS(tool_buttons), sizeof(tool_bar->buttons)))) {
       free(tool_bar);
-      return NULL;
+      return;
    }
 
    tool_bar->toolbar=gtk_toolbar_new();
@@ -2396,8 +2396,9 @@ static void exec_stdin_command (gchar *msg)
 	  refresh_store(rfmCtx);
         }else if (len>0){
 	  // turn msg into gchar** runCmd
-	  gchar**runCmd = g_strsplit(msg, " ", RFM_MX_ARGS);
-	  gchar ** v = runCmd;
+	  wordexp_t p;
+	  wordexp(msg,&p,0);
+	  gchar ** v = NULL;
 
  	  // combine runCmd with selected files to get gchar** v
 	  // TODO: the following code share the same pattern as g_spawn_wrapper_for_selected_fileList_ , anyway to remove the duplicate code?
@@ -2416,16 +2417,17 @@ static void exec_stdin_command (gchar *msg)
 	      listElement=g_list_next(listElement);
 	      i++;
 	    }
-	    v = build_cmd_vector(runCmd, actionFileList, i, NULL);
+	    v = build_cmd_vector(p.we_wordv, actionFileList, i, NULL);
 	    g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
 	    g_list_free(actionFileList); /* Do not free list elements: owned by GList rfm_fileAttributeList */
 	  }
 
 	  // htop, bash, nano, etc. works in g_spawn_sync mode
-	  if (g_spawn_sync(rfm_curPath, v, NULL, G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN | G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR , NULL, NULL, NULL, NULL, NULL, NULL))
+	  if (g_spawn_sync(rfm_curPath, v==NULL? p.we_wordv:v, NULL, G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN | G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR , NULL, NULL, NULL, NULL, NULL, NULL))
 	    add_history(msg);
 	  
-	  g_free(v);
+	  wordfree(&p);
+	  if (v!=NULL) g_free(v);
 	}
         g_free (msg);
 
