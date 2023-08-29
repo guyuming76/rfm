@@ -248,6 +248,7 @@ static void ReadFromPipeStdinIfAny(char *fd);
 //cd .
 //cd /tmp
 static void exec_stdin_command (gchar * msg);
+static void stdin_command_help();
 static void readlineInSeperateThread();
 static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer rfmCtx);
 static void inotify_insert_item(gchar *name, gboolean is_dir);
@@ -2353,6 +2354,16 @@ static void readlineInSeperateThread() {
    }
 }
 
+static void stdin_command_help() {
+	  printf("commands for current window:\n");
+	  printf("    pwd       get rfm env PWD\n");
+	  printf("    setpwd   set rfm env PWD with current directory\n");
+	  printf("    cd address      go to address, note that PWD is not changed, just open address in rfm\n");
+	  printf("    quit          quit rfm\n");
+	  printf("    help         print this message\n");
+	  printf("    Enter key to refresh rfm view\n");
+}
+
 static void exec_stdin_command (gchar *msg)
 {  
         gint len = len=strlen(msg);
@@ -2387,11 +2398,7 @@ static void exec_stdin_command (gchar *msg)
         }else if (g_strcmp0(msg,"quit")==0) {
 	  gtk_main_quit();
         }else if (g_strcmp0(msg,"help")==0) {
-	  printf("commands for current window:\n");
-	  printf("    pwd       get rfm env PWD\n");
-	  printf("    setpwd   set rfm env PWD with current directory\n");
-	  printf("    cd address      go to address, note that PWD is not changed, just open address in rfm\n");
-	  printf("    quit          quit rfm\n");
+	  stdin_command_help();
         }else if (g_strcmp0(msg,"")==0) {
 	  refresh_store(rfmCtx);
         }else if (len>0){
@@ -2526,6 +2533,7 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
    add_toolbar(rfm_main_box, defaultPixbufs, rfmCtx);
    refresh_store(rfmCtx);
 
+   stdin_command_help();
    readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);
 
    return 0;
