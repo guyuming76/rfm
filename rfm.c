@@ -2347,8 +2347,10 @@ static void free_default_pixbufs(RFM_defaultPixbufs *defaultPixbufs)
 }
 
 static void readlineInSeperateThread() {
-        gchar * msg = readline(">");
-	stdin_command_Scheduler = g_idle_add(exec_stdin_command, msg);
+   if (gtk_main_level() > 0) {
+      gchar *msg = readline(">");
+      stdin_command_Scheduler = g_idle_add(exec_stdin_command, msg);
+   }
 }
 
 static void exec_stdin_command (gchar *msg)
@@ -2650,6 +2652,8 @@ int main(int argc, char *argv[])
       gtk_main();
    else
       die("ERROR: %s: setup() failed\n", PROG_NAME);
+
+   system("reset -I");
    return 0;
 }
 
