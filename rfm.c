@@ -2365,7 +2365,9 @@ static void stdin_command_help() {
 }
 
 static void exec_stdin_command (gchar *msg)
-{  
+{
+     	wordexp_t p;
+	int wordexpRetval;
         gint len = len=strlen(msg);
         g_debug ("Read length %u from stdin: %s", len, msg);
 
@@ -2401,10 +2403,8 @@ static void exec_stdin_command (gchar *msg)
 	  stdin_command_help();
         }else if (g_strcmp0(msg,"")==0) {
 	  refresh_store(rfmCtx);
-        }else if (len>0){
+        }else if (len>0 && (wordexpRetval=wordexp(msg,&p,0)) == 0){
 	  // turn msg into gchar** runCmd
-	  wordexp_t p;
-	  wordexp(msg,&p,0);
 	  gchar ** v = NULL;
 
  	  // combine runCmd with selected files to get gchar** v
@@ -2435,7 +2435,9 @@ static void exec_stdin_command (gchar *msg)
 	  
 	  wordfree(&p);
 	  if (v!=NULL) g_free(v);
-	}
+	}else
+	  g_warning("call wordexp with %s failed with retval:%d",msg,wordexpRetval);
+
         g_free (msg);
 
 	g_thread_join(readlineThread);
