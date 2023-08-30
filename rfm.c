@@ -2372,7 +2372,7 @@ static void exec_stdin_command (gchar *msg)
         g_debug ("Read length %u from stdin: %s", len, msg);
 
 	if (len>3 && g_strcmp0(g_utf8_substring(msg, 0, 3),"cd ")==0){
-	  gchar * addr=g_utf8_substring(msg, 3, len-1); //ending charactor for msg is \n
+	  gchar * addr=g_utf8_substring(msg, 3, len);
 	  g_debug("cd %s", addr);
 
 	  struct stat addr_info;
