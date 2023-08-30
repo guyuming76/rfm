@@ -2420,11 +2420,6 @@ static void stdin_command_help() {
 
 static void exec_stdin_command (gchar *msg)
 {
-     	wordexp_t p;
-	//TODO, with wordexp, we cannot handle pipeline |, redirection >
-	//we may enhance by give up wordexp, and use bash -c msg
-	//and we can use %s in msg as placeholder for selected files and use sprintf to replace placeholder with filename
-	int wordexpRetval;
         gint len = strlen(msg);
 	gboolean endingSpace=FALSE;
         g_debug ("Read length %u from stdin: %s", len, msg);
@@ -2472,42 +2467,46 @@ static void exec_stdin_command (gchar *msg)
 	  if ((now_time - lastEnter)<=2)
 	    refresh_store(rfmCtx);
 	  lastEnter=now_time;
-        }else if (len>0 && (wordexpRetval=wordexp(msg,&p,0)) == 0){
-	  // turn msg into gchar** runCmd
-	  gchar ** v = NULL;
+        }else if (len>0){
+	  GString *msgstring=g_string_new(strdup(msg));
 
 	  if (endingSpace){
  	  // combine runCmd with selected files to get gchar** v
 	  // TODO: the following code share the same pattern as g_spawn_wrapper_for_selected_fileList_ , anyway to remove the duplicate code?
+
 	  GtkTreeIter iter;
 	  GList *listElement;
-	  GList *actionFileList=NULL;
 	  GList *selectionList=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
-	  guint i=0;
 	  RFM_FileAttributes *fileAttributes;
 	  if (selectionList!=NULL) {
 	    listElement=g_list_first(selectionList);
 	    while(listElement!=NULL) {
 	      gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, listElement->data);
 	      gtk_tree_model_get (GTK_TREE_MODEL(store), &iter, COL_ATTR, &fileAttributes, -1);
-	      actionFileList=g_list_append(actionFileList, fileAttributes->path);
+
+	      //if there is %s in msg, replace it with selected filename one by one, otherwise, append filenames to the end.
+              if (strstr(msgstring->str, "%s") == NULL) {
+		g_string_append(msgstring, " ");
+		g_string_append(msgstring, fileAttributes->path);
+              }else
+		g_string_replace(msgstring, "%s",fileAttributes->path, 1);
+	      
 	      listElement=g_list_next(listElement);
-	      i++;
 	    }
-	    v = build_cmd_vector(p.we_wordv, actionFileList, i, NULL);
 	    g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
-	    g_list_free(actionFileList); /* Do not free list elements: owned by GList rfm_fileAttributeList */
 	  }
 	  }
 
-	  // htop, bash, nano, etc. works in g_spawn_sync mode
-	  if (g_spawn_sync(rfm_curPath, v==NULL? p.we_wordv:v, NULL, G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN | G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR , NULL, NULL, NULL, NULL, NULL, NULL))
-	    add_history(msg);
-	  
-	  wordfree(&p);
-	  if (v!=NULL) g_free(v);
-	}else
-	  g_warning("call wordexp with %s failed with retval:%d",msg,wordexpRetval);
+          gchar *runCmd[] = {"bash", "-c", msgstring->str, NULL};
+          if (g_spawn_sync(rfm_curPath, runCmd, NULL,
+                           G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN |
+                               G_SPAWN_CHILD_INHERITS_STDOUT |
+                               G_SPAWN_CHILD_INHERITS_STDERR,
+                           NULL, NULL, NULL, NULL, NULL, NULL))
+              add_history(msg);
+
+	  g_string_free(msgstring,TRUE);
+	}
 
         g_free (msg);
 
