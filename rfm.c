@@ -2493,14 +2493,19 @@ static void exec_stdin_command (gchar *msg)
 	  }
 
           gchar *runCmd[] = {"bash", "-c", msgstring->str, NULL};
+	  GError *err;
           if (g_spawn_sync(rfm_curPath, runCmd, NULL,
                            G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN |
                                G_SPAWN_CHILD_INHERITS_STDOUT |
                                G_SPAWN_CHILD_INHERITS_STDERR,
-                           NULL, NULL, NULL, NULL, NULL, NULL))
+                           NULL, NULL, NULL, NULL, NULL, &err))
               add_history(msg);
+          else {
+              g_warning("%d;%s", err->code, err->message);
+	      g_free(err);
+          }
 
-	  g_string_free(msgstring,TRUE);
+          g_string_free(msgstring,TRUE);
 	}
 
         g_free (msg);
