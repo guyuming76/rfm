@@ -2367,6 +2367,9 @@ static void stdin_command_help() {
 static void exec_stdin_command (gchar *msg)
 {
      	wordexp_t p;
+	//TODO, with wordexp, we cannot handle pipeline |, redirection >
+	//we may enhance by give up wordexp, and use bash -c msg
+	//and we can use %s in msg as placeholder for selected files and use sprintf to replace placeholder with filename
 	int wordexpRetval;
         gint len = strlen(msg);
         g_debug ("Read length %u from stdin: %s", len, msg);
