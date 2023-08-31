@@ -2492,9 +2492,8 @@ static void exec_stdin_command (gchar *msg)
 	  }
 	  }
 
-          gchar *runCmd[] = {"bash", "-c", msgstring->str, NULL};
 	  GError *err;
-          if (g_spawn_sync(rfm_curPath, runCmd, NULL,
+          if (g_spawn_sync(rfm_curPath, stdin_command(msgstring->str), NULL,
                            G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN |
                                G_SPAWN_CHILD_INHERITS_STDOUT |
                                G_SPAWN_CHILD_INHERITS_STDERR,
