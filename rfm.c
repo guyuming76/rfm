@@ -1559,10 +1559,6 @@ static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointe
 
    file_list=g_list_append(file_list, g_strdup(fileAttributes->path));
 
-#ifdef GitIntegration
-   if (curPath_is_git_repo) g_spawn_wrapper(git_commit_message_cmd, file_list,2,RFM_EXEC_STDOUT ,NULL, FALSE, NULL, NULL);
-#endif
-   
    if (!fileAttributes->is_dir) {
 
       for(i=0; i<G_N_ELEMENTS(run_actions); i++) {
