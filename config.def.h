@@ -1,6 +1,5 @@
 /* Config file for rfm */
 
-
 /*#define RFM_ICON_THEME "elementary"*/
 /*#define RFM_SINGLE_CLICK "True"*/
 #define RFM_TOOL_SIZE 22
@@ -81,68 +80,57 @@ static RFM_builtinCMD builtinCMD[] = {
  *        mime root. It may be the default action if no prior action is defined for the file.
  *        All stderr is sent to the filer's stderr.
  *        Any stdout may be displayed by defining the run option.
- * Run options are:
- *   RFM_EXEC_NONE   - run and forget; program is expected to show its own output
- *   RFM_EXEC_MOUNT  - same as RFM_EXEC_PLAIN; this should be specified for the mount command.
- *                     causes the filer to auto switch on success to the directory defined by
- *                     #define RFM_MOUNT_MEDIA_PATH.
- *   RFM_EXEC_STDOUT - run and show output in stdout of parent process.
  */
 
-#define   RFM_EXEC_NONE     G_SPAWN_STDOUT_TO_DEV_NULL
-#define   RFM_EXEC_STDOUT   G_SPAWN_CHILD_INHERITS_STDIN | G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR
-#define   RFM_EXEC_OUPUT_READ_BY_PROGRAM G_SPAWN_DEFAULT
-#define   RFM_EXEC_MOUNT   G_SPAWN_CHILD_INHERITS_STDIN | G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR  //TODO: i don't know what this mean yet.
-
 static RFM_MenuItem run_actions[] = {
-   /* name           mime root        mime sub type            runCmd            	run options 		showCondition	*/
-   { RunActionCopy,  "*",              "*",                    f_cp,             	RFM_EXEC_NONE, 		NULL },
-   { RunActionMove,  "*",              "*",                    f_mv,             	RFM_EXEC_STDOUT,	NULL },
-   { RunActionDelete, "*",             "*",                    f_rm,             	RFM_EXEC_STDOUT,	NULL },
-   { RunActionCopySelection, "*",      "*",                    cp_selection_to_clipboard, RFM_EXEC_NONE,	NULL },
+   /* name           mime root        mime sub type            runCmd            		showCondition	*/
+   { RunActionCopy,  "*",              "*",                    f_cp,             		NULL },
+   { RunActionMove,  "*",              "*",                    f_mv,             		NULL },
+   { RunActionDelete, "*",             "*",                    f_rm,             		NULL },
+   { RunActionCopySelection, "*",      "*",                    cp_selection_to_clipboard, 	NULL },
 #ifdef GitIntegration
-   { RunActionGitStage,  "*",          "*",                    git_stage_cmd,    	RFM_EXEC_STDOUT,	cur_path_is_git_repo },
-   { "git log",      "*",              "*",                    git_log_cmd,      	RFM_EXEC_NONE,		cur_path_is_git_repo },
-   { "tig",          "*",              "*",                    tig_cmd,          	RFM_EXEC_NONE,		cur_path_is_git_repo },
+   { RunActionGitStage,  "*",          "*",                    git_stage_cmd,    		cur_path_is_git_repo },
+   { "git log",      "*",              "*",                    git_log_cmd,      		cur_path_is_git_repo },
+   { "tig",          "*",              "*",                    tig_cmd,          		cur_path_is_git_repo },
 #endif
-   { "Properties",   "*",              "*",                    properties,       	RFM_EXEC_STDOUT,	NULL },
-   { "Open with...", "*",              "*",                    open_with,        	RFM_EXEC_NONE,		NULL },
-   { RunActionChangeOwner,"*",         "*",                    change_owner,            RFM_EXEC_NONE,          NULL },
-   { "Open",         "image",          "*",                    show_image,       	RFM_EXEC_STDOUT,	NULL },
-   { "Open",         "application",    "vnd.oasis.opendocument.text",          soffice,  RFM_EXEC_NONE,		NULL },
-   { "Open",         "application",    "vnd.oasis.opendocument.spreadsheet",   soffice,  RFM_EXEC_NONE,		NULL },
-   { "Open",         "application",    "vnd.openxmlformats-officedocument.wordprocessingml.document", soffice, RFM_EXEC_NONE, NULL },
-   { "Open",         "application",    "vnd.openxmlformats-officedocument.spreadsheetml.sheet",       soffice, RFM_EXEC_NONE, NULL },
-   { "Open",         "application",    "msword",               soffice,          	RFM_EXEC_NONE,		NULL },
-   { "Open",         "application",    "x-gnumeric",           gnumeric,         	RFM_EXEC_NONE,		NULL },
-   { "Open",         "application",    "vnd.ms-excel",         gnumeric,         	RFM_EXEC_NONE,		NULL },
-   { "Open",         "application",    "vnd.ms-excel",         soffice,          	RFM_EXEC_NONE,		NULL },
-   { "extract",      "application",    "x-compressed-tar",     extract_archive,  	RFM_EXEC_NONE,		NULL },
-   { "extract",      "application",    "x-bzip-compressed-tar",extract_archive,  	RFM_EXEC_NONE,		NULL },
-   { "extract",      "application",    "x-xz-compressed-tar",  extract_archive,  	RFM_EXEC_NONE,		NULL },
-   { "extract",      "application",    "x-zstd-compressed-tar", extract_archive, 	RFM_EXEC_NONE,		NULL },
-   { "extract",      "application",    "zip",                  extract_archive,  	RFM_EXEC_NONE,		NULL },
-   { "extract",      "application",    "x-rpm",                extract_archive,  	RFM_EXEC_NONE,		NULL },
-   { "View",         "application",    "pdf",                  mupdf,            	RFM_EXEC_NONE,		NULL },
-   { "View",         "application",    "epub+zip",             mupdf,            	RFM_EXEC_NONE,		NULL },
-   { "View",         "application",    "x-troff-man",          man,              	RFM_EXEC_NONE,		NULL },
-   { "Run",          "application",    "x-java-archive",       java,             	RFM_EXEC_NONE,		NULL },
-   { "Open as text", "application",    "*",                    textEdit,         	RFM_EXEC_NONE,		NULL },
-   { "Play",         "audio",          "*",                    play_audio,       	RFM_EXEC_NONE,		NULL },
-   { "flac info",    "audio",          "flac",                 metaflac,         	RFM_EXEC_STDOUT,	NULL },
-   { "info",         "audio",          "*",                    av_info,          	RFM_EXEC_STDOUT,	NULL },
-   { "stats",        "audio",          "*",                    audioSpect,       	RFM_EXEC_STDOUT,	NULL },
-   { "count",        "inode",          "directory",            du,               	RFM_EXEC_STDOUT,	NULL },
-   { "archive",      "inode",          "directory",            create_archive,   	RFM_EXEC_NONE,		NULL },
-   { "mount",        "inode",          "mount-point",          mount,            	RFM_EXEC_STDOUT,	NULL },
-   { "unmount",      "inode",          "mount-point",          umount,           	RFM_EXEC_STDOUT,	NULL },
-   { "mount",        "inode",          "blockdevice",          mount,            	RFM_EXEC_MOUNT,		NULL },
-   { "unmount",      "inode",          "blockdevice",          umount,           	RFM_EXEC_STDOUT,	NULL },
-   { "edit",         "text",           "*",                    textEdit,         	RFM_EXEC_NONE,		NULL },
-   { "Open",         "text",           "html",                 www,              	RFM_EXEC_NONE,		NULL },
-   { "Play",         "video",          "*",                    play_video,       	RFM_EXEC_NONE,		NULL },
-   { "info",         "video",          "*",                    av_info,          	RFM_EXEC_STDOUT,	NULL },
-   { "View",         "font",           "*",                    ftview,           	RFM_EXEC_NONE,		NULL },
+   { "Properties",   "*",              "*",                    properties,       		NULL },
+   { "Open with...", "*",              "*",                    open_with,        		NULL },
+   { RunActionChangeOwner,"*",         "*",                    change_owner,                    NULL },
+   { "Open",         "image",          "*",                    show_image,       		NULL },
+   { "Open",         "application",    "vnd.oasis.opendocument.text",          soffice,  	NULL },
+   { "Open",         "application",    "vnd.oasis.opendocument.spreadsheet",   soffice,  	NULL },
+   { "Open",         "application",    "vnd.openxmlformats-officedocument.wordprocessingml.document", soffice,  NULL },
+   { "Open",         "application",    "vnd.openxmlformats-officedocument.spreadsheetml.sheet",       soffice,  NULL },
+   { "Open",         "application",    "msword",               soffice,          		NULL },
+   { "Open",         "application",    "x-gnumeric",           gnumeric,         		NULL },
+   { "Open",         "application",    "vnd.ms-excel",         gnumeric,         		NULL },
+   { "Open",         "application",    "vnd.ms-excel",         soffice,          		NULL },
+   { "extract",      "application",    "x-compressed-tar",     extract_archive,  		NULL },
+   { "extract",      "application",    "x-bzip-compressed-tar",extract_archive,  		NULL },
+   { "extract",      "application",    "x-xz-compressed-tar",  extract_archive,  		NULL },
+   { "extract",      "application",    "x-zstd-compressed-tar", extract_archive, 		NULL },
+   { "extract",      "application",    "zip",                  extract_archive,  		NULL },
+   { "extract",      "application",    "x-rpm",                extract_archive,  		NULL },
+   { "View",         "application",    "pdf",                  mupdf,            		NULL },
+   { "View",         "application",    "epub+zip",             mupdf,            		NULL },
+   { "View",         "application",    "x-troff-man",          man,              		NULL },
+   { "Run",          "application",    "x-java-archive",       java,             		NULL },
+   { "Open as text", "application",    "*",                    textEdit,         		NULL },
+   { "Play",         "audio",          "*",                    play_audio,       		NULL },
+   { "flac info",    "audio",          "flac",                 metaflac,         		NULL },
+   { "info",         "audio",          "*",                    av_info,          		NULL },
+   { "stats",        "audio",          "*",                    audioSpect,       		NULL },
+   { "count",        "inode",          "directory",            du,               		NULL },
+   { "archive",      "inode",          "directory",            create_archive,   		NULL },
+   { "mount",        "inode",          "mount-point",          mount,            		NULL },
+   { "unmount",      "inode",          "mount-point",          umount,           		NULL },
+   { "mount",        "inode",          "blockdevice",          mount,            		NULL },
+   { "unmount",      "inode",          "blockdevice",          umount,           		NULL },
+   { "edit",         "text",           "*",                    textEdit,         		NULL },
+   { "Open",         "text",           "html",                 www,              		NULL },
+   { "Play",         "video",          "*",                    play_video,       		NULL },
+   { "info",         "video",          "*",                    av_info,          		NULL },
+   { "View",         "font",           "*",                    ftview,           		NULL },
 };
 
 /* Toolbar button definitions

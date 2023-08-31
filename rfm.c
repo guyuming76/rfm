@@ -32,6 +32,11 @@
 #define INOTIFY_MASK IN_MOVE|IN_CREATE|IN_CLOSE_WRITE|IN_DELETE|IN_DELETE_SELF|IN_MOVE_SELF
 #define PIPE_SZ 65535      /* Kernel pipe size */
 
+#define   RFM_EXEC_NONE     G_SPAWN_STDOUT_TO_DEV_NULL
+#define   RFM_EXEC_STDOUT   G_SPAWN_CHILD_INHERITS_STDIN | G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR
+#define   RFM_EXEC_OUPUT_READ_BY_PROGRAM G_SPAWN_DEFAULT
+#define   RFM_EXEC_MOUNT   G_SPAWN_CHILD_INHERITS_STDIN | G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR  //TODO: i don't know what this mean yet.
+
 typedef struct {
    gchar *path;
    gchar *thumb_name;
@@ -56,7 +61,7 @@ typedef struct {
    gchar *runRoot;
    gchar *runSub;
    const gchar **runCmd;
-   gint  runOpts;
+  //gint  runOpts;
    gboolean (*showCondition)();
 } RFM_MenuItem;
 
@@ -1614,7 +1619,7 @@ static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointe
       }
 
       if (r_idx != -1)
-         g_spawn_wrapper(run_actions[r_idx].runCmd, file_list, 2, run_actions[r_idx].runOpts, NULL,TRUE,NULL,NULL);
+         g_spawn_wrapper(run_actions[r_idx].runCmd, file_list, 2, RFM_EXEC_STDOUT, NULL,TRUE,NULL,NULL);
       else {
          msg=g_strdup_printf("No run action defined for mime type:\n %s/%s\n", fileAttributes->mime_root, fileAttributes->mime_sub_type);
          show_msgbox(msg, "Run Action", GTK_MESSAGE_INFO);
@@ -1824,7 +1829,7 @@ static RFM_fileMenu *setup_file_menu(RFM_ctx * rfmCtx){
       // and it will be copied to a new instance in file_menu_exec.
       // but if menuitem not clicked? currently, setup_file_menu won't be called many times, so, it will be freed after application quit, no need to free manually.
       child_attribs->RunCmd = run_actions[i].runCmd;      
-      child_attribs->runOpts = run_actions[i].runOpts;
+      child_attribs->runOpts = RFM_EXEC_STDOUT;
       child_attribs->stdOut = NULL;
       child_attribs->stdErr = NULL;
       child_attribs->spawn_async = TRUE;
