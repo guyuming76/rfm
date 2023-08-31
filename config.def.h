@@ -200,3 +200,9 @@ static gboolean ignored_filename(gchar *name){
   if (strcmp(name, "gmon.out")==0) return TRUE;
   return FALSE;
 }
+
+static gchar* stdin_cmd_template[]={"bash", "-c", NULL, NULL};
+static gchar ** stdin_command(gchar * msg) {
+  stdin_cmd_template[2] = msg;
+  return stdin_cmd_template;
+}
