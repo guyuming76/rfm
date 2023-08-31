@@ -2344,8 +2344,9 @@ static void free_default_pixbufs(RFM_defaultPixbufs *defaultPixbufs)
 }
 
 static void readlineInSeperateThread() {
-   if (gtk_main_level() > 0) {
-      gchar *msg = readline(">");
+  gchar *msg;
+  if (gtk_main_level() > 0) {
+      while ((msg = readline(">"))==NULL);
       stdin_command_Scheduler = g_idle_add(exec_stdin_command, msg);
    }
 }
