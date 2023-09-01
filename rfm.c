@@ -2535,6 +2535,12 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
    add_toolbar(rfm_main_box, defaultPixbufs, rfmCtx);
    refresh_store(rfmCtx);
 
+   //block Ctrl+C. Without this, Ctrl+C in readline will terminate rfm. Now, if you run htop with readline, Ctrl+C only terminate htop. BTW, it's strange that i had tried sigprocmask, pthread_sigmask, and rl_clear_signals, and they didn't work.
+   struct sigaction newaction;
+   newaction.sa_handler = SIG_IGN;
+   newaction.sa_flags = 0;
+   sigaction(SIGINT, &newaction,NULL);
+   
    stdin_command_help();
    readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);
 
