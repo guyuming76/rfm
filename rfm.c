@@ -26,7 +26,6 @@
 #include <mntent.h>
 #include <icons.h>
 #include <readline/readline.h>
-#include <wordexp.h>
 
 #define PROG_NAME "rfm"
 #define INOTIFY_MASK IN_MOVE|IN_CREATE|IN_CLOSE_WRITE|IN_DELETE|IN_DELETE_SELF|IN_MOVE_SELF
