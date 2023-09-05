@@ -1533,7 +1533,7 @@ static void set_rfm_curPath(gchar* path)
       
        inotify_rm_watch(rfm_inotify_fd, rfm_curPath_wd);
        rfm_curPath_wd = rfm_new_wd;
-       //gtk_window_set_title(GTK_WINDOW(window), rfm_curPath);
+       add_history(g_strconcat("cd ", rfm_curPath,NULL));
      }
    }
 #ifdef GitIntegration
@@ -2387,7 +2387,6 @@ static void exec_stdin_command (gchar *msg)
               if (destpath != NULL) {
                g_debug("canonicalized destpath: %s", destpath);
                set_rfm_curPath(destpath);
-	       add_history(msg);
                g_free(destpath);
               }
             }
