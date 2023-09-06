@@ -202,10 +202,11 @@ static gboolean ignored_filename(gchar *name){
 }
 
 static gchar bash_c_cmd[ARG_MAX];
-static gchar* stdin_cmd_template[]={"bash","-c", bash_c_cmd, NULL};
-// add option above, such as "bash", "-i", "-c"
+static gchar* stdin_cmd_template[]={"bash","-i","-c", bash_c_cmd, NULL};
 static gchar ** stdin_command(gchar * user_input_cmd) {
-  sprintf(bash_c_cmd,"%s",g_strdup(user_input_cmd));
-  //modify the "%s" above to do something such as "set -o history; %s"
+  sprintf(bash_c_cmd,"set -o history; %s; exit 2>/dev/null",g_strdup(user_input_cmd));
+  //without set -o history and "bash -i", bash builtin history command will not show results.
+  //Seems to be by design, but why? for the nu shell, nu -c "history" just works
+  //without exit, rfm will quit after commands such as ls, nano, but commands such as echo 1 will work. if you change exit to sleep 20, even echo 1 will make rfm terminate. Are there any race condition here?
   return stdin_cmd_template;
 }
