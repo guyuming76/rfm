@@ -201,8 +201,11 @@ static gboolean ignored_filename(gchar *name){
   return FALSE;
 }
 
-static gchar* stdin_cmd_template[]={"bash", "-c", NULL, NULL};
-static gchar ** stdin_command(gchar * msg) {
-  stdin_cmd_template[2] = msg;
+static gchar bash_c_cmd[ARG_MAX];
+static gchar* stdin_cmd_template[]={"bash","-c", bash_c_cmd, NULL};
+// add option above, such as "bash", "-i", "-c"
+static gchar ** stdin_command(gchar * user_input_cmd) {
+  sprintf(bash_c_cmd,"%s",g_strdup(user_input_cmd));
+  //modify the "%s" above to do something such as "set -o history; %s"
   return stdin_cmd_template;
 }
