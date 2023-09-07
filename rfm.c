@@ -2461,6 +2461,8 @@ static void exec_stdin_command (gchar *msg)
 	  gtk_main_quit();
         }else if (g_strcmp0(msg,"help")==0) {
 	  stdin_command_help();
+	}else if (g_strcmp0(msg,"/")==0) {
+	  switch_view(rfmCtx);
         }else if (g_strcmp0(msg,"")==0) {
 	  time_t now_time=time(NULL);
 	  if ((now_time - lastEnter)<=2)
