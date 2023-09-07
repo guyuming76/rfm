@@ -169,6 +169,12 @@ enum {
    NUM_COLS
 };
 
+// I need a method to show in stdin prompt whether there are selected files in
+// gtk view. if there are, *> is prompted, otherwise, just prompt >
+static gint ItemSelected = 0;
+// since it's may be complicated if possible to update stdin prompt whenever the terminal window get focus, i just show ItemSelected prompt in new prompt, and user press two times to refresh gtk view.So, I need a way to recognize consecutive enter press.
+static time_t lastEnter;
+
 static GtkWidget *window=NULL;      /* Main window */
 static GtkWidget *rfm_main_box;
 static GtkWidget *sw = NULL; //scroll window
@@ -1471,6 +1477,8 @@ static void refresh_store(RFM_ctx *rfmCtx)
    icon_or_tree_view = add_view(rfmCtx);
    gtk_widget_show_all(window);
    refresh_toolbar();
+   ItemSelected=0;
+   //TODO:for gtktreeview after rtefresh, no item selected on the view, but stdin prompt not changed. I don't know why, maybe signal handler not working? anyway, i just set it here manually. Take a look at the signal when i want.
 }
 
 
@@ -1544,6 +1552,17 @@ static void set_rfm_curPath(gchar* path)
 
 }
 
+static void selectionChanged(GtkWidget *view, gpointer user_data)
+{
+  GList *selectionList=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
+  if (selectionList==NULL) ItemSelected=0;
+  else ItemSelected=1; //TODO: maybe count the actual selection number maybe useful, but we just use non-zero now.
+}
+
+static void unselectAll(GtkWidget *view, gpointer user_data)
+{
+  ItemSelected=0;
+}
 
 static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointer user_data)
 {
@@ -2085,10 +2104,15 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
    g_signal_connect(_view, "button-press-event", G_CALLBACK(view_button_press), rfmCtx);
    g_signal_connect(_view, "key-press-event", G_CALLBACK(view_key_press), rfmCtx);
 
-   if (treeview)
+   if (treeview){
      g_signal_connect(_view, "row-activated", G_CALLBACK(row_activated), NULL);
-   else
+     g_signal_connect(gtk_tree_view_get_selection(GTK_TREE_VIEW(_view)), "changed", G_CALLBACK(selectionChanged), NULL);
+   }
+   else{
      g_signal_connect(_view, "item-activated", G_CALLBACK(item_activated), NULL);
+     g_signal_connect(_view, "selection-changed", G_CALLBACK(selectionChanged), NULL);
+   }
+   g_signal_connect(_view, "unselect-all", G_CALLBACK(unselectAll), NULL);
    
    gtk_container_add(GTK_CONTAINER(sw), _view);
    gtk_widget_grab_focus(_view);
@@ -2345,7 +2369,10 @@ static void free_default_pixbufs(RFM_defaultPixbufs *defaultPixbufs)
 
 static void readlineInSeperateThread() {
   gchar *msg;
-  while ((msg = readline(">"))==NULL);
+  gchar *prompt;
+  if (ItemSelected==0) prompt=">";
+  else prompt="*>";
+  while ((msg = readline(prompt))==NULL);
 
   stdin_command_Scheduler = g_idle_add(exec_stdin_command, msg);
 }
@@ -2357,7 +2384,8 @@ static void stdin_command_help() {
 	  printf("    cd address      go to address, note that PWD is not changed, just open address in rfm\n");
 	  printf("    quit          quit rfm\n");
 	  printf("    help         print this message\n");
-	  printf("    Enter key to refresh rfm view\n");
+	  printf("    press Enter to refresh the prompt. *> means there are selected files in rfm view, and the filenames will be appended or merged into current command\n");
+	  printf("    press Enter key two times (double enter) to refresh rfm view\n");
 }
 
 static void exec_stdin_command (gchar *msg)
@@ -2400,7 +2428,10 @@ static void exec_stdin_command (gchar *msg)
         }else if (g_strcmp0(msg,"help")==0) {
 	  stdin_command_help();
         }else if (g_strcmp0(msg,"")==0) {
-	  refresh_store(rfmCtx);
+	  time_t now_time=time(NULL);
+	  if ((now_time - lastEnter)<=2)
+	    refresh_store(rfmCtx);
+	  lastEnter=now_time;
         }else if (len>0 && (wordexpRetval=wordexp(msg,&p,0)) == 0){
 	  // turn msg into gchar** runCmd
 	  gchar ** v = NULL;
