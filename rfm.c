@@ -246,6 +246,7 @@ static GHashTable *gitTrackedFiles;
 static gboolean curPath_is_git_repo = FALSE;
 static gboolean cur_path_is_git_repo() { return curPath_is_git_repo; }
 static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpointer *child_attribs);
+static void set_terminal_window_title(char * title);
 #endif
 
 
@@ -1474,6 +1475,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
      rfm_readDirSheduler=g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, (GSourceFunc)read_one_DirItem_into_fileAttributeList_and_insert_into_store_in_each_call, dir, (GDestroyNotify)g_dir_close);
   }
    gtk_window_set_title(GTK_WINDOW(window), title);
+   set_terminal_window_title(title);
 #ifdef GitIntegration
    if (!rfmReadFileNamesFromPipeStdIn && curPath_is_git_repo)
       g_spawn_wrapper(git_current_branch_cmd, NULL, 0, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, TRUE, set_window_title_with_git_branch_and_sort_view_with_git_status, NULL);
@@ -1501,6 +1503,19 @@ static void set_curPath_is_git_repo(gpointer *child_attribs)
   g_debug("curPath_is_git_repo:%d",curPath_is_git_repo);
 }
 
+static char cmd_to_set_terminal_title[PATH_MAX];
+//echo -en "\033]0;title\a"
+static void set_terminal_window_title(char * title)
+{
+  sprintf(cmd_to_set_terminal_title, "echo -en \"\\033]0;%s\\a\"", title);
+  char* cmd[]={ "bash", "-c", cmd_to_set_terminal_title,NULL};
+  g_spawn_sync(rfm_curPath, cmd, NULL,
+                           G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN |
+                               G_SPAWN_CHILD_INHERITS_STDOUT |
+                               G_SPAWN_CHILD_INHERITS_STDERR,
+	       NULL, NULL, NULL, NULL, NULL, NULL);
+}
+
 static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpointer *child_attribs) {
   char *child_StdOut=((RFM_ChildAttribs *)child_attribs)->stdOut;
   if(child_StdOut!=NULL) {
@@ -1508,6 +1523,7 @@ static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpoin
     g_debug("git current branch:%d",child_StdOut);
     gchar * title=g_strdup_printf("%s [%s]",rfm_curPath,child_StdOut);
     gtk_window_set_title(GTK_WINDOW(window), title);
+    set_terminal_window_title(title);
     g_free(title);
   }else{
     g_warning("failed to get git current branch!");
