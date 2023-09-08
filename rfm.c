@@ -2403,18 +2403,17 @@ static void readlineInSeperateThread() {
 
 static void stdin_command_help() {
 	  printf("commands for current window:\n");
-	  printf("    pwd       get rfm env PWD\n");
+	  printf("    press Enter to refresh the prompt. *> means there are selected files in rfm view, and the filenames will be appended (if there is ending space in command entered) or merged into current command. Prompt > means no selected files\n");
+          printf("    pwd       get rfm env PWD\n");
 	  printf("    setpwd   set rfm env PWD with current directory\n");
 	  printf("    cd address      go to address, note that PWD is not changed, just open address in rfm\n");
 	  printf("    quit          quit rfm\n");
 	  printf("    help         print this message\n");
-	  printf("    press Enter to refresh the prompt. *> means there are selected files in rfm view, and the filenames will be appended or merged into current command\n");
 	  printf("    press Enter key two times (double enter) to refresh rfm view\n");
 	  
 	  for(int i=0;i<G_N_ELEMENTS(builtinCMD);i++){
 	  	printf("    %s   %s\n", builtinCMD[i].cmd, builtinCMD[i].help_msg);
 	  }
-	
 }
 
 static void exec_stdin_command (gchar *msg)
@@ -2425,7 +2424,10 @@ static void exec_stdin_command (gchar *msg)
 	//and we can use %s in msg as placeholder for selected files and use sprintf to replace placeholder with filename
 	int wordexpRetval;
         gint len = strlen(msg);
+	gboolean endingSpace=FALSE;
         g_debug ("Read length %u from stdin: %s", len, msg);
+
+	if (msg[len-1]==' ') endingSpace=TRUE;
 
 	for(int i=0;i<G_N_ELEMENTS(builtinCMD);i++){
 	  if (g_strcmp0(msg, builtinCMD[i].cmd)==0) {
@@ -2472,6 +2474,7 @@ static void exec_stdin_command (gchar *msg)
 	  // turn msg into gchar** runCmd
 	  gchar ** v = NULL;
 
+	  if (endingSpace){
  	  // combine runCmd with selected files to get gchar** v
 	  // TODO: the following code share the same pattern as g_spawn_wrapper_for_selected_fileList_ , anyway to remove the duplicate code?
 	  GtkTreeIter iter;
@@ -2492,6 +2495,7 @@ static void exec_stdin_command (gchar *msg)
 	    v = build_cmd_vector(p.we_wordv, actionFileList, i, NULL);
 	    g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
 	    g_list_free(actionFileList); /* Do not free list elements: owned by GList rfm_fileAttributeList */
+	  }
 	  }
 
 	  // htop, bash, nano, etc. works in g_spawn_sync mode
