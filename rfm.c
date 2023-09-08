@@ -99,6 +99,12 @@ typedef struct {
   GtkWidget **buttons;
 } RFM_toolbar;
 
+typedef struct {
+  gchar *cmd;
+  void (*action)();
+  gchar *help_msg;
+} RFM_builtinCMD;
+
 //I don't understand why Rodney need this ctx type. it's only instantiated in main, so, all members can be changed into global variable, and many function parameter can be removed. However, if there would be any important usage, adding the removed function parameters will be time taking. So, just keep as is, although it makes current code confusing.
 typedef struct {
    gint        rfm_sortColumn;   /* The column in the tree model to sort on */
@@ -2388,6 +2394,11 @@ static void stdin_command_help() {
 	  printf("    help         print this message\n");
 	  printf("    press Enter to refresh the prompt. *> means there are selected files in rfm view, and the filenames will be appended or merged into current command\n");
 	  printf("    press Enter key two times (double enter) to refresh rfm view\n");
+	  
+	  for(int i=0;i<G_N_ELEMENTS(builtinCMD);i++){
+	  	printf("    %s   %s\n", builtinCMD[i].cmd, builtinCMD[i].help_msg);
+	  }
+	
 }
 
 static void exec_stdin_command (gchar *msg)
@@ -2399,6 +2410,13 @@ static void exec_stdin_command (gchar *msg)
 	int wordexpRetval;
         gint len = strlen(msg);
         g_debug ("Read length %u from stdin: %s", len, msg);
+
+	for(int i=0;i<G_N_ELEMENTS(builtinCMD);i++){
+	  if (g_strcmp0(msg, builtinCMD[i].cmd)==0) {
+		builtinCMD[i].action();
+		return;
+	  }
+	}
 
 	if (len>3 && g_strcmp0(g_utf8_substring(msg, 0, 3),"cd ")==0){
 	  gchar * addr=g_utf8_substring(msg, 3, len);

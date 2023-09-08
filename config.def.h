@@ -67,6 +67,10 @@ static const char *git_commit[] = { rfmBinPath "/rfmVTforCMD.sh", rfmBinPath "/r
 static const char *git_current_branch_cmd[] =  { "/usr/bin/git","branch","--show-current",NULL };
 #endif
 
+static RFM_builtinCMD builtinCMD[] = {
+	{"q",      gtk_main_quit,         "alias for quit"}, 
+};
+
 
 /* Menu Items
  * NOTES: The first matched mime type will become the default action for that kind of file
