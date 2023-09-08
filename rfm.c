@@ -239,7 +239,7 @@ static gint DisplayingPageSize_ForFileNameListFromPipeStdIn=20;
 static GHashTable *gitTrackedFiles;
 static gboolean curPath_is_git_repo = FALSE;
 static gboolean cur_path_is_git_repo() { return curPath_is_git_repo; }
-static void set_window_title_with_git_branch(gpointer *child_attribs);
+static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpointer *child_attribs);
 #endif
 
 
@@ -1470,7 +1470,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
    gtk_window_set_title(GTK_WINDOW(window), title);
 #ifdef GitIntegration
    if (!rfmReadFileNamesFromPipeStdIn && curPath_is_git_repo)
-      g_spawn_wrapper(git_current_branch_cmd, NULL, 0, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, TRUE, set_window_title_with_git_branch, NULL);
+      g_spawn_wrapper(git_current_branch_cmd, NULL, 0, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, TRUE, set_window_title_with_git_branch_and_sort_view_with_git_status, NULL);
 #endif
 
    g_free(title);
@@ -1495,7 +1495,7 @@ static void set_curPath_is_git_repo(gpointer *child_attribs)
   g_debug("curPath_is_git_repo:%d",curPath_is_git_repo);
 }
 
-static void set_window_title_with_git_branch(gpointer *child_attribs) {
+static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpointer *child_attribs) {
   char *child_StdOut=((RFM_ChildAttribs *)child_attribs)->stdOut;
   if(child_StdOut!=NULL) {
     child_StdOut[strcspn(child_StdOut, "\n")] = 0;
@@ -1506,6 +1506,8 @@ static void set_window_title_with_git_branch(gpointer *child_attribs) {
   }else{
     g_warning("failed to get git current branch!");
   }
+
+  gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(store), COL_GIT_STATUS_STR, GTK_SORT_DESCENDING);
 }
 #endif
 
