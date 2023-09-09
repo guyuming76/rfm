@@ -2402,15 +2402,7 @@ static void readlineInSeperateThread() {
 }
 
 static void stdin_command_help() {
-	  printf("commands for current window:\n");
-	  printf("    press Enter to refresh the prompt. *> means there are selected files in rfm view, and the filenames will be appended (if there is ending space in command entered) or merged into current command. Prompt > means no selected files\n");
-          printf("    pwd       get rfm env PWD\n");
-	  printf("    setpwd   set rfm env PWD with current directory\n");
-	  printf("    cd address      go to address, note that PWD is not changed, just open address in rfm\n");
-	  printf("    quit          quit rfm\n");
-	  printf("    help         print this message\n");
-	  printf("    press Enter key two times (double enter) to refresh rfm view\n");
-	  
+	  printf("%s",builtinCMD_Help);
 	  for(int i=0;i<G_N_ELEMENTS(builtinCMD);i++){
 	  	printf("    %s   %s\n", builtinCMD[i].cmd, builtinCMD[i].help_msg);
 	  }
