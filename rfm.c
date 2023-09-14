@@ -185,6 +185,7 @@ static GtkWidget *window=NULL;      /* Main window */
 static GtkWidget *rfm_main_box;
 static GtkWidget *sw = NULL; //scroll window
 static GtkWidget *icon_or_tree_view;
+static GtkWidget * PathAndRepositoryNameDisplay;
 static RFM_ctx *rfmCtx=NULL;
 static gchar *rfm_homePath;         /* Users home dir */
 static gchar *rfm_thumbDir;         /* Users thumbnail directory */
@@ -1473,6 +1474,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
      rfm_readDirSheduler=g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, (GSourceFunc)read_one_DirItem_into_fileAttributeList_and_insert_into_store_in_each_call, dir, (GDestroyNotify)g_dir_close);
   }
    gtk_window_set_title(GTK_WINDOW(window), title);
+   gtk_tool_button_set_label(PathAndRepositoryNameDisplay, title);
    set_terminal_window_title(title);
 #ifdef GitIntegration
    if (!rfmReadFileNamesFromPipeStdIn && curPath_is_git_repo)
@@ -1521,6 +1523,7 @@ static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpoin
     g_debug("git current branch:%d",child_StdOut);
     gchar * title=g_strdup_printf("%s [%s]",rfm_curPath,child_StdOut);
     gtk_window_set_title(GTK_WINDOW(window), title);
+    gtk_tool_button_set_label(PathAndRepositoryNameDisplay, title);
     set_terminal_window_title(title);
     g_free(title);
   }else{
@@ -1976,6 +1979,7 @@ static gboolean view_button_press(GtkWidget *widget, GdkEvent *event, RFM_ctx *r
 
 static void refresh_toolbar()
 {
+   gtk_widget_show(PathAndRepositoryNameDisplay);
    for (uint i = 0; i < G_N_ELEMENTS(tool_buttons); i++) {
      if ((rfmReadFileNamesFromPipeStdIn && tool_buttons[i].readFromPipe) || (!rfmReadFileNamesFromPipeStdIn && tool_buttons[i].curPath)){
        if (tool_buttons[i].showCondition == NULL || tool_buttons[i].showCondition())
@@ -2004,6 +2008,9 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
 
    if (!agMain) agMain = gtk_accel_group_new();
    gtk_window_add_accel_group(GTK_WINDOW(window), agMain);
+
+   PathAndRepositoryNameDisplay = gtk_tool_button_new(NULL,rfm_curPath);
+   gtk_toolbar_insert(GTK_TOOLBAR(tool_bar->toolbar), PathAndRepositoryNameDisplay, -1);
 
    for (uint i = 0; i < G_N_ELEMENTS(tool_buttons); i++) {
      //if ((rfmReadFileNamesFromPipeStdIn && tool_buttons[i].readFromPipe) || (!rfmReadFileNamesFromPipeStdIn && tool_buttons[i].curPath)){
