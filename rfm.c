@@ -26,6 +26,7 @@
 #include <mntent.h>
 #include <icons.h>
 #include <readline/readline.h>
+#include <wordexp.h>
 
 #define PROG_NAME "rfm"
 #define INOTIFY_MASK IN_MOVE|IN_CREATE|IN_CLOSE_WRITE|IN_DELETE|IN_DELETE_SELF|IN_MOVE_SELF
@@ -263,7 +264,8 @@ static void ReadFromPipeStdinIfAny(char *fd);
 //read input from parent process stdin , and handle input such as
 //cd .
 //cd /tmp
-static void exec_stdin_command (gchar * msg);
+static void exec_stdin_command(gchar *msg);
+static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg);
 static void stdin_command_help();
 static void readlineInSeperateThread();
 static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer rfmCtx);
@@ -2417,25 +2419,23 @@ static void stdin_command_help() {
 	  }
 }
 
-static void exec_stdin_command (gchar *msg)
-{
-        gint len = strlen(msg);
-	gboolean endingSpace=FALSE;
-        g_debug ("Read length %u from stdin: %s", len, msg);
-
-	if (msg[len-1]==' ') endingSpace=TRUE;
-
+static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg){
 	for(int i=0;i<G_N_ELEMENTS(builtinCMD);i++){
-	  if (g_strcmp0(msg, builtinCMD[i].cmd)==0) {
+	  if (g_strcmp0(parsed_msg->we_wordv[0], builtinCMD[i].cmd)==0) {
 		builtinCMD[i].action();
-		return;
+		return TRUE;
 	  }
 	}
 
-	if (len>3 && g_strcmp0(g_utf8_substring(msg, 0, 3),"cd ")==0){
-	  gchar * addr=g_utf8_substring(msg, 3, len);
+        if (g_strcmp0(parsed_msg->we_wordv[0],"cd")==0 && parsed_msg->we_wordc==2){
+	  gchar * addr=parsed_msg->we_wordv[1];
 	  g_debug("cd %s", addr);
 
+	  if (g_strcmp0(addr, "..")==0) {
+	    up_clicked(NULL);
+	    return TRUE;
+	  }
+	  //TODO: what should we do with cd . , call refresh_store, or go to PWD as it is now?
 	  struct stat addr_info;
 	  //when we set_rfm_curPath, we don't change rfm environment variable PWD
 	  //so, shall we consider update env PWD value for rfm in set_rfm_curPath?
@@ -2449,27 +2449,48 @@ static void exec_stdin_command (gchar *msg)
                g_debug("canonicalized destpath: %s", destpath);
                set_rfm_curPath(destpath);
                g_free(destpath);
+	       return TRUE;
               }
             }
           }
-        }else if (g_strcmp0(msg,"setpwd")==0) {
+        }else if (g_strcmp0(parsed_msg->we_wordv[0],"setpwd")==0) {
 	  setenv("PWD",rfm_curPath,1);
 	  printf("%s\n",getenv("PWD"));
-        }else if (g_strcmp0(msg, "pwd")==0) {
+	  return TRUE;
+        }else if (g_strcmp0(parsed_msg->we_wordv[0],"pwd")==0) {
 	  printf("%s\n",getenv("PWD"));
-        }else if (g_strcmp0(msg,"quit")==0) {
+	  return TRUE;
+        }else if (g_strcmp0(parsed_msg->we_wordv[0],"quit")==0) {
 	  gtk_main_quit();
-        }else if (g_strcmp0(msg,"help")==0) {
+	  return TRUE;
+        }else if (g_strcmp0(parsed_msg->we_wordv[0],"help")==0) {
 	  stdin_command_help();
-	}else if (g_strcmp0(msg,"/")==0) {
+	  return TRUE;
+	}else if (g_strcmp0(parsed_msg->we_wordv[0],"/")==0) {
 	  switch_view(rfmCtx);
-        }else if (g_strcmp0(msg,"")==0) {
-	  time_t now_time=time(NULL);
-	  if ((now_time - lastEnter)<=2)
-	    refresh_store(rfmCtx);
-	  lastEnter=now_time;
-        }else if (len>0){
-	  GString *msgstring=g_string_new(strdup(msg));
+	  return TRUE;
+        }
+	return FALSE;
+}
+
+static void exec_stdin_command (gchar *msg)
+{
+        gint len = strlen(msg);
+	if (len == 0){
+	    time_t now_time=time(NULL);
+	    if ((now_time - lastEnter)<=2)
+	        refresh_store(rfmCtx);
+	    lastEnter=now_time;
+	}else{
+
+        g_debug ("Read length %u from stdin: %s", len, msg);	
+	gboolean endingSpace = (msg[len-1]==' ');
+
+	wordexp_t parsed_msg;
+	int wordexp_retval = wordexp(msg,&parsed_msg,0);
+	if (!(wordexp_retval==0 && exec_stdin_command_builtin(&parsed_msg))){
+
+          GString *msgstring=g_string_new(strdup(msg));
 
 	  if (endingSpace){
  	  // combine runCmd with selected files to get gchar** v
@@ -2496,7 +2517,7 @@ static void exec_stdin_command (gchar *msg)
 	    }
 	    g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
 	  }
-	  }
+	  } //end if (endingspace)
 
 	  GError *err;
           if (g_spawn_sync(rfm_curPath, stdin_command(msgstring->str), NULL,
@@ -2511,8 +2532,10 @@ static void exec_stdin_command (gchar *msg)
           }
 
           g_string_free(msgstring,TRUE);
-	}
+	}//end if (!(wordexp_retval==0 && exec_stdin_command_builtin(&parsed_msg)))
 
+	wordfree(&parsed_msg);
+	} //end if (len == 0)
         g_free (msg);
 
 	g_thread_join(readlineThread);
