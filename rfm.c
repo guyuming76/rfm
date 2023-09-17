@@ -2434,25 +2434,20 @@ static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg){
 	  if (g_strcmp0(addr, "..")==0) {
 	    up_clicked(NULL);
 	    return TRUE;
+	  }else if (g_strcmp0(addr, ".")==0){
+	    return TRUE;
+	  }else if (addr[0]=='/'){
+	    set_rfm_curPath(addr);
+	    return TRUE;
+	  }else{
+	    set_rfm_curPath(g_build_filename(rfm_curPath, addr, NULL));
+	    return TRUE;
 	  }
-	  //TODO: what should we do with cd . , call refresh_store, or go to PWD as it is now?
-	  struct stat addr_info;
 	  //when we set_rfm_curPath, we don't change rfm environment variable PWD
 	  //so, shall we consider update env PWD value for rfm in set_rfm_curPath?
 	  //The answer is we should not, since we sometime, with need PWD, which child process will inherit, to be different from the directory of files selected that will be used by child process.
 	  //Instead, we use the setpwd command.
-          if (stat(addr, &addr_info)==0) {
-	    if (S_ISDIR(addr_info.st_mode)) {
-	      char * destpath = NULL;
-	      destpath = canonicalize_file_name(addr);
-              if (destpath != NULL) {
-               g_debug("canonicalized destpath: %s", destpath);
-               set_rfm_curPath(destpath);
-               g_free(destpath);
-	       return TRUE;
-              }
-            }
-          }
+
         }else if (g_strcmp0(parsed_msg->we_wordv[0],"setpwd")==0) {
 	  setenv("PWD",rfm_curPath,1);
 	  printf("%s\n",getenv("PWD"));
