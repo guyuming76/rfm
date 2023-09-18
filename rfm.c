@@ -315,7 +315,7 @@ static void PreviousPage(RFM_ctx *rfmCtx);
 static void NextPage(RFM_ctx *rfmCtx);
 static void info_clicked(gpointer user_data);
 static void switch_view(RFM_ctx *rfmCtx);
-static void toggle_readFromPipe(RFM_ctx *rfmCtx);
+static void toggle_readFromPipe(GtkToolItem *item,RFM_ctx *rfmCtx);
 /* callback function for file menu */
 /* since g_spawn_wrapper will free child_attribs, and we don't want the childAttribs object associated with UI interface item to be freed, we duplicate childAttribs here. */
 static void file_menu_exec(GtkMenuItem *menuitem, RFM_ChildAttribs *childAttribs);
@@ -1453,6 +1453,12 @@ static gint sort_func(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, gpoin
    return rv;
 }
 
+static void set_Titles(gchar * title){
+   gtk_window_set_title(GTK_WINDOW(window), title);
+   gtk_tool_button_set_label(PathAndRepositoryNameDisplay, title);
+   set_terminal_window_title(title);
+   g_free(title);
+}
 
 static void refresh_store(RFM_ctx *rfmCtx)
 {
@@ -1479,15 +1485,13 @@ static void refresh_store(RFM_ctx *rfmCtx)
      title=g_strdup(rfm_curPath);
      rfm_readDirSheduler=g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, (GSourceFunc)read_one_DirItem_into_fileAttributeList_and_insert_into_store_in_each_call, dir, (GDestroyNotify)g_dir_close);
   }
-   gtk_window_set_title(GTK_WINDOW(window), title);
-   gtk_tool_button_set_label(PathAndRepositoryNameDisplay, title);
-   set_terminal_window_title(title);
 #ifdef GitIntegration
    if (!rfmReadFileNamesFromPipeStdIn && curPath_is_git_repo)
       g_spawn_wrapper(git_current_branch_cmd, NULL, 0, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, TRUE, set_window_title_with_git_branch_and_sort_view_with_git_status, NULL);
+   else set_Titles(title);
+#else
+   set_Titles(title);
 #endif
-
-   g_free(title);
    icon_or_tree_view = add_view(rfmCtx);
    gtk_widget_show_all(window);
    refresh_toolbar();
@@ -1528,10 +1532,7 @@ static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpoin
     child_StdOut[strcspn(child_StdOut, "\n")] = 0;
     g_debug("git current branch:%d",child_StdOut);
     gchar * title=g_strdup_printf("%s [%s]",rfm_curPath,child_StdOut);
-    gtk_window_set_title(GTK_WINDOW(window), title);
-    gtk_tool_button_set_label(PathAndRepositoryNameDisplay, title);
-    set_terminal_window_title(title);
-    g_free(title);
+    set_Titles(title);
   }else{
     g_warning("failed to get git current branch!");
   }
@@ -2015,9 +2016,11 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
    if (!agMain) agMain = gtk_accel_group_new();
    gtk_window_add_accel_group(GTK_WINDOW(window), agMain);
 
+   //we add the following toolbutton here instead of define in config.def.h because we need its global reference.
    PathAndRepositoryNameDisplay = gtk_tool_button_new(NULL,rfm_curPath);
    gtk_toolbar_insert(GTK_TOOLBAR(tool_bar->toolbar), PathAndRepositoryNameDisplay, -1);
-
+   g_signal_connect(PathAndRepositoryNameDisplay, "clicked", G_CALLBACK(toggle_readFromPipe),rfmCtx);
+   
    for (uint i = 0; i < G_N_ELEMENTS(tool_buttons); i++) {
      //if ((rfmReadFileNamesFromPipeStdIn && tool_buttons[i].readFromPipe) || (!rfmReadFileNamesFromPipeStdIn && tool_buttons[i].curPath)){
        GdkPixbuf *buttonIcon=NULL;
@@ -2178,7 +2181,7 @@ static void switch_view(RFM_ctx *rfmCtx) {
   set_view_selection_list(icon_or_tree_view, treeview, selectionList);
 }
 
-static void toggle_readFromPipe(RFM_ctx *rfmCtx)
+static void toggle_readFromPipe(GtkToolItem *item,RFM_ctx *rfmCtx)
 {
   if (FileNameList_FromPipeStdin != NULL && rfm_curPath!= NULL) { 
     rfmReadFileNamesFromPipeStdIn=!rfmReadFileNamesFromPipeStdIn;
@@ -2409,7 +2412,7 @@ static void readlineInSeperateThread() {
   else prompt="*>";
   while ((msg = readline(prompt))==NULL);
 
-  stdin_command_Scheduler = g_idle_add(exec_stdin_command, msg);
+  stdin_command_Scheduler = g_idle_add_once(exec_stdin_command, msg);
 }
 
 static void stdin_command_help() {
