@@ -2178,6 +2178,7 @@ static void switch_view(RFM_ctx *rfmCtx) {
   treeview=!treeview;
   icon_or_tree_view=add_view(rfmCtx);
   gtk_widget_show_all(window);
+  refresh_toolbar();
   set_view_selection_list(icon_or_tree_view, treeview, selectionList);
 }
 
