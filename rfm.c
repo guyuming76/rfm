@@ -2406,14 +2406,29 @@ static void free_default_pixbufs(RFM_defaultPixbufs *defaultPixbufs)
    g_free(defaultPixbufs);
 }
 
-static void readlineInSeperateThread() {
-  gchar *msg;
+
+static void readlineInSeperateThread(GString * readlineResultStringFromPreviousReadlineCall) {
+  if (readlineResultStringFromPreviousReadlineCall!=NULL){ //this means it's not initial run after rfm start, so i should first run cmd from previous readline here
+	  GError *err;
+          if (g_spawn_sync(rfm_curPath, stdin_command(readlineResultStringFromPreviousReadlineCall->str), NULL,
+                           G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN |
+                               G_SPAWN_CHILD_INHERITS_STDOUT |
+                               G_SPAWN_CHILD_INHERITS_STDERR,
+                           NULL, NULL, NULL, NULL, NULL, &err))
+              add_history(readlineResultStringFromPreviousReadlineCall->str);
+          else {
+              g_warning("%d;%s", err->code, err->message);
+	      g_free(err);
+          }
+          g_string_free(readlineResultStringFromPreviousReadlineCall,TRUE);
+  }
+  gchar *readlineResult;
   gchar *prompt;
   if (ItemSelected==0) prompt=">";
   else prompt="*>";
-  while ((msg = readline(prompt))==NULL);
+  while ((readlineResult = readline(prompt))==NULL);
 
-  stdin_command_Scheduler = g_idle_add_once(exec_stdin_command, msg);
+  stdin_command_Scheduler = g_idle_add_once(exec_stdin_command, readlineResult);
 }
 
 static void stdin_command_help() {
@@ -2472,9 +2487,10 @@ static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg){
 	return FALSE;
 }
 
-static void exec_stdin_command (gchar *msg)
+static void exec_stdin_command (gchar * readlineResult)
 {
-        gint len = strlen(msg);
+        gint len = strlen(readlineResult);
+	GString *readlineResultString = NULL;
 	if (len == 0){
 	    time_t now_time=time(NULL);
 	    if ((now_time - lastEnter)<=2)
@@ -2482,14 +2498,14 @@ static void exec_stdin_command (gchar *msg)
 	    lastEnter=now_time;
 	}else{
 
-        g_debug ("Read length %u from stdin: %s", len, msg);	
-	gboolean endingSpace = (msg[len-1]==' ');
+        g_debug ("Read length %u from stdin: %s", len, readlineResult);	
+	gboolean endingSpace = (readlineResult[len-1]==' ');
 
 	wordexp_t parsed_msg;
-	int wordexp_retval = wordexp(msg,&parsed_msg,0);
+	int wordexp_retval = wordexp(readlineResult,&parsed_msg,0);
 	if (!(wordexp_retval==0 && exec_stdin_command_builtin(&parsed_msg))){
 
-          GString *msgstring=g_string_new(strdup(msg));
+          readlineResultString=g_string_new(strdup(readlineResult));
 
 	  if (endingSpace){
  	  // combine runCmd with selected files to get gchar** v
@@ -2506,11 +2522,11 @@ static void exec_stdin_command (gchar *msg)
 	      gtk_tree_model_get (GTK_TREE_MODEL(store), &iter, COL_ATTR, &fileAttributes, -1);
 
 	      //if there is %s in msg, replace it with selected filename one by one, otherwise, append filenames to the end.
-              if (strstr(msgstring->str, "%s") == NULL) {
-		g_string_append(msgstring, " ");
-		g_string_append(msgstring, fileAttributes->path);
+              if (strstr(readlineResultString->str, "%s") == NULL) {
+		g_string_append(readlineResultString, " ");
+		g_string_append(readlineResultString, fileAttributes->path);
               }else
-		g_string_replace(msgstring, "%s",fileAttributes->path, 1);
+		g_string_replace(readlineResultString, "%s",fileAttributes->path, 1);
 	      
 	      listElement=g_list_next(listElement);
 	    }
@@ -2518,27 +2534,13 @@ static void exec_stdin_command (gchar *msg)
 	  }
 	  } //end if (endingspace)
 
-	  GError *err;
-          if (g_spawn_sync(rfm_curPath, stdin_command(msgstring->str), NULL,
-                           G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN |
-                               G_SPAWN_CHILD_INHERITS_STDOUT |
-                               G_SPAWN_CHILD_INHERITS_STDERR,
-                           NULL, NULL, NULL, NULL, NULL, &err))
-              add_history(msg);
-          else {
-              g_warning("%d;%s", err->code, err->message);
-	      g_free(err);
-          }
-
-          g_string_free(msgstring,TRUE);
 	}//end if (!(wordexp_retval==0 && exec_stdin_command_builtin(&parsed_msg)))
-
 	wordfree(&parsed_msg);
 	} //end if (len == 0)
-        g_free (msg);
+        g_free (readlineResult);
 
 	g_thread_join(readlineThread);
-	readlineThread=g_thread_new("readline", readlineInSeperateThread, NULL);
+	readlineThread=g_thread_new("readline", readlineInSeperateThread, readlineResultString);
 }
 
 static int setup(char *initDir, RFM_ctx *rfmCtx)
