@@ -25,6 +25,7 @@
 "    help        print this message\n" \
 "    press Enter key two times (double enter) to refresh rfm view\n" \
 "    /           to switch between icon/list view\n" \
+"    //          to switch between current directory and pipe stdin\n" \
 "    pwd         get rfm env PWD\n" \
 "    setpwd      set rfm env PWD with current directory\n" \
 "    pagesize    set files shown per page when displaying filenane list from pipe stdin. for example, pagesize 100\n" \

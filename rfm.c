@@ -2497,6 +2497,9 @@ static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg){
 	}else if (g_strcmp0(parsed_msg->we_wordv[0],"/")==0) {
 	  switch_view(rfmCtx);
 	  return TRUE;
+	}else if (g_strcmp0(parsed_msg->we_wordv[0],"//")==0) {
+	  toggle_readFromPipe(NULL, rfmCtx);
+	  return TRUE;
         }else if (g_strcmp0(parsed_msg->we_wordv[0], "pagesize")==0 && parsed_msg->we_wordc==2){
 	  uint ps = atoi(parsed_msg->we_wordv[1]); 
 	  if (ps > 0) {
