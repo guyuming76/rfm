@@ -1396,6 +1396,20 @@ static void NextPage(RFM_ctx *rfmCtx) { TurnPage(rfmCtx, TRUE); }
 
 static void PreviousPage(RFM_ctx *rfmCtx) { TurnPage(rfmCtx, FALSE); }
 
+static void FirstPage(RFM_ctx *rfmCtx){
+  CurrentDisplayingPage_ForFileNameListFromPipeStdIn = FileNameList_FromPipeStdin;
+  currentFileNum = 1;
+  refresh_store(rfmCtx);
+}
+
+static void set_DisplayingPageSize_ForFileNameListFromPipesStdIn(uint pagesize){
+  if (rfmReadFileNamesFromPipeStdIn && FileNameList_FromPipeStdin!=NULL) {
+    DisplayingPageSize_ForFileNameListFromPipeStdIn = pagesize;
+    FirstPage(rfmCtx);
+  }
+}
+
+
 static gboolean fill_fileAttributeList_with_filenames_from_pipeline_stdin_and_then_insert_into_store() {
   time_t mtimeThreshold=time(NULL)-RFM_MTIME_OFFSET;
   RFM_FileAttributes *fileAttributes;
@@ -2483,7 +2497,13 @@ static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg){
 	}else if (g_strcmp0(parsed_msg->we_wordv[0],"/")==0) {
 	  switch_view(rfmCtx);
 	  return TRUE;
-        }
+        }else if (g_strcmp0(parsed_msg->we_wordv[0], "pagesize")==0 && parsed_msg->we_wordc==2){
+	  uint ps = atoi(parsed_msg->we_wordv[1]); 
+	  if (ps > 0) {
+	    set_DisplayingPageSize_ForFileNameListFromPipesStdIn(ps);
+	    return TRUE;
+	  }
+	}
 	return FALSE;
 }
 
