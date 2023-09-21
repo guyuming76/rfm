@@ -2558,7 +2558,7 @@ static void exec_stdin_command (gchar * readlineResult)
 	  } //end if (endingspace)
 
 	}//end if (!(wordexp_retval==0 && exec_stdin_command_builtin(&parsed_msg)))
-	wordfree(&parsed_msg);
+	if (wordexp_retval == 0) wordfree(&parsed_msg);
 	} //end if (len == 0)
         g_free (readlineResult);
 
@@ -2830,7 +2830,7 @@ static void ReadFromPipeStdinIfAny(char * fd)
 	   currentFileNum=1;
 	 }
 
-         if (atoi(fd) == 0) { // open parent stdin to replace pipe, so that giochannel for parent stdin will work
+         if (atoi(fd) == 0) { // open parent stdin to replace pipe
            char *tty = ttyname(1);
 	   int pts=open(tty,O_RDWR);
 	   dup2(pts,0);
