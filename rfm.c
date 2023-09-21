@@ -2526,9 +2526,8 @@ static void exec_stdin_command (gchar * readlineResult)
 
 	wordexp_t parsed_msg;
 	int wordexp_retval = wordexp(readlineResult,&parsed_msg,0);
-	if (wordexp_retval==0){ //wordexp success
+	if (!(wordexp_retval==0 && exec_stdin_command_builtin(&parsed_msg))){
 
-	  if (!exec_stdin_command_builtin(&parsed_msg)){
           readlineResultString=g_string_new(strdup(readlineResult));
 
 	  if (endingSpace){
@@ -2557,11 +2556,9 @@ static void exec_stdin_command (gchar * readlineResult)
 	    g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
 	  }
 	  } //end if (endingspace)
-	  }//end if (!exec_stdin_command_builtin(&parsed_msg))
-	  wordfree(&parsed_msg);
-	}else {// (wordexp_retval!=0) means wordexp failed
 
-        }//end if (wordexp_retval!=0)
+	}//end if (!(wordexp_retval==0 && exec_stdin_command_builtin(&parsed_msg)))
+	if (wordexp_retval == 0) wordfree(&parsed_msg);
 	} //end if (len == 0)
         g_free (readlineResult);
 
