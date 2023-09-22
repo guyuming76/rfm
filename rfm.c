@@ -279,6 +279,7 @@ static gboolean fill_fileAttributeList_with_filenames_from_pipeline_stdin_and_th
 static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store_in_each_call(GDir *dir);
 static void Iterate_through_fileAttribute_list_to_insert_into_store();
 static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,GtkTreeIter *iter);
+static void Insert_fileAttributes_into_store_with_thumbnail_and_more(RFM_FileAttributes* fileAttributes);
 static RFM_FileAttributes *malloc_fileAttributes(void);
 static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guint64 mtimeThreshold, GHashTable *mount_hash);
 static GHashTable *get_mount_points(void);
@@ -1311,6 +1312,8 @@ static void load_GitTrackedFiles_into_HashTable()
       gchar *fullpath=g_build_filename(git_root,filename,NULL);         
       g_debug("gitTrackedFile Status:%s,%s",status,fullpath);
 
+      g_hash_table_insert(gitTrackedFiles,g_strdup(fullpath),status);
+      
       if (g_strcmp0(" D", status)==0 || g_strcmp0("D ", status)==0){
 	//add item into fileattributelist so that user can git stage on it
 	RFM_FileAttributes *fileAttributes=malloc_fileAttributes();
@@ -1320,14 +1323,14 @@ static void load_GitTrackedFiles_into_HashTable()
 	  fileAttributes->pixbuf=g_object_ref(defaultPixbufs->broken);
 	  fileAttributes->file_name=g_strdup(filename);
 	  fileAttributes->display_name=g_strdup(filename);
-	  fileAttributes->path=g_strdup(fullpath);
+	  fileAttributes->path=fullpath;
 	  fileAttributes->mime_root=g_strdup("na");
 	  fileAttributes->mime_sub_type=g_strdup("na");
-	  rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
+	  //rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
+	  Insert_fileAttributes_into_store_with_thumbnail_and_more(fileAttributes);
 	}
       }
       
-      g_hash_table_insert(gitTrackedFiles,fullpath,status);
       g_free(filename);
       oneline=strtok(NULL, "\n");
     }
@@ -1341,6 +1344,18 @@ static void load_GitTrackedFiles_into_HashTable()
 }
 #endif
 
+static void Insert_fileAttributes_into_store_with_thumbnail_and_more(RFM_FileAttributes* fileAttributes){
+	    GtkTreeIter iter;
+            rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
+	    Insert_fileAttributes_into_store(fileAttributes,&iter);
+	    if (rfm_do_thumbs==1 && g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR)){
+	      load_thumbnail_or_enqueue_thumbQueue_for_store_row(&iter);
+#ifdef GitIntegration
+              load_gitCommitMsg_for_store_row(&iter);
+#endif
+	    }  
+}
+
 static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store_in_each_call(GDir *dir) {
    const gchar *name=NULL;
    time_t mtimeThreshold=time(NULL)-RFM_MTIME_OFFSET;
@@ -1352,15 +1367,7 @@ static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store_in
      if (!ignored_filename(name)) {
          fileAttributes=get_fileAttributes_for_a_file(name, mtimeThreshold, mount_hash);
          if (fileAttributes!=NULL){
-	    GtkTreeIter iter;
-            rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
-	    Insert_fileAttributes_into_store(fileAttributes,&iter);
-	    if (rfm_do_thumbs==1 && g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR)){
-	      load_thumbnail_or_enqueue_thumbQueue_for_store_row(&iter);
-#ifdef GitIntegration
-              load_gitCommitMsg_for_store_row(&iter);
-#endif
-	    }
+	   Insert_fileAttributes_into_store_with_thumbnail_and_more(fileAttributes);
 	 }
       }
       g_hash_table_destroy(mount_hash);
