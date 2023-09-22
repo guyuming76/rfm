@@ -261,6 +261,7 @@ static void set_rfm_curPath(gchar *path);
 static int setup(char *initDir, RFM_ctx *rfmCtx);
 static gboolean readFromPipe() { return FileNameList_FromPipeStdin!=NULL;}
 static void ReadFromPipeStdinIfAny(char *fd);
+static void refresh_FileNameList_and_refresh_store(gpointer filenamelist);
 //read input from parent process stdin , and handle input such as
 //cd .
 //cd /tmp
@@ -2198,10 +2199,10 @@ static void switch_view(RFM_ctx *rfmCtx) {
 
 static void toggle_readFromPipe(GtkToolItem *item,RFM_ctx *rfmCtx)
 {
-  if (FileNameList_FromPipeStdin != NULL && rfm_curPath!= NULL) { 
+  //if (FileNameList_FromPipeStdin != NULL && rfm_curPath!= NULL) { 
     rfmReadFileNamesFromPipeStdIn=!rfmReadFileNamesFromPipeStdIn;
     refresh_store(rfmCtx);
-  }
+  //}
 }
 
 static void inotify_insert_item(gchar *name, gboolean is_dir)
@@ -2420,24 +2421,33 @@ static void free_default_pixbufs(RFM_defaultPixbufs *defaultPixbufs)
    g_free(defaultPixbufs);
 }
 
+static gboolean redirectToStdin=FALSE; // we need to pass this status from exec_stdin_command to readlineInSeperatedThread, however, we can only pass one parameter in g_thread_new, so, i use a global variable here.
 
 static void readlineInSeperateThread(GString * readlineResultStringFromPreviousReadlineCall) {
   if (readlineResultStringFromPreviousReadlineCall!=NULL){ //this means it's not initial run after rfm start, so i should first run cmd from previous readline here
 	  GError *err;
-          if (g_spawn_sync(rfm_curPath, stdin_command(readlineResultStringFromPreviousReadlineCall->str), NULL,
+	  gchar* cmd_stdout;
+	  if (redirectToStdin && g_spawn_sync(rfm_curPath, 
+					      stdin_command(g_string_erase(readlineResultStringFromPreviousReadlineCall, readlineResultStringFromPreviousReadlineCall->len-2, 2)->str),
+					      NULL,
+					      G_SPAWN_SEARCH_PATH|G_SPAWN_CHILD_INHERITS_STDIN|G_SPAWN_CHILD_INHERITS_STDERR,
+					      NULL,NULL,&cmd_stdout,NULL,NULL,&err)){ //remove the ending ">0" in cmd with g_string_erase
+	      g_idle_add_once(refresh_FileNameList_and_refresh_store, (gpointer)cmd_stdout);
+	  } else if (!redirectToStdin && g_spawn_sync(rfm_curPath, stdin_command(readlineResultStringFromPreviousReadlineCall->str), NULL,
                            G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN |
                                G_SPAWN_CHILD_INHERITS_STDOUT |
                                G_SPAWN_CHILD_INHERITS_STDERR,
-                           NULL, NULL, NULL, NULL, NULL, &err))
-              add_history(readlineResultStringFromPreviousReadlineCall->str);
-          else {
+			   NULL, NULL, NULL, NULL, NULL, &err)) {
+	  } else {
               g_warning("%d;%s", err->code, err->message);
 	      g_free(err);
-          }
+	  }
+	  add_history(readlineResultStringFromPreviousReadlineCall->str);	  
           g_string_free(readlineResultStringFromPreviousReadlineCall,TRUE);
   }
   gchar *readlineResult;
   gchar *prompt;
+  redirectToStdin=FALSE;
   if (ItemSelected==0) prompt=">";
   else prompt="*>";
   while ((readlineResult = readline(prompt))==NULL);
@@ -2559,6 +2569,12 @@ static void exec_stdin_command (gchar * readlineResult)
 
 	}//end if (!(wordexp_retval==0 && exec_stdin_command_builtin(&parsed_msg)))
 	if (wordexp_retval == 0) wordfree(&parsed_msg);
+	else if (wordexp_retval==WRDE_BADCHAR) {
+	  if (len > 2 && readlineResult[len-2]=='>' && readlineResult[len-1]=='0'){ //TODO: better way to check ending with ">0"?
+	    redirectToStdin=TRUE;
+	  }
+        }
+
 	} //end if (len == 0)
         g_free (readlineResult);
 
@@ -2816,7 +2832,7 @@ static void ReadFromPipeStdinIfAny(char * fd)
          while (fgets(oneline_stdin, PATH_MAX,pipeStream ) != NULL) {
    	   g_debug("%s",oneline_stdin);
            oneline_stdin[strcspn(oneline_stdin, "\n")] = 0; //manual set the last char to NULL to eliminate the trailing \n from fgets
-	   if (!ignored_filename(oneline_stdin)){
+	   if (!ignored_filename(oneline_stdin)){ //TODO: shall we call ignored_filename here? we way remove it to align with the GetGlist implementation. User can filter those files with grep before rfm
 	       FileNameList_FromPipeStdin=g_list_prepend(FileNameList_FromPipeStdin, oneline_stdin);
 	       fileNum++;
 	       g_debug("appended into FileNameListWithAbsolutePath_FromPipeStdin:%s", oneline_stdin);
@@ -2837,4 +2853,22 @@ static void ReadFromPipeStdinIfAny(char * fd)
 	   close(pts);
          }
    }
+}
+
+static void refresh_FileNameList_and_refresh_store(gpointer filenamelist){
+  GList * old_filenamelist = FileNameList_FromPipeStdin;
+  FileNameList_FromPipeStdin = NULL;
+  fileNum=0;
+
+  gchar * oneline=strtok((gchar*)filenamelist,"\n");
+  while (oneline!=NULL){
+    FileNameList_FromPipeStdin = g_list_prepend(FileNameList_FromPipeStdin, oneline);
+    fileNum++;
+    oneline=strtok(NULL, "\n");
+  }
+
+  if (FileNameList_FromPipeStdin != NULL) FileNameList_FromPipeStdin=g_list_first(g_list_reverse(FileNameList_FromPipeStdin));
+  rfmReadFileNamesFromPipeStdIn = TRUE;
+  FirstPage(rfmCtx);
+  if (old_filenamelist!=NULL) g_list_free(old_filenamelist);
 }

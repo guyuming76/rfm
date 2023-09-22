@@ -32,4 +32,5 @@
 "Shell commands:\n" \
 "    non-builtin commands will be sent to shell to execute.\n" \
 "    if there is ending space in command entered, selected filename(s) will be appended at the end\n" \
+"    append >0 to commands that output filename list, for example: locate 202309|grep png >0 , it will be displayed in rfm, the same effect as starting rfm after pipeline: locate 202309|grep png|rfm\n" \
 "custom builtin commands in config.h:\n" 
