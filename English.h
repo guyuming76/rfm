@@ -34,3 +34,14 @@
 "    if there is ending space in command entered, selected filename(s) will be appended at the end\n" \
 "    append >0 to commands that output filename list, for example: locate 202309|grep png >0 , it will be displayed in rfm, the same effect as starting rfm after pipeline: locate 202309|grep png|rfm\n" \
 "custom builtin commands in config.h:\n" 
+
+#define rfmLaunchHelp \
+"This is the help for command line argumants you can use to launch program with, there is another help in command window for commands you can use there.\n" \
+"Usage: %s [-h] || [-d <full path>] [-i] [-v] [-l] [-p<custom pagesize>] [-p] [-m]\n" \
+"-p       read file name list from StdIn, through pipeline, this -p can be omitted, for example:\n           locate 20230420|grep .png|rfm\n" \
+"-px      when read filename list from pipeline, show only x number of items in a batch, for example: -p9. you can also set this in command window with builtin cmd pagesize\n" \
+"-d       specify full path, such as /home/somebody/documents, instead of default current working directory\n" \
+"-i       show mime type\n" \
+"-l       open with listview instead of iconview,you can also switch view with toolbar button or builtin cmd /\n" \
+"-m       more columns displayed in listview,such as atime, ctime\n" \
+"-h       show this help\n"
