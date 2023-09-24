@@ -26,6 +26,7 @@
 #include <mntent.h>
 #include <icons.h>
 #include <readline/readline.h>
+#include <readline/history.h>
 #include <wordexp.h>
 
 #define PROG_NAME "rfm"
@@ -238,7 +239,8 @@ static char* pipefd="0";
 static GList *CurrentDisplayingPage_ForFileNameListFromPipeStdIn=NULL;
 static gint DisplayingPageSize_ForFileNameListFromPipeStdIn=20;
 
-
+static uint history_entry_added=0;
+static char* rfm_historyFileLocation;
 
 #ifdef GitIntegration
 // value " M " for modified
@@ -1568,7 +1570,12 @@ static void set_rfm_curPath(gchar* path)
 {
    char *msg;
    int rfm_new_wd;
+   //int e;
 
+   add_history(g_strconcat("cd ", path, NULL));
+   history_entry_added++;
+   /* if (rfm_curPath!=NULL && (e=append_history(history_entry_added, g_build_filename(rfm_curPath,".rfm_history", NULL)))) */
+   /*     g_warning("failed to append_history(%d,%s) error code:%d",history_entry_added,g_build_filename(rfm_curPath,".rfm_history", NULL),e); */
    if (rfmReadFileNamesFromPipeStdIn) {
        if (rfm_curPath != path) {
          g_free(rfm_curPath);
@@ -1595,9 +1602,13 @@ static void set_rfm_curPath(gchar* path)
       
        inotify_rm_watch(rfm_inotify_fd, rfm_curPath_wd);
        rfm_curPath_wd = rfm_new_wd;
-       add_history(g_strconcat("cd ", rfm_curPath,NULL));
      }
    }
+
+   /* clear_history(); */
+   /* if (e=read_history(g_build_filename(rfm_curPath,".rfm_history", NULL))) */
+   /*     g_warning("failed to read_history(%s) error code:%d. it's normal if you enter this directory for the first time with rfm.",g_build_filename(rfm_curPath,".rfm_history", NULL),e); */
+   /* history_entry_added=0; */
 #ifdef GitIntegration
    g_spawn_wrapper(git_inside_work_tree_cmd, NULL, 0, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, FALSE, set_curPath_is_git_repo, NULL);
    /* if (!rfmReadFileNamesFromPipeStdIn && curPath_is_git_repo) */
@@ -1949,7 +1960,7 @@ static gboolean view_key_press(GtkWidget *widget, GdkEvent *event,RFM_ctx *rfmCt
   if (ek->keyval==GDK_KEY_Menu)
     return popup_file_menu(event, rfmCtx);
   else if (ek->keyval==GDK_KEY_q){
-    gtk_main_quit();
+    cleanup(NULL,rfmCtx);
     return TRUE;
   } else if (ek->keyval == GDK_KEY_Escape) {
     if(treeview)
@@ -2449,7 +2460,8 @@ static void readlineInSeperateThread(GString * readlineResultStringFromPreviousR
               g_warning("%d;%s", err->code, err->message);
 	      g_free(err);
 	  }
-	  add_history(readlineResultStringFromPreviousReadlineCall->str);	  
+	  add_history(readlineResultStringFromPreviousReadlineCall->str);
+	  history_entry_added++;
           g_string_free(readlineResultStringFromPreviousReadlineCall,TRUE);
   }
   gchar *readlineResult;
@@ -2506,7 +2518,7 @@ static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg){
 	  printf("%s\n",getenv("PWD"));
 	  return TRUE;
         }else if (g_strcmp0(parsed_msg->we_wordv[0],"quit")==0) {
-	  gtk_main_quit();
+	  cleanup(NULL,rfmCtx);
 	  return TRUE;
         }else if (g_strcmp0(parsed_msg->we_wordv[0],"help")==0) {
 	  stdin_command_help();
@@ -2671,6 +2683,13 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
    g_debug("rfm_thumbDir: %s",rfm_thumbDir);
 
    ReadFromPipeStdinIfAny(pipefd);
+
+   using_history();
+   stifle_history(100);
+   rfm_historyFileLocation = g_build_filename(getenv("HOME"),".rfm_history", NULL);
+   int e;
+   if (e=read_history(rfm_historyFileLocation))
+     g_warning("failed to read_history(%s) error code:%d.",rfm_historyFileLocation,e);
    
    if (initDir == NULL)
      set_rfm_curPath(rfm_homePath);
@@ -2685,7 +2704,7 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
    newaction.sa_handler = SIG_IGN;
    newaction.sa_flags = 0;
    sigaction(SIGINT, &newaction,NULL);
-   
+
    stdin_command_help();
    readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);
 
@@ -2694,13 +2713,18 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
 
 static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx)
 {
+   int e;
    //https://unix.stackexchange.com/questions/534657/do-inotify-watches-automatically-stop-when-a-program-ends
    inotify_rm_watch(rfm_inotify_fd, rfm_curPath_wd);
    if (rfm_do_thumbs==1) {
       inotify_rm_watch(rfm_inotify_fd, rfm_thumbnail_wd);
    }
    close(rfm_inotify_fd);
-   
+   if (e=append_history(history_entry_added, rfm_historyFileLocation)){
+     if (e!=2) g_warning("failed to append_history(%d,%s) error code:%d",history_entry_added,rfm_historyFileLocation,e);
+     else if (e=write_history(rfm_historyFileLocation))
+       g_warning("failed to write_history(%s) error code:%d", rfm_historyFileLocation,e);
+   }
    gtk_main_quit();
 
 }
