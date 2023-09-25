@@ -14,6 +14,8 @@
 #define RunActionChangeOwner "ChangeOwner"
 #define SwitchPipeDir  "Pipe/Dir"
 
+#define PipeTitle "Current:%d/Total:%d, PageSize:%d"
+
 #define builtinCMD_Help \
 "command prompt:\n" \
 "    *> means there is selected file(s) in rfm view\n" \

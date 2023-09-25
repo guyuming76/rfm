@@ -14,6 +14,8 @@
 #define RunActionChangeOwner "更改所有者"
 #define SwitchPipeDir  "管道/目录"
 
+#define PipeTitle "当前:%d/总数:%d, 每页:%d"
+
 #define builtinCMD_Help \
 "命令提示:\n" \
 "    *> 表示rfm视图有文件选中\n" \

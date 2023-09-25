@@ -1498,7 +1498,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
 
    gchar * title;
    if (rfmReadFileNamesFromPipeStdIn) {
-     title=g_strdup_printf(" %d/%d, page size for file from pipe:%d",currentFileNum,fileNum,DisplayingPageSize_ForFileNameListFromPipeStdIn);
+     title=g_strdup_printf(PipeTitle, currentFileNum,fileNum,DisplayingPageSize_ForFileNameListFromPipeStdIn);
      fill_fileAttributeList_with_filenames_from_pipeline_stdin_and_then_insert_into_store();
    } else {
      gtk_tree_sortable_set_default_sort_func(GTK_TREE_SORTABLE(store), sort_func, NULL, NULL);
