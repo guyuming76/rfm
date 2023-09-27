@@ -1574,6 +1574,7 @@ static void set_rfm_curPath(gchar* path)
 
    add_history(g_strconcat("cd ", path, NULL));
    history_entry_added++;
+   //TODO: in future if we need some directory specific history file, we may check that if the directory contains .rfm_history file, it will use this local history, otherwise, use the default global history file.
    /* if (rfm_curPath!=NULL && (e=append_history(history_entry_added, g_build_filename(rfm_curPath,".rfm_history", NULL)))) */
    /*     g_warning("failed to append_history(%d,%s) error code:%d",history_entry_added,g_build_filename(rfm_curPath,".rfm_history", NULL),e); */
    if (rfmReadFileNamesFromPipeStdIn) {
