@@ -2536,6 +2536,11 @@ static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg){
 	    set_DisplayingPageSize_ForFileNameListFromPipesStdIn(ps);
 	    return TRUE;
 	  }
+	}else if (g_strcmp0(parsed_msg->we_wordv[0], "actime")==0){
+	  moreColumnsInTreeview=!moreColumnsInTreeview;
+	  refresh_store(rfmCtx);
+	  return TRUE;
+	  //TODO: we don't need to refresh_store here, just change view columns. But i use refresh_store here to keep code short. Another issue is that the adhoc command can be handy, but shall we have a generic builtin command to Show/hide any specific treeview column?
 	}
 	return FALSE;
 }

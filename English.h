@@ -31,6 +31,7 @@
 "    pwd         get rfm env PWD\n" \
 "    setpwd      set rfm env PWD with current directory\n" \
 "    pagesize    set files shown per page when displaying filenane list from pipe stdin. for example, pagesize 100\n" \
+"    actime      show/hide more time columns:atime,ctime. we show mtime by default\n" \ 
 "Shell commands:\n" \
 "    non-builtin commands will be sent to shell to execute.\n" \
 "    if there is ending space in command entered, selected filename(s) will be appended at the end\n" \
