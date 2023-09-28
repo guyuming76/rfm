@@ -31,7 +31,6 @@
 "    pwd         获取rfm进程 PWD 环境变量值\n" \
 "    setpwd      设置rfm PWD 为当前显示目录\n" \
 "    pagesize    当视图分葉显示管道数据时,设置每葉文件数, 如 pagesize 100\n" \
-"    actime      显示/隐藏额外的时间列:atime,ctime.目前,默认显示的是mtime\n" \
 "Shell 命令:\n" \
 "    非rfm内置命令会被发送到操作系统Shell执行.\n" \
 "    如果命令末尾有空格字符, 当前rfm视图选中文件会被添加到命令末尾\n" \
