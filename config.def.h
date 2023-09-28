@@ -172,6 +172,33 @@ static RFM_ToolButton tool_buttons[] = {
 // { "mounts",       "drive-harddisk",          show_disk_devices,      dev_disk_path },
 };
 
+
+static RFM_treeviewColumn treeviewColumns[] = {
+#ifdef GitIntegration
+  {"Git",                     COL_GIT_STATUS_STR,         TRUE,   NULL, cur_path_is_git_repo, COL_GIT_STATUS_STR },
+#endif
+  {"Mode",                    COL_MODE_STR,               TRUE,   NULL, NULL, COL_MODE_STR },
+  //  COL_DISPLAY_NAME,
+  {"FileName",                COL_FILENAME,               TRUE,   NULL, NULL, COL_FILENAME },
+#ifdef GitIntegration
+  {"gitCommitMsg",            COL_GIT_COMMIT_MSG,         TRUE,   NULL, cur_path_is_git_repo, COL_GIT_COMMIT_MSG },
+#endif
+  //  COL_FULL_PATH,
+  //  COL_PIXBUF,
+  //  COL_MTIME,
+  {"MTime",                   COL_MTIME_STR,              TRUE,   NULL, NULL, COL_MTIME_STR },
+  {"Size",                    COL_SIZE,                   TRUE,   NULL, NULL, COL_SIZE },
+  // COL_ATTR,
+  {"Owner",                   COL_OWNER,                  TRUE,   NULL, NULL, COL_OWNER },
+  {"Group",                   COL_GROUP,                  TRUE,   NULL, NULL, COL_GROUP },
+  {"MIME_root",               COL_MIME_ROOT,              TRUE,   NULL, NULL, COL_MIME_SORT },
+  {"MIME_sub",                COL_MIME_SUB,               TRUE,   NULL, NULL, COL_MIME_SUB },
+  // COL_MIME_SORT, //mime root + sub for listview sort
+  {"ATime",                   COL_ATIME_STR,              FALSE,  NULL, NULL, COL_ATIME_STR },
+  {"CTime",                   COL_CTIME_STR,              FALSE,  NULL, NULL, COL_CTIME_STR },
+};
+
+
 /* Thumbnailers
  * There must be at least one entry in the thumbnailers array.
  * To disable thumbnailing use:
@@ -180,8 +207,6 @@ static RFM_ToolButton tool_buttons[] = {
  * static const RFM_Thumbnailers thumbnailers[]={{ "image", "*", NULL }};
  * For other thumbnails, const gchar *thumbCmd  may be defined to handle that kind of thumbnail with shell command.
 */
-
-
 static const RFM_Thumbnailer thumbnailers[] = {
     /* mime root      mime sub type        thumbCmd */
     {"image", "*", NULL},

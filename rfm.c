@@ -157,7 +157,7 @@ typedef struct {
    GdkPixbuf *broken;
 } RFM_defaultPixbufs;
 
-enum {
+enum RFM_treeviewCol{
    COL_MODE_STR,
    COL_DISPLAY_NAME,
    COL_FILENAME,
@@ -180,6 +180,15 @@ enum {
 #endif  
    NUM_COLS
 };
+
+typedef struct {
+  gchar* title;
+  enum RFM_treeviewCol enumCol;
+  gboolean Show;
+  GtkTreeViewColumn* gtkCol;
+  gboolean (*showCondition)();
+  enum RFM_treeviewCol enumSortCol;
+} RFM_treeviewColumn;
 
 // I need a method to show in stdin prompt whether there are selected files in
 // gtk view. if there are, *> is prompted, otherwise, just prompt >
@@ -2103,66 +2112,14 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
      GtkCellRenderer  * renderer  =  gtk_cell_renderer_text_new();
      gtk_tree_selection_set_mode(gtk_tree_view_get_selection(GTK_TREE_VIEW(_view)),GTK_SELECTION_MULTIPLE);
 
-#ifdef GitIntegration
-     GtkTreeViewColumn * colGitStatus=gtk_tree_view_column_new_with_attributes("Git" , renderer,"text" ,  COL_GIT_STATUS_STR , NULL);
-     gtk_tree_view_column_set_resizable(colGitStatus,TRUE);
-     gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colGitStatus);
-     gtk_tree_view_column_set_visible(colGitStatus,curPath_is_git_repo);
-     gtk_tree_view_column_set_sort_column_id(colGitStatus, COL_GIT_STATUS_STR);
-#endif
-
-     GtkTreeViewColumn * colModeStr=gtk_tree_view_column_new_with_attributes("Mode" , renderer,"text" ,  COL_MODE_STR , NULL);
-     gtk_tree_view_column_set_resizable(colModeStr,TRUE);
-     gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colModeStr);
-     gtk_tree_view_column_set_sort_column_id(colModeStr, COL_MODE_STR);
-     GtkTreeViewColumn * colFileName=gtk_tree_view_column_new_with_attributes("FileName" , renderer,"text" ,  COL_FILENAME , NULL);
-     gtk_tree_view_column_set_resizable(colFileName,TRUE);
-     gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colFileName);
-     gtk_tree_view_column_set_sort_column_id(colFileName, COL_FILENAME);
-
-#ifdef GitIntegration
-     GtkTreeViewColumn * colGitCommitMsg=gtk_tree_view_column_new_with_attributes("GitCommitMsg" , renderer,"text" ,  COL_GIT_COMMIT_MSG , NULL);
-     gtk_tree_view_column_set_resizable(colGitCommitMsg,TRUE);
-     gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colGitCommitMsg);
-     gtk_tree_view_column_set_visible(colGitCommitMsg,curPath_is_git_repo);
-     gtk_tree_view_column_set_sort_column_id(colGitCommitMsg, COL_GIT_COMMIT_MSG);
-#endif
-     
-     GtkTreeViewColumn * colMTime=gtk_tree_view_column_new_with_attributes("MTime" , renderer,"text" ,  COL_MTIME_STR , NULL);
-     gtk_tree_view_column_set_resizable(colMTime,TRUE);
-     gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colMTime);
-     gtk_tree_view_column_set_sort_column_id(colMTime, COL_MTIME_STR);
-     GtkTreeViewColumn * colSize=gtk_tree_view_column_new_with_attributes("Size" , renderer,"text" ,  COL_SIZE , NULL);
-     gtk_tree_view_column_set_resizable(colSize,TRUE);
-     gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colSize);
-     gtk_tree_view_column_set_sort_column_id(colSize, COL_SIZE);
-     GtkTreeViewColumn * colOwner=gtk_tree_view_column_new_with_attributes("Owner" , renderer,"text" ,  COL_OWNER , NULL);
-     gtk_tree_view_column_set_resizable(colOwner,TRUE);
-     gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colOwner);
-     gtk_tree_view_column_set_sort_column_id(colOwner, COL_OWNER);
-     GtkTreeViewColumn * colGroup=gtk_tree_view_column_new_with_attributes("Group" , renderer,"text" ,  COL_GROUP , NULL);
-     gtk_tree_view_column_set_resizable(colGroup,TRUE);
-     gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colGroup);
-     gtk_tree_view_column_set_sort_column_id(colGroup, COL_GROUP);
-     GtkTreeViewColumn * colMIME_root=gtk_tree_view_column_new_with_attributes("MIME_root" , renderer,"text" ,  COL_MIME_ROOT , NULL);
-     gtk_tree_view_column_set_resizable(colMIME_root,TRUE);
-     gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colMIME_root);
-     gtk_tree_view_column_set_sort_column_id(colMIME_root, COL_MIME_SORT);
-     GtkTreeViewColumn * colMIME_sub=gtk_tree_view_column_new_with_attributes("MIME_sub" , renderer,"text" ,  COL_MIME_SUB , NULL);
-     gtk_tree_view_column_set_resizable(colMIME_sub,TRUE);
-     gtk_tree_view_append_column(GTK_TREE_VIEW(_view),colMIME_sub);
-     gtk_tree_view_column_set_sort_column_id(colMIME_sub, COL_MIME_SUB);
-
-     if (moreColumnsInTreeview) {
-       GtkTreeViewColumn *colATime = gtk_tree_view_column_new_with_attributes("ATime", renderer, "text", COL_ATIME_STR, NULL);
-       gtk_tree_view_column_set_resizable(colATime, TRUE);
-       gtk_tree_view_append_column(GTK_TREE_VIEW(_view), colATime);
-       gtk_tree_view_column_set_sort_column_id(colATime, COL_ATIME_STR);
-       GtkTreeViewColumn *colCTime = gtk_tree_view_column_new_with_attributes("CTime", renderer, "text", COL_CTIME_STR, NULL);
-       gtk_tree_view_column_set_resizable(colCTime, TRUE);
-       gtk_tree_view_append_column(GTK_TREE_VIEW(_view), colCTime);
-       gtk_tree_view_column_set_sort_column_id(colCTime, COL_CTIME_STR);
+     for(int i=0; i<G_N_ELEMENTS(treeviewColumns); i++){
+       treeviewColumns[i].gtkCol = gtk_tree_view_column_new_with_attributes(treeviewColumns[i].title , renderer,"text" ,  treeviewColumns[i].enumCol , NULL);
+       gtk_tree_view_column_set_resizable(treeviewColumns[i].gtkCol,TRUE);
+       gtk_tree_view_append_column(GTK_TREE_VIEW(_view),treeviewColumns[i].gtkCol);
+       gtk_tree_view_column_set_visible(treeviewColumns[i].gtkCol, treeviewColumns[i].Show && ((treeviewColumns[i].showCondition==NULL) ? TRUE: treeviewColumns[i].showCondition()));
+       gtk_tree_view_column_set_sort_column_id(treeviewColumns[i].gtkCol, treeviewColumns[i].enumSortCol==NULL? treeviewColumns[i].enumCol: treeviewColumns[i].enumSortCol);
      }
+
    } else {
      _view = gtk_icon_view_new_with_model(GTK_TREE_MODEL(store));
      gtk_icon_view_set_selection_mode(GTK_ICON_VIEW(_view),GTK_SELECTION_MULTIPLE);
