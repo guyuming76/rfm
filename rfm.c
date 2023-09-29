@@ -233,7 +233,6 @@ static GtkListStore *store=NULL;
 static GtkTreeModel *treemodel=NULL;
 
 static gboolean treeview=FALSE;
-static gboolean moreColumnsInTreeview=FALSE;
 
 // if true, means that rfm read file names in following way:
 //      ls|xargs realpath|rfm
@@ -2762,10 +2761,6 @@ int main(int argc, char *argv[])
       case 'l':
 	 treeview=TRUE;
 	 break;
-      case 'm': // more columns in listview, such as atime,ctime
-	 moreColumnsInTreeview=TRUE;
-	 break;
-
       case 'h':
 	printf(rfmLaunchHelp, PROG_NAME);
 	return 0;

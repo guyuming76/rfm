@@ -45,5 +45,4 @@
 "-d       specify full path, such as /home/somebody/documents, instead of default current working directory\n" \
 "-i       show mime type\n" \
 "-l       open with listview instead of iconview,you can also switch view with toolbar button or builtin cmd /\n" \
-"-m       more columns displayed in listview,such as atime, ctime\n" \
 "-h       show this help\n"
