@@ -276,7 +276,7 @@ static void refresh_FileNameList_and_refresh_store(gpointer filenamelist);
 //cd .
 //cd /tmp
 static void exec_stdin_command(gchar *msg);
-static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg);
+static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg,gchar* readlineresult);
 static void stdin_command_help();
 static void readlineInSeperateThread();
 static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer rfmCtx);
@@ -2438,7 +2438,40 @@ static void stdin_command_help() {
 	  }
 }
 
-static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg){
+static gboolean show_hide_treeview_columns(wordexp_t * parsed_msg){
+          gboolean showColumn;
+          if (!treeview) return FALSE;
+	  
+          if (g_strcmp0(parsed_msg->we_wordv[0], "showcolumn")==0) showColumn=TRUE;
+          else if (g_strcmp0(parsed_msg->we_wordv[0], "hidecolumn")==0) showColumn=FALSE;
+          else return FALSE;
+    
+	  if (parsed_msg->we_wordc==1){
+	    printf("Usage example: %s 10,11\n  column number can be any of what follows that is currently %s:\n",parsed_msg->we_wordv[0], showColumn?"invisible":"visible");
+	    for(uint i=0;i<G_N_ELEMENTS(treeviewColumns);i++)
+	      if (treeviewColumns[i].Show != showColumn) printf("    %d: %s\n",i,treeviewColumns[i].title);
+	  }else{
+	    for(uint i=1;i<parsed_msg->we_wordc;i++){
+	      gchar** cols = g_strsplit_set(parsed_msg->we_wordv[i], " ,;", G_N_ELEMENTS(treeviewColumns));
+	      uint j=0;
+	      while(cols[j]!=NULL){
+		uint col = atoi(cols[j]);
+		g_free(cols[j]);
+		if(col>=0 && col<G_N_ELEMENTS(treeviewColumns) && treeviewColumns[col].Show != showColumn){
+		  treeviewColumns[col].Show = showColumn;
+		  gtk_tree_view_column_set_visible(treeviewColumns[col].gtkCol,treeviewColumns[col].Show);
+		  /* if (treeviewColumns[col].Show) gtk_widget_show(treeviewColumns[col].gtkCol); */
+		  /* else gtk_widget_hide(treeviewColumns[col].gtkCol); */
+		}
+		j++;
+	      }
+	      g_free(cols);
+	    }
+	  }
+          return TRUE;
+}
+
+static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, gchar* readlineresult){
 	for(int i=0;i<G_N_ELEMENTS(builtinCMD);i++){
 	  if (g_strcmp0(parsed_msg->we_wordv[0], builtinCMD[i].cmd)==0) {
 		builtinCMD[i].action();
@@ -2492,6 +2525,9 @@ static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg){
 	    set_DisplayingPageSize_ForFileNameListFromPipesStdIn(ps);
 	    return TRUE;
 	  }
+	}else if (show_hide_treeview_columns(parsed_msg)){
+	  add_history(readlineresult);
+	  return TRUE;
 	}
 	return FALSE;
 }
@@ -2512,7 +2548,7 @@ static void exec_stdin_command (gchar * readlineResult)
 
 	wordexp_t parsed_msg;
 	int wordexp_retval = wordexp(readlineResult,&parsed_msg,0);
-	if (!(wordexp_retval==0 && exec_stdin_command_builtin(&parsed_msg))){
+	if (!(wordexp_retval==0 && exec_stdin_command_builtin(&parsed_msg, readlineResult))){
 
           readlineResultString=g_string_new(strdup(readlineResult));
 
