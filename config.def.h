@@ -198,6 +198,11 @@ static RFM_treeviewColumn treeviewColumns[] = {
   {"CTime",                   COL_CTIME_STR,              FALSE,  NULL, NULL, COL_CTIME_STR },
 };
 
+#define getImageSize  "exiftool %s |grep \"^Image Size\"|awk -F : '{print $2}'"
+
+static RFM_treeviewExtColumn treeviewExtColumns[] = {
+  {"ImageSize",      COL_Ext1,   TRUE,     NULL,  getImageSize,     NULL,   "image",     "*" },
+};
 
 /* Thumbnailers
  * There must be at least one entry in the thumbnailers array.

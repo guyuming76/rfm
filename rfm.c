@@ -177,7 +177,12 @@ enum RFM_treeviewCol{
 #ifdef GitIntegration
    COL_GIT_STATUS_STR,
    COL_GIT_COMMIT_MSG,
-#endif  
+#endif
+   COL_Ext1,
+   COL_Ext2,
+   COL_Ext3,
+   COL_Ext4,
+   COL_Ext5,
    NUM_COLS
 };
 
@@ -189,6 +194,17 @@ typedef struct {
   gboolean (*showCondition)();
   enum RFM_treeviewCol enumSortCol;
 } RFM_treeviewColumn;
+
+typedef struct {
+  gchar* title;
+  enum RFM_treeviewCol enumCol;
+  gboolean Show;
+  GtkTreeViewColumn* gtkCol;
+  gchar* ValueCmd;
+  gchar* (*ValueFunc)(gchar*);
+  gchar* MIME_root;
+  gchar* MIME_sub;  
+} RFM_treeviewExtColumn;
 
 // I need a method to show in stdin prompt whether there are selected files in
 // gtk view. if there are, *> is prompted, otherwise, just prompt >
@@ -247,7 +263,7 @@ static char* pipefd="0";
 static GList *CurrentDisplayingPage_ForFileNameListFromPipeStdIn=NULL;
 static gint DisplayingPageSize_ForFileNameListFromPipeStdIn=20;
 
-static uint history_entry_added=0;
+static guint history_entry_added=0;
 static char* rfm_historyFileLocation;
 
 #ifdef GitIntegration
@@ -2029,7 +2045,7 @@ static gboolean view_button_press(GtkWidget *widget, GdkEvent *event, RFM_ctx *r
 static void refresh_toolbar()
 {
    gtk_widget_show(PathAndRepositoryNameDisplay);
-   for (uint i = 0; i < G_N_ELEMENTS(tool_buttons); i++) {
+   for (guint i = 0; i < G_N_ELEMENTS(tool_buttons); i++) {
      if ((rfmReadFileNamesFromPipeStdIn && tool_buttons[i].readFromPipe) || (!rfmReadFileNamesFromPipeStdIn && tool_buttons[i].curPath)){
        if (tool_buttons[i].showCondition == NULL || tool_buttons[i].showCondition())
 	 gtk_widget_show(tool_bar->buttons[i]);
@@ -2063,7 +2079,7 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
    gtk_toolbar_insert(GTK_TOOLBAR(tool_bar->toolbar), PathAndRepositoryNameDisplay, -1);
    g_signal_connect(PathAndRepositoryNameDisplay, "clicked", G_CALLBACK(toggle_readFromPipe),rfmCtx);
    
-   for (uint i = 0; i < G_N_ELEMENTS(tool_buttons); i++) {
+   for (guint i = 0; i < G_N_ELEMENTS(tool_buttons); i++) {
      //if ((rfmReadFileNamesFromPipeStdIn && tool_buttons[i].readFromPipe) || (!rfmReadFileNamesFromPipeStdIn && tool_buttons[i].curPath)){
        GdkPixbuf *buttonIcon=NULL;
        if (tool_buttons[i].buttonIcon!=NULL) buttonIcon=gtk_icon_theme_load_icon(icon_theme, tool_buttons[i].buttonIcon, RFM_TOOL_SIZE, 0, NULL);
@@ -2111,7 +2127,7 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
      GtkCellRenderer  * renderer  =  gtk_cell_renderer_text_new();
      gtk_tree_selection_set_mode(gtk_tree_view_get_selection(GTK_TREE_VIEW(_view)),GTK_SELECTION_MULTIPLE);
 
-     for(int i=0; i<G_N_ELEMENTS(treeviewColumns); i++){
+     for(guint i=0; i<G_N_ELEMENTS(treeviewColumns); i++){
        treeviewColumns[i].gtkCol = gtk_tree_view_column_new_with_attributes(treeviewColumns[i].title , renderer,"text" ,  treeviewColumns[i].enumCol , NULL);
        gtk_tree_view_column_set_resizable(treeviewColumns[i].gtkCol,TRUE);
        gtk_tree_view_append_column(GTK_TREE_VIEW(_view),treeviewColumns[i].gtkCol);
@@ -2119,6 +2135,12 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
        gtk_tree_view_column_set_sort_column_id(treeviewColumns[i].gtkCol, treeviewColumns[i].enumSortCol==NULL? treeviewColumns[i].enumCol: treeviewColumns[i].enumSortCol);
      }
 
+     for(guint i=0; i<G_N_ELEMENTS(treeviewExtColumns);i++){
+       treeviewExtColumns[i].gtkCol = gtk_tree_view_column_new_with_attributes(treeviewExtColumns[i].title , renderer,"text" , treeviewExtColumns[i].enumCol , NULL);
+       gtk_tree_view_column_set_resizable(treeviewExtColumns[i].gtkCol,TRUE);
+       gtk_tree_view_append_column(GTK_TREE_VIEW(_view),treeviewExtColumns[i].gtkCol);
+       gtk_tree_view_column_set_visible(treeviewExtColumns[i].gtkCol, treeviewExtColumns[i].Show);
+     }
    } else {
      _view = gtk_icon_view_new_with_model(GTK_TREE_MODEL(store));
      gtk_icon_view_set_selection_mode(GTK_ICON_VIEW(_view),GTK_SELECTION_MULTIPLE);
@@ -2448,14 +2470,14 @@ static gboolean show_hide_treeview_columns(wordexp_t * parsed_msg){
     
 	  if (parsed_msg->we_wordc==1){
 	    printf("Usage example: %s 10,11\n  column number can be any of what follows that is currently %s:\n",parsed_msg->we_wordv[0], showColumn?"invisible":"visible");
-	    for(uint i=0;i<G_N_ELEMENTS(treeviewColumns);i++)
+	    for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++)
 	      if (treeviewColumns[i].Show != showColumn) printf("    %d: %s\n",i,treeviewColumns[i].title);
 	  }else{
-	    for(uint i=1;i<parsed_msg->we_wordc;i++){
+	    for(guint i=1;i<parsed_msg->we_wordc;i++){
 	      gchar** cols = g_strsplit_set(parsed_msg->we_wordv[i], " ,;", G_N_ELEMENTS(treeviewColumns));
-	      uint j=0;
+	      guint j=0;
 	      while(cols[j]!=NULL){
-		uint col = atoi(cols[j]);
+		guint col = atoi(cols[j]);
 		g_free(cols[j]);
 		if(col>=0 && col<G_N_ELEMENTS(treeviewColumns) && treeviewColumns[col].Show != showColumn){
 		  treeviewColumns[col].Show = showColumn;
@@ -2520,7 +2542,7 @@ static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, gchar* readli
 	  toggle_readFromPipe(NULL, rfmCtx);
 	  return TRUE;
         }else if (g_strcmp0(parsed_msg->we_wordv[0], "pagesize")==0 && parsed_msg->we_wordc==2){
-	  uint ps = atoi(parsed_msg->we_wordv[1]); 
+	  guint ps = atoi(parsed_msg->we_wordv[1]); 
 	  if (ps > 0) {
 	    set_DisplayingPageSize_ForFileNameListFromPipesStdIn(ps);
 	    return TRUE;
@@ -2643,7 +2665,7 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
    defaultPixbufs=load_default_pixbufs(); /* TODO: WARNING: This can return NULL! */
    g_object_set_data(G_OBJECT(window),"rfm_file_menu",fileMenu);
    g_object_set_data_full(G_OBJECT(window),"rfm_default_pixbufs",defaultPixbufs,(GDestroyNotify)free_default_pixbufs);
-
+   //TODO: why list_store_new api cannot take a dynamic array of columns, correspoin?
    store=gtk_list_store_new(NUM_COLS,
                               G_TYPE_STRING,     //MODE_STR
                               G_TYPE_STRING,    /* Displayed name */
@@ -2664,8 +2686,8 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
 			      G_TYPE_STRING, //GIT_STATUS_STR
 			      G_TYPE_STRING,     //git commit message
 #endif
-			    G_TYPE_STRING); //mime_sort
-
+			      G_TYPE_STRING, //mime_sort
+			    G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING); //COL_Ext1..5
    treemodel=GTK_TREE_MODEL(store);
    
    g_signal_connect(window,"destroy", G_CALLBACK(cleanup), rfmCtx);
