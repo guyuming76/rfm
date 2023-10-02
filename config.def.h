@@ -230,7 +230,7 @@ static gboolean ignored_filename(gchar *name){
   return FALSE;
 }
 
-static gchar bash_c_cmd[ARG_MAX];
+static gchar bash_c_cmd[ARG_MAX]; //TODO: notice that this is shared single instance, any thread safty issue?
 static gchar* stdin_cmd_template[]={"bash","-i","-c", bash_c_cmd, NULL};
 static gchar ** stdin_command(gchar * user_input_cmd) {
   sprintf(bash_c_cmd,"set -o history; %s; exit 2>/dev/null",g_strdup(user_input_cmd));
@@ -239,3 +239,4 @@ static gchar ** stdin_command(gchar * user_input_cmd) {
   //without exit, rfm will quit after commands such as ls, nano, but commands such as echo 1 will work. if you change exit to sleep 20, even echo 1 will make rfm terminate. Are there any race condition here?
   return stdin_cmd_template;
 }
+

@@ -206,6 +206,12 @@ typedef struct {
   gchar* MIME_sub;  
 } RFM_treeviewExtColumn;
 
+//TODO: use path instead of GtkTreeiter, so that we can try load gitmsg and extcolumns with spawn async instead of sync
+typedef struct {
+  GtkTreeIter * iter;
+  gint store_column;
+} RFM_store_cell;
+
 // I need a method to show in stdin prompt whether there are selected files in
 // gtk view. if there are, *> is prompted, otherwise, just prompt >
 static gint ItemSelected = 0;
@@ -700,7 +706,7 @@ static gchar **build_cmd_vector(const char **cmd, GList *file_list, long n_args,
    gchar **v=NULL;
    GList *listElement=NULL;
 
-   listElement=g_list_first(file_list);
+   listElement = (file_list==NULL)? NULL : g_list_first(file_list);
    //if (listElement==NULL) return NULL;
    if (listElement==NULL && n_args!=0) return NULL; //Rodney's originally don't have this n_arg!=0 criteria, but sometime, i just need g_spawn_wrapper for arbitory command, and can have empty file_list. 
    
@@ -1184,6 +1190,33 @@ static void load_gitCommitMsg_for_store_row(GtkTreeIter *iter){
 }
 #endif
 
+static void Update_Store_ExtColumns(RFM_ChildAttribs *childAttribs) {
+   gchar * value=childAttribs->stdOut;
+   value[strcspn(value, "\n")] = 0;
+   g_debug("ExtColumn Value:%s",value);
+   RFM_store_cell* cell= *(RFM_store_cell**)(childAttribs->customCallbackUserData);
+   gtk_list_store_set(store,cell->iter, cell->store_column, value, -1);
+   g_free(cell);
+}
+
+static void load_ExtColumns(RFM_FileAttributes* fileAttributes, GtkTreeIter *iter){
+      for(guint i=0;i<G_N_ELEMENTS(treeviewExtColumns);i++){
+	if (treeviewExtColumns[i].Show && g_strcmp0(fileAttributes->mime_root, treeviewExtColumns[i].MIME_root)==0){
+	  if (g_strcmp0(treeviewExtColumns[i].MIME_sub, "*") || g_strcmp0(treeviewExtColumns[i].MIME_sub, fileAttributes->mime_sub_type)){
+	    RFM_store_cell* cell=malloc(sizeof(RFM_store_cell));
+	    cell->iter = iter;
+	    cell->store_column = treeviewExtColumns[i].enumCol;
+	    if (treeviewExtColumns[i].ValueCmd!=NULL){
+              gchar* ExtColumn_cmd = g_strdup_printf(treeviewExtColumns[i].ValueCmd, fileAttributes->path);
+	      gchar* ExtColumn_cmd_template[] = {"/bin/bash", "-c", ExtColumn_cmd, NULL};
+	      g_spawn_wrapper(ExtColumn_cmd_template, NULL, 0, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, FALSE, Update_Store_ExtColumns, &cell);
+	    }
+	  }
+	}
+      }  
+}
+
+
 static void Iterate_through_fileAttribute_list_to_insert_into_store()
 {
    GList *listElement;
@@ -1194,6 +1227,7 @@ static void Iterate_through_fileAttribute_list_to_insert_into_store()
    while (listElement != NULL) {
       fileAttributes=(RFM_FileAttributes*)listElement->data;
       Insert_fileAttributes_into_store(fileAttributes, &iter);
+      load_ExtColumns(fileAttributes, &iter);
    listElement=g_list_next(listElement);
    }
 }
@@ -1374,6 +1408,7 @@ static void Insert_fileAttributes_into_store_with_thumbnail_and_more(RFM_FileAtt
 	    GtkTreeIter iter;
             rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
 	    Insert_fileAttributes_into_store(fileAttributes,&iter);
+	    load_ExtColumns(fileAttributes, &iter);
 	    if (rfm_do_thumbs==1 && g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR)){
 	      load_thumbnail_or_enqueue_thumbQueue_for_store_row(&iter);
 #ifdef GitIntegration
@@ -2460,6 +2495,7 @@ static void stdin_command_help() {
 	  }
 }
 
+//TODO: change to showcolumn 10, -11. that is, negative means hide, to remove the hidecolumn command so that user can configure columns with single command
 static gboolean show_hide_treeview_columns(wordexp_t * parsed_msg){
           gboolean showColumn;
           if (!treeview) return FALSE;
@@ -2472,6 +2508,9 @@ static gboolean show_hide_treeview_columns(wordexp_t * parsed_msg){
 	    printf("Usage example: %s 10,11\n  column number can be any of what follows that is currently %s:\n",parsed_msg->we_wordv[0], showColumn?"invisible":"visible");
 	    for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++)
 	      if (treeviewColumns[i].Show != showColumn) printf("    %d: %s\n",i,treeviewColumns[i].title);
+	    for(guint i=0;i<G_N_ELEMENTS(treeviewExtColumns);i++)
+	      if (treeviewExtColumns[i].Show != showColumn) printf("    %d: %s\n",i + G_N_ELEMENTS(treeviewColumns),treeviewExtColumns[i].title);
+	    
 	  }else{
 	    for(guint i=1;i<parsed_msg->we_wordc;i++){
 	      gchar** cols = g_strsplit_set(parsed_msg->we_wordv[i], " ,;", G_N_ELEMENTS(treeviewColumns));
@@ -2484,6 +2523,12 @@ static gboolean show_hide_treeview_columns(wordexp_t * parsed_msg){
 		  gtk_tree_view_column_set_visible(treeviewColumns[col].gtkCol,treeviewColumns[col].Show);
 		  /* if (treeviewColumns[col].Show) gtk_widget_show(treeviewColumns[col].gtkCol); */
 		  /* else gtk_widget_hide(treeviewColumns[col].gtkCol); */
+		}else if(col>=G_N_ELEMENTS(treeviewColumns) && col<(G_N_ELEMENTS(treeviewColumns)+G_N_ELEMENTS(treeviewExtColumns))){
+		  col=col-G_N_ELEMENTS(treeviewColumns);
+		  if (treeviewExtColumns[col].Show!=showColumn){
+		    treeviewExtColumns[col].Show = showColumn;
+		    gtk_tree_view_column_set_visible(treeviewExtColumns[col].gtkCol,treeviewExtColumns[col].Show);
+		  }
 		}
 		j++;
 	      }
