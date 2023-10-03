@@ -2495,40 +2495,32 @@ static void stdin_command_help() {
 	  }
 }
 
-//TODO: change to showcolumn 10, -11. that is, negative means hide, to remove the hidecolumn command so that user can configure columns with single command
-static gboolean show_hide_treeview_columns(wordexp_t * parsed_msg){
-          gboolean showColumn;
+//TODO: adjust column position
+static void show_hide_treeview_columns(wordexp_t * parsed_msg){
           if (!treeview) return FALSE;
 	  
-          if (g_strcmp0(parsed_msg->we_wordv[0], "showcolumn")==0) showColumn=TRUE;
-          else if (g_strcmp0(parsed_msg->we_wordv[0], "hidecolumn")==0) showColumn=FALSE;
-          else return FALSE;
-    
 	  if (parsed_msg->we_wordc==1){
-	    printf("Usage example: %s 10,11\n  column number can be any of what follows that is currently %s:\n",parsed_msg->we_wordv[0], showColumn?"invisible":"visible");
+	    printf("Usage example: showcolumn 10,11,-12\n  current column status(negative means invisible):\n");
 	    for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++)
-	      if (treeviewColumns[i].Show != showColumn) printf("    %d: %s\n",i,treeviewColumns[i].title);
+	      printf("    %d: %s\n",treeviewColumns[i].Show? i:(-1)*i,treeviewColumns[i].title);
 	    for(guint i=0;i<G_N_ELEMENTS(treeviewExtColumns);i++)
-	      if (treeviewExtColumns[i].Show != showColumn) printf("    %d: %s\n",i + G_N_ELEMENTS(treeviewColumns),treeviewExtColumns[i].title);
+	      printf("    %d: %s\n",treeviewExtColumns[i].Show? (i + G_N_ELEMENTS(treeviewColumns)):(-1)*(i + G_N_ELEMENTS(treeviewColumns)),treeviewExtColumns[i].title);
 	    
 	  }else{
 	    for(guint i=1;i<parsed_msg->we_wordc;i++){
 	      gchar** cols = g_strsplit_set(parsed_msg->we_wordv[i], " ,;", G_N_ELEMENTS(treeviewColumns));
 	      guint j=0;
 	      while(cols[j]!=NULL){
-		guint col = atoi(cols[j]);
+	        int col = atoi(cols[j]);
+		guint colabs = abs(col);
 		g_free(cols[j]);
-		if(col>=0 && col<G_N_ELEMENTS(treeviewColumns) && treeviewColumns[col].Show != showColumn){
-		  treeviewColumns[col].Show = showColumn;
-		  gtk_tree_view_column_set_visible(treeviewColumns[col].gtkCol,treeviewColumns[col].Show);
-		  /* if (treeviewColumns[col].Show) gtk_widget_show(treeviewColumns[col].gtkCol); */
-		  /* else gtk_widget_hide(treeviewColumns[col].gtkCol); */
-		}else if(col>=G_N_ELEMENTS(treeviewColumns) && col<(G_N_ELEMENTS(treeviewColumns)+G_N_ELEMENTS(treeviewExtColumns))){
-		  col=col-G_N_ELEMENTS(treeviewColumns);
-		  if (treeviewExtColumns[col].Show!=showColumn){
-		    treeviewExtColumns[col].Show = showColumn;
-		    gtk_tree_view_column_set_visible(treeviewExtColumns[col].gtkCol,treeviewExtColumns[col].Show);
-		  }
+		if(colabs<G_N_ELEMENTS(treeviewColumns)){
+		  treeviewColumns[colabs].Show = (col>=0);
+		  gtk_tree_view_column_set_visible(treeviewColumns[colabs].gtkCol,treeviewColumns[colabs].Show);
+		}else if(colabs>=G_N_ELEMENTS(treeviewColumns) && colabs<(G_N_ELEMENTS(treeviewColumns)+G_N_ELEMENTS(treeviewExtColumns))){
+		  colabs=colabs-G_N_ELEMENTS(treeviewColumns);
+		  treeviewExtColumns[colabs].Show = (col>=0);
+		  gtk_tree_view_column_set_visible(treeviewExtColumns[colabs].gtkCol,treeviewExtColumns[colabs].Show);
 		}
 		j++;
 	      }
@@ -2592,7 +2584,8 @@ static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, gchar* readli
 	    set_DisplayingPageSize_ForFileNameListFromPipesStdIn(ps);
 	    return TRUE;
 	  }
-	}else if (show_hide_treeview_columns(parsed_msg)){
+	}else if (g_strcmp0(parsed_msg->we_wordv[0], "showcolumn")==0){
+	  show_hide_treeview_columns(parsed_msg);
 	  add_history(readlineresult);
 	  return TRUE;
 	}
