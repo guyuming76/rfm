@@ -193,18 +193,12 @@ typedef struct {
   GtkTreeViewColumn* gtkCol;
   gboolean (*showCondition)();
   enum RFM_treeviewCol enumSortCol;
-} RFM_treeviewColumn;
-
-typedef struct {
-  gchar* title;
-  enum RFM_treeviewCol enumCol;
-  gboolean Show;
-  GtkTreeViewColumn* gtkCol;
   gchar* ValueCmd;
   gchar* (*ValueFunc)(gchar*);
   gchar* MIME_root;
   gchar* MIME_sub;  
-} RFM_treeviewExtColumn;
+} RFM_treeviewColumn;
+
 
 //TODO: keep GtkTreeIter somewhere such as in fileAttribute, so that we can try load gitmsg and extcolumns with spawn async instead of sync. However, that can be complicated, what if we have spawned so many processes and user clicked refresh? we have to build Stop mechanism into it. Simple strategy is not to load this slow columns unless user configures to show them.
 typedef struct {
@@ -1215,17 +1209,18 @@ static void Update_Store_ExtColumns(RFM_ChildAttribs *childAttribs) {
 }
 
 static void load_ExtColumns(RFM_FileAttributes* fileAttributes, GtkTreeIter *iter){
-      for(guint i=0;i<G_N_ELEMENTS(treeviewExtColumns);i++){
-	if (treeviewExtColumns[i].Show && g_strcmp0(fileAttributes->mime_root, treeviewExtColumns[i].MIME_root)==0){
-	  if (g_strcmp0(treeviewExtColumns[i].MIME_sub, "*") || g_strcmp0(treeviewExtColumns[i].MIME_sub, fileAttributes->mime_sub_type)){
+      for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++){
+	if (treeviewColumns[i].Show && g_strcmp0(fileAttributes->mime_root, treeviewColumns[i].MIME_root)==0){
+	  if (g_strcmp0(treeviewColumns[i].MIME_sub, "*") || g_strcmp0(treeviewColumns[i].MIME_sub, fileAttributes->mime_sub_type)){
 	    RFM_store_cell* cell=malloc(sizeof(RFM_store_cell));
 	    cell->iter = iter;
-	    cell->store_column = treeviewExtColumns[i].enumCol;
-	    if (treeviewExtColumns[i].ValueCmd!=NULL){
-              gchar* ExtColumn_cmd = g_strdup_printf(treeviewExtColumns[i].ValueCmd, fileAttributes->path);
+	    cell->store_column = treeviewColumns[i].enumCol;
+	    if (treeviewColumns[i].ValueCmd!=NULL){
+              gchar* ExtColumn_cmd = g_strdup_printf(treeviewColumns[i].ValueCmd, fileAttributes->path);
 	      gchar* ExtColumn_cmd_template[] = {"/bin/bash", "-c", ExtColumn_cmd, NULL};
 	      g_spawn_wrapper(ExtColumn_cmd_template, NULL, 0, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, FALSE, Update_Store_ExtColumns, &cell);
 	    }
+	    //TODO:ValueCmd==NULL but with function!=NULL
 	  }
 	}
       }  
@@ -2185,12 +2180,6 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
        gtk_tree_view_column_set_sort_column_id(treeviewColumns[i].gtkCol, treeviewColumns[i].enumSortCol==NULL? treeviewColumns[i].enumCol: treeviewColumns[i].enumSortCol);
      }
 
-     for(guint i=0; i<G_N_ELEMENTS(treeviewExtColumns);i++){
-       treeviewExtColumns[i].gtkCol = gtk_tree_view_column_new_with_attributes(treeviewExtColumns[i].title , renderer,"text" , treeviewExtColumns[i].enumCol , NULL);
-       gtk_tree_view_column_set_resizable(treeviewExtColumns[i].gtkCol,TRUE);
-       gtk_tree_view_append_column(GTK_TREE_VIEW(_view),treeviewExtColumns[i].gtkCol);
-       gtk_tree_view_column_set_visible(treeviewExtColumns[i].gtkCol, treeviewExtColumns[i].Show);
-     }
    } else {
      _view = gtk_icon_view_new_with_model(GTK_TREE_MODEL(store));
      gtk_icon_view_set_selection_mode(GTK_ICON_VIEW(_view),GTK_SELECTION_MULTIPLE);
@@ -2512,15 +2501,11 @@ static void stdin_command_help() {
 
 //TODO: adjust column position
 static void show_hide_treeview_columns(wordexp_t * parsed_msg){
-          if (!treeview) return FALSE;
-	  
 	  if (parsed_msg->we_wordc==1){
 	    printf("Usage example: showcolumn 10,11,-12\n  current column status(negative means invisible):\n");
 	    for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++)
 	      printf("    %d: %s\n",treeviewColumns[i].Show? i:(-1)*i,treeviewColumns[i].title);
-	    for(guint i=0;i<G_N_ELEMENTS(treeviewExtColumns);i++)
-	      printf("    %d: %s\n",treeviewExtColumns[i].Show? (i + G_N_ELEMENTS(treeviewColumns)):(-1)*(i + G_N_ELEMENTS(treeviewColumns)),treeviewExtColumns[i].title);
-	    
+
 	  }else{
 	    for(guint i=1;i<parsed_msg->we_wordc;i++){
 	      gchar** cols = g_strsplit_set(parsed_msg->we_wordv[i], " ,;", G_N_ELEMENTS(treeviewColumns));
@@ -2531,11 +2516,7 @@ static void show_hide_treeview_columns(wordexp_t * parsed_msg){
 		g_free(cols[j]);
 		if(colabs<G_N_ELEMENTS(treeviewColumns)){
 		  treeviewColumns[colabs].Show = (col>=0);
-		  gtk_tree_view_column_set_visible(treeviewColumns[colabs].gtkCol,treeviewColumns[colabs].Show);
-		}else if(colabs>=G_N_ELEMENTS(treeviewColumns) && colabs<(G_N_ELEMENTS(treeviewColumns)+G_N_ELEMENTS(treeviewExtColumns))){
-		  colabs=colabs-G_N_ELEMENTS(treeviewColumns);
-		  treeviewExtColumns[colabs].Show = (col>=0);
-		  gtk_tree_view_column_set_visible(treeviewExtColumns[colabs].gtkCol,treeviewExtColumns[colabs].Show);
+		  if (treeview) gtk_tree_view_column_set_visible(treeviewColumns[colabs].gtkCol,treeviewColumns[colabs].Show);
 		}
 		j++;
 	      }

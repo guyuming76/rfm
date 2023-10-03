@@ -173,36 +173,34 @@ static RFM_ToolButton tool_buttons[] = {
 };
 
 
+#define getImageSize  "exiftool %s |grep \"^Image Size\"|awk -F : '{print $2}'"
+
 static RFM_treeviewColumn treeviewColumns[] = {
 #ifdef GitIntegration
-  {"Git",                     COL_GIT_STATUS_STR,         TRUE,   NULL, cur_path_is_git_repo, COL_GIT_STATUS_STR },
+  {"Git",                     COL_GIT_STATUS_STR,         TRUE,   NULL, cur_path_is_git_repo, COL_GIT_STATUS_STR ,      NULL,            NULL,     "*",         "*"},
 #endif
-  {"Mode",                    COL_MODE_STR,               TRUE,   NULL, NULL, COL_MODE_STR },
+  {"Mode",                    COL_MODE_STR,               TRUE,   NULL, NULL,                 COL_MODE_STR,             NULL,            NULL,     "*",         "*"},
   //  COL_DISPLAY_NAME,
-  {"FileName",                COL_FILENAME,               TRUE,   NULL, NULL, COL_FILENAME },
+  {"FileName",                COL_FILENAME,               TRUE,   NULL, NULL,                 COL_FILENAME,             NULL,            NULL,     "*",         "*"},
 #ifdef GitIntegration
-  {"gitCommitMsg",            COL_GIT_COMMIT_MSG,         TRUE,   NULL, cur_path_is_git_repo, COL_GIT_COMMIT_MSG },
+  {"gitCommitMsg",            COL_GIT_COMMIT_MSG,         TRUE,   NULL, cur_path_is_git_repo, COL_GIT_COMMIT_MSG,       NULL,            NULL,     "*",         "*"},
 #endif
   //  COL_FULL_PATH,
   //  COL_PIXBUF,
   //  COL_MTIME,
-  {"MTime",                   COL_MTIME_STR,              TRUE,   NULL, NULL, COL_MTIME_STR },
-  {"Size",                    COL_SIZE,                   TRUE,   NULL, NULL, COL_SIZE },
+  {"MTime",                   COL_MTIME_STR,              TRUE,   NULL, NULL,                 COL_MTIME_STR,            NULL,            NULL,     "*",         "*"},
+  {"Size",                    COL_SIZE,                   TRUE,   NULL, NULL,                 COL_SIZE,                 NULL,            NULL,     "*",         "*"},
   // COL_ATTR,
-  {"Owner",                   COL_OWNER,                  TRUE,   NULL, NULL, COL_OWNER },
-  {"Group",                   COL_GROUP,                  TRUE,   NULL, NULL, COL_GROUP },
-  {"MIME_root",               COL_MIME_ROOT,              TRUE,   NULL, NULL, COL_MIME_SORT },
-  {"MIME_sub",                COL_MIME_SUB,               TRUE,   NULL, NULL, COL_MIME_SUB },
+  {"Owner",                   COL_OWNER,                  TRUE,   NULL, NULL,                 COL_OWNER,                NULL,            NULL,     "*",         "*"},
+  {"Group",                   COL_GROUP,                  TRUE,   NULL, NULL,                 COL_GROUP,                NULL,            NULL,     "*",         "*"},
+  {"MIME_root",               COL_MIME_ROOT,              TRUE,   NULL, NULL,                 COL_MIME_SORT,            NULL,            NULL,     "*",         "*"},
+  {"MIME_sub",                COL_MIME_SUB,               TRUE,   NULL, NULL,                 COL_MIME_SUB,             NULL,            NULL,     "*",         "*"},
   // COL_MIME_SORT, //mime root + sub for listview sort
-  {"ATime",                   COL_ATIME_STR,              FALSE,  NULL, NULL, COL_ATIME_STR },
-  {"CTime",                   COL_CTIME_STR,              FALSE,  NULL, NULL, COL_CTIME_STR },
+  {"ATime",                   COL_ATIME_STR,              FALSE,  NULL, NULL,                 COL_ATIME_STR,            NULL,            NULL,     "*",         "*"},
+  {"CTime",                   COL_CTIME_STR,              FALSE,  NULL, NULL,                 COL_CTIME_STR,            NULL,            NULL,     "*",         "*"},
+  {"ImageSize",               COL_Ext1,                   TRUE,   NULL, NULL,                 COL_Ext1,                 getImageSize,    NULL,     "image",     "*"},
 };
 
-#define getImageSize  "exiftool %s |grep \"^Image Size\"|awk -F : '{print $2}'"
-
-static RFM_treeviewExtColumn treeviewExtColumns[] = {
-  {"ImageSize",      COL_Ext1,   TRUE,     NULL,  getImageSize,     NULL,   "image",     "*" },
-};
 
 /* Thumbnailers
  * There must be at least one entry in the thumbnailers array.
