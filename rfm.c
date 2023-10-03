@@ -206,7 +206,7 @@ typedef struct {
   gchar* MIME_sub;  
 } RFM_treeviewExtColumn;
 
-//TODO: use path instead of GtkTreeiter, so that we can try load gitmsg and extcolumns with spawn async instead of sync
+//TODO: keep GtkTreeIter somewhere such as in fileAttribute, so that we can try load gitmsg and extcolumns with spawn async instead of sync. However, that can be complicated, what if we have spawned so many processes and user clicked refresh? we have to build Stop mechanism into it. Simple strategy is not to load this slow columns unless user configures to show them.
 typedef struct {
   GtkTreeIter * iter;
   gint store_column;
@@ -232,7 +232,13 @@ static GList *rfm_thumbQueue=NULL;
 static GList *rfm_childList=NULL;
 
 static guint rfm_readDirSheduler=0;
-static guint rfm_thumbScheduler=0;
+static guint rfm_thumbScheduler = 0;
+//TODO: i added the following two schedulers so that i can put off the loading of these slow columns after file list appears in the view first. But have not implemented them yet. Anyway, if user choose to show this slow columns, they have to wait to the end, show files slowly one by one may be better.
+static guint rfm_extColumnScheduler = 0;
+#ifdef GitIntegration
+static guint rfm_gitCommitMsgScheduler = 0;
+#endif
+
 static guint stdin_command_Scheduler=0;
 static GThread * readlineThread=NULL;
 
@@ -472,9 +478,16 @@ static void rfm_stop_all(RFM_ctx *rfmCtx) {
    if (rfm_thumbScheduler>0)
       g_source_remove(rfm_thumbScheduler);
 
+   if (rfm_extColumnScheduler>0) g_source_remove(rfm_extColumnScheduler);
+#ifdef GitIntegration
+   if (rfm_gitCommitMsgScheduler>0) g_source_remove(rfm_gitCommitMsgScheduler);
+#endif
+
    rfmCtx->delayedRefresh_GSourceID=0;
    rfm_readDirSheduler=0;
    rfm_thumbScheduler=0;
+   rfm_extColumnScheduler=0;
+   rfm_gitCommitMsgScheduler=0;
 
    g_list_free_full(rfm_thumbQueue, (GDestroyNotify)free_thumbQueueData);
    rfm_thumbQueue=NULL;
@@ -495,6 +508,7 @@ static gboolean ExecCallback_freeChildAttribs(RFM_ChildAttribs * child_attribs){
    free_child_attribs(child_attribs);
    return TRUE;
 }
+
 
 /* Supervise the children to prevent blocked pipes */
 static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_data)
@@ -1189,6 +1203,7 @@ static void load_gitCommitMsg_for_store_row(GtkTreeIter *iter){
       }
 }
 #endif
+
 
 static void Update_Store_ExtColumns(RFM_ChildAttribs *childAttribs) {
    gchar * value=childAttribs->stdOut;
