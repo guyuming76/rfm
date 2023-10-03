@@ -294,9 +294,10 @@ static int setup(char *initDir, RFM_ctx *rfmCtx);
 static gboolean readFromPipe() { return FileNameList_FromPipeStdin!=NULL;}
 static void ReadFromPipeStdinIfAny(char *fd);
 static void refresh_FileNameList_and_refresh_store(gpointer filenamelist);
-//read input from parent process stdin , and handle input such as
-//cd .
-//cd /tmp
+// read input from parent process stdin , and handle input such as
+// cd .
+// cd /tmp
+static RFM_treeviewColumn* GetColumnByEnun(enum RFM_treeviewCol col);
 static void exec_stdin_command(gchar *msg);
 static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg,gchar* readlineresult);
 static void stdin_command_help();
@@ -440,8 +441,6 @@ static char * st_mode_str(guint32 st_mode){
     ret[10]=0;
     return ret;
 }
-
-
 
 static void free_thumbQueueData(RFM_ThumbQueueData *thumbData)
 {
@@ -1156,7 +1155,7 @@ static void iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_and_l
    while (valid) {
      load_thumbnail_or_enqueue_thumbQueue_for_store_row(&iter);
 #ifdef GitIntegration
-     load_gitCommitMsg_for_store_row(&iter);
+     if (GetColumnByEnun(COL_GIT_COMMIT_MSG)->Show) load_gitCommitMsg_for_store_row(&iter);
 #endif
      valid=gtk_tree_model_iter_next(treemodel, &iter);
    }
@@ -1422,7 +1421,7 @@ static void Insert_fileAttributes_into_store_with_thumbnail_and_more(RFM_FileAtt
 	    if (rfm_do_thumbs==1 && g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR)){
 	      load_thumbnail_or_enqueue_thumbQueue_for_store_row(&iter);
 #ifdef GitIntegration
-              load_gitCommitMsg_for_store_row(&iter);
+              if (GetColumnByEnun(COL_GIT_COMMIT_MSG)->Show) load_gitCommitMsg_for_store_row(&iter);
 #endif
 	    }  
 }
@@ -2173,6 +2172,7 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
      gtk_tree_selection_set_mode(gtk_tree_view_get_selection(GTK_TREE_VIEW(_view)),GTK_SELECTION_MULTIPLE);
 
      for(guint i=0; i<G_N_ELEMENTS(treeviewColumns); i++){
+       if (!treeviewColumns[i].Show) continue;
        treeviewColumns[i].gtkCol = gtk_tree_view_column_new_with_attributes(treeviewColumns[i].title , renderer,"text" ,  treeviewColumns[i].enumCol , NULL);
        gtk_tree_view_column_set_resizable(treeviewColumns[i].gtkCol,TRUE);
        gtk_tree_view_append_column(GTK_TREE_VIEW(_view),treeviewColumns[i].gtkCol);
@@ -2499,6 +2499,13 @@ static void stdin_command_help() {
 	  }
 }
 
+
+static RFM_treeviewColumn* GetColumnByEnun(enum RFM_treeviewCol col){
+  for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++){
+    if (treeviewColumns[i].enumCol==col) return &(treeviewColumns[i]);
+  }
+  return NULL;
+}
 //TODO: adjust column position
 static void show_hide_treeview_columns(wordexp_t * parsed_msg){
 	  if (parsed_msg->we_wordc==1){
@@ -2516,14 +2523,18 @@ static void show_hide_treeview_columns(wordexp_t * parsed_msg){
 		g_free(cols[j]);
 		if(colabs<G_N_ELEMENTS(treeviewColumns)){
 		  treeviewColumns[colabs].Show = (col>=0);
-		  if (treeview) gtk_tree_view_column_set_visible(treeviewColumns[colabs].gtkCol,treeviewColumns[colabs].Show);
-		}
-		j++;
+		  if (treeviewColumns[colabs].gtkCol!=NULL){
+		    if (treeview) gtk_tree_view_column_set_visible(treeviewColumns[colabs].gtkCol,treeviewColumns[colabs].Show);
+		  }else if (treeviewColumns[colabs].Show)
+		    printf("Value for column %s may has not been loaded yet, you may need refresh to show. Note that, if you just switch list/icon view, the column will appear, but with empty value if you have not refreshed\n",treeviewColumns[colabs].title);
+		
+	        }
+	        j++;
 	      }
 	      g_free(cols);
-	    }
 	  }
-          return TRUE;
+	}
+        return TRUE;
 }
 
 static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, gchar* readlineresult){

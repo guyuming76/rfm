@@ -198,7 +198,7 @@ static RFM_treeviewColumn treeviewColumns[] = {
   // COL_MIME_SORT, //mime root + sub for listview sort
   {"ATime",                   COL_ATIME_STR,              FALSE,  NULL, NULL,                 COL_ATIME_STR,            NULL,            NULL,     "*",         "*"},
   {"CTime",                   COL_CTIME_STR,              FALSE,  NULL, NULL,                 COL_CTIME_STR,            NULL,            NULL,     "*",         "*"},
-  {"ImageSize",               COL_Ext1,                   TRUE,   NULL, NULL,                 COL_Ext1,                 getImageSize,    NULL,     "image",     "*"},
+  {"ImageSize",               COL_Ext1,                   FALSE,  NULL, NULL,                 COL_Ext1,                 getImageSize,    NULL,     "image",     "*"},
 };
 
 
