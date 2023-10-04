@@ -47,3 +47,9 @@
 "-i       show mime type\n" \
 "-l       open with listview instead of iconview,you can also switch view with toolbar button or builtin cmd /\n" \
 "-h       show this help\n"
+
+#define SHOWCOLUMN_USAGE \
+"showncolumn command can have mulitple arguments deliminated with space, argument can be positive or negative column number, or (negative)column numbers connected with ',' or ';'.\n\n" \
+"Usage example: showcolumn 10,11,-12   means show 11 right after 10, and hide 12 right after 11\n" \
+"               showcolumn 1,0 12 means show column 0 right after 1, show column 12 without changing its position\n" \
+"               showcolumn ,1 0 means show column 1 as the first column, and show column 0 without changing its position\n"
