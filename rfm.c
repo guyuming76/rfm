@@ -2500,51 +2500,94 @@ static void stdin_command_help() {
 }
 
 
-static RFM_treeviewColumn* GetColumnByEnun(enum RFM_treeviewCol col){
+static int GetColumnIndexByEnun(enum RFM_treeviewCol col){
   for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++){
-    if (treeviewColumns[i].enumCol==col) return &(treeviewColumns[i]);
+    if (treeviewColumns[i].enumCol==col) return i;
   }
-  return NULL;
+  return -1;
 }
 
+static RFM_treeviewColumn* GetColumnByEnun(enum RFM_treeviewCol col){
+  int i = GetColumnIndexByEnun(col);
+  return i<0 ? NULL : &treeviewColumns[i];
+}
 
 static void show_hide_treeview_columns(wordexp_t * parsed_msg){
 	  if (parsed_msg->we_wordc==1){
 	    printf("current column status(negative means invisible):\n");
 	    for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++)
-	      printf("    %d: %s\n",treeviewColumns[i].Show? i:(-1)*i,treeviewColumns[i].title);
+	      printf("    %d: %s\n",treeviewColumns[i].Show? treeviewColumns[i].enumCol:(-1)*treeviewColumns[i].enumCol,treeviewColumns[i].title);
 	    printf(SHOWCOLUMN_USAGE);
 	  }else{
+	    RFM_treeviewColumn temptreeviewColumns[G_N_ELEMENTS(treeviewColumns)]; //temp array for reordering
+	    
 	    for(guint i=1;i<parsed_msg->we_wordc;i++){
-	      gchar** cols = g_strsplit_set(parsed_msg->we_wordv[i], ",;", G_N_ELEMENTS(treeviewColumns));
+	      gchar** columnReorderRelation = g_strsplit_set(parsed_msg->we_wordv[i], ",;", G_N_ELEMENTS(treeviewColumns));
 	      guint j=0;
-	      RFM_treeviewColumn* previousCol=NULL;
+	      int baseColumnIndex=-1;
 	      do {
-		if (g_strcmp0(cols[j], "")!=0){
-		  int col = atoi(cols[j]);
-		  guint colabs = abs(col);
-		  g_free(cols[j]);
-		  if(colabs<G_N_ELEMENTS(treeviewColumns)){
-		    treeviewColumns[colabs].Show = (col>=0);
-		    if (j>=1){
-		      //TODO: reorganize the treeviewColumns array, otherwise, display order will restore to default after refresh
+		if (g_strcmp0(columnReorderRelation[j], "")!=0){ //to deal with situation such as ,2 or 2,
+		    int col_enum_with_sign = atoi(columnReorderRelation[j]);
+		    guint col_enum = abs(col_enum_with_sign);
+		    guint col_index = GetColumnIndexByEnun(col_enum);
+		    g_debug("col_index:%d  col_enum:%d",col_index,col_enum);
+                    g_free(columnReorderRelation[j]);
+		    if (col_index<0) {
+		      g_warning("cannot find column %d. Memory after columnReorderRation[j] may not released, no big deal.",col_enum);
+		      g_free(columnReorderRelation);
+		      return;
 		    }
-		    if (treeviewColumns[colabs].gtkCol!=NULL){
+
+		    treeviewColumns[col_index].Show = (col_enum_with_sign>=0);
+		    if (treeviewColumns[col_index].gtkCol!=NULL){
 		      if (treeview) {
-			gtk_tree_view_column_set_visible(treeviewColumns[colabs].gtkCol,treeviewColumns[colabs].Show);
-			if (j>=1) gtk_tree_view_move_column_after(GTK_TREE_VIEW(icon_or_tree_view) , treeviewColumns[colabs].gtkCol, previousCol==NULL? NULL:previousCol->gtkCol);
+			gtk_tree_view_column_set_visible(treeviewColumns[col_index].gtkCol,treeviewColumns[col_index].Show);
+			if (j>=1) gtk_tree_view_move_column_after(GTK_TREE_VIEW(icon_or_tree_view) , treeviewColumns[col_index].gtkCol, baseColumnIndex<0? NULL:treeviewColumns[baseColumnIndex].gtkCol);
 		      }
-		    }else if (treeviewColumns[colabs].Show)
-		      printf("Value for column %s may has not been loaded yet, you may need refresh to show. Note that, if you just switch list/icon view, the column will appear, but with empty value if you have not refreshed\n",treeviewColumns[colabs].title);
-		  }
+		    }else if (treeviewColumns[col_index].Show)
+		      printf("Value for column $d (%s) may has not been loaded yet, you may need refresh to show. Note that, if you just switch list/icon view, the column will appear, but with empty value if you have not refreshed\n",col_enum,treeviewColumns[col_index].title);
+
+
+		//reorganize the treeviewColumns array, otherwise, display order will restore to default after refresh
+		    
+		/* 几种情况: */
+		/* 第一:   2,1 */
+		/* 第二:   3,1 */
+		/* 第三:   1,2 */
+		/* 第四:   1,3 */
+		/* 第五:   ,2 */
+		/* 第六:   2,      */
+		/* 从k=0开始复制,首先j==0这个do while循环,只给baseColumnIndex赋值,除了第五种情况下,baseColumnindex保持-1, 注意不是因为前面g_warning里面没找到输入错误的enum, 而是因为 do 后面第一个 customReorderRelation[j]==""的判断,导致这一轮do循环直接空转*/
+		/* 当j>=1时,我们需要完成 basecolumnindex+1<-col_index 的复制, 因此,在下标小于 min(basecolumnindex+1, col_index)时,直接 k<-k 复制就可以了  */
+		/* 另外baseColumnIndex==col_index时,也就是类似第三种情况,我们无需调整位置,这轮do while 循环只需更新下baseColumnInex就可以了 */
+		    if (j>=1 && (baseColumnIndex+1!=col_index)){
+		      int newKadjust=0; //此值只会取 0, -1, 1
+		      g_debug("baseColumnIndex+1 <- col_index: %d <- %d",baseColumnIndex+1,col_index);
+		      for(guint k=0;k<G_N_ELEMENTS(treeviewColumns);k++){
+			if (k==(baseColumnIndex+1+newKadjust)){
+			  memcpy(&(temptreeviewColumns[k]), &(treeviewColumns[col_index]), sizeof(RFM_treeviewColumn));
+			  newKadjust=newKadjust-1; //本来应该是 k<-k+newkadjust 的,但现在是 k<-col_index, 源这边漏了一个,就是说下一轮变成k+1<-k了,或者说k<-k-1,所以newKadjust减一
+			  g_debug("%d <- %d",k,col_index);
+			  g_debug("newKadjust:%d",newKadjust);
+			}else {
+			  if (k==(col_index+newKadjust)){
+			    newKadjust=newKadjust+1;//本来应该是 k<-k+newkadjust 的,但因为col_index这个源位置将要或已经被复制到了baseColumnIndex+1这个位置了, 所以(源包括后续)都要往后移一位,也就是newKadjust加一
+			    g_debug("newKadjust:%d",newKadjust);
+			  }
+			  memcpy(&(temptreeviewColumns[k]), &(treeviewColumns[k+newKadjust]), sizeof(RFM_treeviewColumn)); //如果不调整位置,总是k<-k, 现在因为调整位置,在源上面加一个newKadjust,目的总是当前循环计数器k
+			  g_debug("%d <- %d",k,k+newKadjust);
+			}
+		      }
+		      for(guint k=0;k<G_N_ELEMENTS(treeviewColumns);k++) //I think i cannot free treeviewcolumns because of the way it's defined in config.h, so i have to copy temptreeviewcolumns back. we may define treeviewcolumns[2,] and use treeviewcolumns[0,] treeviewcolumns[1,] in turn to eliminate this copy. But anyway, not big deal, current way is more readable.
+			memcpy(&(treeviewColumns[k]), &(temptreeviewColumns[k]), sizeof(RFM_treeviewColumn));
+		    }
 		  
-		  previousCol=&(treeviewColumns[colabs]);
-		} else {
-		  previousCol=NULL;
-	        }
+		    baseColumnIndex=col_index;
+		    g_debug("baseColumnIndex:%d",baseColumnIndex);
+		}; //endif  (g_strcmp0(columnReorderRelation[j], "")!=0)
 	        j++;
-	      } while (cols[j]!=NULL);
-	      g_free(cols);
+	      } while (columnReorderRelation[j]!=NULL);
+	      g_free(columnReorderRelation);
 	  }
 	}
         return TRUE;
