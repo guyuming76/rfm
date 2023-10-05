@@ -2529,7 +2529,7 @@ static void show_hide_treeview_columns(wordexp_t * parsed_msg){
 		if (g_strcmp0(columnReorderRelation[j], "")!=0){ //to deal with situation such as ,2 or 2,
 		    int col_enum_with_sign = atoi(columnReorderRelation[j]);
 		    guint col_enum = abs(col_enum_with_sign);
-		    guint col_index = GetColumnIndexByEnun(col_enum);
+		    int col_index = GetColumnIndexByEnun(col_enum);
 		    g_debug("col_index:%d  col_enum:%d",col_index,col_enum);
                     g_free(columnReorderRelation[j]);
 		    if (col_index<0) {
@@ -2545,8 +2545,7 @@ static void show_hide_treeview_columns(wordexp_t * parsed_msg){
 			if (j>=1) gtk_tree_view_move_column_after(GTK_TREE_VIEW(icon_or_tree_view) , treeviewColumns[col_index].gtkCol, baseColumnIndex<0? NULL:treeviewColumns[baseColumnIndex].gtkCol);
 		      }
 		    }else if (treeviewColumns[col_index].Show)
-		      printf("Value for column $d (%s) may has not been loaded yet, you may need refresh to show. Note that, if you just switch list/icon view, the column will appear, but with empty value if you have not refreshed\n",col_enum,treeviewColumns[col_index].title);
-
+		      printf("Value for column %d (%s) may has not been loaded yet, you may need refresh to show. Note that, if you just switch list/icon view, the column will appear, but with empty value if you have not refreshed\n",col_enum,treeviewColumns[col_index].title);
 
 		//reorganize the treeviewColumns array, otherwise, display order will restore to default after refresh
 		    
@@ -2558,24 +2557,41 @@ static void show_hide_treeview_columns(wordexp_t * parsed_msg){
 		/* 第五:   ,2 */
 		/* 第六:   2,      */
 		/* 从k=0开始复制,首先j==0这个do while循环,只给baseColumnIndex赋值,除了第五种情况下,baseColumnindex保持-1, 注意不是因为前面g_warning里面没找到输入错误的enum, 而是因为 do 后面第一个 customReorderRelation[j]==""的判断,导致这一轮do循环直接空转*/
-		/* 当j>=1时,我们需要完成 basecolumnindex+1<-col_index 的复制, 因此,在下标小于 min(basecolumnindex+1, col_index)时,直接 k<-k 复制就可以了  */
+		/* 当j>=1时,我们需要完成 basecolumnindex+1 <- col_index 的复制, 因此,在下标小于 min(basecolumnindex+1, col_index)时,直接 k<-k 复制就可以了  */
 		/* 另外baseColumnIndex==col_index时,也就是类似第三种情况,我们无需调整位置,这轮do while 循环只需更新下baseColumnInex就可以了 */
 		    if (j>=1 && (baseColumnIndex+1!=col_index)){
-		      int newKadjust=0; //此值只会取 0, -1, 1
 		      g_debug("baseColumnIndex+1 <- col_index: %d <- %d",baseColumnIndex+1,col_index);
-		      for(guint k=0;k<G_N_ELEMENTS(treeviewColumns);k++){
-			if (k==(baseColumnIndex+1+newKadjust)){
-			  memcpy(&(temptreeviewColumns[k]), &(treeviewColumns[col_index]), sizeof(RFM_treeviewColumn));
-			  newKadjust=newKadjust-1; //本来应该是 k<-k+newkadjust 的,但现在是 k<-col_index, 源这边漏了一个,就是说下一轮变成k+1<-k了,或者说k<-k-1,所以newKadjust减一
-			  g_debug("%d <- %d",k,col_index);
-			  g_debug("newKadjust:%d",newKadjust);
-			}else {
-			  if (k==(col_index+newKadjust)){
-			    newKadjust=newKadjust+1;//本来应该是 k<-k+newkadjust 的,但因为col_index这个源位置将要或已经被复制到了baseColumnIndex+1这个位置了, 所以(源包括后续)都要往后移一位,也就是newKadjust加一
-			    g_debug("newKadjust:%d",newKadjust);
-			  }
-			  memcpy(&(temptreeviewColumns[k]), &(treeviewColumns[k+newKadjust]), sizeof(RFM_treeviewColumn)); //如果不调整位置,总是k<-k, 现在因为调整位置,在源上面加一个newKadjust,目的总是当前循环计数器k
-			  g_debug("%d <- %d",k,k+newKadjust);
+		      if ((baseColumnIndex+1)>col_index){ //第一,第二种情况  比如 2,1 满足 2+1>1
+			for(guint k=0;k<col_index;k++){   // 0 <- 0    
+			  memcpy(&(temptreeviewColumns[k]), &(treeviewColumns[k]), sizeof(RFM_treeviewColumn));
+			  g_debug("%d <- %d",k,k);
+			}
+			//k=1=col_index
+			for(guint k=col_index+1;k<baseColumnIndex+1;k++){  // 1 <- 2
+			  memcpy(&(temptreeviewColumns[k-1]), &(treeviewColumns[k]), sizeof(RFM_treeviewColumn));
+			  g_debug("%d <- %d",k-1,k);
+			}
+			//上面最后一次memcpy,treeviewColumn[baseColumnIndex]也已经复制到了 temptreeviewcolumns[basecolumnindex-1]
+			memcpy(&(temptreeviewColumns[baseColumnIndex]), &(treeviewColumns[col_index]), sizeof(RFM_treeviewColumn)); // 2 <- 1
+			g_debug("%d <- %d",baseColumnIndex,col_index);
+			for(guint k=baseColumnIndex+1; k<G_N_ELEMENTS(treeviewColumns);k++){
+			  memcpy(&(temptreeviewColumns[k]), &(treeviewColumns[k]), sizeof(RFM_treeviewColumn));
+			  g_debug("%d <- %d",k,k);
+			}
+ 		      }else{//第四种情况, 比如 1,3 满足 1+1 < 3
+			for(guint k=0;k<baseColumnIndex+1;k++){ // 0 <- 0   1 <- 1
+			  memcpy(&(temptreeviewColumns[k]), &(treeviewColumns[k]), sizeof(RFM_treeviewColumn));
+			  g_debug("%d <- %d",k,k);
+			}
+			memcpy(&(temptreeviewColumns[baseColumnIndex+1]), &(treeviewColumns[col_index]), sizeof(RFM_treeviewColumn)); // 2 <- 3
+			g_debug("%d <- %d",baseColumnIndex+1,col_index);
+			for(guint k=baseColumnIndex+1;k<col_index;k++){
+			  memcpy(&(temptreeviewColumns[k+1]), &(treeviewColumns[k]), sizeof(RFM_treeviewColumn)); // 3 <- 2
+			  g_debug("%d <- %d",k+1,k);
+			}
+			for(guint k=col_index+1;k<G_N_ELEMENTS(treeviewColumns);k++){
+			  memcpy(&(temptreeviewColumns[k]), &(treeviewColumns[k]), sizeof(RFM_treeviewColumn)); // 4 <- 4
+			  g_debug("%d <- %d",k,k);
 			}
 		      }
 		      for(guint k=0;k<G_N_ELEMENTS(treeviewColumns);k++) //I think i cannot free treeviewcolumns because of the way it's defined in config.h, so i have to copy temptreeviewcolumns back. we may define treeviewcolumns[2,] and use treeviewcolumns[0,] treeviewcolumns[1,] in turn to eliminate this copy. But anyway, not big deal, current way is more readable.
