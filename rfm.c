@@ -2518,7 +2518,7 @@ static void show_hide_treeview_columns(wordexp_t * parsed_msg){
 	    for(guint i=1;i<parsed_msg->we_wordc;i++){
 	      gchar** cols = g_strsplit_set(parsed_msg->we_wordv[i], ",;", G_N_ELEMENTS(treeviewColumns));
 	      guint j=0;
-	      GtkTreeViewColumn* previousCol=NULL;
+	      RFM_treeviewColumn* previousCol=NULL;
 	      do {
 		if (g_strcmp0(cols[j], "")!=0){
 		  int col = atoi(cols[j]);
@@ -2526,15 +2526,19 @@ static void show_hide_treeview_columns(wordexp_t * parsed_msg){
 		  g_free(cols[j]);
 		  if(colabs<G_N_ELEMENTS(treeviewColumns)){
 		    treeviewColumns[colabs].Show = (col>=0);
+		    if (j>=1){
+		      //TODO: reorganize the treeviewColumns array, otherwise, display order will restore to default after refresh
+		    }
 		    if (treeviewColumns[colabs].gtkCol!=NULL){
-		      if (treeview) gtk_tree_view_column_set_visible(treeviewColumns[colabs].gtkCol,treeviewColumns[colabs].Show);
+		      if (treeview) {
+			gtk_tree_view_column_set_visible(treeviewColumns[colabs].gtkCol,treeviewColumns[colabs].Show);
+			if (j>=1) gtk_tree_view_move_column_after(GTK_TREE_VIEW(icon_or_tree_view) , treeviewColumns[colabs].gtkCol, previousCol==NULL? NULL:previousCol->gtkCol);
+		      }
 		    }else if (treeviewColumns[colabs].Show)
 		      printf("Value for column %s may has not been loaded yet, you may need refresh to show. Note that, if you just switch list/icon view, the column will appear, but with empty value if you have not refreshed\n",treeviewColumns[colabs].title);
-
-		    if (j>=1 && treeview) gtk_tree_view_move_column_after(GTK_TREE_VIEW(icon_or_tree_view) , treeviewColumns[colabs].gtkCol, previousCol);
 		  }
 		  
-		  previousCol=treeviewColumns[colabs].gtkCol;
+		  previousCol=&(treeviewColumns[colabs]);
 		} else {
 		  previousCol=NULL;
 	        }
