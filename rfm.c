@@ -2172,7 +2172,7 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
      gtk_tree_selection_set_mode(gtk_tree_view_get_selection(GTK_TREE_VIEW(_view)),GTK_SELECTION_MULTIPLE);
 
      for(guint i=0; i<G_N_ELEMENTS(treeviewColumns); i++){
-       if (!treeviewColumns[i].Show) continue;
+       if (!treeviewColumns[i].Show && g_strcmp0(treeviewColumns[i].MIME_root, "*")!=0) continue;
        treeviewColumns[i].gtkCol = gtk_tree_view_column_new_with_attributes(treeviewColumns[i].title , renderer,"text" ,  treeviewColumns[i].enumCol , NULL);
        gtk_tree_view_column_set_resizable(treeviewColumns[i].gtkCol,TRUE);
        gtk_tree_view_append_column(GTK_TREE_VIEW(_view),treeviewColumns[i].gtkCol);
