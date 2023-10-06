@@ -285,7 +285,7 @@ static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpoin
 static void set_terminal_window_title(char * title);
 #endif
 
-
+void move_array_item_a_after_b(void * array, int index_b, int index_a, uint32_t array_item_size, uint32_t array_length);
 static void show_msgbox(gchar *msg, gchar *title, gint type);
 static void die(const char *errstr, ...);
 static RFM_defaultPixbufs *load_default_pixbufs(void);
@@ -2512,6 +2512,49 @@ static RFM_treeviewColumn* GetColumnByEnun(enum RFM_treeviewCol col){
   return i<0 ? NULL : &treeviewColumns[i];
 }
 
+void move_array_item_a_after_b(void * array, int index_b, int index_a, uint32_t array_item_size, uint32_t array_length){
+                void* temp_array = malloc(array_item_size * array_length);
+  
+                if ((index_b+1)>index_a){ //第一,第二种情况  比如 2,1 满足 2+1>1
+			for(guint k=0;k<index_a;k++){   // 0 <- 0    
+			  memcpy(temp_array+k*array_item_size, array + k*array_item_size, array_item_size);
+			  g_debug("%d <- %d",k,k);
+			}
+			//k=1=col_index
+			for(guint k=index_a+1;k<index_b+1;k++){  // 1 <- 2
+			  memcpy(temp_array+(k-1)*array_item_size, array+k*array_item_size, array_item_size);
+			  g_debug("%d <- %d",k-1,k);
+			}
+			//上面最后一次memcpy,treeviewColumn[baseColumnIndex]也已经复制到了 temptreeviewcolumns[basecolumnindex-1]
+			memcpy(temp_array+index_b*array_item_size, array+index_a*array_item_size, array_item_size); // 2 <- 1
+			g_debug("%d <- %d",index_b,index_a);
+			for(guint k=index_b+1; k<array_length;k++){
+			  memcpy(temp_array+k*array_item_size, array+k*array_item_size, array_item_size);
+			  g_debug("%d <- %d",k,k);
+			}
+ 		}else{//第四种情况, 比如 1,3 满足 1+1 < 3
+			for(guint k=0;k<index_b+1;k++){ // 0 <- 0   1 <- 1
+			  memcpy(temp_array+k*array_item_size, array+k*array_item_size, array_item_size);
+			  g_debug("%d <- %d",k,k);
+			}
+			memcpy(temp_array+(index_b+1)*array_item_size, array+index_a*array_item_size, array_item_size); // 2 <- 3
+			g_debug("%d <- %d",index_b+1,index_a);
+			for(guint k=index_b+1;k<index_a;k++){
+			  memcpy(temp_array+(k+1)*array_item_size, array+k*array_item_size, array_item_size); // 3 <- 2
+			  g_debug("%d <- %d",k+1,k);
+			}
+			for(guint k=index_a+1;k<array_length;k++){
+			  memcpy(temp_array+k*array_item_size, array+k*array_item_size, array_item_size); // 4 <- 4
+			  g_debug("%d <- %d",k,k);
+			}
+		}
+		for(guint k=0;k<array_length;k++) //I think i cannot free treeviewcolumns because of the way it's defined in config.h, so i have to copy temptreeviewcolumns back. we may define treeviewcolumns[2,] and use treeviewcolumns[0,] treeviewcolumns[1,] in turn to eliminate this copy. But anyway, not big deal, current way is more readable.
+			memcpy(array+k*array_item_size, temp_array+k*array_item_size, array_item_size);
+
+		free(temp_array);
+
+}
+
 static void show_hide_treeview_columns(wordexp_t * parsed_msg){
 	  if (parsed_msg->we_wordc==1){
 	    printf("current column status(negative means invisible):\n");
@@ -2519,9 +2562,8 @@ static void show_hide_treeview_columns(wordexp_t * parsed_msg){
 	      printf("    %d: %s\n",treeviewColumns[i].Show? treeviewColumns[i].enumCol:(-1)*treeviewColumns[i].enumCol,treeviewColumns[i].title);
 	    printf(SHOWCOLUMN_USAGE);
 	  }else{
-	    RFM_treeviewColumn temptreeviewColumns[G_N_ELEMENTS(treeviewColumns)]; //temp array for reordering
-	    
-	    for(guint i=1;i<parsed_msg->we_wordc;i++){
+
+            for(guint i=1;i<parsed_msg->we_wordc;i++){
 	      gchar** columnReorderRelation = g_strsplit_set(parsed_msg->we_wordv[i], ",;", G_N_ELEMENTS(treeviewColumns));
 	      guint j=0;
 	      int baseColumnIndex=-1;
@@ -2561,41 +2603,7 @@ static void show_hide_treeview_columns(wordexp_t * parsed_msg){
 		/* 另外baseColumnIndex==col_index时,也就是类似第三种情况,我们无需调整位置,这轮do while 循环只需更新下baseColumnInex就可以了 */
 		    if (j>=1 && (baseColumnIndex+1!=col_index)){
 		      g_debug("baseColumnIndex+1 <- col_index: %d <- %d",baseColumnIndex+1,col_index);
-		      if ((baseColumnIndex+1)>col_index){ //第一,第二种情况  比如 2,1 满足 2+1>1
-			for(guint k=0;k<col_index;k++){   // 0 <- 0    
-			  memcpy(&(temptreeviewColumns[k]), &(treeviewColumns[k]), sizeof(RFM_treeviewColumn));
-			  g_debug("%d <- %d",k,k);
-			}
-			//k=1=col_index
-			for(guint k=col_index+1;k<baseColumnIndex+1;k++){  // 1 <- 2
-			  memcpy(&(temptreeviewColumns[k-1]), &(treeviewColumns[k]), sizeof(RFM_treeviewColumn));
-			  g_debug("%d <- %d",k-1,k);
-			}
-			//上面最后一次memcpy,treeviewColumn[baseColumnIndex]也已经复制到了 temptreeviewcolumns[basecolumnindex-1]
-			memcpy(&(temptreeviewColumns[baseColumnIndex]), &(treeviewColumns[col_index]), sizeof(RFM_treeviewColumn)); // 2 <- 1
-			g_debug("%d <- %d",baseColumnIndex,col_index);
-			for(guint k=baseColumnIndex+1; k<G_N_ELEMENTS(treeviewColumns);k++){
-			  memcpy(&(temptreeviewColumns[k]), &(treeviewColumns[k]), sizeof(RFM_treeviewColumn));
-			  g_debug("%d <- %d",k,k);
-			}
- 		      }else{//第四种情况, 比如 1,3 满足 1+1 < 3
-			for(guint k=0;k<baseColumnIndex+1;k++){ // 0 <- 0   1 <- 1
-			  memcpy(&(temptreeviewColumns[k]), &(treeviewColumns[k]), sizeof(RFM_treeviewColumn));
-			  g_debug("%d <- %d",k,k);
-			}
-			memcpy(&(temptreeviewColumns[baseColumnIndex+1]), &(treeviewColumns[col_index]), sizeof(RFM_treeviewColumn)); // 2 <- 3
-			g_debug("%d <- %d",baseColumnIndex+1,col_index);
-			for(guint k=baseColumnIndex+1;k<col_index;k++){
-			  memcpy(&(temptreeviewColumns[k+1]), &(treeviewColumns[k]), sizeof(RFM_treeviewColumn)); // 3 <- 2
-			  g_debug("%d <- %d",k+1,k);
-			}
-			for(guint k=col_index+1;k<G_N_ELEMENTS(treeviewColumns);k++){
-			  memcpy(&(temptreeviewColumns[k]), &(treeviewColumns[k]), sizeof(RFM_treeviewColumn)); // 4 <- 4
-			  g_debug("%d <- %d",k,k);
-			}
-		      }
-		      for(guint k=0;k<G_N_ELEMENTS(treeviewColumns);k++) //I think i cannot free treeviewcolumns because of the way it's defined in config.h, so i have to copy temptreeviewcolumns back. we may define treeviewcolumns[2,] and use treeviewcolumns[0,] treeviewcolumns[1,] in turn to eliminate this copy. But anyway, not big deal, current way is more readable.
-			memcpy(&(treeviewColumns[k]), &(temptreeviewColumns[k]), sizeof(RFM_treeviewColumn));
+		      move_array_item_a_after_b(treeviewColumns, baseColumnIndex, col_index, sizeof(RFM_treeviewColumn), G_N_ELEMENTS(treeviewColumns));
 		    }
 		  
 		    baseColumnIndex=col_index;
