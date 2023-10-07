@@ -2617,6 +2617,10 @@ static void show_hide_treeview_columns(wordexp_t * parsed_msg){
         return TRUE;
 }
 
+
+static void null_log_handler(const gchar *log_domain,GLogLevelFlags log_level,const gchar *message,gpointer user_data){
+}
+
 static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, gchar* readlineresult){
 	for(int i=0;i<G_N_ELEMENTS(builtinCMD);i++){
 	  if (g_strcmp0(parsed_msg->we_wordv[0], builtinCMD[i].cmd)==0) {
@@ -2674,6 +2678,16 @@ static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, gchar* readli
 	}else if (g_strcmp0(parsed_msg->we_wordv[0], "showcolumn")==0){
 	  show_hide_treeview_columns(parsed_msg);
 	  add_history(readlineresult);
+	  return TRUE;
+	}else if (g_strcmp0(parsed_msg->we_wordv[0], "glog")==0){
+	  if (parsed_msg->we_wordc>1){
+	    if (g_strcmp0(parsed_msg->we_wordv[1],"off")==0)
+	      g_log_set_handler (G_LOG_DOMAIN, G_LOG_LEVEL_MASK | G_LOG_FLAG_FATAL| G_LOG_FLAG_RECURSION, null_log_handler, NULL);
+	    else if (g_strcmp0(parsed_msg->we_wordv[1],"on")==0)
+	      g_log_set_handler (G_LOG_DOMAIN, G_LOG_LEVEL_MASK | G_LOG_FLAG_FATAL| G_LOG_FLAG_RECURSION, g_log_default_handler, NULL);
+	    else printf("Usage: glog off|on\n");
+	  }else
+	    printf("Usage: glog off|on\n");
 	  return TRUE;
 	}
 	return FALSE;
