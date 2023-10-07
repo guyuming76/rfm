@@ -1446,9 +1446,9 @@ static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store_in
    else if (rfm_thumbQueue!=NULL)
       rfm_thumbScheduler=g_idle_add((GSourceFunc)mkThumb, NULL);
 
-
    rfm_readDirSheduler=0;
    g_hash_table_destroy(mount_hash);
+   gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
    return FALSE;
 }
 
@@ -1554,6 +1554,7 @@ static void set_Titles(gchar * title){
 
 static void refresh_store(RFM_ctx *rfmCtx)
 {
+   gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, FALSE);
    gtk_widget_hide(rfm_main_box);
    if (sw) gtk_widget_destroy(sw);
   
@@ -1568,6 +1569,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
    if (rfmReadFileNamesFromPipeStdIn) {
      title=g_strdup_printf(PipeTitle, currentFileNum,fileNum,DisplayingPageSize_ForFileNameListFromPipeStdIn);
      fill_fileAttributeList_with_filenames_from_pipeline_stdin_and_then_insert_into_store();
+     gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
    } else {
      gtk_tree_sortable_set_default_sort_func(GTK_TREE_SORTABLE(store), sort_func, NULL, NULL);
      gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(store), rfmCtx->rfm_sortColumn, GTK_SORT_ASCENDING);
