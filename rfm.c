@@ -255,6 +255,7 @@ static GtkListStore *store=NULL;
 static GtkTreeModel *treemodel=NULL;
 
 static gboolean treeview=FALSE;
+static gchar* treeviewcolumn_init_order_sequence = NULL;
 
 // if true, means that rfm read file names in following way:
 //      ls|xargs realpath|rfm
@@ -2557,28 +2558,20 @@ void move_array_item_a_after_b(void * array, int index_b, int index_a, uint32_t 
 
 }
 
-static void show_hide_treeview_columns(wordexp_t * parsed_msg){
-	  if (parsed_msg->we_wordc==1){
-	    printf("current column status(negative means invisible):\n");
-	    for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++)
-	      printf("    %d: %s\n",treeviewColumns[i].Show? treeviewColumns[i].enumCol:(-1)*treeviewColumns[i].enumCol,treeviewColumns[i].title);
-	    printf(SHOWCOLUMN_USAGE);
-	  }else{
-
-            for(guint i=1;i<parsed_msg->we_wordc;i++){
-	      gchar** columnReorderRelation = g_strsplit_set(parsed_msg->we_wordv[i], ",;", G_N_ELEMENTS(treeviewColumns));
+static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
+	      gchar** order_seq_array = g_strsplit_set(order_sequence, ",;", G_N_ELEMENTS(treeviewColumns));
 	      guint j=0;
 	      int baseColumnIndex=-1;
 	      do {
-		if (g_strcmp0(columnReorderRelation[j], "")!=0){ //to deal with situation such as ,2 (or 2,)
-		    int col_enum_with_sign = atoi(columnReorderRelation[j]);
+		if (g_strcmp0(order_seq_array[j], "")!=0){ //to deal with situation such as ,2 (or 2,)
+		    int col_enum_with_sign = atoi(order_seq_array[j]);
 		    guint col_enum = abs(col_enum_with_sign);
 		    int col_index = GetColumnIndexByEnun(col_enum);
 		    g_debug("col_index:%d  col_enum:%d",col_index,col_enum);
-                    g_free(columnReorderRelation[j]);
+                    g_free(order_seq_array[j]);
 		    if (col_index<0) {
 		      g_warning("cannot find column %d. Memory after columnReorderRation[j] may not released, no big deal.",col_enum);
-		      g_free(columnReorderRelation);
+		      g_free(order_seq_array);
 		      return;
 		    }
 
@@ -2588,7 +2581,7 @@ static void show_hide_treeview_columns(wordexp_t * parsed_msg){
 			gtk_tree_view_column_set_visible(treeviewColumns[col_index].gtkCol,treeviewColumns[col_index].Show);
 			if (j>=1) gtk_tree_view_move_column_after(GTK_TREE_VIEW(icon_or_tree_view) , treeviewColumns[col_index].gtkCol, baseColumnIndex<0? NULL:treeviewColumns[baseColumnIndex].gtkCol);
 		      }
-		    }else if (treeviewColumns[col_index].Show)
+		    }else if (treeviewColumns[col_index].Show && order_sequence!=treeviewcolumn_init_order_sequence)
 		      printf("Value for column %d (%s) may has not been loaded yet, you may need refresh to show. Note that, if you just switch list/icon view, the column will appear, but with empty value if you have not refreshed\n",col_enum,treeviewColumns[col_index].title);
 
 		//reorganize the treeviewColumns array, otherwise, display order will restore to default after refresh
@@ -2613,11 +2606,22 @@ static void show_hide_treeview_columns(wordexp_t * parsed_msg){
 		    g_debug("baseColumnIndex:%d",baseColumnIndex);
 		}; //endif  (g_strcmp0(columnReorderRelation[j], "")!=0)
 	        j++;
-	      } while (columnReorderRelation[j]!=NULL);
-	      g_free(columnReorderRelation);
-	  }
-	}
-        return TRUE;
+	      } while (order_seq_array[j]!=NULL);
+	      g_free(order_seq_array);
+}
+
+static void show_hide_treeview_columns(wordexp_t * parsed_msg){
+	  if (parsed_msg->we_wordc==1){
+	    printf("current column status(negative means invisible):\n");
+	    for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++)
+	      printf("    %d: %s\n",treeviewColumns[i].Show? treeviewColumns[i].enumCol:(-1)*treeviewColumns[i].enumCol,treeviewColumns[i].title);
+	    printf(SHOWCOLUMN_USAGE);
+	  }else{
+            for(guint i=1;i<parsed_msg->we_wordc;i++){
+	      show_hide_treeview_columns_in_order(parsed_msg->we_wordv[i]);
+	    }
+	 }
+         return TRUE;
 }
 
 
@@ -2960,6 +2964,10 @@ int main(int argc, char *argv[])
 
       case 'l':
 	 treeview=TRUE;
+	 break;
+      case 's':
+	 treeviewcolumn_init_order_sequence = &(argv[c][2]);
+	 show_hide_treeview_columns_in_order(treeviewcolumn_init_order_sequence);
 	 break;
       case 'h':
 	printf(rfmLaunchHelp, PROG_NAME);
