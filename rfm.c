@@ -2592,7 +2592,7 @@ static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
 		/* 第三:   1,2 */
 		/* 第四:   1,3 */
 		/* 第五:   ,2 */
-		/* 第六:   2,      */
+		/* 第六:   2,  结尾的逗号表示2后面都不显示 */
 		/* 从k=0开始复制,首先j==0这个do while循环,只给baseColumnIndex赋值,除了第五种情况下,baseColumnindex保持-1, 注意不是因为前面g_warning里面没找到输入错误的enum, 而是因为 do 后面第一个 customReorderRelation[j]==""的判断,导致这一轮do循环直接空转*/
 		/* 当j>=1时,我们需要完成 basecolumnindex+1 <- col_index 的复制, 因此,在下标小于 min(basecolumnindex+1, col_index)时,直接 k<-k 复制就可以了  */
 		/* 另外baseColumnIndex==col_index时,也就是类似第三种情况,我们无需调整位置,这轮do while 循环只需更新下baseColumnInex就可以了 */
@@ -2604,8 +2604,15 @@ static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
 		    if (j>=1) baseColumnIndex = baseColumnIndex + 1;
 		    else baseColumnIndex = col_index; 
 		    g_debug("baseColumnIndex:%d",baseColumnIndex);
-		}; //endif  (g_strcmp0(columnReorderRelation[j], "")!=0)
-	        j++;
+                } else if (order_seq_array[j+1]==NULL) { // (g_strcmp0(order_seq_array[j],"")==0) and the last elements in case 2,
+                    for (guint i = baseColumnIndex + 1;
+                         i < G_N_ELEMENTS(treeviewColumns); i++) {
+		      treeviewColumns[i].Show = FALSE;
+		      if (treeviewColumns[i].gtkCol!=NULL && treeview) gtk_tree_view_column_set_visible(treeviewColumns[i].gtkCol, FALSE);
+		      g_debug("%d invisible after ending ','",treeviewColumns[i].enumCol);
+                    }
+                }
+                j++;
 	      } while (order_seq_array[j]!=NULL);
 	      g_free(order_seq_array);
 }
