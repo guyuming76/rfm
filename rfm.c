@@ -158,11 +158,11 @@ typedef struct {
 } RFM_defaultPixbufs;
 
 enum RFM_treeviewCol{
+   COL_PIXBUF,
    COL_MODE_STR,
    COL_DISPLAY_NAME,
    COL_FILENAME,
    COL_FULL_PATH,
-   COL_PIXBUF,
    COL_MTIME,
    COL_MTIME_STR,
    COL_SIZE,
@@ -2820,11 +2820,11 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
    g_object_set_data_full(G_OBJECT(window),"rfm_default_pixbufs",defaultPixbufs,(GDestroyNotify)free_default_pixbufs);
    //TODO: why list_store_new api cannot take a dynamic array of columns, correspoin?
    store=gtk_list_store_new(NUM_COLS,
-                              G_TYPE_STRING,     //MODE_STR
+                              GDK_TYPE_PIXBUF,  /* Displayed icon */
+			      G_TYPE_STRING,     //MODE_STR
                               G_TYPE_STRING,    /* Displayed name */
 			      G_TYPE_STRING,    //filename
 			      G_TYPE_STRING,    //fullpath 
-                              GDK_TYPE_PIXBUF,  /* Displayed icon */
                               G_TYPE_UINT64,    /* File mtime: time_t is currently 32 bit signed */
 			      G_TYPE_STRING, //MTIME_STR
 			      G_TYPE_UINT64, //size
