@@ -2570,7 +2570,7 @@ static void show_hide_treeview_columns(wordexp_t * parsed_msg){
 	      guint j=0;
 	      int baseColumnIndex=-1;
 	      do {
-		if (g_strcmp0(columnReorderRelation[j], "")!=0){ //to deal with situation such as ,2 or 2,
+		if (g_strcmp0(columnReorderRelation[j], "")!=0){ //to deal with situation such as ,2 (or 2,)
 		    int col_enum_with_sign = atoi(columnReorderRelation[j]);
 		    guint col_enum = abs(col_enum_with_sign);
 		    int col_index = GetColumnIndexByEnun(col_enum);
@@ -2608,7 +2608,8 @@ static void show_hide_treeview_columns(wordexp_t * parsed_msg){
 		      move_array_item_a_after_b(treeviewColumns, baseColumnIndex, col_index, sizeof(RFM_treeviewColumn), G_N_ELEMENTS(treeviewColumns));
 		    }
 		  
-		    baseColumnIndex=col_index;
+		    if (j>=1) baseColumnIndex = baseColumnIndex + 1;
+		    else baseColumnIndex = col_index; 
 		    g_debug("baseColumnIndex:%d",baseColumnIndex);
 		}; //endif  (g_strcmp0(columnReorderRelation[j], "")!=0)
 	        j++;
