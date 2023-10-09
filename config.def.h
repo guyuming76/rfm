@@ -175,6 +175,8 @@ static RFM_ToolButton tool_buttons[] = {
 
 #define getImageSize  "exiftool %s |grep \"^Image Size\"|awk -F : '{print $2}'"
 #define getComment  "exiftool %s |grep \"^Comment\"|awk -F : '{print $2}'"
+#define getMailFrom  "mu view %s |grep \"^From:\" |cut -c 6-"
+#define getMailSubject "mu view %s |grep \"^Subject:\" |cut -c 9-"
 
 static RFM_treeviewColumn treeviewColumns[] = {
 #ifdef GitIntegration
@@ -201,6 +203,8 @@ static RFM_treeviewColumn treeviewColumns[] = {
   {"CTime",                   COL_CTIME_STR,              FALSE,  NULL, NULL,                 COL_CTIME_STR,            NULL,            NULL,     "*",         "*"},
   {"ImageSize",               COL_Ext1,                   FALSE,  NULL, NULL,                 COL_Ext1,                 getImageSize,    NULL,     "image",     "*"},
   {"Comment",                 COL_Ext2,                   FALSE,  NULL, NULL,                 COL_Ext2,                 getComment,      NULL,     "image",     "*"},
+  {"MailFrom",                COL_Ext3,                   FALSE,  NULL, NULL,                 COL_Ext3,                 getMailFrom,     NULL,     "message",     "*"},
+  {"MailSubject",             COL_Ext4,                   FALSE,  NULL, NULL,                 COL_Ext4,                 getMailSubject,  NULL,     "message",     "*"},
 };
 
 
