@@ -11,6 +11,7 @@
 #define RFM_MOUNT_MEDIA_PATH "/run/media" /* Where specified mount handler mounts filesystems (e.g. udisksctl mount) */
 #define RFM_MTIME_OFFSET 60      /* Display modified files as bold text (age in seconds) */
 #define RFM_INOTIFY_TIMEOUT 500  /* ms between inotify events after which a full refresh is done */
+#define RFM_DATETIME_FORMAT "%Y-%m-%d,%H:%M:%S"
 
 /* Built in commands - MUST be present */
 /* rfmBinPath is passed in by compiler via Makefile*/

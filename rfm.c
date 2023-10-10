@@ -43,7 +43,7 @@ typedef struct {
    gchar *thumb_name;
    gchar *md5;
    gchar *uri;
-   guint64 mtime_file;
+   gint64 mtime_file;
    gint t_idx;
    pid_t rfm_pid;
    gint thumb_size; 
@@ -130,12 +130,12 @@ typedef struct {  /* Update free_fileAttributes() and malloc_fileAttributes() if
    gchar *mime_root;
    gchar *mime_sub_type;
    gboolean is_symlink;
-   guint64 file_mtime;
+   GDateTime* file_mtime;
 
    gchar *owner;
    gchar *group;
-   guint64 file_atime;
-   guint64 file_ctime;
+   GDateTime* file_atime;
+   GDateTime* file_ctime;
    guint32 file_mode;
    gchar * file_mode_str;
    guint64 file_size;
@@ -386,14 +386,6 @@ static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx);
 
 
 #include "config.h"
-
-
-static char * yyyymmddhhmmss(time_t nSeconds) {
-    struct tm * pTM=localtime(&nSeconds);
-    char * psDateTime=calloc(20,sizeof(char));
-    strftime(psDateTime, sizeof(psDateTime),"%Y-%m-%d,%H:%M:%S" , pTM);
-    return psDateTime;
-}
 
 static char * st_mode_str(guint32 st_mode){
     char * ret=calloc(11,sizeof(char));
@@ -894,7 +886,7 @@ static void rfm_saveThumbnail(GdkPixbuf *thumb, RFM_ThumbQueueData *thumbData)
    if (thumbAlpha!=NULL) {
       thumb_path=g_build_filename(rfm_thumbDir, thumbData->thumb_name, NULL);
       tmp_thumb_file=g_strdup_printf("%s-%s-%ld", thumb_path, PROG_NAME, (long)thumbData->rfm_pid); /* check pid_t type: echo | gcc -E -xc -include 'unistd.h' - | grep 'typedef.*pid_t' */
-      mtime_tmp=g_strdup_printf("%"G_GUINT64_FORMAT, thumbData->mtime_file);
+      mtime_tmp=g_strdup_printf("%"G_GINT64_FORMAT, thumbData->mtime_file);
       if (tmp_thumb_file!=NULL && mtime_tmp!=NULL) {
          gdk_pixbuf_save(thumbAlpha, tmp_thumb_file, "png", NULL,
             "tEXt::Thumb::MTime", mtime_tmp,
@@ -981,7 +973,7 @@ static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter)
      thumbData->thumb_size = RFM_THUMBNAIL_SIZE;
    }
    thumbData->path=g_strdup(fileAttributes->path);
-   thumbData->mtime_file=fileAttributes->file_mtime;
+   thumbData->mtime_file = g_date_time_to_unix(fileAttributes->file_mtime);
    thumbData->uri=g_filename_to_uri(thumbData->path, NULL, NULL);
    thumbData->md5=g_compute_checksum_for_string(G_CHECKSUM_MD5, thumbData->uri, -1);
    thumbData->thumb_name=g_strdup_printf("%s.png", thumbData->md5);
@@ -1012,6 +1004,9 @@ static void free_fileAttributes(RFM_FileAttributes *fileAttributes) {
    g_free(fileAttributes->mtime);
    g_free(fileAttributes->atime);
    g_free(fileAttributes->ctime);
+   g_free(fileAttributes->file_mtime);
+   g_free(fileAttributes->file_atime);
+   g_free(fileAttributes->file_ctime);
    g_free(fileAttributes);
 }
 
@@ -1077,9 +1072,9 @@ static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guin
       return NULL;
    }
 
-   fileAttributes->file_mtime=g_file_info_get_attribute_uint64(info, G_FILE_ATTRIBUTE_TIME_MODIFIED);
-   fileAttributes->file_atime=g_file_info_get_attribute_uint64(info, G_FILE_ATTRIBUTE_TIME_ACCESS);
-   fileAttributes->file_ctime=g_file_info_get_attribute_uint64(info, G_FILE_ATTRIBUTE_TIME_CHANGED);
+   fileAttributes->file_mtime=g_file_info_get_modification_date_time(info);
+   fileAttributes->file_atime=g_file_info_get_access_date_time(info);
+   fileAttributes->file_ctime=g_file_info_get_creation_date_time(info);
    fileAttributes->file_size=g_file_info_get_attribute_uint64(info, G_FILE_ATTRIBUTE_STANDARD_SIZE);
    fileAttributes->file_mode=g_file_info_get_attribute_uint32(info, G_FILE_ATTRIBUTE_UNIX_MODE);
    fileAttributes->file_mode_str=st_mode_str(fileAttributes->file_mode);
@@ -1273,16 +1268,16 @@ static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,
       //gchar * git_commit_msg=g_hash_table_lookup(gitCommitMsg,fileAttributes->path);
 #endif
       fileAttributes->mime_sort=g_strjoin(NULL,fileAttributes->mime_root,fileAttributes->mime_sub_type,NULL);
-      fileAttributes->mtime=yyyymmddhhmmss(fileAttributes->file_mtime);
-      fileAttributes->atime=yyyymmddhhmmss(fileAttributes->file_atime);
-      fileAttributes->ctime=yyyymmddhhmmss(fileAttributes->file_ctime);
+      fileAttributes->mtime=g_date_time_format(fileAttributes->file_mtime,RFM_DATETIME_FORMAT);
+      fileAttributes->atime=g_date_time_format(fileAttributes->file_atime,RFM_DATETIME_FORMAT);
+      fileAttributes->ctime=g_date_time_format(fileAttributes->file_ctime,RFM_DATETIME_FORMAT);
       gtk_list_store_insert_with_values(store, iter, -1,
                           COL_MODE_STR, fileAttributes->file_mode_str,
                           COL_DISPLAY_NAME, fileAttributes->display_name,
 			  COL_FILENAME,fileAttributes->file_name,
 			  COL_FULL_PATH,fileAttributes->path,
                           COL_PIXBUF, fileAttributes->pixbuf,
-                          COL_MTIME, fileAttributes->file_mtime,
+		          COL_MTIME, g_date_time_to_unix(fileAttributes->file_mtime),
 			  COL_MTIME_STR,fileAttributes->mtime,
              		  COL_SIZE,fileAttributes->file_size,
                           COL_ATTR, fileAttributes,
@@ -2273,7 +2268,7 @@ static void inotify_insert_item(gchar *name, gboolean is_dir)
    
    fileAttributes->is_dir=is_dir;
    fileAttributes->path=g_build_filename(rfm_curPath, name, NULL);
-   fileAttributes->file_mtime=(gint64)time(NULL); /* time() returns a type time_t */
+   fileAttributes->file_mtime= g_date_time_new_from_unix_local(time(NULL)); /* time() returns a type time_t */
    rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
 
    //char * c_time=ctime((time_t*)(&(fileAttributes->file_mtime)));
