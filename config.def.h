@@ -178,6 +178,15 @@ static RFM_ToolButton tool_buttons[] = {
 #define getComment  "exiftool %s |grep \"^Comment\"|awk -F : '{print $2}'"
 #define getMailFrom  "mu view %s |grep \"^From:\" |cut -c 6-"
 #define getMailSubject "mu view %s |grep \"^Subject:\" |cut -c 9-"
+#define getMailDate "mu view %s |grep \"^Date:\" |cut -c 6- | xargs -0 -I _ date -d _ '+%%Y/%%m/%%d-%%H:%%M:%%S'"
+
+static const gchar* maildirs[] = { "/home/guyuming/Mail/139/", NULL };
+static gboolean cur_path_in_maildir(){
+	for (guint i=0; i<G_N_ELEMENTS(maildirs)-1; i++)
+		if (g_str_has_prefix(rfm_curPath,maildirs[i])) 
+			return TRUE;
+	return FALSE;
+}
 
 static RFM_treeviewColumn treeviewColumns[] = {
 #ifdef GitIntegration
@@ -204,8 +213,9 @@ static RFM_treeviewColumn treeviewColumns[] = {
   {"CTime",                   COL_CTIME_STR,              FALSE,  NULL, NULL,                 COL_CTIME_STR,            NULL,            NULL,     "*",         "*"},
   {"ImageSize",               COL_Ext1,                   FALSE,  NULL, NULL,                 COL_Ext1,                 getImageSize,    NULL,     "image",     "*"},
   {"Comment",                 COL_Ext2,                   FALSE,  NULL, NULL,                 COL_Ext2,                 getComment,      NULL,     "image",     "*"},
-  {"MailFrom",                COL_Ext3,                   FALSE,  NULL, NULL,                 COL_Ext3,                 getMailFrom,     NULL,     "message",     "*"},
-  {"MailSubject",             COL_Ext4,                   FALSE,  NULL, NULL,                 COL_Ext4,                 getMailSubject,  NULL,     "message",     "*"},
+  {"MailDate",                COL_Ext3,                   FALSE,  NULL, cur_path_in_maildir,  COL_Ext3,                 getMailDate,     NULL,     "*",         "*"},
+  {"MailFrom",                COL_Ext4,                   FALSE,  NULL, cur_path_in_maildir,  COL_Ext4,                 getMailFrom,     NULL,     "*",         "*"},
+  {"MailSubject",             COL_Ext5,                   FALSE,  NULL, cur_path_in_maildir,  COL_Ext5,                 getMailSubject,  NULL,     "*",         "*"},
 };
 
 

@@ -1205,7 +1205,9 @@ static void Update_Store_ExtColumns(RFM_ChildAttribs *childAttribs) {
 
 static void load_ExtColumns(RFM_FileAttributes* fileAttributes, GtkTreeIter *iter){
       for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++){
-	if (treeviewColumns[i].Show && g_strcmp0(fileAttributes->mime_root, treeviewColumns[i].MIME_root)==0){
+	if (treeviewColumns[i].Show
+	    && (g_strcmp0(treeviewColumns[i].MIME_root, "*")==0 || g_strcmp0(fileAttributes->mime_root, treeviewColumns[i].MIME_root)==0)
+	    && (treeviewColumns[i].showCondition==NULL || treeviewColumns[i].showCondition() )){
 	  if (g_strcmp0(treeviewColumns[i].MIME_sub, "*") || g_strcmp0(treeviewColumns[i].MIME_sub, fileAttributes->mime_sub_type)){
 	    RFM_store_cell* cell=malloc(sizeof(RFM_store_cell));
 	    cell->iter = iter;
