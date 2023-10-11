@@ -8,7 +8,7 @@
 #define RunActionDelete "Delete"
 #define RunActionGitStage "git stage"
 #define RunActionCopySelection "copy file names to clipboard"
-#define Copy "Copy"
+#define Copy "CopyFile"
 #define Paste "Paste"
 #define MoveTo "MoveToHere"
 #define RunActionChangeOwner "ChangeOwner"
@@ -40,16 +40,18 @@
 
 #define rfmLaunchHelp \
 "This is the help for command line argumants you can use to launch program with, there is another help in command window for commands you can use there.\n" \
-"Usage: %s [-h] || [-d <full path>] [-i] [-v] [-l] [-p<custom pagesize>] [-p] [-m]\n" \
+"Usage: %s [-h] || [-d <full path>] [-i] [-v] [-l] [-p<custom pagesize>] [-p] [-s]\n" \
 "-p       read file name list from StdIn, through pipeline, this -p can be omitted, for example:\n           locate 20230420|grep .png|rfm\n" \
 "-px      when read filename list from pipeline, show only x number of items in a batch, for example: -p9. you can also set this in command window with builtin cmd pagesize\n" \
-"-d       specify full path, such as /home/somebody/documents, instead of default current working directory\n" \
+"-d       specify full path to show, such as -d /home/somebody/maildir, instead of default current working directory\n" \
 "-i       show mime type\n" \
 "-l       open with listview instead of iconview,you can also switch view with toolbar button or builtin cmd /\n" \
+"-s       specify columns to show in listview and their order, refer to builtin command showcolumn for detail.\n" \
 "-h       show this help\n"
 
 #define SHOWCOLUMN_USAGE \
-"showncolumn command can have mulitple arguments deliminated with space, argument can be positive or negative column number, or (negative)column numbers connected with ',' or ';'.\n\n" \
-"Usage example: showcolumn 10,11,-12   means show 11 right after 10, and hide 12 right after 11\n" \
-"               showcolumn 1,0 12 means show column 0 right after 1, show column 12 without changing its position\n" \
-"               showcolumn ,1 0 means show column 1 as the first column, and show column 0 without changing its position\n"
+"showncolumn command can have mulitple arguments deliminated with space, argument can be positive or negative column number, or (negative)column numbers connected with ',' or ';'. showcolumn without any argument display column name and number mapping, and current displaying status. Note that numbers in showcolumn argument are column number for column name, not the displaying position.\n\n" \
+"Usage example: showcolumn 10,9,-12   means to move column 9 right after 10, and hide 12 right after 9\n" \
+"               showcolumn 1,3 12     means to move column 3 right after 1, and set column 12 visible without changing its position\n" \
+"               showcolumn ,2         means show column 2 as the first column\n" \
+"               showcolumn 2,         means hide columns after 2\n"

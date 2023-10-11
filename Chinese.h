@@ -8,7 +8,7 @@
 #define RunActionDelete "删除"
 #define RunActionGitStage "git 暂存"
 #define RunActionCopySelection "复制文件名至剪贴板"
-#define Copy "复制"
+#define Copy "复制文件"
 #define Paste "粘帖"
 #define MoveTo "移至此"
 #define RunActionChangeOwner "更改所有者"
@@ -39,17 +39,20 @@
 "Config.h文件自定义命令:\n"
 
 #define rfmLaunchHelp \
-"This is the help for command line argumants you can use to launch program with, there is another help in command window for commands you can use there.\n" \
-"Usage: %s [-h] || [-d <full path>] [-i] [-v] [-l] [-p<custom pagesize>] [-p] [-m]\n" \
-"-p       read file name list from StdIn, through pipeline, this -p can be omitted, for example:\n           locate 20230420|grep .png|rfm\n" \
-"-px      when read filename list from pipeline, show only x number of items in a batch, for example: -p9. you can also set this in command window with builtin cmd pagesize\n" \
-"-d       specify full path, such as /home/somebody/documents, instead of default current working directory\n" \
-"-i       show mime type\n" \
-"-l       open with listview instead of iconview,you can also switch view with toolbar button or builtin cmd /\n" \
-"-h       show this help\n"
+"这里是shell中启动rfm的命令行参数说明, rfm启动后的命令窗口内另有帮助提示在那里可用的命令.\n" \
+"用法: %s [-h] || [-d <目录完整路径>] [-i] [-v] [-l] [-p<每页显示文件数>] [-p] [-s<逗号分隔的列号序列>]\n" \
+"-p       通过管道,从标准输入读取文件名列表,此参数可省略(rfm自行检测是否有文件名列表通过管道输入), 比如:\n" \
+"         locate 20230420|grep .png|rfm\n" \
+"-px      当通过管道输入读取文件名列表时, 每次只显示x个文件, 比如: -p9. 你也可以在rfm启动后在命令行窗口使用内置命令pagesize来设置此每页显示文件数\n" \
+"-d       显示路径指定的目录,而不是当前启动rfm的目录, 比如 -d /home/somebody/maildir\n" \
+"-i       显示mime类型\n" \
+"-l       启动rfm后显示列表视图,而不是默认的图标视图,你也可以在打开rfm后使用内置命令/切换列表和图标视图\n" \
+"-s       指定rfm启动后列表视图显示的列号序列,比如: -s,20,21,22  ,参见showcolumn内置命令\n" \
+"-h       显示此帮助\n"
 
 #define SHOWCOLUMN_USAGE \
-"showncolumn command can have mulitple arguments deliminated with space, argument can be positive or negative column number, or (negative)column numbers connected with ',' or ';'.\n\n" \
-"Usage example: showcolumn 10,11,-12   means show 11 right after 10, and hide 12 right after 11\n" \
-"               showcolumn 1,0 12 means show column 0 right after 1, show column 12 without changing its position\n" \
-"               showcolumn ,1 0 means show column 1 as the first column, and show column 0 without changing its position\n"
+"showncolumn 命令可包含一个或多个空格分隔的列号序列, 每个列号序列可以是单独的列号,或由逗号分隔的多个列号. 列号为负,表示不显示此列. 列号序列由逗号开头,表示第一个列号在第一列显示.列号序列由逗号结尾,表示最后一个列号后的列都不显示.showcolumn命令不带参数则显示当前列号列名显示状态和顺序.注意上述列号序列中数字表示的是列名对应的编号,而不是列显示的位置顺序号.\n\n" \
+"举例:    showcolumn 10,9,-12   表示把9号列移到10号列后面显示,12号列移到9号列后并隐藏\n" \
+"         showcolumn 1,3 12     表示把3号列移到1号列后面显示, 同时显示12号列,不移动12号列位置\n" \
+"         showcolumn ,2         表示把2号列移到首位显示\n" \
+"         showcolumn 2,         表示2号列后面的列都不显示\n"
