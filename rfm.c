@@ -740,6 +740,7 @@ static gchar **build_cmd_vector(const char **cmd, GList *file_list, long n_args,
    v[j]=dest_path; /* This may be NULL anyway */
    v[++j]=NULL;
 
+   g_debug("%s",g_strjoinv(" ", v));
    return v;
 }
 
@@ -749,8 +750,6 @@ static void GSpawnChildSetupFunc_setenv(gpointer user_data) {
       //working_directory won't update child process PWD env, which inherits parents PWD env,why?
 }
 
-#define PRINT_STR_ARRAY(v)  for (int i=0;v[i];i++) printf("%s ",v[i]);printf("\n");
-
 static gboolean g_spawn_wrapper_(GList *file_list, long n_args, char *dest_path, RFM_ChildAttribs * child_attribs)
 {
    gchar **v=NULL;
@@ -758,14 +757,6 @@ static gboolean g_spawn_wrapper_(GList *file_list, long n_args, char *dest_path,
 
    v=build_cmd_vector(child_attribs->RunCmd, file_list, n_args, dest_path);
    if (v != NULL) {
-      if (child_attribs->runOpts==RFM_EXEC_OUPUT_READ_BY_PROGRAM){
-#ifdef DebugPrintf
-	PRINT_STR_ARRAY(v);
-#endif
-      }else{
-        PRINT_STR_ARRAY(v);
-      }
-
       if (child_attribs->spawn_async){
 	       if (!g_spawn_async_with_pipes_wrapper(v, child_attribs)) {
                    g_warning("g_spawn_wrapper_->g_spawn_async_with_pipes_wrapper: %s failed to execute. Check command in config.h!",v[0]);
