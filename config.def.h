@@ -183,9 +183,10 @@ static RFM_ToolButton tool_buttons[] = {
 #define getMailAttachments  "mu view %s |grep \"^Attachments:\" |cut -c 13-"
 
 static const gchar* maildirs[] = { "/home/guyuming/Mail/139/", NULL };
-static gboolean cur_path_in_maildir(){
+static gboolean path_in_maildir(RFM_FileAttributes* fileAttribs){
 	for (guint i=0; i<G_N_ELEMENTS(maildirs)-1; i++)
-		if (g_str_has_prefix(rfm_curPath,maildirs[i])) 
+		if (fileAttribs==NULL ? (rfmReadFileNamesFromPipeStdIn ? TRUE : g_str_has_prefix(rfm_curPath,maildirs[i])) 
+                                      : g_str_has_prefix(fileAttribs->path,maildirs[i])) 
 			return TRUE;
 	return FALSE;
 }
@@ -215,11 +216,11 @@ static RFM_treeviewColumn treeviewColumns[] = {
   {"CTime",                   COL_CTIME_STR,              FALSE,  NULL, NULL,                 COL_CTIME_STR,            NULL,            NULL,     "*",         "*"},
   {"ImageSize",               COL_Ext1,                   FALSE,  NULL, NULL,                 COL_Ext1,                 getImageSize,    NULL,     "image",     "*"},
   {"Comment",                 COL_Ext2,                   FALSE,  NULL, NULL,                 COL_Ext2,                 getComment,      NULL,     "image",     "*"},
-  {"MailDate",                COL_Ext3,                   FALSE,  NULL, cur_path_in_maildir,  COL_Ext3,                 getMailDate,     NULL,     "*",         "*"},
-  {"MailFrom",                COL_Ext4,                   FALSE,  NULL, cur_path_in_maildir,  COL_Ext4,                 getMailFrom,     NULL,     "*",         "*"},
-  {"MailSubject",             COL_Ext5,                   FALSE,  NULL, cur_path_in_maildir,  COL_Ext5,                 getMailSubject,  NULL,     "*",         "*"},
-  {"MailAttachments",         COL_Ext6,                   FALSE,  NULL, cur_path_in_maildir,  COL_Ext6,                 getMailAttachments,NULL,   "*",         "*"},
-  {"MailTo",                  COL_Ext7,                   FALSE,  NULL, cur_path_in_maildir,  COL_Ext7,                 getMailTo,       NULL,     "*",         "*"},
+  {"MailDate",                COL_Ext3,                   FALSE,  NULL, path_in_maildir,      COL_Ext3,                 getMailDate,     NULL,     "*",         "*"},
+  {"MailFrom",                COL_Ext4,                   FALSE,  NULL, path_in_maildir,      COL_Ext4,                 getMailFrom,     NULL,     "*",         "*"},
+  {"MailSubject",             COL_Ext5,                   FALSE,  NULL, path_in_maildir,      COL_Ext5,                 getMailSubject,  NULL,     "*",         "*"},
+  {"MailAttachments",         COL_Ext6,                   FALSE,  NULL, path_in_maildir,      COL_Ext6,                 getMailAttachments,NULL,   "*",         "*"},
+  {"MailTo",                  COL_Ext7,                   FALSE,  NULL, path_in_maildir,      COL_Ext7,                 getMailTo,       NULL,     "*",         "*"},
 };
 
 

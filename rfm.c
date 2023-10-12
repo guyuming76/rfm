@@ -196,7 +196,7 @@ typedef struct {
   enum RFM_treeviewCol enumCol;
   gboolean Show;
   GtkTreeViewColumn* gtkCol;
-  gboolean (*showCondition)();
+  gboolean (*showCondition)(RFM_FileAttributes * fileAttributes);
   enum RFM_treeviewCol enumSortCol;
   gchar* ValueCmd;
   gchar* (*ValueFunc)(gchar*);
@@ -286,7 +286,7 @@ static char* rfm_historyFileLocation;
 // the same as git status --porcelain
 static GHashTable *gitTrackedFiles;
 static gboolean curPath_is_git_repo = FALSE;
-static gboolean cur_path_is_git_repo() { return curPath_is_git_repo; }
+static gboolean cur_path_is_git_repo(RFM_FileAttributes * fileAttributes) { return curPath_is_git_repo; }
 static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpointer *child_attribs);
 static void set_terminal_window_title(char * title);
 #endif
@@ -1197,7 +1197,7 @@ static void load_ExtColumns(RFM_FileAttributes* fileAttributes, GtkTreeIter *ite
       for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++){
 	if (treeviewColumns[i].Show
 	    && (g_strcmp0(treeviewColumns[i].MIME_root, "*")==0 || g_strcmp0(fileAttributes->mime_root, treeviewColumns[i].MIME_root)==0)
-	    && (treeviewColumns[i].showCondition==NULL || treeviewColumns[i].showCondition() )){
+	    && (treeviewColumns[i].showCondition==NULL || treeviewColumns[i].showCondition(fileAttributes) )){
 	  if (g_strcmp0(treeviewColumns[i].MIME_sub, "*") || g_strcmp0(treeviewColumns[i].MIME_sub, fileAttributes->mime_sub_type)){
 	    RFM_store_cell* cell=malloc(sizeof(RFM_store_cell));
 	    cell->iter = iter;
@@ -2166,7 +2166,7 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
        treeviewColumns[i].gtkCol = gtk_tree_view_column_new_with_attributes(treeviewColumns[i].title , renderer,"text" ,  treeviewColumns[i].enumCol , NULL);
        gtk_tree_view_column_set_resizable(treeviewColumns[i].gtkCol,TRUE);
        gtk_tree_view_append_column(GTK_TREE_VIEW(_view),treeviewColumns[i].gtkCol);
-       gtk_tree_view_column_set_visible(treeviewColumns[i].gtkCol, treeviewColumns[i].Show && ((treeviewColumns[i].showCondition==NULL) ? TRUE: treeviewColumns[i].showCondition()));
+       gtk_tree_view_column_set_visible(treeviewColumns[i].gtkCol, treeviewColumns[i].Show && ((treeviewColumns[i].showCondition==NULL) ? TRUE: treeviewColumns[i].showCondition(NULL)));
        gtk_tree_view_column_set_sort_column_id(treeviewColumns[i].gtkCol, treeviewColumns[i].enumSortCol==NULL? treeviewColumns[i].enumCol: treeviewColumns[i].enumSortCol);
      }
 
