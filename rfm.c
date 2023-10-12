@@ -122,7 +122,7 @@ typedef struct {
 typedef struct {  /* Update free_fileAttributes() and malloc_fileAttributes() if new items are added */
    gchar *path;
    gchar *file_name;
-   gchar *display_name;
+  //gchar *display_name;
    gboolean is_dir;
    gboolean is_mountPoint;
    gchar *icon_name;
@@ -160,7 +160,7 @@ typedef struct {
 enum RFM_treeviewCol{
    COL_PIXBUF,
    COL_MODE_STR,
-   COL_DISPLAY_NAME,
+   //COL_DISPLAY_NAME,
    COL_FILENAME,
    COL_FULL_PATH,
    COL_MTIME,
@@ -988,7 +988,7 @@ static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter)
 static void free_fileAttributes(RFM_FileAttributes *fileAttributes) {
    g_free(fileAttributes->path);
    g_free(fileAttributes->file_name);
-   g_free(fileAttributes->display_name);
+   //g_free(fileAttributes->display_name);
    g_clear_object(&(fileAttributes->pixbuf));
    g_free(fileAttributes->mime_root);
    g_free(fileAttributes->mime_sub_type);
@@ -1038,7 +1038,7 @@ static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guin
    GFileType fileType;
    RFM_defaultPixbufs *defaultPixbufs=g_object_get_data(G_OBJECT(window),"rfm_default_pixbufs");
    gchar *mime_type=NULL;
-   gchar *utf8_display_name=NULL;
+   //gchar *utf8_display_name=NULL;
    gchar *is_mounted=NULL;
    gint i;
    RFM_FileAttributes *fileAttributes=malloc_fileAttributes();
@@ -1075,12 +1075,6 @@ static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guin
    fileAttributes->file_mode=g_file_info_get_attribute_uint32(info, G_FILE_ATTRIBUTE_UNIX_MODE);
    fileAttributes->file_mode_str=st_mode_str(fileAttributes->file_mode);
    fileAttributes->file_name=g_strdup(name);
-   utf8_display_name=g_filename_to_utf8(name, -1, NULL, NULL, NULL);
-   if (fileAttributes->file_mtime > mtimeThreshold)
-      fileAttributes->display_name=g_markup_printf_escaped("<b>%s</b>", utf8_display_name);
-   else
-      fileAttributes->display_name=g_markup_printf_escaped("%s", utf8_display_name);
-   g_free(utf8_display_name);
 
    fileAttributes->is_symlink=g_file_info_get_is_symlink(info);
    fileType=g_file_info_get_file_type(info);
@@ -1271,7 +1265,7 @@ static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,
       fileAttributes->ctime=g_date_time_format(fileAttributes->file_ctime,RFM_DATETIME_FORMAT);
       gtk_list_store_insert_with_values(store, iter, -1,
                           COL_MODE_STR, fileAttributes->file_mode_str,
-                          COL_DISPLAY_NAME, fileAttributes->display_name,
+					//COL_DISPLAY_NAME, fileAttributes->display_name,
 			  COL_FILENAME,fileAttributes->file_name,
 			  COL_FULL_PATH,fileAttributes->path,
                           COL_PIXBUF, fileAttributes->pixbuf,
@@ -1292,7 +1286,7 @@ static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,
 			  COL_MIME_SORT,fileAttributes->mime_sort,
                           -1);
 
-      g_debug("Inserted into store:%s",fileAttributes->display_name);
+      g_debug("Inserted into store:%s",fileAttributes->file_name);
 
       if (rfm_prePath!=NULL && g_strcmp0(rfm_prePath, fileAttributes->path)==0) {
          treePath=gtk_tree_model_get_path(GTK_TREE_MODEL(store), iter);
@@ -1385,7 +1379,7 @@ static void load_GitTrackedFiles_into_HashTable()
 	else{//if the file is rfm ignord file, we still add it into display here,but this may be changed.
 	  fileAttributes->pixbuf=g_object_ref(defaultPixbufs->broken);
 	  fileAttributes->file_name=g_strdup(filename);
-	  fileAttributes->display_name=g_strdup(filename);
+	  //fileAttributes->display_name=g_strdup(filename);
 	  fileAttributes->path=fullpath;
 	  fileAttributes->mime_root=g_strdup("na");
 	  fileAttributes->mime_sub_type=g_strdup("na");
@@ -2179,7 +2173,7 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
    } else {
      _view = gtk_icon_view_new_with_model(GTK_TREE_MODEL(store));
      gtk_icon_view_set_selection_mode(GTK_ICON_VIEW(_view),GTK_SELECTION_MULTIPLE);
-     gtk_icon_view_set_markup_column(GTK_ICON_VIEW(_view),COL_DISPLAY_NAME);
+     //gtk_icon_view_set_markup_column(GTK_ICON_VIEW(_view),COL_DISPLAY_NAME);
      gtk_icon_view_set_pixbuf_column(GTK_ICON_VIEW(_view), COL_PIXBUF);
    }
    #ifdef RFM_SINGLE_CLICK
@@ -2240,29 +2234,29 @@ static void toggle_readFromPipe(GtkToolItem *item,RFM_ctx *rfmCtx)
 static void inotify_insert_item(gchar *name, gboolean is_dir)
 {
    RFM_defaultPixbufs *defaultPixbufs=g_object_get_data(G_OBJECT(window),"rfm_default_pixbufs");
-   gchar *utf8_display_name=NULL;
+   //gchar *utf8_display_name=NULL;
    GtkTreeIter iter;
    RFM_FileAttributes *fileAttributes=malloc_fileAttributes();
 
    if (fileAttributes==NULL) return;
    if (ignored_filename(name)) return;
 
-   utf8_display_name=g_filename_to_utf8(name, -1, NULL, NULL, NULL);
+   //utf8_display_name=g_filename_to_utf8(name, -1, NULL, NULL, NULL);
    fileAttributes->file_name=g_strdup(name);
 
    if (is_dir) {
       fileAttributes->mime_root=g_strdup("inode");
       fileAttributes->mime_sub_type=g_strdup("directory");
       fileAttributes->pixbuf=g_object_ref(defaultPixbufs->dir);
-      fileAttributes->display_name=g_markup_printf_escaped("<b>%s</b>", utf8_display_name);
+      //fileAttributes->display_name=g_markup_printf_escaped("<b>%s</b>", utf8_display_name);
    }
    else {   /* A new file was added, but has not completed copying, or is still open: add entry; inotify will call refresh_store when complete */
       fileAttributes->mime_root=g_strdup("application");
       fileAttributes->mime_sub_type=g_strdup("octet-stream");
       fileAttributes->pixbuf=g_object_ref(defaultPixbufs->file);
-      fileAttributes->display_name=g_markup_printf_escaped("<i>%s</i>", utf8_display_name);
+      //fileAttributes->display_name=g_markup_printf_escaped("<i>%s</i>", utf8_display_name);
    }
-   g_free(utf8_display_name);
+   //g_free(utf8_display_name);
    
    fileAttributes->is_dir=is_dir;
    fileAttributes->path=g_build_filename(rfm_curPath, name, NULL);
@@ -2274,7 +2268,7 @@ static void inotify_insert_item(gchar *name, gboolean is_dir)
    fileAttributes->mime_sort=g_strjoin(NULL,fileAttributes->mime_root,fileAttributes->mime_sub_type,NULL);
    gtk_list_store_insert_with_values(store, &iter, -1,
 				     //                     COL_MODE_STR, fileAttributes->file_mode_str,
-                       COL_DISPLAY_NAME, fileAttributes->display_name,
+				     //sCOL_DISPLAY_NAME, fileAttributes->display_name,
 		       COL_FILENAME,fileAttributes->file_name,
 		       COL_FULL_PATH,fileAttributes->path,
                        COL_PIXBUF, fileAttributes->pixbuf,
@@ -2816,7 +2810,7 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
    store=gtk_list_store_new(NUM_COLS,
                               GDK_TYPE_PIXBUF,  /* Displayed icon */
 			      G_TYPE_STRING,     //MODE_STR
-                              G_TYPE_STRING,    /* Displayed name */
+			    //G_TYPE_STRING,    /* Displayed name */
 			      G_TYPE_STRING,    //filename
 			      G_TYPE_STRING,    //fullpath 
                               G_TYPE_UINT64,    /* File mtime: time_t is currently 32 bit signed */
