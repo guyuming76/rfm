@@ -2173,7 +2173,7 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
    } else {
      _view = gtk_icon_view_new_with_model(GTK_TREE_MODEL(store));
      gtk_icon_view_set_selection_mode(GTK_ICON_VIEW(_view),GTK_SELECTION_MULTIPLE);
-     //gtk_icon_view_set_markup_column(GTK_ICON_VIEW(_view),COL_DISPLAY_NAME);
+     gtk_icon_view_set_markup_column(GTK_ICON_VIEW(_view),COL_FILENAME);
      gtk_icon_view_set_pixbuf_column(GTK_ICON_VIEW(_view), COL_PIXBUF);
    }
    #ifdef RFM_SINGLE_CLICK
