@@ -183,6 +183,11 @@ enum RFM_treeviewCol{
    COL_Ext3,
    COL_Ext4,
    COL_Ext5,
+   COL_Ext6,
+   COL_Ext7,
+   COL_Ext8,
+   COL_Ext9,
+   COL_Ext10,
    NUM_COLS
 };
 
@@ -2712,7 +2717,7 @@ static void exec_stdin_command (gchar * readlineResult)
 	wordexp_t parsed_msg;
 	int wordexp_retval = wordexp(readlineResult,&parsed_msg,0);
 	if (!(wordexp_retval==0 && exec_stdin_command_builtin(&parsed_msg, readlineResult))){
-
+	  add_history(readlineResult);
           readlineResultString=g_string_new(strdup(readlineResult));
 
 	  if (endingSpace){
@@ -2748,6 +2753,7 @@ static void exec_stdin_command (gchar * readlineResult)
 	  if (len > 2 && readlineResult[len-2]=='>' && readlineResult[len-1]=='0'){ //TODO: better way to check ending with ">0"?
 	    redirectToStdin=TRUE;
 	  }
+	  add_history(readlineResult);
         }
 
 	} //end if (len == 0)
@@ -2828,7 +2834,8 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
 			      G_TYPE_STRING,     //git commit message
 #endif
 			      G_TYPE_STRING, //mime_sort
-			    G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING); //COL_Ext1..5
+			    G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING, //COL_Ext1..5
+                            G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING); //COL_Ext6..10
    treemodel=GTK_TREE_MODEL(store);
    
    g_signal_connect(window,"destroy", G_CALLBACK(cleanup), rfmCtx);

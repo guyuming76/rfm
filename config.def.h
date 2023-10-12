@@ -68,7 +68,7 @@ static const char *git_current_branch_cmd[] =  { "/usr/bin/git","branch","--show
 #endif
 
 static RFM_builtinCMD builtinCMD[] = {
-	{"q",      gtk_main_quit,         "alias for quit"},  //quit call cleanup now, not the same as q. we will solve this after we can pass parameters in function here
+//	{"q",      gtk_main_quit,         "alias for quit"},  //quit call cleanup now, not the same as q. we will solve this after we can pass parameters in function here
 };
 
 
@@ -177,8 +177,10 @@ static RFM_ToolButton tool_buttons[] = {
 #define getImageSize  "exiftool %s |grep \"^Image Size\"|awk -F : '{print $2}'"
 #define getComment  "exiftool %s |grep \"^Comment\"|awk -F : '{print $2}'"
 #define getMailFrom  "mu view %s |grep \"^From:\" |cut -c 6-"
+#define getMailTo  "mu view %s |grep \"^To:\" |cut -c 4-"
 #define getMailSubject "mu view %s |grep \"^Subject:\" |cut -c 9-"
 #define getMailDate "mu view %s |grep \"^Date:\" |cut -c 6- | xargs -0 -I _ date -d _ '+%%Y/%%m/%%d-%%H:%%M:%%S'"
+#define getMailAttachments  "mu view %s |grep \"^Attachments:\" |cut -c 13-"
 
 static const gchar* maildirs[] = { "/home/guyuming/Mail/139/", NULL };
 static gboolean cur_path_in_maildir(){
@@ -216,6 +218,8 @@ static RFM_treeviewColumn treeviewColumns[] = {
   {"MailDate",                COL_Ext3,                   FALSE,  NULL, cur_path_in_maildir,  COL_Ext3,                 getMailDate,     NULL,     "*",         "*"},
   {"MailFrom",                COL_Ext4,                   FALSE,  NULL, cur_path_in_maildir,  COL_Ext4,                 getMailFrom,     NULL,     "*",         "*"},
   {"MailSubject",             COL_Ext5,                   FALSE,  NULL, cur_path_in_maildir,  COL_Ext5,                 getMailSubject,  NULL,     "*",         "*"},
+  {"MailAttachments",         COL_Ext6,                   FALSE,  NULL, cur_path_in_maildir,  COL_Ext6,                 getMailAttachments,NULL,   "*",         "*"},
+  {"MailTo",                  COL_Ext7,                   FALSE,  NULL, cur_path_in_maildir,  COL_Ext7,                 getMailTo,       NULL,     "*",         "*"},
 };
 
 
