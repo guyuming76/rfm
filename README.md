@@ -1,5 +1,10 @@
 # 一些截屏 #
 
+## 更新20231023 ##
+![使用rfm阅读Maildir邮件列表,使用mu view读邮件](20231013_20h47m57s_grim.png)
+命令行:
+`find /home/guyuming/Mail/ -mtime -365 -type f -not -path '*/.*'|xargs ls -w1 -t|rfm -l -s,5,19,20,21,22,23,`
+
 ## 更新20230920 ##
 
 ![这个是运行两个rfm实例,我电脑上接了两个显示器](20230920_12h20m21s_grim.png)
