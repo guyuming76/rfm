@@ -182,12 +182,14 @@ static RFM_ToolButton tool_buttons[] = {
 #define getMailDate "mu view %s |grep \"^Date:\" |cut -c 6- | xargs -0 -I _ date -d _ '+%%Y/%%m/%%d-%%H:%%M:%%S'"
 #define getMailAttachments  "mu view %s |grep \"^Attachments:\" |cut -c 13-"
 
-static const gchar* maildirs[] = { "/home/guyuming/Mail/139/", NULL };
+//TODO:update it to your own Maildir or remove it if you don't have a Maidir
+static const gchar* maildirs[] = { "/home/guyuming/Mail/", NULL };
 static gboolean path_in_maildir(RFM_FileAttributes* fileAttribs){
 	for (guint i=0; i<G_N_ELEMENTS(maildirs)-1; i++)
 		if (fileAttribs==NULL ? (rfmReadFileNamesFromPipeStdIn ? TRUE : g_str_has_prefix(rfm_curPath,maildirs[i])) 
                                       : g_str_has_prefix(fileAttribs->path,maildirs[i])) 
 			return TRUE;
+        g_debug("path_in_maildir return false for %s", fileAttribs->path);
 	return FALSE;
 }
 
