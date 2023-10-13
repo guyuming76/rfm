@@ -2162,7 +2162,7 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
      gtk_tree_selection_set_mode(gtk_tree_view_get_selection(GTK_TREE_VIEW(_view)),GTK_SELECTION_MULTIPLE);
 
      for(guint i=0; i<G_N_ELEMENTS(treeviewColumns); i++){
-       if (!treeviewColumns[i].Show && g_strcmp0(treeviewColumns[i].MIME_root, "*")!=0) continue;
+       if (!treeviewColumns[i].Show) continue;
        treeviewColumns[i].gtkCol = gtk_tree_view_column_new_with_attributes(treeviewColumns[i].title , renderer,"text" ,  treeviewColumns[i].enumCol , NULL);
        gtk_tree_view_column_set_resizable(treeviewColumns[i].gtkCol,TRUE);
        gtk_tree_view_append_column(GTK_TREE_VIEW(_view),treeviewColumns[i].gtkCol);
@@ -2569,7 +2569,7 @@ static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
 			if (j>=1) gtk_tree_view_move_column_after(GTK_TREE_VIEW(icon_or_tree_view) , treeviewColumns[col_index].gtkCol, baseColumnIndex<0? NULL:treeviewColumns[baseColumnIndex].gtkCol);
 		      }
 		    }else if (treeviewColumns[col_index].Show && order_sequence!=treeviewcolumn_init_order_sequence)
-		      printf("Value for column %d (%s) may has not been loaded yet, you may need refresh to show. Note that, if you just switch list/icon view, the column will appear, but with empty value if you have not refreshed\n",col_enum,treeviewColumns[col_index].title);
+		      printf(VALUE_MAY_NOT_LOADED,col_enum,treeviewColumns[col_index].title);
 
 		//reorganize the treeviewColumns array, otherwise, display order will restore to default after refresh
 		    

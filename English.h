@@ -26,8 +26,8 @@
 "    quit        quit rfm\n" \
 "    help        print this message\n" \
 "    press Enter key two times (double enter) to refresh rfm view\n" \
-"    /           to switch between icon/list view\n" \
-"    //          to switch between current directory and pipe stdin\n" \
+"    /           to switch between icon/list view, data not refreshed\n" \
+"    //          to switch between current directory and pipe stdin, with data refreshed\n" \
 "    pwd         get rfm env PWD\n" \
 "    setpwd      set rfm env PWD with current directory\n" \
 "    pagesize    set files shown per page when displaying filenane list from pipe stdin. for example, pagesize 100\n" \
@@ -55,3 +55,6 @@
 "               showcolumn 1,3 12     means to move column 3 right after 1, and set column 12 visible without changing its position\n" \
 "               showcolumn ,2         means show column 2 as the first column\n" \
 "               showcolumn 2,         means hide columns after 2\n"
+
+#define VALUE_MAY_NOT_LOADED \
+"Value for column %d(%s) may has not been loaded yet, refresh needed. Note that if you just switch list/icon view, the column will appear, but with empty value before data refreshed\n"
