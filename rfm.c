@@ -158,6 +158,8 @@ typedef struct {
 } RFM_defaultPixbufs;
 
 enum RFM_treeviewCol{
+   COL_ICONVIEW_MARKUP,
+   COL_ICONVIEW_TOOLTIP,
    COL_PIXBUF,
    COL_MODE_STR,
    //COL_DISPLAY_NAME,
@@ -201,7 +203,9 @@ typedef struct {
   gchar* ValueCmd;
   gchar* (*ValueFunc)(gchar*);
   gchar* MIME_root;
-  gchar* MIME_sub;  
+  gchar* MIME_sub;
+  gboolean iconview_markup;
+  gboolean iconview_tooltip;
 } RFM_treeviewColumn;
 
 
@@ -209,6 +213,8 @@ typedef struct {
 typedef struct {
   GtkTreeIter * iter;
   gint store_column;
+  gboolean iconview_markup;
+  gboolean iconview_tooltip;
 } RFM_store_cell;
 
 // I need a method to show in stdin prompt whether there are selected files in
@@ -1189,26 +1195,39 @@ static void Update_Store_ExtColumns(RFM_ChildAttribs *childAttribs) {
    value[strcspn(value, "\n")] = 0;
    g_debug("ExtColumn Value:%s",value);
    RFM_store_cell* cell= *(RFM_store_cell**)(childAttribs->customCallbackUserData);
-   gtk_list_store_set(store,cell->iter, cell->store_column, value, -1);
+   if (cell->store_column>=0 && cell->store_column<NUM_COLS)  gtk_list_store_set(store,cell->iter, cell->store_column, value, -1);
+   if (g_strcmp0(value,"")!=0){
+     if (cell->iconview_markup) gtk_list_store_set(store, cell->iter, COL_ICONVIEW_MARKUP, value, -1);
+     if (cell->iconview_tooltip) gtk_list_store_set(store, cell->iter, COL_ICONVIEW_TOOLTIP, value, -1);
+   }
    g_free(cell);
 }
 
-static void load_ExtColumns(RFM_FileAttributes* fileAttributes, GtkTreeIter *iter){
+static void load_ExtColumns_and_iconview_markup_tooltip(RFM_FileAttributes* fileAttributes, GtkTreeIter *iter){
       g_debug("load_ExtColumns for %s",fileAttributes->path);
       for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++){
-	if (treeviewColumns[i].Show
+	if ((treeviewColumns[i].Show || treeviewColumns[i].iconview_markup || treeviewColumns[i].iconview_tooltip)
 	    && (g_strcmp0(treeviewColumns[i].MIME_root, "*")==0 || g_strcmp0(fileAttributes->mime_root, treeviewColumns[i].MIME_root)==0)
 	    && (treeviewColumns[i].showCondition==NULL || treeviewColumns[i].showCondition(fileAttributes) )){
 	  if (g_strcmp0(treeviewColumns[i].MIME_sub, "*") || g_strcmp0(treeviewColumns[i].MIME_sub, fileAttributes->mime_sub_type)){
 	    RFM_store_cell* cell=malloc(sizeof(RFM_store_cell));
 	    cell->iter = iter;
 	    cell->store_column = treeviewColumns[i].enumCol;
+	    cell->iconview_markup = treeviewColumns[i].iconview_markup;
+	    cell->iconview_tooltip = treeviewColumns[i].iconview_tooltip;
 	    if (treeviewColumns[i].ValueCmd!=NULL){
               gchar* ExtColumn_cmd = g_strdup_printf(treeviewColumns[i].ValueCmd, fileAttributes->path);
 	      gchar* ExtColumn_cmd_template[] = {"/bin/bash", "-c", ExtColumn_cmd, NULL};
 	      g_spawn_wrapper(ExtColumn_cmd_template, NULL, 0, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, FALSE, Update_Store_ExtColumns, &cell);
-	    }
+	    }else if (treeviewColumns[i].ValueFunc!=NULL){
 	    //TODO:ValueCmd==NULL but with function!=NULL
+	    }else if ((cell->iconview_markup) || (cell->iconview_tooltip)){
+	      GValue enumColValue = G_VALUE_INIT;
+	      gtk_tree_model_get_value(treemodel, iter, treeviewColumns[i].enumCol, &enumColValue);;
+	      if (cell->iconview_markup) gtk_list_store_set(store, cell->iter, COL_ICONVIEW_MARKUP, &enumColValue, -1);
+	      if (cell->iconview_tooltip) gtk_list_store_set(store, cell->iter, COL_ICONVIEW_TOOLTIP, &enumColValue, -1);
+	      //g_value_unset(&enumColValue);
+	    }
 	  }
 	}
       }  
@@ -1225,7 +1244,7 @@ static void Iterate_through_fileAttribute_list_to_insert_into_store()
    while (listElement != NULL) {
       fileAttributes=(RFM_FileAttributes*)listElement->data;
       Insert_fileAttributes_into_store(fileAttributes, &iter);
-      load_ExtColumns(fileAttributes, &iter);
+      load_ExtColumns_and_iconview_markup_tooltip(fileAttributes, &iter);
    listElement=g_list_next(listElement);
    }
 }
@@ -1285,6 +1304,8 @@ static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,
 					//COL_GIT_COMMIT_MSG,git_commit_msg,
 #endif
 			  COL_MIME_SORT,fileAttributes->mime_sort,
+			  COL_ICONVIEW_MARKUP, fileAttributes->file_name,
+			  COL_ICONVIEW_TOOLTIP,NULL,
                           -1);
 
       g_debug("Inserted into store:%s",fileAttributes->file_name);
@@ -1406,7 +1427,7 @@ static void Insert_fileAttributes_into_store_with_thumbnail_and_more(RFM_FileAtt
 	    GtkTreeIter iter;
             rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
 	    Insert_fileAttributes_into_store(fileAttributes,&iter);
-	    load_ExtColumns(fileAttributes, &iter);
+	    load_ExtColumns_and_iconview_markup_tooltip(fileAttributes, &iter);
 	    if (rfm_do_thumbs==1 && g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR)){
 	      load_thumbnail_or_enqueue_thumbQueue_for_store_row(&iter);
 #ifdef GitIntegration
@@ -2174,7 +2195,8 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
    } else {
      _view = gtk_icon_view_new_with_model(GTK_TREE_MODEL(store));
      gtk_icon_view_set_selection_mode(GTK_ICON_VIEW(_view),GTK_SELECTION_MULTIPLE);
-     gtk_icon_view_set_markup_column(GTK_ICON_VIEW(_view),COL_FILENAME);
+     gtk_icon_view_set_markup_column(GTK_ICON_VIEW(_view),COL_ICONVIEW_MARKUP);
+     gtk_icon_view_set_tooltip_column(GTK_ICON_VIEW(_view), COL_ICONVIEW_TOOLTIP);
      gtk_icon_view_set_pixbuf_column(GTK_ICON_VIEW(_view), COL_PIXBUF);
    }
    #ifdef RFM_SINGLE_CLICK
@@ -2809,6 +2831,8 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
    g_object_set_data_full(G_OBJECT(window),"rfm_default_pixbufs",defaultPixbufs,(GDestroyNotify)free_default_pixbufs);
    //TODO: why list_store_new api cannot take a dynamic array of columns, correspoin?
    store=gtk_list_store_new(NUM_COLS,
+			      G_TYPE_STRING,    //iconview_markup
+			      G_TYPE_STRING,    //iconview_tooltip
                               GDK_TYPE_PIXBUF,  /* Displayed icon */
 			      G_TYPE_STRING,     //MODE_STR
 			    //G_TYPE_STRING,    /* Displayed name */

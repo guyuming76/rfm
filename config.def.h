@@ -195,34 +195,34 @@ static gboolean path_in_maildir(RFM_FileAttributes* fileAttribs){
 
 static RFM_treeviewColumn treeviewColumns[] = {
 #ifdef GitIntegration
-  {"Git",                     COL_GIT_STATUS_STR,         TRUE,   NULL, cur_path_is_git_repo, COL_GIT_STATUS_STR ,      NULL,            NULL,     "*",         "*"},
+  {"Git",                     COL_GIT_STATUS_STR,         TRUE,   NULL, cur_path_is_git_repo, COL_GIT_STATUS_STR ,      NULL,            NULL,     "*",         "*",     FALSE,FALSE},
 #endif
-  {"Mode",                    COL_MODE_STR,               TRUE,   NULL, NULL,                 COL_MODE_STR,             NULL,            NULL,     "*",         "*"},
+  {"Mode",                    COL_MODE_STR,               TRUE,   NULL, NULL,                 COL_MODE_STR,             NULL,            NULL,     "*",         "*",     FALSE,FALSE},
   //  COL_DISPLAY_NAME,
-  {"FileName",                COL_FILENAME,               TRUE,   NULL, NULL,                 COL_FILENAME,             NULL,            NULL,     "*",         "*"},
+  {"FileName",                COL_FILENAME,               TRUE,   NULL, NULL,                 COL_FILENAME,             NULL,            NULL,     "*",         "*",     FALSE,FALSE},
 #ifdef GitIntegration
-  {"gitCommitMsg",            COL_GIT_COMMIT_MSG,         TRUE,   NULL, cur_path_is_git_repo, COL_GIT_COMMIT_MSG,       NULL,            NULL,     "*",         "*"},
+  {"gitCommitMsg",            COL_GIT_COMMIT_MSG,         TRUE,   NULL, cur_path_is_git_repo, COL_GIT_COMMIT_MSG,       NULL,            NULL,     "*",         "*",     FALSE,FALSE},
 #endif
   //  COL_FULL_PATH,
   //  COL_PIXBUF,
   //  COL_MTIME,
-  {"MTime",                   COL_MTIME_STR,              TRUE,   NULL, NULL,                 COL_MTIME_STR,            NULL,            NULL,     "*",         "*"},
-  {"Size",                    COL_SIZE,                   TRUE,   NULL, NULL,                 COL_SIZE,                 NULL,            NULL,     "*",         "*"},
+  {"MTime",                   COL_MTIME_STR,              TRUE,   NULL, NULL,                 COL_MTIME_STR,            NULL,            NULL,     "*",         "*",    FALSE,FALSE},
+  {"Size",                    COL_SIZE,                   TRUE,   NULL, NULL,                 COL_SIZE,                 NULL,            NULL,     "*",         "*",    FALSE,FALSE},
   // COL_ATTR,
-  {"Owner",                   COL_OWNER,                  TRUE,   NULL, NULL,                 COL_OWNER,                NULL,            NULL,     "*",         "*"},
-  {"Group",                   COL_GROUP,                  TRUE,   NULL, NULL,                 COL_GROUP,                NULL,            NULL,     "*",         "*"},
-  {"MIME_root",               COL_MIME_ROOT,              TRUE,   NULL, NULL,                 COL_MIME_SORT,            NULL,            NULL,     "*",         "*"},
-  {"MIME_sub",                COL_MIME_SUB,               TRUE,   NULL, NULL,                 COL_MIME_SUB,             NULL,            NULL,     "*",         "*"},
+  {"Owner",                   COL_OWNER,                  TRUE,   NULL, NULL,                 COL_OWNER,                NULL,            NULL,     "*",         "*",    FALSE,FALSE},
+  {"Group",                   COL_GROUP,                  TRUE,   NULL, NULL,                 COL_GROUP,                NULL,            NULL,     "*",         "*",    FALSE,FALSE},
+  {"MIME_root",               COL_MIME_ROOT,              TRUE,   NULL, NULL,                 COL_MIME_SORT,            NULL,            NULL,     "*",         "*",    FALSE,FALSE},
+  {"MIME_sub",                COL_MIME_SUB,               TRUE,   NULL, NULL,                 COL_MIME_SUB,             NULL,            NULL,     "*",         "*",    FALSE,FALSE},
   // COL_MIME_SORT, //mime root + sub for listview sort
-  {"ATime",                   COL_ATIME_STR,              FALSE,  NULL, NULL,                 COL_ATIME_STR,            NULL,            NULL,     "*",         "*"},
-  {"CTime",                   COL_CTIME_STR,              FALSE,  NULL, NULL,                 COL_CTIME_STR,            NULL,            NULL,     "*",         "*"},
-  {"ImageSize",               COL_Ext1,                   FALSE,  NULL, NULL,                 COL_Ext1,                 getImageSize,    NULL,     "image",     "*"},
-  {"Comment",                 COL_Ext2,                   FALSE,  NULL, NULL,                 COL_Ext2,                 getComment,      NULL,     "image",     "*"},
-  {"MailDate",                COL_Ext3,                   FALSE,  NULL, path_in_maildir,      COL_Ext3,                 getMailDate,     NULL,     "*",         "*"},
-  {"MailFrom",                COL_Ext4,                   FALSE,  NULL, path_in_maildir,      COL_Ext4,                 getMailFrom,     NULL,     "*",         "*"},
-  {"MailSubject",             COL_Ext5,                   FALSE,  NULL, path_in_maildir,      COL_Ext5,                 getMailSubject,  NULL,     "*",         "*"},
-  {"MailAttachments",         COL_Ext6,                   FALSE,  NULL, path_in_maildir,      COL_Ext6,                 getMailAttachments,NULL,   "*",         "*"},
-  {"MailTo",                  COL_Ext7,                   FALSE,  NULL, path_in_maildir,      COL_Ext7,                 getMailTo,       NULL,     "*",         "*"},
+  {"ATime",                   COL_ATIME_STR,              FALSE,  NULL, NULL,                 COL_ATIME_STR,            NULL,            NULL,     "*",         "*",    FALSE,FALSE},
+  {"CTime",                   COL_CTIME_STR,              FALSE,  NULL, NULL,                 COL_CTIME_STR,            NULL,            NULL,     "*",         "*",    FALSE,FALSE},
+  {"ImageSize",               COL_Ext1,                   FALSE,  NULL, NULL,                 COL_Ext1,                 getImageSize,    NULL,     "image",     "*",    FALSE,FALSE},
+  {"Comment",                 COL_Ext2,                   FALSE,  NULL, NULL,                 COL_Ext2,                 getComment,      NULL,     "image",     "*",    FALSE,FALSE},
+  {"MailDate",                COL_Ext3,                   FALSE,  NULL, path_in_maildir,      COL_Ext3,                 getMailDate,     NULL,     "*",         "*",    FALSE,FALSE},
+  {"MailFrom",                COL_Ext4,                   FALSE,  NULL, path_in_maildir,      COL_Ext4,                 getMailFrom,     NULL,     "*",         "*",    FALSE,FALSE},
+  {"MailSubject",             COL_Ext5,                   FALSE,  NULL, path_in_maildir,      COL_Ext5,                 getMailSubject,  NULL,     "*",         "*",    FALSE,FALSE},
+  {"MailAttachments",         COL_Ext6,                   FALSE,  NULL, path_in_maildir,      COL_Ext6,                 getMailAttachments,NULL,   "*",         "*",    FALSE,FALSE},
+  {"MailTo",                  COL_Ext7,                   FALSE,  NULL, path_in_maildir,      COL_Ext7,                 getMailTo,       NULL,     "*",         "*",    FALSE,FALSE},
 };
 
 
