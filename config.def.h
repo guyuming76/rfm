@@ -189,7 +189,7 @@ static gboolean path_in_maildir(RFM_FileAttributes* fileAttribs){
 		if (fileAttribs==NULL ? (rfmReadFileNamesFromPipeStdIn ? TRUE : g_str_has_prefix(rfm_curPath,maildirs[i])) 
                                       : g_str_has_prefix(fileAttribs->path,maildirs[i])) 
 			return TRUE;
-        g_debug("path_in_maildir return false for %s", fileAttribs->path);
+        g_debug("path_in_maildir return false for %s", fileAttribs==NULL ? "NULL" : fileAttribs->path);
 	return FALSE;
 }
 
