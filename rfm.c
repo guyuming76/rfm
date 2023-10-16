@@ -1282,7 +1282,7 @@ static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,
       fileAttributes->mime_sort=g_strjoin(NULL,fileAttributes->mime_root,fileAttributes->mime_sub_type,NULL);
       fileAttributes->mtime=g_date_time_format(fileAttributes->file_mtime,RFM_DATETIME_FORMAT);
       fileAttributes->atime=g_date_time_format(fileAttributes->file_atime,RFM_DATETIME_FORMAT);
-      fileAttributes->ctime=g_date_time_format(fileAttributes->file_ctime,RFM_DATETIME_FORMAT);
+      fileAttributes->ctime= fileAttributes->file_ctime==NULL ? NULL : g_date_time_format(fileAttributes->file_ctime,RFM_DATETIME_FORMAT);
       gtk_list_store_insert_with_values(store, iter, -1,
                           COL_MODE_STR, fileAttributes->file_mode_str,
 					//COL_DISPLAY_NAME, fileAttributes->display_name,
