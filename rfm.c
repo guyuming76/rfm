@@ -2474,7 +2474,7 @@ static gboolean redirectToStdin=FALSE; // we need to pass this status from exec_
 
 static void readlineInSeperateThread(GString * readlineResultStringFromPreviousReadlineCall) {
   if (readlineResultStringFromPreviousReadlineCall!=NULL){ //this means it's not initial run after rfm start, so i should first run cmd from previous readline here
-	  GError *err;
+	  GError *err = NULL;
 	  gchar* cmd_stdout;
 	  if (redirectToStdin && g_spawn_sync(rfm_curPath, 
 					      stdin_command(g_string_erase(readlineResultStringFromPreviousReadlineCall, readlineResultStringFromPreviousReadlineCall->len-2, 2)->str),
