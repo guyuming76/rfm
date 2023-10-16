@@ -22,7 +22,7 @@
 "    >  means no selected files\n" \
 "    prompt won't update when selection changes in rfm view, press Enter to refresh\n" \
 "builtin commands for current window:\n" \
-"    cd address  go to address, note that PWD is not changed, just open address in rfm\n" \
+"    cd address  go to address, note that PWD is not changed, just open address in rfm. when you enter rfm with something like locate 2023|rfm, and select one of files or folders in the file list, and enter cd, you will enter the directory of the selected file and with rfm view switched to directory view.\n" \
 "    quit        quit rfm\n" \
 "    help        print this message\n" \
 "    press Enter key two times (double enter) to refresh rfm view\n" \

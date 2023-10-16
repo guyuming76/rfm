@@ -2653,27 +2653,43 @@ static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, gchar* readli
 	  }
 	}
 
-        if (g_strcmp0(parsed_msg->we_wordv[0],"cd")==0 && parsed_msg->we_wordc==2){
-	  gchar * addr=parsed_msg->we_wordv[1];
-	  g_debug("cd %s", addr);
+        if (g_strcmp0(parsed_msg->we_wordv[0],"cd")==0){
+	  if (parsed_msg->we_wordc==2){
+	    gchar * addr=parsed_msg->we_wordv[1];
+	    g_debug("cd %s", addr);
 
-	  if (g_strcmp0(addr, "..")==0) {
-	    up_clicked(NULL);
-	    return TRUE;
-	  }else if (g_strcmp0(addr, ".")==0){
-	    return TRUE;
-	  }else if (addr[0]=='/'){
-	    set_rfm_curPath(addr);
-	    return TRUE;
-	  }else{
-	    set_rfm_curPath(g_build_filename(rfm_curPath, addr, NULL));
-	    return TRUE;
-	  }
+	    if (g_strcmp0(addr, "..")==0) {
+	      up_clicked(NULL);
+	      return TRUE;
+	    }else if (g_strcmp0(addr, ".")==0){
+	      return TRUE;
+	    }else if (addr[0]=='/'){
+	      set_rfm_curPath(addr);
+	      return TRUE;
+	    }else{
+	      set_rfm_curPath(g_build_filename(rfm_curPath, addr, NULL));
+	      return TRUE;
+	    }
+	  }else if (parsed_msg->we_wordc==1 && rfmReadFileNamesFromPipeStdIn){
+	      GList * curSelection = get_view_selection_list(icon_or_tree_view, treeview, &treemodel);
+	      GtkTreeIter iter;
+	      RFM_FileAttributes * fileAttribs;
+	      if (curSelection!=NULL){
+		gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, curSelection->data);
+		gtk_tree_model_get (GTK_TREE_MODEL(store), &iter, COL_ATTR, &fileAttribs, -1);
+		if (fileAttribs->file_mode_str[0]=='d')
+		  set_rfm_curPath(fileAttribs->path);
+		else
+		  set_rfm_curPath(g_path_get_dirname(fileAttribs->path));
+		toggle_readFromPipe(NULL, rfmCtx);
+	      }
+	      g_list_free_full(curSelection, (GDestroyNotify)gtk_tree_path_free);
+	      return TRUE;    
 	  //when we set_rfm_curPath, we don't change rfm environment variable PWD
 	  //so, shall we consider update env PWD value for rfm in set_rfm_curPath?
 	  //The answer is we should not, since we sometime, with need PWD, which child process will inherit, to be different from the directory of files selected that will be used by child process.
 	  //Instead, we use the setpwd command.
-
+	  }
         }else if (g_strcmp0(parsed_msg->we_wordv[0],"setpwd")==0) {
 	  setenv("PWD",rfm_curPath,1);
 	  printf("%s\n",getenv("PWD"));
