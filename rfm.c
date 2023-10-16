@@ -2867,7 +2867,7 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
    ReadFromPipeStdinIfAny(pipefd);
 
    using_history();
-   stifle_history(100);
+   stifle_history(RFM_HISTORY_SIZE);
    rfm_historyFileLocation = g_build_filename(getenv("HOME"),".rfm_history", NULL);
    int e;
    if (e=read_history(rfm_historyFileLocation))
