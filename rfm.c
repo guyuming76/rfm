@@ -267,6 +267,9 @@ static GtkTreeModel *treemodel=NULL;
 
 static gboolean treeview=FALSE;
 static gchar* treeviewcolumn_init_order_sequence = NULL;
+// TODO: keep previous selection when go back from cd directory to search result
+//static GList *view_init_selection_file_path = NULL;
+//static GList *view_init_selection_gtktreepath = NULL;
 
 // if true, means that rfm read file names in following way:
 //      ls|xargs realpath|rfm
@@ -1309,7 +1312,7 @@ static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,
                           -1);
 
       g_debug("Inserted into store:%s",fileAttributes->file_name);
-
+      //prepend view_init_selection_gtktreepath
       if (rfm_prePath!=NULL && g_strcmp0(rfm_prePath, fileAttributes->path)==0) {
          treePath=gtk_tree_model_get_path(GTK_TREE_MODEL(store), iter);
          if (treeview) {
@@ -1458,6 +1461,7 @@ static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store_in
 
    rfm_readDirSheduler=0;
    g_hash_table_destroy(mount_hash);
+   //if (view_init_selection_gtktreepath!=NULL) set_view_selection_list(icon_or_tree_view, treeview, view_init_selection_gtktreepath);
    gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
    return FALSE;
 }
@@ -1579,6 +1583,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
    if (rfmReadFileNamesFromPipeStdIn) {
      title=g_strdup_printf(PipeTitle, currentFileNum,fileNum,DisplayingPageSize_ForFileNameListFromPipeStdIn);
      fill_fileAttributeList_with_filenames_from_pipeline_stdin_and_then_insert_into_store();
+     //if (view_init_selection_gtktreepath!=NULL) set_view_selection_list(icon_or_tree_view, treeview, view_init_selection_gtktreepath);
      gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
    } else {
      gtk_tree_sortable_set_default_sort_func(GTK_TREE_SORTABLE(store), sort_func, NULL, NULL);
@@ -2670,20 +2675,27 @@ static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, gchar* readli
 	      set_rfm_curPath(g_build_filename(rfm_curPath, addr, NULL));
 	      return TRUE;
 	    }
-	  }else if (parsed_msg->we_wordc==1 && rfmReadFileNamesFromPipeStdIn){
+	  }else if (parsed_msg->we_wordc==1){
 	      GList * curSelection = get_view_selection_list(icon_or_tree_view, treeview, &treemodel);
 	      GtkTreeIter iter;
 	      RFM_FileAttributes * fileAttribs;
 	      if (curSelection!=NULL){
 		gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, curSelection->data);
 		gtk_tree_model_get (GTK_TREE_MODEL(store), &iter, COL_ATTR, &fileAttribs, -1);
-		if (fileAttribs->file_mode_str[0]=='d')
+		
+		//g_list_free(view_init_selection_file_path);
+		//g_list_prepend(view_init_selection_file_path,fileAttribs->path);
+		if (fileAttribs->file_mode_str[0]=='d'){
 		  set_rfm_curPath(fileAttribs->path);
-		else
+		  if (rfmReadFileNamesFromPipeStdIn) toggle_readFromPipe(NULL, rfmCtx);		  
+		}else if (rfmReadFileNamesFromPipeStdIn){
+ 		  rfm_prePath = g_strdup(fileAttribs->path);
+		//borrowing the rfm_prePath mechanism, we can go from search result into file directory and autoselect the source from search result in directory. however, if we go back from directory to search result with the '//' command, we lost selection of the source.
 		  set_rfm_curPath(g_path_get_dirname(fileAttribs->path));
-		toggle_readFromPipe(NULL, rfmCtx);
-	      }
-	      g_list_free_full(curSelection, (GDestroyNotify)gtk_tree_path_free);
+		  if (rfmReadFileNamesFromPipeStdIn) toggle_readFromPipe(NULL, rfmCtx);
+		}
+	        g_list_free_full(curSelection, (GDestroyNotify)gtk_tree_path_free);
+              }
 	      return TRUE;    
 	  //when we set_rfm_curPath, we don't change rfm environment variable PWD
 	  //so, shall we consider update env PWD value for rfm in set_rfm_curPath?
