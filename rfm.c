@@ -1577,6 +1577,8 @@ static void refresh_store(RFM_ctx *rfmCtx)
    if (curPath_is_git_repo) load_GitTrackedFiles_into_HashTable();
 #endif
 
+   icon_or_tree_view = add_view(rfmCtx);
+   
    gchar * title;
    if (rfmReadFileNamesFromPipeStdIn) {
      title=g_strdup_printf(PipeTitle, currentFileNum,fileNum,DisplayingPageSize_ForFileNameListFromPipeStdIn);
@@ -1599,7 +1601,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
 #else
    set_Titles(title);
 #endif
-   icon_or_tree_view = add_view(rfmCtx);
+
    gtk_widget_show_all(window);
    refresh_toolbar();
 }
