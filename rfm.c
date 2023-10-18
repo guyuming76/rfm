@@ -1531,6 +1531,7 @@ static void clear_store(void)
 {
    g_hash_table_remove_all(thumb_hash);
    gtk_list_store_clear(store); /* This will g_free and g_object_unref */
+   ItemSelected=0;
 #ifdef GitIntegration
    g_hash_table_remove_all(gitTrackedFiles);
    //g_hash_table_remove_all(gitCommitMsg);
@@ -1601,8 +1602,6 @@ static void refresh_store(RFM_ctx *rfmCtx)
    icon_or_tree_view = add_view(rfmCtx);
    gtk_widget_show_all(window);
    refresh_toolbar();
-   ItemSelected=0;
-   //TODO:for gtktreeview after rtefresh, no item selected on the view, but stdin prompt not changed. I don't know why, maybe signal handler not working? anyway, i just set it here manually. Take a look at the signal when i want.
 }
 
 
