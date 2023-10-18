@@ -491,6 +491,7 @@ static void rfm_stop_all(RFM_ctx *rfmCtx) {
 
    g_list_free_full(rfm_thumbQueue, (GDestroyNotify)free_thumbQueueData);
    rfm_thumbQueue=NULL;
+   gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
 }
 
 
@@ -1568,11 +1569,11 @@ static void set_Titles(gchar * title){
 
 static void refresh_store(RFM_ctx *rfmCtx)
 {
-   gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, FALSE);
    gtk_widget_hide(rfm_main_box);
    if (sw) gtk_widget_destroy(sw);
   
    rfm_stop_all(rfmCtx);
+   gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, FALSE);
    clear_store();
 
 #ifdef GitIntegration
