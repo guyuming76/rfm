@@ -353,6 +353,7 @@ static gboolean view_button_press(GtkWidget *widget, GdkEvent *event,RFM_ctx *rf
 static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointer user_data);
 static void row_activated(GtkTreeView *tree_view, GtkTreePath *tree_path,GtkTreeViewColumn *col, gpointer user_data);
 static GList* get_view_selection_list(GtkWidget * view, gboolean treeview, GtkTreeModel ** model);
+static void set_view_selection(GtkWidget* view, gboolean treeview, GtkTreePath* treePath);
 static void set_view_selection_list(GtkWidget *view, gboolean treeview,GList *selectionList);
 static gboolean path_is_selected(GtkWidget *widget, gboolean treeview, GtkTreePath *path);
 
@@ -487,8 +488,9 @@ static void rfm_stop_all(RFM_ctx *rfmCtx) {
    rfm_readDirSheduler=0;
    rfm_thumbScheduler=0;
    rfm_extColumnScheduler=0;
+#ifdef GitIntegration
    rfm_gitCommitMsgScheduler=0;
-
+#endif
    g_list_free_full(rfm_thumbQueue, (GDestroyNotify)free_thumbQueueData);
    rfm_thumbQueue=NULL;
    gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
@@ -1316,13 +1318,7 @@ static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,
       //prepend view_init_selection_gtktreepath
       if (rfm_prePath!=NULL && g_strcmp0(rfm_prePath, fileAttributes->path)==0) {
          treePath=gtk_tree_model_get_path(GTK_TREE_MODEL(store), iter);
-         if (treeview) {
-	   gtk_tree_view_set_cursor(GTK_TREE_VIEW(icon_or_tree_view),treePath,NULL,FALSE);
-           gtk_tree_view_scroll_to_cell(GTK_TREE_VIEW(icon_or_tree_view),treePath,NULL,FALSE,0,0);
-         } else {
-           gtk_icon_view_select_path(GTK_ICON_VIEW(icon_or_tree_view), treePath);
-           gtk_icon_view_scroll_to_path(GTK_ICON_VIEW(icon_or_tree_view), treePath,TRUE, 1.0, 1.0);
-         }
+	 set_view_selection(icon_or_tree_view, treeview, treePath);
          gtk_tree_path_free(treePath);
          g_free(rfm_prePath);
          rfm_prePath=NULL; /* No need to check any more paths once found */
@@ -1769,6 +1765,7 @@ static void row_activated(GtkTreeView *tree_view, GtkTreePath *tree_path,GtkTree
 
 
 /*Helper function to get selected items from iconview or treeview*/
+/*return GList* of GtkTreePath* */
 static GList* get_view_selection_list(GtkWidget * view, gboolean treeview, GtkTreeModel ** model)
 {
    if (treeview) {
@@ -1778,14 +1775,22 @@ static GList* get_view_selection_list(GtkWidget * view, gboolean treeview, GtkTr
    }
 }
 
+/*Helper function to set selected item from iconview or treeview*/
+static void set_view_selection(GtkWidget* view, gboolean treeview, GtkTreePath* treePath){
+    if (treeview){
+      gtk_tree_selection_select_path(gtk_tree_view_get_selection(GTK_TREE_VIEW(view)),treePath);
+      gtk_tree_view_scroll_to_cell(GTK_TREE_VIEW(icon_or_tree_view),treePath,NULL,FALSE,0,0);
+    }else{
+      gtk_icon_view_select_path(GTK_ICON_VIEW(view),treePath);
+      gtk_icon_view_scroll_to_path(GTK_ICON_VIEW(icon_or_tree_view), treePath,TRUE, 1.0, 1.0);
+    }
+}
+
 /*Helper function to set selected items from iconview or treeview*/
 static void set_view_selection_list(GtkWidget *view, gboolean treeview,GList *selectionList) {
   selectionList=g_list_first(selectionList);
   while (selectionList != NULL) {
-    if (treeview)
-      gtk_tree_selection_select_path(gtk_tree_view_get_selection(GTK_TREE_VIEW(view)),(GtkTreePath *)selectionList->data);
-    else
-      gtk_icon_view_select_path(GTK_ICON_VIEW(view),(GtkTreePath *)selectionList->data);
+    set_view_selection(view, treeview, (GtkTreePath*)(selectionList->data));
     selectionList = g_list_next(selectionList);
   }
 }
@@ -2695,6 +2700,7 @@ static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, gchar* readli
 		  set_rfm_curPath(fileAttribs->path);
 		  if (rfmReadFileNamesFromPipeStdIn) toggle_readFromPipe(NULL, rfmCtx);		  
 		}else if (rfmReadFileNamesFromPipeStdIn){
+		  g_free(rfm_prePath); // If i click stop toolbar button during a long refresh before rfm_prePath met and used and freed, and run cd here, i need to free rfm_prePath first before set it.
  		  rfm_prePath = g_strdup(fileAttribs->path);
 		//borrowing the rfm_prePath mechanism, we can go from search result into file directory and autoselect the source from search result in directory. however, if we go back from directory to search result with the '//' command, we lost selection of the source.
 		  set_rfm_curPath(g_path_get_dirname(fileAttribs->path));
