@@ -13,11 +13,11 @@
 #define RFM_INOTIFY_TIMEOUT 500  /* ms between inotify events after which a full refresh is done */
 #define RFM_DATETIME_FORMAT "%Y-%m-%d,%H:%M:%S"
 #define RFM_HISTORY_SIZE 10000
-#add the two line follows into ~/.inputrc so that readline can search history based on prefix. read https://www.man7.org/linux/man-pages/man3/readline.3.html  for more
-## arrow up
-## "\e[A":history-search-backward
-## arrow down
-## "\e[B":history-search-forward
+//add the two line follows into ~/.inputrc so that readline can search history based on prefix. read https://www.man7.org/linux/man-pages/man3/readline.3.html  for more
+// arrow up
+// "\e[A":history-search-backward
+// arrow down
+// "\e[B":history-search-forward
 
 
 
