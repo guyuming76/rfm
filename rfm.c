@@ -1703,11 +1703,16 @@ static void set_rfm_curPath(gchar* path)
 
 }
 
+/*why i maintain this ItemSelected value here instead of getting it on need?*/
+/*because it is used in the readline thread, and i don't think the get_view_selection_list is thread safe*/
 static void selectionChanged(GtkWidget *view, gpointer user_data)
 {
   GList *selectionList=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
   if (selectionList==NULL) ItemSelected=0;
-  else ItemSelected=1; //TODO: maybe count the actual selection number maybe useful, but we just use non-zero now.
+  else{
+    ItemSelected=1; //TODO: maybe count the actual selection number maybe useful, but we just use non-zero now.
+    g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
+  }
 }
 
 static void unselectAll(GtkWidget *view, gpointer user_data)
