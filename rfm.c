@@ -366,7 +366,7 @@ static void home_clicked(gpointer user_data);
 static void PreviousPage(RFM_ctx *rfmCtx);
 static void NextPage(RFM_ctx *rfmCtx);
 static void info_clicked(gpointer user_data);
-static void switch_view(RFM_ctx *rfmCtx);
+static void switch_iconview_treeview(RFM_ctx *rfmCtx);
 static void Switch_SearchResultView_DirectoryView(GtkToolItem *item,RFM_ctx *rfmCtx);
 /* callback function for file menu */
 /* since g_spawn_wrapper will free child_attribs, and we don't want the childAttribs object associated with UI interface item to be freed, we duplicate childAttribs here. */
@@ -2288,7 +2288,7 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
    return _view;
 }
 
-static void switch_view(RFM_ctx *rfmCtx) {
+static void switch_iconview_treeview(RFM_ctx *rfmCtx) {
   GList *  selectionList=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
   gtk_widget_hide(rfm_main_box);
   gtk_widget_destroy(scroll_window);
@@ -2765,7 +2765,7 @@ static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, gchar* readli
 	  stdin_command_help();
 	  return TRUE;
 	}else if (g_strcmp0(parsed_msg->we_wordv[0],"/")==0) {
-	  switch_view(rfmCtx);
+	  switch_iconview_treeview(rfmCtx);
 	  return TRUE;
 	}else if (g_strcmp0(parsed_msg->we_wordv[0],"//")==0) {
 	  Switch_SearchResultView_DirectoryView(NULL, rfmCtx);
