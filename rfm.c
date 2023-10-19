@@ -281,8 +281,8 @@ static GList *FileNameList_FromPipeStdin = NULL;
 static gint fileNum=0;
 static gint currentFileNum=0;
 static char* pipefd="0";
-static GList *CurrentDisplayingPage_ForFileNameListFromPipeStdIn=NULL;
-static gint DisplayingPageSize_ForFileNameListFromPipeStdIn=20;
+static GList *CurrentPage_SearchResultView=NULL;
+static gint PageSize_SearchResultView=20;
 
 static guint history_entry_added=0;
 static char* rfm_historyFileLocation;
@@ -324,7 +324,7 @@ static void refresh_store(RFM_ctx *rfmCtx);
 static void sync_view_selection_file_path_list();
 static void clear_store(void);
 static void rfm_stop_all(RFM_ctx *rfmCtx);
-static gboolean fill_fileAttributeList_with_filenames_from_pipeline_stdin_and_then_insert_into_store();
+static gboolean fill_fileAttributeList_with_filenames_from_search_result_and_then_insert_into_store();
 static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store_in_each_call(GDir *dir);
 static void Iterate_through_fileAttribute_list_to_insert_into_store();
 static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,GtkTreeIter *iter);
@@ -1480,19 +1480,19 @@ static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store_in
 }
 
 static void TurnPage(RFM_ctx *rfmCtx, gboolean next) {
-  GList *name =CurrentDisplayingPage_ForFileNameListFromPipeStdIn;
+  GList *name =CurrentPage_SearchResultView;
   gint i=0;
-  while (name != NULL && i < DisplayingPageSize_ForFileNameListFromPipeStdIn) {
+  while (name != NULL && i < PageSize_SearchResultView) {
     if (next)
       name=g_list_next(name);
     else
       name=g_list_previous(name);
     i++;
   }
-  if (name != NULL && name!=CurrentDisplayingPage_ForFileNameListFromPipeStdIn) {
-    CurrentDisplayingPage_ForFileNameListFromPipeStdIn = name;
-    if (next) currentFileNum=currentFileNum + DisplayingPageSize_ForFileNameListFromPipeStdIn;
-    else currentFileNum=currentFileNum - DisplayingPageSize_ForFileNameListFromPipeStdIn;
+  if (name != NULL && name!=CurrentPage_SearchResultView) {
+    CurrentPage_SearchResultView = name;
+    if (next) currentFileNum=currentFileNum + PageSize_SearchResultView;
+    else currentFileNum=currentFileNum - PageSize_SearchResultView;
     refresh_store(rfmCtx);
   }
 }
@@ -1502,27 +1502,27 @@ static void NextPage(RFM_ctx *rfmCtx) { TurnPage(rfmCtx, TRUE); }
 static void PreviousPage(RFM_ctx *rfmCtx) { TurnPage(rfmCtx, FALSE); }
 
 static void FirstPage(RFM_ctx *rfmCtx){
-  CurrentDisplayingPage_ForFileNameListFromPipeStdIn = FileNameList_FromPipeStdin;
+  CurrentPage_SearchResultView = FileNameList_FromPipeStdin;
   currentFileNum = 1;
   refresh_store(rfmCtx);
 }
 
 static void set_DisplayingPageSize_ForFileNameListFromPipesStdIn(uint pagesize){
   if (SearchResultViewInsteadOfDirectoryView && FileNameList_FromPipeStdin!=NULL) {
-    DisplayingPageSize_ForFileNameListFromPipeStdIn = pagesize;
+    PageSize_SearchResultView = pagesize;
     FirstPage(rfmCtx);
   }
 }
 
 
-static gboolean fill_fileAttributeList_with_filenames_from_pipeline_stdin_and_then_insert_into_store() {
+static gboolean fill_fileAttributeList_with_filenames_from_search_result_and_then_insert_into_store() {
   time_t mtimeThreshold=time(NULL)-RFM_MTIME_OFFSET;
   RFM_FileAttributes *fileAttributes;
   GHashTable *mount_hash=get_mount_points();
 
   gint i=0;
-  GList *name=CurrentDisplayingPage_ForFileNameListFromPipeStdIn;
-  while (name!=NULL && i<DisplayingPageSize_ForFileNameListFromPipeStdIn){
+  GList *name=CurrentPage_SearchResultView;
+  while (name!=NULL && i<PageSize_SearchResultView){
     fileAttributes = get_fileAttributes_for_a_file(name->data, mtimeThreshold, mount_hash);
     if (fileAttributes != NULL) {
       rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
@@ -1598,8 +1598,8 @@ static void refresh_store(RFM_ctx *rfmCtx)
    
    gchar * title;
    if (SearchResultViewInsteadOfDirectoryView) {
-     title=g_strdup_printf(PipeTitle, currentFileNum,fileNum,DisplayingPageSize_ForFileNameListFromPipeStdIn);
-     fill_fileAttributeList_with_filenames_from_pipeline_stdin_and_then_insert_into_store();
+     title=g_strdup_printf(PipeTitle, currentFileNum,fileNum,PageSize_SearchResultView);
+     fill_fileAttributeList_with_filenames_from_search_result_and_then_insert_into_store();
      //if (view_init_selection_gtktreepath!=NULL) set_view_selection_list(icon_or_tree_view, treeview, view_init_selection_gtktreepath);
      gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
    } else {
@@ -3056,7 +3056,7 @@ int main(int argc, char *argv[])
 	 //if (rfmReadFileNamesFromPipeStdIn){
 	   gchar *pagesize=argv[c] + 2 * sizeof(gchar);
 	   int ps=atoi(pagesize);
-	   if (ps!=0) DisplayingPageSize_ForFileNameListFromPipeStdIn=ps;
+	   if (ps!=0) PageSize_SearchResultView=ps;
 	 //}
          break;
 
@@ -3124,7 +3124,7 @@ static void ReadFromPipeStdinIfAny(char * fd)
          if (FileNameList_FromPipeStdin != NULL) {
            FileNameList_FromPipeStdin = g_list_reverse(FileNameList_FromPipeStdin);
            FileNameList_FromPipeStdin = g_list_first(FileNameList_FromPipeStdin);
-	   CurrentDisplayingPage_ForFileNameListFromPipeStdIn=FileNameList_FromPipeStdin;
+	   CurrentPage_SearchResultView=FileNameList_FromPipeStdin;
 	   currentFileNum=1;
 	 }
 
