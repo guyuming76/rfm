@@ -367,7 +367,7 @@ static void PreviousPage(RFM_ctx *rfmCtx);
 static void NextPage(RFM_ctx *rfmCtx);
 static void info_clicked(gpointer user_data);
 static void switch_view(RFM_ctx *rfmCtx);
-static void toggle_readFromPipe(GtkToolItem *item,RFM_ctx *rfmCtx);
+static void Switch_SearchResultView_DirectoryView(GtkToolItem *item,RFM_ctx *rfmCtx);
 /* callback function for file menu */
 /* since g_spawn_wrapper will free child_attribs, and we don't want the childAttribs object associated with UI interface item to be freed, we duplicate childAttribs here. */
 static void file_menu_exec(GtkMenuItem *menuitem, RFM_ChildAttribs *childAttribs);
@@ -2186,7 +2186,7 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
    //we add the following toolbutton here instead of define in config.def.h because we need its global reference.
    PathAndRepositoryNameDisplay = gtk_tool_button_new(NULL,rfm_curPath);
    gtk_toolbar_insert(GTK_TOOLBAR(tool_bar->toolbar), PathAndRepositoryNameDisplay, -1);
-   g_signal_connect(PathAndRepositoryNameDisplay, "clicked", G_CALLBACK(toggle_readFromPipe),rfmCtx);
+   g_signal_connect(PathAndRepositoryNameDisplay, "clicked", G_CALLBACK(Switch_SearchResultView_DirectoryView),rfmCtx);
    
    for (guint i = 0; i < G_N_ELEMENTS(tool_buttons); i++) {
      //if ((rfmReadFileNamesFromPipeStdIn && tool_buttons[i].readFromPipe) || (!rfmReadFileNamesFromPipeStdIn && tool_buttons[i].curPath)){
@@ -2299,7 +2299,7 @@ static void switch_view(RFM_ctx *rfmCtx) {
   set_view_selection_list(icon_or_tree_view, treeview, selectionList);
 }
 
-static void toggle_readFromPipe(GtkToolItem *item,RFM_ctx *rfmCtx)
+static void Switch_SearchResultView_DirectoryView(GtkToolItem *item,RFM_ctx *rfmCtx)
 {
   //if (FileNameList_FromPipeStdin != NULL && rfm_curPath!= NULL) { 
     SearchResultViewInsteadOfDirectoryView=!SearchResultViewInsteadOfDirectoryView;
@@ -2735,13 +2735,13 @@ static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, gchar* readli
 		//g_list_prepend(view_init_selection_file_path,fileAttribs->path);
 		if (fileAttribs->file_mode_str[0]=='d'){
 		  set_rfm_curPath(fileAttribs->path);
-		  if (SearchResultViewInsteadOfDirectoryView) toggle_readFromPipe(NULL, rfmCtx);		  
+		  if (SearchResultViewInsteadOfDirectoryView) Switch_SearchResultView_DirectoryView(NULL, rfmCtx);		  
 		}else if (SearchResultViewInsteadOfDirectoryView){
 		  g_free(rfm_prePath); // If i click stop toolbar button during a long refresh before rfm_prePath met and used and freed, and run cd here, i need to free rfm_prePath first before set it.
  		  rfm_prePath = g_strdup(fileAttribs->path);
 		//borrowing the rfm_prePath mechanism, we can go from search result into file directory and autoselect the source from search result in directory. however, if we go back from directory to search result with the '//' command, we lost selection of the source.
 		  set_rfm_curPath(g_path_get_dirname(fileAttribs->path));
-		  if (SearchResultViewInsteadOfDirectoryView) toggle_readFromPipe(NULL, rfmCtx);
+		  if (SearchResultViewInsteadOfDirectoryView) Switch_SearchResultView_DirectoryView(NULL, rfmCtx);
 		}
 	        g_list_free_full(curSelection, (GDestroyNotify)gtk_tree_path_free);
               }
@@ -2768,7 +2768,7 @@ static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, gchar* readli
 	  switch_view(rfmCtx);
 	  return TRUE;
 	}else if (g_strcmp0(parsed_msg->we_wordv[0],"//")==0) {
-	  toggle_readFromPipe(NULL, rfmCtx);
+	  Switch_SearchResultView_DirectoryView(NULL, rfmCtx);
 	  return TRUE;
         }else if (g_strcmp0(parsed_msg->we_wordv[0], "pagesize")==0 && parsed_msg->we_wordc==2){
 	  guint ps = atoi(parsed_msg->we_wordv[1]); 
