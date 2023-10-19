@@ -195,7 +195,7 @@ static RFM_ToolButton tool_buttons[] = {
 static const gchar* maildirs[] = { "/home/guyuming/Mail/", NULL };
 static gboolean path_in_maildir(RFM_FileAttributes* fileAttribs){
 	for (guint i=0; i<G_N_ELEMENTS(maildirs)-1; i++)
-		if (fileAttribs==NULL ? (rfmReadFileNamesFromPipeStdIn ? TRUE : g_str_has_prefix(rfm_curPath,maildirs[i])) 
+		if (fileAttribs==NULL ? (SearchResultViewInsteadOfDirectoryView ? TRUE : g_str_has_prefix(rfm_curPath,maildirs[i])) 
                                       : g_str_has_prefix(fileAttribs->path,maildirs[i])) 
 			return TRUE;
         g_debug("path_in_maildir return false for %s", fileAttribs==NULL ? "NULL" : fileAttribs->path);

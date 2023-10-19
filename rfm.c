@@ -276,7 +276,7 @@ static GList * view_selection_file_path_list[2] = {NULL,NULL};
 // or
 //      locate blablablaa |rfm
 // , instead of from a directory
-static gboolean rfmReadFileNamesFromPipeStdIn=FALSE;
+static gboolean SearchResultViewInsteadOfDirectoryView=FALSE;
 static GList *FileNameList_FromPipeStdin = NULL;
 static gint fileNum=0;
 static gint currentFileNum=0;
@@ -976,7 +976,7 @@ static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter)
       return NULL;  /* Don't show thumbnails for files types with no thumbnailer */
    }
 
-   if (rfmReadFileNamesFromPipeStdIn) {
+   if (SearchResultViewInsteadOfDirectoryView) {
      thumbData->thumb_size = RFM_THUMBNAIL_LARGE_SIZE;
    } else {
      thumbData->thumb_size = RFM_THUMBNAIL_SIZE;
@@ -1318,14 +1318,14 @@ static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,
       g_debug("Inserted into store:%s",fileAttributes->file_name);
       // keep view selections across refresh_store
       if (keep_selection_across_refresh) {
-	GList * selection_filepath_list = g_list_first(view_selection_file_path_list[rfmReadFileNamesFromPipeStdIn]);
+	GList * selection_filepath_list = g_list_first(view_selection_file_path_list[SearchResultViewInsteadOfDirectoryView]);
 	while(selection_filepath_list!=NULL){
 	  if (g_strcmp0(fileAttributes->path, selection_filepath_list->data)==0){
 	    g_debug("re-select file during refresh:%s",fileAttributes->path);
 	    treePath=gtk_tree_model_get_path(GTK_TREE_MODEL(store), iter);
 	    set_view_selection(icon_or_tree_view, treeview, treePath);
 	    gtk_tree_path_free(treePath);
-	    view_selection_file_path_list[rfmReadFileNamesFromPipeStdIn] = g_list_remove_link(view_selection_file_path_list[rfmReadFileNamesFromPipeStdIn], selection_filepath_list);
+	    view_selection_file_path_list[SearchResultViewInsteadOfDirectoryView] = g_list_remove_link(view_selection_file_path_list[SearchResultViewInsteadOfDirectoryView], selection_filepath_list);
 	    g_list_free_full(selection_filepath_list, g_free);
 	    break;
 	  }
@@ -1508,7 +1508,7 @@ static void FirstPage(RFM_ctx *rfmCtx){
 }
 
 static void set_DisplayingPageSize_ForFileNameListFromPipesStdIn(uint pagesize){
-  if (rfmReadFileNamesFromPipeStdIn && FileNameList_FromPipeStdin!=NULL) {
+  if (SearchResultViewInsteadOfDirectoryView && FileNameList_FromPipeStdin!=NULL) {
     DisplayingPageSize_ForFileNameListFromPipeStdIn = pagesize;
     FirstPage(rfmCtx);
   }
@@ -1597,7 +1597,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
    icon_or_tree_view = add_view(rfmCtx);
    
    gchar * title;
-   if (rfmReadFileNamesFromPipeStdIn) {
+   if (SearchResultViewInsteadOfDirectoryView) {
      title=g_strdup_printf(PipeTitle, currentFileNum,fileNum,DisplayingPageSize_ForFileNameListFromPipeStdIn);
      fill_fileAttributeList_with_filenames_from_pipeline_stdin_and_then_insert_into_store();
      //if (view_init_selection_gtktreepath!=NULL) set_view_selection_list(icon_or_tree_view, treeview, view_init_selection_gtktreepath);
@@ -1612,7 +1612,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
      rfm_readDirSheduler=g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, (GSourceFunc)read_one_DirItem_into_fileAttributeList_and_insert_into_store_in_each_call, dir, (GDestroyNotify)g_dir_close);
   }
 #ifdef GitIntegration
-   if (!rfmReadFileNamesFromPipeStdIn && curPath_is_git_repo)
+   if (!SearchResultViewInsteadOfDirectoryView && curPath_is_git_repo)
       g_spawn_wrapper(git_current_branch_cmd, NULL, 0, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, TRUE, set_window_title_with_git_branch_and_sort_view_with_git_status, NULL);
    else set_Titles(title);
 #else
@@ -1677,7 +1677,7 @@ static void set_rfm_curPath(gchar* path)
    //TODO: in future if we need some directory specific history file, we may check that if the directory contains .rfm_history file, it will use this local history, otherwise, use the default global history file.
    /* if (rfm_curPath!=NULL && (e=append_history(history_entry_added, g_build_filename(rfm_curPath,".rfm_history", NULL)))) */
    /*     g_warning("failed to append_history(%d,%s) error code:%d",history_entry_added,g_build_filename(rfm_curPath,".rfm_history", NULL),e); */
-   if (rfmReadFileNamesFromPipeStdIn) {
+   if (SearchResultViewInsteadOfDirectoryView) {
        if (rfm_curPath != path) {
          g_free(rfm_curPath);
          rfm_curPath = g_strdup(path);
@@ -1734,8 +1734,8 @@ static void sync_view_selection_file_path_list(){
 	selectionList=g_list_next(selectionList);
       }
       
-      g_list_free_full(view_selection_file_path_list[rfmReadFileNamesFromPipeStdIn],g_free);
-      view_selection_file_path_list[rfmReadFileNamesFromPipeStdIn] = newSelectionFilePathList;
+      g_list_free_full(view_selection_file_path_list[SearchResultViewInsteadOfDirectoryView],g_free);
+      view_selection_file_path_list[SearchResultViewInsteadOfDirectoryView] = newSelectionFilePathList;
 
       g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
 }
@@ -2005,7 +2005,7 @@ static RFM_fileMenu *setup_file_menu(RFM_ctx * rfmCtx){
       child_attribs->spawn_async = TRUE;
       child_attribs->name = g_strdup(run_actions[i].runName);
       if ((g_strcmp0(child_attribs->name, RunActionGitStage)==0) ||
-	  (rfmReadFileNamesFromPipeStdIn &&
+	  (SearchResultViewInsteadOfDirectoryView &&
 	       ((g_strcmp0(child_attribs->name, RunActionMove)==0
 	       ||g_strcmp0(child_attribs->name, RunActionDelete)==0)))){
 
@@ -2155,7 +2155,7 @@ static void refresh_toolbar()
 {
    gtk_widget_show(PathAndRepositoryNameDisplay);
    for (guint i = 0; i < G_N_ELEMENTS(tool_buttons); i++) {
-     if ((rfmReadFileNamesFromPipeStdIn && tool_buttons[i].readFromPipe) || (!rfmReadFileNamesFromPipeStdIn && tool_buttons[i].curPath)){
+     if ((SearchResultViewInsteadOfDirectoryView && tool_buttons[i].readFromPipe) || (!SearchResultViewInsteadOfDirectoryView && tool_buttons[i].curPath)){
        if (tool_buttons[i].showCondition == NULL || tool_buttons[i].showCondition())
 	 gtk_widget_show(tool_bar->buttons[i]);
        else
@@ -2280,7 +2280,7 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
      g_debug("gtk_icon_view_get_margin:%d", gtk_icon_view_get_margin((GtkIconView *)_view));
    }
    
-   if (rfmReadFileNamesFromPipeStdIn) {
+   if (SearchResultViewInsteadOfDirectoryView) {
      /*a single cell will be too wide if width is set automatically, one cell can take a whole row, don't know why*/
      if (!treeview) gtk_icon_view_set_item_width((GtkIconView *)_view,RFM_THUMBNAIL_LARGE_SIZE);
    }
@@ -2302,7 +2302,7 @@ static void switch_view(RFM_ctx *rfmCtx) {
 static void toggle_readFromPipe(GtkToolItem *item,RFM_ctx *rfmCtx)
 {
   //if (FileNameList_FromPipeStdin != NULL && rfm_curPath!= NULL) { 
-    rfmReadFileNamesFromPipeStdIn=!rfmReadFileNamesFromPipeStdIn;
+    SearchResultViewInsteadOfDirectoryView=!SearchResultViewInsteadOfDirectoryView;
     refresh_store(rfmCtx);
   //}
 }
@@ -2381,7 +2381,7 @@ static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer user_d
       return TRUE;
    }
 
-   if (rfmReadFileNamesFromPipeStdIn) return TRUE;
+   if (SearchResultViewInsteadOfDirectoryView) return TRUE;
    
    while (i<len) {
       struct inotify_event *event=(struct inotify_event *) (buffer+i);
@@ -2735,13 +2735,13 @@ static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, gchar* readli
 		//g_list_prepend(view_init_selection_file_path,fileAttribs->path);
 		if (fileAttribs->file_mode_str[0]=='d'){
 		  set_rfm_curPath(fileAttribs->path);
-		  if (rfmReadFileNamesFromPipeStdIn) toggle_readFromPipe(NULL, rfmCtx);		  
-		}else if (rfmReadFileNamesFromPipeStdIn){
+		  if (SearchResultViewInsteadOfDirectoryView) toggle_readFromPipe(NULL, rfmCtx);		  
+		}else if (SearchResultViewInsteadOfDirectoryView){
 		  g_free(rfm_prePath); // If i click stop toolbar button during a long refresh before rfm_prePath met and used and freed, and run cd here, i need to free rfm_prePath first before set it.
  		  rfm_prePath = g_strdup(fileAttribs->path);
 		//borrowing the rfm_prePath mechanism, we can go from search result into file directory and autoselect the source from search result in directory. however, if we go back from directory to search result with the '//' command, we lost selection of the source.
 		  set_rfm_curPath(g_path_get_dirname(fileAttribs->path));
-		  if (rfmReadFileNamesFromPipeStdIn) toggle_readFromPipe(NULL, rfmCtx);
+		  if (SearchResultViewInsteadOfDirectoryView) toggle_readFromPipe(NULL, rfmCtx);
 		}
 	        g_list_free_full(curSelection, (GDestroyNotify)gtk_tree_path_free);
               }
@@ -2871,7 +2871,7 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
 
    rfm_homePath=g_strdup(g_get_home_dir());
    
-   if (rfmReadFileNamesFromPipeStdIn)
+   if (SearchResultViewInsteadOfDirectoryView)
      rfm_thumbDir=g_build_filename(g_get_user_cache_dir(), "thumbnails", "large", NULL);
    else
      rfm_thumbDir=g_build_filename(g_get_user_cache_dir(), "thumbnails", "normal", NULL);
@@ -3107,7 +3107,7 @@ static void ReadFromPipeStdinIfAny(char * fd)
    g_debug("readlink for %s: %s",name,buf);
 
    if (strlen(buf)>4 && g_strcmp0(g_utf8_substring(buf, 0, 4),"pipe")==0){
-	 rfmReadFileNamesFromPipeStdIn=1;
+	 SearchResultViewInsteadOfDirectoryView=1;
 	 gchar *oneline_stdin=calloc(1,PATH_MAX);
 	 FILE *pipeStream = stdin;
 	 if (atoi(fd) != 0) pipeStream = fdopen(atoi(fd),"r");
@@ -3150,7 +3150,7 @@ static void refresh_FileNameList_and_refresh_store(gpointer filenamelist){
   }
 
   if (FileNameList_FromPipeStdin != NULL) FileNameList_FromPipeStdin=g_list_first(g_list_reverse(FileNameList_FromPipeStdin));
-  rfmReadFileNamesFromPipeStdIn = TRUE;
+  SearchResultViewInsteadOfDirectoryView = TRUE;
   FirstPage(rfmCtx);
   if (old_filenamelist!=NULL) g_list_free(old_filenamelist);
 }
