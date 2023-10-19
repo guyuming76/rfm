@@ -308,7 +308,7 @@ static void set_rfm_curPath(gchar *path);
 static int setup(char *initDir, RFM_ctx *rfmCtx);
 static gboolean readFromPipe() { return SearchResultFileNameList!=NULL;}
 static void ReadFromPipeStdinIfAny(char *fd);
-static void refresh_FileNameList_and_refresh_store(gpointer filenamelist);
+static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamelist);
 // read input from parent process stdin , and handle input such as
 // cd .
 // cd /tmp
@@ -2534,7 +2534,7 @@ static void readlineInSeperateThread(GString * readlineResultStringFromPreviousR
 					      NULL,
 					      G_SPAWN_SEARCH_PATH|G_SPAWN_CHILD_INHERITS_STDIN|G_SPAWN_CHILD_INHERITS_STDERR,
 					      NULL,NULL,&cmd_stdout,NULL,NULL,&err)){ //remove the ending ">0" in cmd with g_string_erase
-	      g_idle_add_once(refresh_FileNameList_and_refresh_store, (gpointer)cmd_stdout);
+	      g_idle_add_once(update_SearchResultFileNameList_and_refresh_store, (gpointer)cmd_stdout);
 	  } else if (!redirectToStdin && g_spawn_sync(rfm_curPath, stdin_command(readlineResultStringFromPreviousReadlineCall->str), NULL,
                            G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN |
                                G_SPAWN_CHILD_INHERITS_STDOUT |
@@ -3137,7 +3137,7 @@ static void ReadFromPipeStdinIfAny(char * fd)
    }
 }
 
-static void refresh_FileNameList_and_refresh_store(gpointer filenamelist){
+static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamelist){
   GList * old_filenamelist = SearchResultFileNameList;
   SearchResultFileNameList = NULL;
   fileNum=0;
