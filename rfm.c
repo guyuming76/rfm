@@ -277,7 +277,7 @@ static GList * view_selection_file_path_list[2] = {NULL,NULL};
 //      locate blablablaa |rfm
 // , instead of from a directory
 static gboolean SearchResultViewInsteadOfDirectoryView=FALSE;
-static GList *FileNameList_FromPipeStdin = NULL;
+static GList *SearchResultFileNameList = NULL;
 static gint fileNum=0;
 static gint currentFileNum=0;
 static char* pipefd="0";
@@ -306,7 +306,7 @@ static void die(const char *errstr, ...);
 static RFM_defaultPixbufs *load_default_pixbufs(void);
 static void set_rfm_curPath(gchar *path);
 static int setup(char *initDir, RFM_ctx *rfmCtx);
-static gboolean readFromPipe() { return FileNameList_FromPipeStdin!=NULL;}
+static gboolean readFromPipe() { return SearchResultFileNameList!=NULL;}
 static void ReadFromPipeStdinIfAny(char *fd);
 static void refresh_FileNameList_and_refresh_store(gpointer filenamelist);
 // read input from parent process stdin , and handle input such as
@@ -1502,13 +1502,13 @@ static void NextPage(RFM_ctx *rfmCtx) { TurnPage(rfmCtx, TRUE); }
 static void PreviousPage(RFM_ctx *rfmCtx) { TurnPage(rfmCtx, FALSE); }
 
 static void FirstPage(RFM_ctx *rfmCtx){
-  CurrentPage_SearchResultView = FileNameList_FromPipeStdin;
+  CurrentPage_SearchResultView = SearchResultFileNameList;
   currentFileNum = 1;
   refresh_store(rfmCtx);
 }
 
 static void set_DisplayingPageSize_ForFileNameListFromPipesStdIn(uint pagesize){
-  if (SearchResultViewInsteadOfDirectoryView && FileNameList_FromPipeStdin!=NULL) {
+  if (SearchResultViewInsteadOfDirectoryView && SearchResultFileNameList!=NULL) {
     PageSize_SearchResultView = pagesize;
     FirstPage(rfmCtx);
   }
@@ -3115,16 +3115,16 @@ static void ReadFromPipeStdinIfAny(char * fd)
    	   g_debug("%s",oneline_stdin);
            oneline_stdin[strcspn(oneline_stdin, "\n")] = 0; //manual set the last char to NULL to eliminate the trailing \n from fgets
 	   if (!ignored_filename(oneline_stdin)){ //TODO: shall we call ignored_filename here? we way remove it to align with the GetGlist implementation. User can filter those files with grep before rfm
-	       FileNameList_FromPipeStdin=g_list_prepend(FileNameList_FromPipeStdin, oneline_stdin);
+	       SearchResultFileNameList=g_list_prepend(SearchResultFileNameList, oneline_stdin);
 	       fileNum++;
 	       g_debug("appended into FileNameListWithAbsolutePath_FromPipeStdin:%s", oneline_stdin);
 	   }
 	   oneline_stdin=calloc(1,PATH_MAX);
          }
-         if (FileNameList_FromPipeStdin != NULL) {
-           FileNameList_FromPipeStdin = g_list_reverse(FileNameList_FromPipeStdin);
-           FileNameList_FromPipeStdin = g_list_first(FileNameList_FromPipeStdin);
-	   CurrentPage_SearchResultView=FileNameList_FromPipeStdin;
+         if (SearchResultFileNameList != NULL) {
+           SearchResultFileNameList = g_list_reverse(SearchResultFileNameList);
+           SearchResultFileNameList = g_list_first(SearchResultFileNameList);
+	   CurrentPage_SearchResultView=SearchResultFileNameList;
 	   currentFileNum=1;
 	 }
 
@@ -3138,18 +3138,18 @@ static void ReadFromPipeStdinIfAny(char * fd)
 }
 
 static void refresh_FileNameList_and_refresh_store(gpointer filenamelist){
-  GList * old_filenamelist = FileNameList_FromPipeStdin;
-  FileNameList_FromPipeStdin = NULL;
+  GList * old_filenamelist = SearchResultFileNameList;
+  SearchResultFileNameList = NULL;
   fileNum=0;
 
   gchar * oneline=strtok((gchar*)filenamelist,"\n");
   while (oneline!=NULL){
-    FileNameList_FromPipeStdin = g_list_prepend(FileNameList_FromPipeStdin, oneline);
+    SearchResultFileNameList = g_list_prepend(SearchResultFileNameList, oneline);
     fileNum++;
     oneline=strtok(NULL, "\n");
   }
 
-  if (FileNameList_FromPipeStdin != NULL) FileNameList_FromPipeStdin=g_list_first(g_list_reverse(FileNameList_FromPipeStdin));
+  if (SearchResultFileNameList != NULL) SearchResultFileNameList=g_list_first(g_list_reverse(SearchResultFileNameList));
   SearchResultViewInsteadOfDirectoryView = TRUE;
   FirstPage(rfmCtx);
   if (old_filenamelist!=NULL) g_list_free(old_filenamelist);
