@@ -71,8 +71,8 @@ typedef struct {
    gchar *buttonIcon;
    void (*func)(gpointer);
    const gchar **RunCmd;
-   gboolean readFromPipe;
-   gboolean curPath;
+   gboolean showInSearchResultView;
+   gboolean showInDirectoryView;
    guint Accel;
    gchar *tooltip;
    gboolean (*showCondition)();
@@ -306,7 +306,6 @@ static void die(const char *errstr, ...);
 static RFM_defaultPixbufs *load_default_pixbufs(void);
 static void set_rfm_curPath(gchar *path);
 static int setup(char *initDir, RFM_ctx *rfmCtx);
-static gboolean readFromPipe() { return SearchResultFileNameList!=NULL;}
 static void ReadFromPipeStdinIfAny(char *fd);
 static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamelist);
 // read input from parent process stdin , and handle input such as
@@ -2155,7 +2154,7 @@ static void refresh_toolbar()
 {
    gtk_widget_show(PathAndRepositoryNameDisplay);
    for (guint i = 0; i < G_N_ELEMENTS(tool_buttons); i++) {
-     if ((SearchResultViewInsteadOfDirectoryView && tool_buttons[i].readFromPipe) || (!SearchResultViewInsteadOfDirectoryView && tool_buttons[i].curPath)){
+     if ((SearchResultViewInsteadOfDirectoryView && tool_buttons[i].showInSearchResultView) || (!SearchResultViewInsteadOfDirectoryView && tool_buttons[i].showInDirectoryView)){
        if (tool_buttons[i].showCondition == NULL || tool_buttons[i].showCondition())
 	 gtk_widget_show(tool_bar->buttons[i]);
        else
