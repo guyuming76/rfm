@@ -225,7 +225,7 @@ static time_t lastEnter;
 
 static GtkWidget *window=NULL;      /* Main window */
 static GtkWidget *rfm_main_box;
-static GtkWidget *sw = NULL; //scroll window
+static GtkWidget *scroll_window = NULL;
 static GtkWidget *icon_or_tree_view = NULL;
 static GtkWidget * PathAndRepositoryNameDisplay;
 static RFM_ctx *rfmCtx=NULL;
@@ -1584,7 +1584,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
 {
    if (keep_selection_across_refresh) sync_view_selection_file_path_list();
    gtk_widget_hide(rfm_main_box);
-   if (sw) gtk_widget_destroy(sw);
+   if (scroll_window) gtk_widget_destroy(scroll_window);
   
    rfm_stop_all(rfmCtx);
    gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, FALSE);
@@ -2226,10 +2226,10 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
 {
    GtkWidget *_view;
 
-   sw=gtk_scrolled_window_new(NULL, NULL);
-   gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(sw), GTK_SHADOW_ETCHED_IN);
-   gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(sw), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
-   gtk_box_pack_start(GTK_BOX(rfm_main_box), sw, TRUE, TRUE, 0);
+   scroll_window=gtk_scrolled_window_new(NULL, NULL);
+   gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(scroll_window), GTK_SHADOW_ETCHED_IN);
+   gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll_window), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+   gtk_box_pack_start(GTK_BOX(rfm_main_box), scroll_window, TRUE, TRUE, 0);
 
    if (treeview) {
      _view = gtk_tree_view_new_with_model(GTK_TREE_MODEL(store));
@@ -2269,7 +2269,7 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
    }
    g_signal_connect(_view, "unselect-all", G_CALLBACK(unselectAll), NULL);
    
-   gtk_container_add(GTK_CONTAINER(sw), _view);
+   gtk_container_add(GTK_CONTAINER(scroll_window), _view);
    gtk_widget_grab_focus(_view);
 
    if (!treeview) {
@@ -2291,7 +2291,7 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
 static void switch_view(RFM_ctx *rfmCtx) {
   GList *  selectionList=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
   gtk_widget_hide(rfm_main_box);
-  gtk_widget_destroy(sw);
+  gtk_widget_destroy(scroll_window);
   treeview=!treeview;
   icon_or_tree_view=add_view(rfmCtx);
   gtk_widget_show_all(window);
