@@ -226,7 +226,7 @@ static time_t lastEnter;
 static GtkWidget *window=NULL;      /* Main window */
 static GtkWidget *rfm_main_box;
 static GtkWidget *sw = NULL; //scroll window
-static GtkWidget *icon_or_tree_view;
+static GtkWidget *icon_or_tree_view = NULL;
 static GtkWidget * PathAndRepositoryNameDisplay;
 static RFM_ctx *rfmCtx=NULL;
 static gchar *rfm_homePath;         /* Users home dir */
@@ -267,9 +267,9 @@ static GtkTreeModel *treemodel=NULL;
 
 static gboolean treeview=FALSE;
 static gchar* treeviewcolumn_init_order_sequence = NULL;
-// TODO: keep previous selection when go back from cd directory to search result
-//static GList *view_init_selection_file_path = NULL;
-//static GList *view_init_selection_gtktreepath = NULL;
+// keep previous selection when go back from cd directory to search result
+// two elements, one for search result view, the other for directory view
+static GList * view_selection_file_path_list[2] = {NULL,NULL};
 
 // if true, means that rfm read file names in following way:
 //      ls|xargs realpath|rfm
@@ -321,6 +321,7 @@ static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer rfmCtx
 static void inotify_insert_item(gchar *name, gboolean is_dir);
 static gboolean delayed_refreshAll(gpointer user_data);
 static void refresh_store(RFM_ctx *rfmCtx);
+static void sync_view_selection_file_path_list();
 static void clear_store(void);
 static void rfm_stop_all(RFM_ctx *rfmCtx);
 static gboolean fill_fileAttributeList_with_filenames_from_pipeline_stdin_and_then_insert_into_store();
@@ -1315,8 +1316,23 @@ static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,
                           -1);
 
       g_debug("Inserted into store:%s",fileAttributes->file_name);
-      //prepend view_init_selection_gtktreepath
-      if (rfm_prePath!=NULL && g_strcmp0(rfm_prePath, fileAttributes->path)==0) {
+      // keep view selections across refresh_store
+      if (keep_selection_across_refresh) {
+	GList * selection_filepath_list = g_list_first(view_selection_file_path_list[rfmReadFileNamesFromPipeStdIn]);
+	while(selection_filepath_list!=NULL){
+	  if (g_strcmp0(fileAttributes->path, selection_filepath_list->data)==0){
+	    g_debug("re-select file during refresh:%s",fileAttributes->path);
+	    treePath=gtk_tree_model_get_path(GTK_TREE_MODEL(store), iter);
+	    set_view_selection(icon_or_tree_view, treeview, treePath);
+	    gtk_tree_path_free(treePath);
+	    view_selection_file_path_list[rfmReadFileNamesFromPipeStdIn] = g_list_remove_link(view_selection_file_path_list[rfmReadFileNamesFromPipeStdIn], selection_filepath_list);
+	    g_list_free_full(selection_filepath_list, g_free);
+	    break;
+	  }
+	  selection_filepath_list = g_list_next(selection_filepath_list);
+	}
+     }
+     if (rfm_prePath!=NULL && g_strcmp0(rfm_prePath, fileAttributes->path)==0) {
          treePath=gtk_tree_model_get_path(GTK_TREE_MODEL(store), iter);
 	 set_view_selection(icon_or_tree_view, treeview, treePath);
          gtk_tree_path_free(treePath);
@@ -1566,6 +1582,7 @@ static void set_Titles(gchar * title){
 
 static void refresh_store(RFM_ctx *rfmCtx)
 {
+   if (keep_selection_across_refresh) sync_view_selection_file_path_list();
    gtk_widget_hide(rfm_main_box);
    if (sw) gtk_widget_destroy(sw);
   
@@ -1701,16 +1718,35 @@ static void set_rfm_curPath(gchar* path)
 
 }
 
+static void sync_view_selection_file_path_list(){
+      GtkTreeIter iter;
+      GList *newSelectionFilePathList=NULL;
+      GList *selectionList = get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
+      ItemSelected = 0;
+      selectionList=g_list_first(selectionList);
+      while(selectionList!=NULL){
+	GValue fullpath = G_VALUE_INIT;
+        gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, selectionList->data);
+	gtk_tree_model_get_value(treemodel, &iter, COL_FULL_PATH, &fullpath);
+	newSelectionFilePathList = g_list_prepend(newSelectionFilePathList, g_strdup(g_value_get_string(&fullpath)));
+	ItemSelected++;
+	g_debug("selected file before refresh:%s",(char *)newSelectionFilePathList->data);
+	selectionList=g_list_next(selectionList);
+      }
+      
+      g_list_free_full(view_selection_file_path_list[rfmReadFileNamesFromPipeStdIn],g_free);
+      view_selection_file_path_list[rfmReadFileNamesFromPipeStdIn] = newSelectionFilePathList;
+
+      g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
+}
+
 /*why i maintain this ItemSelected value here instead of getting it on need?*/
 /*because it is used in the readline thread, and i don't think the get_view_selection_list is thread safe*/
 static void selectionChanged(GtkWidget *view, gpointer user_data)
 {
   GList *selectionList=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
-  if (selectionList==NULL) ItemSelected=0;
-  else{
-    ItemSelected=1; //TODO: maybe count the actual selection number maybe useful, but we just use non-zero now.
-    g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
-  }
+  ItemSelected = (selectionList==NULL? 0 : 1);
+  g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
 }
 
 static void unselectAll(GtkWidget *view, gpointer user_data)
@@ -1756,7 +1792,6 @@ static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointe
 
    g_list_foreach(file_list, (GFunc)g_free, NULL);
    g_list_free(file_list);
-
 }
 
 static void row_activated(GtkTreeView *tree_view, GtkTreePath *tree_path,GtkTreeViewColumn *col, gpointer user_data)
@@ -1769,6 +1804,7 @@ static void row_activated(GtkTreeView *tree_view, GtkTreePath *tree_path,GtkTree
 /*return GList* of GtkTreePath* */
 static GList* get_view_selection_list(GtkWidget * view, gboolean treeview, GtkTreeModel ** model)
 {
+   if (view==NULL) return NULL;
    if (treeview) {
      return gtk_tree_selection_get_selected_rows(gtk_tree_view_get_selection(GTK_TREE_VIEW(view)), model);
    } else {

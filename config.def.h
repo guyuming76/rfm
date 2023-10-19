@@ -13,6 +13,7 @@
 #define RFM_INOTIFY_TIMEOUT 500  /* ms between inotify events after which a full refresh is done */
 #define RFM_DATETIME_FORMAT "%Y-%m-%d,%H:%M:%S"
 #define RFM_HISTORY_SIZE 10000
+
 //add the two line follows into ~/.inputrc so that readline can search history based on prefix. read https://www.man7.org/linux/man-pages/man3/readline.3.html  for more
 // arrow up
 // "\e[A":history-search-backward
@@ -20,8 +21,7 @@
 // "\e[B":history-search-forward
 
 
-
-
+static gboolean keep_selection_across_refresh = TRUE; 
 /* Built in commands - MUST be present */
 /* rfmBinPath is passed in by compiler via Makefile*/
 static const char *f_rm[]   = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmRemove.sh",NULL };
