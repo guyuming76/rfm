@@ -2792,9 +2792,11 @@ static void exec_stdin_command (gchar * readlineResult)
 	GString *readlineResultString = NULL;
 	if (len == 0){
 	    time_t now_time=time(NULL);
-	    if ((now_time - lastEnter)<=2)
-	        refresh_store(rfmCtx);
-	    lastEnter=now_time;
+            if ((now_time - lastEnter)<=1){
+                lastEnter=now_time;
+               	refresh_store(rfmCtx);
+            }else
+                lastEnter=now_time;
 	}else{
 
 	  g_debug ("Read length %u from stdin: %s", len, readlineResult);	
