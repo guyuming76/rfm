@@ -1474,7 +1474,6 @@ static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store_in
 
    rfm_readDirSheduler=0;
    g_hash_table_destroy(mount_hash);
-   //if (view_init_selection_gtktreepath!=NULL) set_view_selection_list(icon_or_tree_view, treeview, view_init_selection_gtktreepath);
    In_refresh_store = FALSE;
    gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
    return FALSE;
@@ -1602,7 +1601,6 @@ static void refresh_store(RFM_ctx *rfmCtx)
    if (SearchResultViewInsteadOfDirectoryView) {
      title=g_strdup_printf(PipeTitle, currentFileNum,fileNum,PageSize_SearchResultView);
      fill_fileAttributeList_with_filenames_from_search_result_and_then_insert_into_store();
-     //if (view_init_selection_gtktreepath!=NULL) set_view_selection_list(icon_or_tree_view, treeview, view_init_selection_gtktreepath);
      In_refresh_store=FALSE;
      gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
    } else {
@@ -2726,8 +2724,6 @@ static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, gchar* readli
 		gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, curSelection->data);
 		gtk_tree_model_get (GTK_TREE_MODEL(store), &iter, COL_ATTR, &fileAttribs, -1);
 		
-		//g_list_free(view_init_selection_file_path);
-		//g_list_prepend(view_init_selection_file_path,fileAttribs->path);
 		if (fileAttribs->file_mode_str[0]=='d'){
 		  set_rfm_curPath(fileAttribs->path);
 		  if (SearchResultViewInsteadOfDirectoryView) Switch_SearchResultView_DirectoryView(NULL, rfmCtx);		  
