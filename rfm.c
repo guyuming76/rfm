@@ -2797,50 +2797,50 @@ static void exec_stdin_command (gchar * readlineResult)
 	    lastEnter=now_time;
 	}else{
 
-        g_debug ("Read length %u from stdin: %s", len, readlineResult);	
-	gboolean endingSpace = (readlineResult[len-1]==' ');
+	  g_debug ("Read length %u from stdin: %s", len, readlineResult);	
+	  gboolean endingSpace = (readlineResult[len-1]==' ');
 
-	wordexp_t parsed_msg;
-	int wordexp_retval = wordexp(readlineResult,&parsed_msg,0);
-	if (!(wordexp_retval==0 && exec_stdin_command_builtin(&parsed_msg, readlineResult))){
-	  add_history(readlineResult);
-          readlineResultString=g_string_new(strdup(readlineResult));
+	  wordexp_t parsed_msg;
+	  int wordexp_retval = wordexp(readlineResult,&parsed_msg,0);
+	  if (!(wordexp_retval==0 && exec_stdin_command_builtin(&parsed_msg, readlineResult))){
+	    add_history(readlineResult);
+	    readlineResultString=g_string_new(strdup(readlineResult));
 
-	  if (endingSpace){
- 	  // combine runCmd with selected files to get gchar** v
-	  // TODO: the following code share the same pattern as g_spawn_wrapper_for_selected_fileList_ , anyway to remove the duplicate code?
+	    if (endingSpace){
+	      // combine runCmd with selected files to get gchar** v
+	      // TODO: the following code share the same pattern as g_spawn_wrapper_for_selected_fileList_ , anyway to remove the duplicate code?
 
-	  GtkTreeIter iter;
-	  GList *listElement;
-	  GList *selectionList=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
-	  RFM_FileAttributes *fileAttributes;
-	  if (selectionList!=NULL) {
-	    listElement=g_list_first(selectionList);
-	    while(listElement!=NULL) {
-	      gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, listElement->data);
-	      gtk_tree_model_get (GTK_TREE_MODEL(store), &iter, COL_ATTR, &fileAttributes, -1);
+	      GtkTreeIter iter;
+	      GList *listElement;
+	      GList *selectionList=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
+	      RFM_FileAttributes *fileAttributes;
+	      if (selectionList!=NULL) {
+		listElement=g_list_first(selectionList);
+		while(listElement!=NULL) {
+		  gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, listElement->data);
+		  gtk_tree_model_get (GTK_TREE_MODEL(store), &iter, COL_ATTR, &fileAttributes, -1);
 
-	      //if there is %s in msg, replace it with selected filename one by one, otherwise, append filenames to the end.
-              if (strstr(readlineResultString->str, "%s") == NULL) {
-		g_string_append(readlineResultString, " ");
-		g_string_append(readlineResultString, fileAttributes->path);
-              }else
-		g_string_replace(readlineResultString, "%s",fileAttributes->path, 1);
+		  //if there is %s in msg, replace it with selected filename one by one, otherwise, append filenames to the end.
+		  if (strstr(readlineResultString->str, "%s") == NULL) {
+		    g_string_append(readlineResultString, " ");
+		    g_string_append(readlineResultString, fileAttributes->path);
+		  }else
+		    g_string_replace(readlineResultString, "%s",fileAttributes->path, 1);
 	      
-	      listElement=g_list_next(listElement);
-	    }
-	    g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
-	  }
-	  } //end if (endingspace)
+		  listElement=g_list_next(listElement);
+		}
+		g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
+	      }
+	    } //end if (endingspace)
 
-	}//end if (!(wordexp_retval==0 && exec_stdin_command_builtin(&parsed_msg)))
-	if (wordexp_retval == 0) wordfree(&parsed_msg);
-	else if (wordexp_retval==WRDE_BADCHAR) {
-	  if (len > 2 && readlineResult[len-2]=='>' && readlineResult[len-1]=='0'){ //TODO: better way to check ending with ">0"?
-	    redirectToStdin=TRUE;
+	  }//end if (!(wordexp_retval==0 && exec_stdin_command_builtin(&parsed_msg)))
+	  if (wordexp_retval == 0) wordfree(&parsed_msg);
+	  else if (wordexp_retval==WRDE_BADCHAR) {
+	    if (len > 2 && readlineResult[len-2]=='>' && readlineResult[len-1]=='0'){ //TODO: better way to check ending with ">0"?
+	      redirectToStdin=TRUE;
+	    }
+	    add_history(readlineResult);
 	  }
-	  add_history(readlineResult);
-        }
 
 	} //end if (len == 0)
         g_free (readlineResult);
