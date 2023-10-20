@@ -17,20 +17,22 @@
 #define PipeTitle "Current:%d/Total:%d, PageSize:%d"
 
 #define builtinCMD_Help \
+"Two type of view can be shown, one is current directory view, with the left-most toolbar button showing its path(and git branch)\n" \
+"The other is search result view. You can switch between these two views with the left-most toolbar button.\n" \
 "command prompt:\n" \
 "    *> means there is selected file(s) in rfm view\n" \
 "    >  means no selected files\n" \
 "    prompt won't update when selection changes in rfm view, press Enter to refresh\n" \
 "builtin commands for current window:\n" \
-"    cd address  go to address, note that PWD is not changed, just open address in rfm. when you enter rfm with something like locate 2023|rfm, and select one of files or folders in the file list, and enter cd, you will enter the directory of the selected file and with rfm view switched to directory view.\n" \
+"    cd address  go to address, note that PWD is not changed, just open address in rfm. In search result view, select one of files or folders, and key in cd command, you will enter the directory of the selected file with rfm view switched to directory view.\n" \
 "    quit        quit rfm\n" \
 "    help        print this message\n" \
 "    press Enter key two times (double enter) to refresh rfm view\n" \
 "    /           to switch between icon/list view, data not refreshed\n" \
-"    //          to switch between current directory and pipe stdin, with data refreshed\n" \
+"    //          to switch between current directory and search result view, with data refreshed\n" \
 "    pwd         get rfm env PWD\n" \
 "    setpwd      set rfm env PWD with current directory\n" \
-"    pagesize    set files shown per page when displaying filenane list from pipe stdin. for example, pagesize 100\n" \
+"    pagesize    set files shown per page in search result view. for example, pagesize 100\n" \
 "    showcolumn  show or hide column (if currently in listview)\n" \
 "Shell commands:\n" \
 "    non-builtin commands will be sent to shell to execute.\n" \
