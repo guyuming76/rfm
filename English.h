@@ -17,11 +17,13 @@
 #define PipeTitle "Current:%d/Total:%d, PageSize:%d"
 
 #define builtinCMD_Help \
-"Two type of view can be shown, one is current directory view, with the left-most toolbar button showing its path(and git branch)\n" \
-"The other is search result view. You can switch between these two views with the left-most toolbar button.\n" \
+"system views:\n" \
+"    with difference in data source, two types of view can be shown, one is current directory view, with the left-most toolbar button showing its path(and git branch). The other is search result view. You can switch between these two views with the left-most toolbar button.\n" \
+"    with difference in layout, there are also two types of view: icon view and list view, icons such as picture thumbnails are shown in icon view.\n" \
 "command prompt:\n" \
 "    *> means there is selected file(s) in rfm view\n" \
 "    >  means no selected files\n" \
+"    ?> means in refreshing and file selection cannot be determined, try press enter after refresh.\n" \
 "    prompt won't update when selection changes in rfm view, press Enter to refresh\n" \
 "builtin commands for current window:\n" \
 "    cd address  go to address, note that PWD is not changed, just open address in rfm. In search result view, select one of files or folders, and key in cd command, you will enter the directory of the selected file with rfm view switched to directory view.\n" \
@@ -46,7 +48,7 @@
 "Usage: %s [-h] || [-d <full path>] [-i] [-v] [-l] [-p<custom pagesize>] [-p] [-s]\n" \
 "-p       read file name list from StdIn, through pipeline, this -p can be omitted, for example:\n           locate 20230420|grep .png|rfm\n" \
 "-px      when read filename list from pipeline, show only x number of items in a batch, for example: -p9. you can also set this in command window with builtin cmd pagesize\n" \
-"-d       specify full path to show, such as -d /home/somebody/maildir, instead of default current working directory\n" \
+"-d       specify full path to show, such as -d /home/somebody/maildir, instead of default current working directory. If file name follows -d, the directory of the file will be opened and the file selected in view\n" \
 "-i       show mime type\n" \
 "-l       open with listview instead of iconview,you can also switch view with toolbar button or builtin cmd /\n" \
 "-s       specify columns to show in listview and their order, refer to builtin command showcolumn for detail.\n" \
