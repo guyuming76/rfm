@@ -222,6 +222,7 @@ typedef struct {
 static gint ItemSelected = 0;
 // since it's may be complicated if possible to update stdin prompt whenever the terminal window get focus, i just show ItemSelected prompt in new prompt, and user press two times to refresh gtk view.So, I need a way to recognize consecutive enter press.
 static time_t lastEnter;
+static gboolean In_refresh_store=FALSE;
 
 static GtkWidget *window=NULL;      /* Main window */
 static GtkWidget *rfm_main_box;
@@ -1474,6 +1475,7 @@ static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store_in
    rfm_readDirSheduler=0;
    g_hash_table_destroy(mount_hash);
    //if (view_init_selection_gtktreepath!=NULL) set_view_selection_list(icon_or_tree_view, treeview, view_init_selection_gtktreepath);
+   In_refresh_store = FALSE;
    gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
    return FALSE;
 }
@@ -1581,6 +1583,7 @@ static void set_Titles(gchar * title){
 
 static void refresh_store(RFM_ctx *rfmCtx)
 {
+   In_refresh_store = TRUE;
    if (keep_selection_across_refresh) sync_view_selection_file_path_list();
    gtk_widget_hide(rfm_main_box);
    if (scroll_window) gtk_widget_destroy(scroll_window);
@@ -1600,6 +1603,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
      title=g_strdup_printf(PipeTitle, currentFileNum,fileNum,PageSize_SearchResultView);
      fill_fileAttributeList_with_filenames_from_search_result_and_then_insert_into_store();
      //if (view_init_selection_gtktreepath!=NULL) set_view_selection_list(icon_or_tree_view, treeview, view_init_selection_gtktreepath);
+     In_refresh_store=FALSE;
      gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
    } else {
      gtk_tree_sortable_set_default_sort_func(GTK_TREE_SORTABLE(store), sort_func, NULL, NULL);
@@ -1721,14 +1725,12 @@ static void sync_view_selection_file_path_list(){
       GtkTreeIter iter;
       GList *newSelectionFilePathList=NULL;
       GList *selectionList = get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
-      ItemSelected = 0;
       selectionList=g_list_first(selectionList);
       while(selectionList!=NULL){
 	GValue fullpath = G_VALUE_INIT;
         gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, selectionList->data);
 	gtk_tree_model_get_value(treemodel, &iter, COL_FULL_PATH, &fullpath);
 	newSelectionFilePathList = g_list_prepend(newSelectionFilePathList, g_strdup(g_value_get_string(&fullpath)));
-	ItemSelected++;
 	g_debug("selected file before refresh:%s",(char *)newSelectionFilePathList->data);
 	selectionList=g_list_next(selectionList);
       }
@@ -2543,7 +2545,8 @@ static void readlineInSeperateThread(GString * readlineResultStringFromPreviousR
   gchar *readlineResult;
   gchar *prompt;
   redirectToStdin=FALSE;
-  if (ItemSelected==0) prompt=">";
+  if (keep_selection_across_refresh && In_refresh_store) prompt="?>";
+  else if (ItemSelected==0) prompt=">";
   else prompt="*>";
   while ((readlineResult = readline(prompt))==NULL);
 
