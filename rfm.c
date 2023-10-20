@@ -1748,11 +1748,6 @@ static void selectionChanged(GtkWidget *view, gpointer user_data)
   g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
 }
 
-static void unselectAll(GtkWidget *view, gpointer user_data)
-{
-  ItemSelected=0;
-}
-
 static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointer user_data)
 {
    GtkTreeIter iter;
@@ -2254,7 +2249,6 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
    #ifdef RFM_SINGLE_CLICK
    gtk_icon_view_set_activate_on_single_click(GTK_ICON_VIEW(icon_view), TRUE);
    #endif
-//   g_signal_connect (icon_view, "selection-changed", G_CALLBACK (selection_changed), rfmCtx);
    g_signal_connect(_view, "button-press-event", G_CALLBACK(view_button_press), rfmCtx);
    g_signal_connect(_view, "key-press-event", G_CALLBACK(view_key_press), rfmCtx);
 
@@ -2266,7 +2260,6 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
      g_signal_connect(_view, "item-activated", G_CALLBACK(item_activated), NULL);
      g_signal_connect(_view, "selection-changed", G_CALLBACK(selectionChanged), NULL);
    }
-   g_signal_connect(_view, "unselect-all", G_CALLBACK(unselectAll), NULL);
    
    gtk_container_add(GTK_CONTAINER(scroll_window), _view);
    gtk_widget_grab_focus(_view);
