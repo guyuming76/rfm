@@ -1583,7 +1583,8 @@ static void set_Titles(gchar * title){
 static void refresh_store(RFM_ctx *rfmCtx)
 {
    In_refresh_store = TRUE;
-   if (keep_selection_across_refresh) sync_view_selection_file_path_list();
+   // for the first refresh_store after rfm launch, we don't need to sync_view_selection, we should keep view_selection list content which is specified by rfm arguments, we use scroll_window==NULL to detect first refresh_store after rfm launch
+   if (keep_selection_across_refresh && scroll_window) sync_view_selection_file_path_list();
    gtk_widget_hide(rfm_main_box);
    if (scroll_window) gtk_widget_destroy(scroll_window);
   
@@ -3024,18 +3025,18 @@ int main(int argc, char *argv[])
      if (argv[c][0]=='-'){
       switch (argv[c][1]) {
       case 'd':
-	 if (argc<=(c+1))
-            die("ERROR: %s: A directory path is required for the -d option.\n", PROG_NAME);
-         int i=strlen(argv[c+1])-1;
-         if (i!=0 && argv[c+1][i]=='/')
-            argv[c+1][i]='\0';
-         if (strstr(argv[c+1],"/.")!=NULL)
-            die("ERROR: %s: Hidden files are not supported.\n", PROG_NAME);
-         
+	 if (argc<=(c+1)) die("ERROR: %s: A directory path is required for the -d option.\n", PROG_NAME);
+         //int i=strlen(argv[c+1])-1;
+         //if (i!=0 && argv[c+1][i]=='/') argv[c+1][i]='\0';
+         //if (strstr(argv[c+1],"/.")!=NULL) die("ERROR: %s: Hidden files are not supported.\n", PROG_NAME);
          if (stat(argv[c+1],&statbuf)!=0) die("ERROR: %s: Can't stat %s\n", PROG_NAME, argv[c+1]);
-         if (! S_ISDIR(statbuf.st_mode) || access(argv[c+1], R_OK | X_OK)!=0)
-            die("ERROR: %s: Can't enter %s\n", PROG_NAME, argv[c+1]);
-         initDir=canonicalize_file_name(argv[c+1]);
+	 if (S_ISDIR(statbuf.st_mode)){
+	    if (access(argv[c+1], R_OK | X_OK)!=0) die("ERROR: %s: Can't enter %s\n", PROG_NAME, argv[c+1]);
+	    initDir=canonicalize_file_name(argv[c+1]);
+	 }else{
+	    initDir=g_path_get_dirname(argv[c+1]);
+	    view_selection_file_path_list[SearchResultViewInsteadOfDirectoryView] = g_list_prepend(view_selection_file_path_list[SearchResultViewInsteadOfDirectoryView], g_strdup(argv[c+1]));
+         }           
 	 c++;
 
          break;
