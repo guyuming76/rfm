@@ -271,7 +271,7 @@ static gchar* treeviewcolumn_init_order_sequence = NULL;
 // keep previous selection when go back from cd directory to search result
 // two elements, one for search result view, the other for directory view
 static GList * view_selection_file_path_list[2] = {NULL,NULL};
-
+static gboolean skip_sync_view_selection_file_path_list_once = FALSE;
 // if true, means that rfm read file names in following way:
 //      ls|xargs realpath|rfm
 // or
@@ -1332,13 +1332,6 @@ static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,
 	  selection_filepath_list = g_list_next(selection_filepath_list);
 	}
      }
-     if (rfm_prePath!=NULL && g_strcmp0(rfm_prePath, fileAttributes->path)==0) {
-         treePath=gtk_tree_model_get_path(GTK_TREE_MODEL(store), iter);
-	 set_view_selection(icon_or_tree_view, treeview, treePath);
-         gtk_tree_path_free(treePath);
-         g_free(rfm_prePath);
-         rfm_prePath=NULL; /* No need to check any more paths once found */
-      }
 }
 
 
@@ -1584,7 +1577,11 @@ static void refresh_store(RFM_ctx *rfmCtx)
 {
    In_refresh_store = TRUE;
    // for the first refresh_store after rfm launch, we don't need to sync_view_selection, we should keep view_selection list content which is specified by rfm arguments, we use scroll_window==NULL to detect first refresh_store after rfm launch
-   if (keep_selection_across_refresh && scroll_window) sync_view_selection_file_path_list();
+   if (skip_sync_view_selection_file_path_list_once)
+     skip_sync_view_selection_file_path_list_once = FALSE;
+   else if (keep_selection_across_refresh && scroll_window)
+     sync_view_selection_file_path_list();
+   
    gtk_widget_hide(rfm_main_box);
    if (scroll_window) gtk_widget_destroy(scroll_window);
   
@@ -1668,6 +1665,25 @@ static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpoin
 #endif
 
 
+static void set_rfm_curPath_internal(gchar* path){
+  //https://blog.csdn.net/CaspianSea/article/details/78817778
+       if (rfm_curPath != path) {
+	 if (rfm_curPath!=NULL){
+	   g_free(rfm_prePath);
+	   rfm_prePath=rfm_curPath;
+	   setenv("OLDPWD", rfm_prePath, 1);
+	 }
+         rfm_curPath = g_strdup(path);
+	 chdir(rfm_curPath);//TODO: i don't know whether we really need this
+
+         //g_setenv("PWD", rfm_curPath, 1);
+	 //TODO: i am not sure wether i shold set PWD env value here too, and remove the builtin command setpwd
+   //when we run commands such as echo $PWD, we spawn child process with working directory rfm_curPath, so, even we do not set $PWD, we get result as expected with this kind of commands.
+   //so, we should first know the relationship between working directory parameter in g_spawn and PWD env value inheritence before we do anything furthur here.
+   //anyway, setting OLDPWD is necessary for us here.
+      }  
+}
+
 static void set_rfm_curPath(gchar* path)
 {
    char *msg;
@@ -1680,10 +1696,7 @@ static void set_rfm_curPath(gchar* path)
    /* if (rfm_curPath!=NULL && (e=append_history(history_entry_added, g_build_filename(rfm_curPath,".rfm_history", NULL)))) */
    /*     g_warning("failed to append_history(%d,%s) error code:%d",history_entry_added,g_build_filename(rfm_curPath,".rfm_history", NULL),e); */
    if (SearchResultViewInsteadOfDirectoryView) {
-       if (rfm_curPath != path) {
-         g_free(rfm_curPath);
-         rfm_curPath = g_strdup(path);
-       }
+     set_rfm_curPath_internal(path);
        //inotify_rm_watch(rfm_inotify_fd, rfm_curPath_wd);
    }else{
 
@@ -1694,15 +1707,10 @@ static void set_rfm_curPath(gchar* path)
        show_msgbox(msg, "Warning", GTK_MESSAGE_WARNING);
        g_free(msg);
      } else {
-
-       if (rfm_curPath != path) {
-         g_free(rfm_curPath);
-         rfm_curPath = g_strdup(path);
-       }
-
+       set_rfm_curPath_internal(path);
+       
        // inotify_rm_watch will trigger refresh_store in inotify_handler
        // and it will destory and recreate view base on conditions such as whether curPath_is_git_repo
-      
        inotify_rm_watch(rfm_inotify_fd, rfm_curPath_wd);
        rfm_curPath_wd = rfm_new_wd;
      }
@@ -1732,6 +1740,12 @@ static void sync_view_selection_file_path_list(){
 	newSelectionFilePathList = g_list_prepend(newSelectionFilePathList, g_strdup(g_value_get_string(&fullpath)));
 	g_debug("selected file before refresh:%s",(char *)newSelectionFilePathList->data);
 	selectionList=g_list_next(selectionList);
+      }
+
+      if (RFM_AUTOSELECT_OLDPWD_IN_VIEW && rfm_prePath!=NULL){
+	newSelectionFilePathList = g_list_prepend(newSelectionFilePathList, strdup(rfm_prePath));
+	g_free(rfm_prePath);
+	rfm_prePath=NULL;
       }
       
       g_list_free_full(view_selection_file_path_list[SearchResultViewInsteadOfDirectoryView],g_free);
@@ -1830,10 +1844,6 @@ static void set_view_selection_list(GtkWidget *view, gboolean treeview,GList *se
 static void up_clicked(gpointer user_data)
 {
    gchar *dir_name;
-
-   g_free(rfm_prePath);
-   rfm_prePath=g_strdup(rfm_curPath);
-
    dir_name=g_path_get_dirname(rfm_curPath);
    set_rfm_curPath(dir_name);
    g_free(dir_name);
@@ -2729,15 +2739,18 @@ static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, gchar* readli
 		  set_rfm_curPath(fileAttribs->path);
 		  if (SearchResultViewInsteadOfDirectoryView) Switch_SearchResultView_DirectoryView(NULL, rfmCtx);		  
 		}else if (SearchResultViewInsteadOfDirectoryView){
-		  g_free(rfm_prePath); // If i click stop toolbar button during a long refresh before rfm_prePath met and used and freed, and run cd here, i need to free rfm_prePath first before set it.
- 		  rfm_prePath = g_strdup(fileAttribs->path);
-		//borrowing the rfm_prePath mechanism, we can go from search result into file directory and autoselect the source from search result in directory. however, if we go back from directory to search result with the '//' command, we lost selection of the source.
-		  set_rfm_curPath(g_path_get_dirname(fileAttribs->path));
-		  if (SearchResultViewInsteadOfDirectoryView) Switch_SearchResultView_DirectoryView(NULL, rfmCtx);
+                  g_list_free_full(view_selection_file_path_list[!SearchResultViewInsteadOfDirectoryView],g_free);
+		  view_selection_file_path_list[!SearchResultViewInsteadOfDirectoryView]=g_list_prepend(view_selection_file_path_list[!SearchResultViewInsteadOfDirectoryView],strdup(fileAttribs->path));
+		  skip_sync_view_selection_file_path_list_once = TRUE;
+		  //set_rfm_curPath in Searchresultview won't have inotify handler triggered, so there is only one refresh next from the Switch_SearchResultView_DirectoryView, so skip once is enough.
+		  char * parentdir = g_path_get_dirname(fileAttribs->path);
+		  set_rfm_curPath(parentdir);
+		  g_free(parentdir);
+		  Switch_SearchResultView_DirectoryView(NULL, rfmCtx);
 		}
 	        g_list_free_full(curSelection, (GDestroyNotify)gtk_tree_path_free);
               }
-	      return TRUE;    
+	      return TRUE;
 	  //when we set_rfm_curPath, we don't change rfm environment variable PWD
 	  //so, shall we consider update env PWD value for rfm in set_rfm_curPath?
 	  //The answer is we should not, since we sometime, with need PWD, which child process will inherit, to be different from the directory of files selected that will be used by child process.
@@ -2943,7 +2956,8 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
    int e;
    if (e=read_history(rfm_historyFileLocation))
      g_warning("failed to read_history(%s) error code:%d.",rfm_historyFileLocation,e);
-   
+
+   rfm_prePath= strdup(getenv("OLDPWD"));
    if (initDir == NULL)
      set_rfm_curPath(rfm_homePath);
    else
