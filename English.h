@@ -27,6 +27,8 @@
 "    prompt won't update when selection changes in rfm view, press Enter to refresh\n" \
 "builtin commands for current window:\n" \
 "    cd address  go to address, note that PWD is not changed, just open address in rfm. In search result view, select one of files or folders, and key in cd command, you will enter the directory of the selected file with rfm view switched to directory view.\n" \
+"    cd ..       go up to parent directory.\n" \
+"    cd -        go to directory in OLDPWD environment variable, that is, previously opened directory.\n" \
 "    quit        quit rfm\n" \
 "    help        print this message\n" \
 "    press Enter key two times (double enter) to refresh rfm view\n" \

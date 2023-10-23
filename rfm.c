@@ -1690,6 +1690,7 @@ static void set_rfm_curPath(gchar* path)
    int rfm_new_wd;
    //int e;
 
+   if (path==NULL) return;
    add_history(g_strconcat("cd ", path, NULL));
    history_entry_added++;
    //TODO: in future if we need some directory specific history file, we may check that if the directory contains .rfm_history file, it will use this local history, otherwise, use the default global history file.
@@ -2719,6 +2720,9 @@ static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, gchar* readli
 	      up_clicked(NULL);
 	      return TRUE;
 	    }else if (g_strcmp0(addr, ".")==0){
+	      return TRUE;
+	    }else if (g_strcmp0(addr, "-")==0){
+	      set_rfm_curPath(getenv("OLDPWD"));
 	      return TRUE;
 	    }else if (addr[0]=='/'){
 	      set_rfm_curPath(addr);
