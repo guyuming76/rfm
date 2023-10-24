@@ -8,9 +8,9 @@ read -p "Please input the move destination(default $destination ): " -r input_de
 
 [[ ! -z "$input_destination" ]] && destination=$input_destination
 
-/bin/mv -i $@ -t $destination
+/bin/mv -i $@ $destination
 
-read -p "enter 1 to open rfm for $destination, or just press enter to close this window: " -r next_action
+read -p "enter 1 to launch new instance of rfm and open $destination, or just press enter to close this window: " -r next_action
 
 [[ "$next_action" == "1" ]]  && rfm -d $destination
 

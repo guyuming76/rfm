@@ -8,7 +8,7 @@ read -p "请输入移动目的地址(默认 $destination ): " -r input_destinati
 
 [[ ! -z "$input_destination" ]] && destination=$input_destination
 
-/bin/mv -i $@ -t $destination
+/bin/mv -i $@ $destination
 
 read -p "输入 1 在新窗口用 rfm 打开路径 $destination, 或回车关闭此窗口: " -r next_action
 
