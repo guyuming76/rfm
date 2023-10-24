@@ -287,7 +287,10 @@ static gint PageSize_SearchResultView=20;
 
 static guint history_entry_added=0;
 static char* rfm_historyFileLocation;
-
+//used by exec_stdin_command and exec_stdin_command_builtin to share status
+static gboolean stdin_cmd_ending_space=FALSE;
+static GList * stdin_cmd_selection_list=NULL;
+static RFM_FileAttributes *stdin_cmd_selection_fileAttributes;
 #ifdef GitIntegration
 // value " M " for modified
 // value "M " for staged
@@ -314,7 +317,7 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
 // cd /tmp
 static RFM_treeviewColumn* GetColumnByEnun(enum RFM_treeviewCol col);
 static void exec_stdin_command(gchar *msg);
-static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg,gchar* readlineresult);
+static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, GString* readline_result_string);
 static void stdin_command_help();
 static void readlineInSeperateThread();
 static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer rfmCtx);
@@ -2703,7 +2706,7 @@ static void show_hide_treeview_columns(wordexp_t * parsed_msg){
 static void null_log_handler(const gchar *log_domain,GLogLevelFlags log_level,const gchar *message,gpointer user_data){
 }
 
-static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, gchar* readlineresult){
+static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, GString* readline_result_string){
 	for(int i=0;i<G_N_ELEMENTS(builtinCMD);i++){
 	  if (g_strcmp0(parsed_msg->we_wordv[0], builtinCMD[i].cmd)==0) {
 		builtinCMD[i].action();
@@ -2732,28 +2735,26 @@ static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, gchar* readli
 	      return TRUE;
 	    }
 	  }else if (parsed_msg->we_wordc==1){
-	      GList * curSelection = get_view_selection_list(icon_or_tree_view, treeview, &treemodel);
-	      GtkTreeIter iter;
-	      RFM_FileAttributes * fileAttribs;
-	      if (curSelection!=NULL){
-		gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, curSelection->data);
-		gtk_tree_model_get (GTK_TREE_MODEL(store), &iter, COL_ATTR, &fileAttribs, -1);
-		
-		if (fileAttribs->file_mode_str[0]=='d'){
-		  set_rfm_curPath(fileAttribs->path);
-		  if (SearchResultViewInsteadOfDirectoryView) Switch_SearchResultView_DirectoryView(NULL, rfmCtx);		  
-		}else if (SearchResultViewInsteadOfDirectoryView){
-                  g_list_free_full(view_selection_file_path_list[!SearchResultViewInsteadOfDirectoryView],g_free);
-		  view_selection_file_path_list[!SearchResultViewInsteadOfDirectoryView]=g_list_prepend(view_selection_file_path_list[!SearchResultViewInsteadOfDirectoryView],strdup(fileAttribs->path));
-		  skip_sync_view_selection_file_path_list_once = TRUE;
-		  //set_rfm_curPath in Searchresultview won't have inotify handler triggered, so there is only one refresh next from the Switch_SearchResultView_DirectoryView, so skip once is enough.
-		  char * parentdir = g_path_get_dirname(fileAttribs->path);
-		  set_rfm_curPath(parentdir);
-		  g_free(parentdir);
-		  Switch_SearchResultView_DirectoryView(NULL, rfmCtx);
+	      if (stdin_cmd_ending_space){
+		if (stdin_cmd_selection_list!=NULL && stdin_cmd_selection_fileAttributes!=NULL){
+		  //user can accidentally select multple files, but we only use one of them here.
+		  if (stdin_cmd_selection_fileAttributes->file_mode_str[0]=='d'){
+		    set_rfm_curPath(stdin_cmd_selection_fileAttributes->path);
+		    if (SearchResultViewInsteadOfDirectoryView) Switch_SearchResultView_DirectoryView(NULL, rfmCtx);		  
+		  }else if (SearchResultViewInsteadOfDirectoryView){
+		    g_list_free_full(view_selection_file_path_list[!SearchResultViewInsteadOfDirectoryView],g_free);
+		    view_selection_file_path_list[!SearchResultViewInsteadOfDirectoryView]=g_list_prepend(view_selection_file_path_list[!SearchResultViewInsteadOfDirectoryView],strdup(stdin_cmd_selection_fileAttributes->path));
+		    skip_sync_view_selection_file_path_list_once = TRUE;
+		    //set_rfm_curPath in Searchresultview won't have inotify handler triggered, so there is only one refresh next from the Switch_SearchResultView_DirectoryView, so skip once is enough.
+		    char * parentdir = g_path_get_dirname(stdin_cmd_selection_fileAttributes->path);
+		    set_rfm_curPath(parentdir);
+		    g_free(parentdir);
+		    Switch_SearchResultView_DirectoryView(NULL, rfmCtx);
+		  }
 		}
-	        g_list_free_full(curSelection, (GDestroyNotify)gtk_tree_path_free);
-              }
+	      }else { //!stdin_cmd_ending_space
+		printf("%s\n",rfm_curPath);
+	      }
 	      return TRUE;
 	  //when we set_rfm_curPath, we don't change rfm environment variable PWD
 	  //so, shall we consider update env PWD value for rfm in set_rfm_curPath?
@@ -2787,7 +2788,7 @@ static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, gchar* readli
 	  }
 	}else if (g_strcmp0(parsed_msg->we_wordv[0], "showcolumn")==0){
 	  show_hide_treeview_columns(parsed_msg);
-	  add_history(readlineresult);
+	  add_history(readline_result_string->str);
 	  return TRUE;
 	}else if (g_strcmp0(parsed_msg->we_wordv[0], "glog")==0){
 	  if (parsed_msg->we_wordc>1){
@@ -2816,50 +2817,55 @@ static void exec_stdin_command (gchar * readlineResult)
                 lastEnter=now_time;
 	}else{
 
-	  g_debug ("Read length %u from stdin: %s", len, readlineResult);	
-	  gboolean endingSpace = (readlineResult[len-1]==' ');
-
-	  wordexp_t parsed_msg;
-	  int wordexp_retval = wordexp(readlineResult,&parsed_msg,0);
-	  if (!(wordexp_retval==0 && exec_stdin_command_builtin(&parsed_msg, readlineResult))){
-	    add_history(readlineResult);
+	    g_debug ("Read length %u from stdin: %s", len, readlineResult);	
+	    stdin_cmd_ending_space = (readlineResult[len-1]==' ');
 	    readlineResultString=g_string_new(strdup(readlineResult));
-
-	    if (endingSpace){
+	    if (stdin_cmd_ending_space){
 	      // combine runCmd with selected files to get gchar** v
 	      // TODO: the following code share the same pattern as g_spawn_wrapper_for_selected_fileList_ , anyway to remove the duplicate code?
-
+	      // TODO: if file name contains space, wrap name with ''
 	      GtkTreeIter iter;
 	      GList *listElement;
-	      GList *selectionList=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
-	      RFM_FileAttributes *fileAttributes;
-	      if (selectionList!=NULL) {
-		listElement=g_list_first(selectionList);
+	      stdin_cmd_selection_list=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
+
+	      if (stdin_cmd_selection_list!=NULL) {
+		listElement=g_list_first(stdin_cmd_selection_list);
 		while(listElement!=NULL) {
 		  gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, listElement->data);
-		  gtk_tree_model_get (GTK_TREE_MODEL(store), &iter, COL_ATTR, &fileAttributes, -1);
+		  gtk_tree_model_get (GTK_TREE_MODEL(store), &iter, COL_ATTR, &stdin_cmd_selection_fileAttributes, -1);
 
 		  //if there is %s in msg, replace it with selected filename one by one, otherwise, append filenames to the end.
 		  if (strstr(readlineResultString->str, "%s") == NULL) {
 		    g_string_append(readlineResultString, " ");
-		    g_string_append(readlineResultString, fileAttributes->path);
+		    g_string_append(readlineResultString, stdin_cmd_selection_fileAttributes->path);
 		  }else
-		    g_string_replace(readlineResultString, "%s",fileAttributes->path, 1);
+		    g_string_replace(readlineResultString, "%s",stdin_cmd_selection_fileAttributes->path, 1);
 	      
 		  listElement=g_list_next(listElement);
 		}
-		g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
 	      }
 	    } //end if (endingspace)
-
-	  }//end if (!(wordexp_retval==0 && exec_stdin_command_builtin(&parsed_msg)))
-	  if (wordexp_retval == 0) wordfree(&parsed_msg);
-	  else if (wordexp_retval==WRDE_BADCHAR) {
-	    if (len > 2 && readlineResult[len-2]=='>' && readlineResult[len-1]=='0'){ //TODO: better way to check ending with ">0"?
-	      redirectToStdin=TRUE;
+	  
+	    wordexp_t parsed_msg;
+	    int wordexp_retval = wordexp(readlineResult,&parsed_msg,0);
+	    if (wordexp_retval==0 && exec_stdin_command_builtin(&parsed_msg, readlineResultString)){
+	      g_string_free(readlineResultString,TRUE);
+	      readlineResultString=NULL; //since readlineInseperatethread function will check this, we must clear it here after cmd already been executed.
+	    }else{
+	      add_history(readlineResult);
 	    }
-	    add_history(readlineResult);
-	  }
+	    if (wordexp_retval == 0) wordfree(&parsed_msg);
+	    else if (wordexp_retval==WRDE_BADCHAR) {
+	      if (len > 2 && readlineResult[len-2]=='>' && readlineResult[len-1]=='0'){ //TODO: better way to check ending with ">0"?
+		redirectToStdin=TRUE;
+	      }
+	      add_history(readlineResult);
+	    }
+
+	    if (stdin_cmd_selection_list!=NULL){
+	      g_list_free_full(stdin_cmd_selection_list, (GDestroyNotify)gtk_tree_path_free);
+	      stdin_cmd_selection_list=NULL;
+	    }
 
 	} //end if (len == 0)
         g_free (readlineResult);
