@@ -1829,6 +1829,7 @@ static GList* get_view_selection_list(GtkWidget * view, gboolean treeview, GtkTr
 static void set_view_selection(GtkWidget* view, gboolean treeview, GtkTreePath* treePath){
     if (treeview){
       gtk_tree_selection_select_path(gtk_tree_view_get_selection(GTK_TREE_VIEW(view)),treePath);
+      //gtk_tree_view_set_cursor(GTK_TREE_VIEW(icon_or_tree_view),treePath,NULL,FALSE); //TODO: if i use this as Rodney did, i can press enter directly to activate it. However, in multiselect situation, other rows will get unselected.
       gtk_tree_view_scroll_to_cell(GTK_TREE_VIEW(icon_or_tree_view),treePath,NULL,FALSE,0,0);
     }else{
       gtk_icon_view_select_path(GTK_ICON_VIEW(view),treePath);
