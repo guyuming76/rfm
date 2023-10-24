@@ -2367,6 +2367,7 @@ static void inotify_insert_item(gchar *name, gboolean is_dir)
 				     //		       COL_ATIME_STR,yyyymmddhhmmss(fileAttributes->file_atime),
 				     //                       COL_CTIME_STR,yyyymmddhhmmss(fileAttributes->file_ctime),
 		       COL_MIME_SORT,fileAttributes->mime_sort,
+		       COL_ICONVIEW_MARKUP, fileAttributes->file_name,
                        -1);
 }
 
