@@ -2824,7 +2824,6 @@ static void exec_stdin_command (gchar * readlineResult)
 	    if (stdin_cmd_ending_space){
 	      // combine runCmd with selected files to get gchar** v
 	      // TODO: the following code share the same pattern as g_spawn_wrapper_for_selected_fileList_ , anyway to remove the duplicate code?
-	      // TODO: if file name contains space, wrap name with ''
 	      GtkTreeIter iter;
 	      GList *listElement;
 	      stdin_cmd_selection_list=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
@@ -2836,11 +2835,11 @@ static void exec_stdin_command (gchar * readlineResult)
 		  gtk_tree_model_get (GTK_TREE_MODEL(store), &iter, COL_ATTR, &stdin_cmd_selection_fileAttributes, -1);
 
 		  //if there is %s in msg, replace it with selected filename one by one, otherwise, append filenames to the end.
-		  if (strstr(readlineResultString->str, "%s") == NULL) {
-		    g_string_append(readlineResultString, " ");
-		    g_string_append(readlineResultString, stdin_cmd_selection_fileAttributes->path);
-		  }else
-		    g_string_replace(readlineResultString, "%s",stdin_cmd_selection_fileAttributes->path, 1);
+		  //TODO: what if userinput need %s literally? how to escape?
+		  if (strstr(readlineResultString->str, "%s") == NULL) g_string_append(readlineResultString, "%s");
+		  //if file path contains space, wrap path inside ''
+                  if (strstr(stdin_cmd_selection_fileAttributes->path," ") != NULL) g_string_replace(readlineResultString, "%s", "'%s'", 1);
+		  g_string_replace(readlineResultString, "%s",stdin_cmd_selection_fileAttributes->path, 1);
 	      
 		  listElement=g_list_next(listElement);
 		}
