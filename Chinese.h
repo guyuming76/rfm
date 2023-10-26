@@ -4,7 +4,7 @@
 #define SwitchView "表/图"
 #define Menu "菜单"
 #define RunActionCopy "复制"
-#define RunActionMove "移动"
+#define RunActionMove "移动(改名)"
 #define RunActionDelete "删除"
 #define RunActionGitStage "git 暂存"
 #define RunActionCopySelection "复制文件名至剪贴板"

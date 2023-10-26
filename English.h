@@ -4,7 +4,7 @@
 #define SwitchView "List/Icon"
 #define Menu "Menu"
 #define RunActionCopy "Copy"
-#define RunActionMove "Move"
+#define RunActionMove "Move(rename)"
 #define RunActionDelete "Delete"
 #define RunActionGitStage "git stage"
 #define RunActionCopySelection "copy file names to clipboard"
