@@ -7,3 +7,4 @@ languageInclude = Chinese.h
 GitIntegration = -DGitIntegration
 #GitIntegration =
 
+PythonEmbedded = -DPythonEmbedded

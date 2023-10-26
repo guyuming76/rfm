@@ -7,7 +7,7 @@ VERSION = 1.9.4
 # Edit below for extra libs (e.g. for thumbnailers etc.)
 #LIBS = -L./libdcmthumb -lm -ldcmthumb
 GTK_VERSION = gtk+-3.0
-CPPFLAGS = -DrfmBinPath=\"${PREFIX}/bin\" --include ${languageInclude} -DG_LOG_DOMAIN=\"rfm\" ${GitIntegration}
+CPPFLAGS = -DrfmBinPath=\"${PREFIX}/bin\" --include ${languageInclude} -DG_LOG_DOMAIN=\"rfm\" ${GitIntegration} ${PythonEmbedded}
 
 # Uncomment the line below if compiling on a 32 bit system (otherwise stat() may fail on large directories; see man 2 stat)
 CPPFLAGS += -D_FILE_OFFSET_BITS=64
@@ -20,6 +20,11 @@ CPPFLAGS += -DVERSION=\"${VERSION}\"
 GTK_CFLAGS = `pkg-config --cflags ${GTK_VERSION}`
 CFLAGS = -g -Wall -std=c11 -O0 ${GTK_CFLAGS} ${INCS} ${CPPFLAGS}
 LDFLAGS = -g ${LIBS}
+
+ifneq (${PythonEmbedded}, )
+CFLAGS += `python3.10-config --cflags`
+LDFLAGS += `python3.10-config --ldflags --embed`
+endif
 
 # compiler and linker
 CC = gcc

@@ -29,7 +29,11 @@
 #include <readline/history.h>
 #include <wordexp.h>
 
-#define PROG_NAME "rfm"
+#ifdef PythonEmbedded
+#define PY_SSIZE_T_CLEAN
+#include <Python.h>
+#endif
+
 #define INOTIFY_MASK IN_MOVE|IN_CREATE|IN_CLOSE_WRITE|IN_DELETE|IN_DELETE_SELF|IN_MOVE_SELF
 #define PIPE_SZ 65535      /* Kernel pipe size */
 
@@ -217,6 +221,8 @@ typedef struct {
   gboolean iconview_tooltip;
 } RFM_store_cell;
 
+static gchar*  PROG_NAME = NULL;
+
 // I need a method to show in stdin prompt whether there are selected files in
 // gtk view. if there are, *> is prompted, otherwise, just prompt >
 static gint ItemSelected = 0;
@@ -403,6 +409,31 @@ static void free_fileAttributes(RFM_FileAttributes *fileAttributes);
 static void free_default_pixbufs(RFM_defaultPixbufs *defaultPixbufs);
 static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx);
 
+
+#ifdef PythonEmbedded
+/*https://docs.python.org/3.10/extending/embedding.html*/
+static  wchar_t *pyProgramName=NULL;
+static void startPythonEmbedding(){
+  pyProgramName = Py_DecodeLocale(PROG_NAME, NULL);
+  if (pyProgramName == NULL) {
+        g_warning("Py_DecodeLocale: cannot decode argv[0]");
+	return;
+  }
+  Py_SetProgramName(pyProgramName);  /* optional but recommended */
+  Py_Initialize();
+}
+
+//    PyRun_SimpleString("from time import time,ctime\n"
+//                       "print('Today is', ctime(time()))\n");
+
+static void endPythonEmbedding(){
+    if (Py_FinalizeEx() < 0) {
+        g_warning("Py_FinalizeEx()<0");
+	return;
+    }
+    PyMem_RawFree(pyProgramName);
+}
+#endif
 
 #include "config.h"
 
@@ -2563,6 +2594,9 @@ static void readlineInSeperateThread(GString * readlineResultStringFromPreviousR
   if (keep_selection_across_refresh && In_refresh_store) prompt="?>";
   else if (ItemSelected==0) prompt=">";
   else prompt="*>";
+#ifdef PythonEmbedded
+  //if (pyProgramName!=NULL) prompt = 
+#endif
   while ((readlineResult = readline(prompt))==NULL);
 
   stdin_command_Scheduler = g_idle_add_once(exec_stdin_command, readlineResult);
@@ -2846,7 +2880,8 @@ static void exec_stdin_command (gchar * readlineResult)
 		}
 	      }
 	    } //end if (endingspace)
-	  
+
+	    
 	    wordexp_t parsed_msg;
 	    int wordexp_retval = wordexp(readlineResult,&parsed_msg,0);
 	    if (wordexp_retval==0 && exec_stdin_command_builtin(&parsed_msg, readlineResultString)){
@@ -3046,7 +3081,7 @@ int main(int argc, char *argv[])
    else
       rfm_do_thumbs=1;
 
- 
+   PROG_NAME = strdup(argv[0]);
    int c=1;
    while (c<argc) {
      if (argv[c][0]=='-'){
