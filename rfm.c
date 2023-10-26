@@ -2837,7 +2837,7 @@ static void exec_stdin_command (gchar * readlineResult)
 
 		  //if there is %s in msg, replace it with selected filename one by one, otherwise, append filenames to the end.
 		  //TODO: what if userinput need %s literally? how to escape?
-		  if (strstr(readlineResultString->str, "%s") == NULL) g_string_append(readlineResultString, "%s");
+		  if (strstr(readlineResultString->str, "%s") == NULL) g_string_append(readlineResultString, "%s ");
 		  //if file path contains space, wrap path inside ''
                   if (strstr(stdin_cmd_selection_fileAttributes->path," ") != NULL) g_string_replace(readlineResultString, "%s", "'%s'", 1);
 		  g_string_replace(readlineResultString, "%s",stdin_cmd_selection_fileAttributes->path, 1);
