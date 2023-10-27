@@ -2564,19 +2564,19 @@ static void free_default_pixbufs(RFM_defaultPixbufs *defaultPixbufs)
    g_free(defaultPixbufs);
 }
 
-static gboolean redirectToStdin=FALSE; // we need to pass this status from exec_stdin_command to readlineInSeperatedThread, however, we can only pass one parameter in g_thread_new, so, i use a global variable here.
+static gboolean ToSearchResultFilenameList=FALSE; // we need to pass this status from exec_stdin_command to readlineInSeperatedThread, however, we can only pass one parameter in g_thread_new, so, i use a global variable here.
 
 static void readlineInSeperateThread(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution) {
   if (readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution!=NULL){ //this means it's not initial run after rfm start, so i should first run cmd from previous readline here
 	  GError *err = NULL;
 	  gchar* cmd_stdout;
-	  if (redirectToStdin && g_spawn_sync(rfm_curPath, 
+	  if (ToSearchResultFilenameList && g_spawn_sync(rfm_curPath, 
 					      stdin_command(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str),
 					      NULL,
 					      G_SPAWN_SEARCH_PATH|G_SPAWN_CHILD_INHERITS_STDIN|G_SPAWN_CHILD_INHERITS_STDERR,
 					      NULL,NULL,&cmd_stdout,NULL,NULL,&err)){ //remove the ending ">0" in cmd with g_string_erase
 	      g_idle_add_once(update_SearchResultFileNameList_and_refresh_store, (gpointer)cmd_stdout);
-	  } else if (!redirectToStdin && g_spawn_sync(rfm_curPath, stdin_command(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str), NULL,
+	  } else if (!ToSearchResultFilenameList && g_spawn_sync(rfm_curPath, stdin_command(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str), NULL,
                            G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN |
                                G_SPAWN_CHILD_INHERITS_STDOUT |
                                G_SPAWN_CHILD_INHERITS_STDERR,
@@ -2593,7 +2593,7 @@ static void readlineInSeperateThread(GString * readlineResultStringFromPreviousR
   }
 
   gchar *prompt;
-  redirectToStdin=FALSE;
+  ToSearchResultFilenameList=FALSE;
   if (keep_selection_across_refresh && In_refresh_store) prompt="?>";
   else if (ItemSelected==0) prompt=">";
   else prompt="*>";
@@ -2863,7 +2863,7 @@ static void exec_stdin_command (gchar * readlineResult)
 	    while (readlineResult[len-1]==' ') { readlineResult[len-1]='\0'; len--; } //remove ending space
 
             if (len > 2 && readlineResult[len-2]=='>' && readlineResult[len-1]=='0'){ //TODO: better way to check ending with ">0"?
-		redirectToStdin=TRUE;
+		ToSearchResultFilenameList=TRUE;
 		readlineResult[len-1]='\0';readlineResult[len-2]='\0';
 	    }
             readlineResultString=g_string_new(strdup(readlineResult));
