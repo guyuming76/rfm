@@ -267,14 +267,25 @@ static gboolean ignored_filename(gchar *name){
 }
 
 static gchar shell_cmd_buffer[ARG_MAX]; //TODO: notice that this is shared single instance. But we only run shell command in sync mode now. so, no more than one thread will use this
-static gchar* stdin_cmd_template[]={"bash","-i","-c", shell_cmd_buffer, NULL};
-//static gchar* stdin_cmd_template[]={"nu","-c", shell_cmd_buffer, NULL};
-static gchar ** stdin_command(gchar * user_input_cmd) {
+static gchar* stdin_cmd_template_bash[]={"bash","-i","-c", shell_cmd_buffer, NULL};
+static gchar* stdin_cmd_template_nu[]={"nu","-c", shell_cmd_buffer, NULL};
+static gchar** stdin_command_bash(gchar* user_input_cmd) {
   sprintf(shell_cmd_buffer,"set -o history; %s; exit 2>/dev/null",g_strdup(user_input_cmd));
-  //sprintf(shell_cmd_buffer,"%s",g_strdup(user_input_cmd)); //for nu
-
   //without set -o history and "bash -i", bash builtin history command will not show results.
   //Seems to be by design, but why? for the nu shell, nu -c "history" just works
   //without exit, rfm will quit after commands such as ls, nano, but commands such as echo 1 will work. if you change exit to sleep 20, even echo 1 will make rfm terminate. Are there any race condition here?
-  return stdin_cmd_template;
+  return stdin_cmd_template_bash;
 }
+static gchar** stdin_command_nu(gchar* user_input_cmd) {
+  sprintf(shell_cmd_buffer,"%s",g_strdup(user_input_cmd));
+  return stdin_cmd_template_nu;
+}
+
+static stdin_cmd_interpretor stdin_cmd_interpretors[] = {
+        //Name             activationKey          prompt            cmdTransformer
+	{"Bash",           "b>",                  "b",              stdin_command_bash },
+	{"NuShell",        "n>",                  "n",              stdin_command_nu   },
+#ifdef PythonEmbedded
+	{"PythonEmbedded", "p>",                  "p",              NULL               },
+#endif
+};

@@ -221,6 +221,14 @@ typedef struct {
   gboolean iconview_tooltip;
 } RFM_store_cell;
 
+typedef struct {
+  gchar* name;
+  gchar* activationKey;
+  gchar* prompt;
+  gchar** (*cmdTransformer)(gchar *);
+} stdin_cmd_interpretor;
+
+
 static gchar*  PROG_NAME = NULL;
 
 // I need a method to show in stdin prompt whether there are selected files in
@@ -298,6 +306,7 @@ static char* rfm_historyFileLocation;
 static gboolean stdin_cmd_ending_space=FALSE;
 static GList * stdin_cmd_selection_list=NULL;
 static RFM_FileAttributes *stdin_cmd_selection_fileAttributes;
+static uint current_stdin_cmd_interpretor=0;
 #ifdef GitIntegration
 // value " M " for modified
 // value "M " for staged
@@ -2569,12 +2578,13 @@ static void readlineInSeperateThread(GString * readlineResultStringFromPreviousR
 	  GError *err = NULL;
 	  gchar* cmd_stdout;
 	  if (ToSearchResultFilenameList && g_spawn_sync(rfm_curPath, 
-					      stdin_command(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str),
+					      stdin_cmd_interpretors[current_stdin_cmd_interpretor].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str),
 					      NULL,
 					      G_SPAWN_SEARCH_PATH|G_SPAWN_CHILD_INHERITS_STDIN|G_SPAWN_CHILD_INHERITS_STDERR,
 					      NULL,NULL,&cmd_stdout,NULL,NULL,&err)){ //remove the ending ">0" in cmd with g_string_erase
 	      g_idle_add_once(update_SearchResultFileNameList_and_refresh_store, (gpointer)cmd_stdout);
-	  } else if (!ToSearchResultFilenameList && g_spawn_sync(rfm_curPath, stdin_command(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str), NULL,
+	  } else if (!ToSearchResultFilenameList && g_spawn_sync(rfm_curPath,
+			   stdin_cmd_interpretors[current_stdin_cmd_interpretor].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str), NULL,
                            G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN |
                                G_SPAWN_CHILD_INHERITS_STDOUT |
                                G_SPAWN_CHILD_INHERITS_STDERR,
@@ -2591,9 +2601,7 @@ static void readlineInSeperateThread(GString * readlineResultStringFromPreviousR
   }
 
   gchar prompt[5]="";
-#ifdef PythonEmbedded
-  if (pyProgramName!=NULL) strcat(prompt, "Py");
-#endif
+  strcat(prompt, stdin_cmd_interpretors[current_stdin_cmd_interpretor].prompt);
   ToSearchResultFilenameList=FALSE;
   if (keep_selection_across_refresh && In_refresh_store) strcat(prompt,"?>");
   else if (ItemSelected==0) strcat(prompt,">");
@@ -2608,6 +2616,9 @@ static void stdin_command_help() {
 	  printf("%s",builtinCMD_Help);
 	  for(int i=0;i<G_N_ELEMENTS(builtinCMD);i++){
 	  	printf("    %s   %s\n", builtinCMD[i].cmd, builtinCMD[i].help_msg);
+	  }
+	  for(int i=0;i<G_N_ELEMENTS(stdin_cmd_interpretors);i++){
+	        printf("    %s   %s\n", stdin_cmd_interpretors[i].activationKey, stdin_cmd_interpretors[i].name);
 	  }
 }
 
@@ -2745,7 +2756,8 @@ static void null_log_handler(const gchar *log_domain,GLogLevelFlags log_level,co
 }
 
 static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution){
-	for(int i=0;i<G_N_ELEMENTS(builtinCMD);i++){
+
+        for(int i=0;i<G_N_ELEMENTS(builtinCMD);i++){
 	  if (g_strcmp0(parsed_msg->we_wordv[0], builtinCMD[i].cmd)==0) {
 		builtinCMD[i].action();
 		return TRUE;
@@ -2855,6 +2867,12 @@ static void exec_stdin_command (gchar * readlineResult)
             }else
                 lastEnter=now_time;
 	}else{
+            for(int i=0;i<G_N_ELEMENTS(stdin_cmd_interpretors);i++){
+	      if (g_strcmp0(readlineResult, stdin_cmd_interpretors[i].activationKey)==0){
+		current_stdin_cmd_interpretor = i;
+		goto switchToReadlineThread;
+	      }
+	    }
 
 	    g_debug ("Read length %u from stdin: %s", len, readlineResult);	
 	    stdin_cmd_ending_space = (readlineResult[len-1]==' ');
@@ -2899,7 +2917,7 @@ static void exec_stdin_command (gchar * readlineResult)
 	    }
 	    if (wordexp_retval == 0) wordfree(&parsed_msg);
 #ifdef PythonEmbedded
-	    if (readlineResultString!=NULL && pyProgramName!=NULL){
+	    if (readlineResultString!=NULL && pyProgramName!=NULL && g_strcmp0(stdin_cmd_interpretors[current_stdin_cmd_interpretor].name,"PythonEmbedded")==0){
 	      add_history(readlineResultString->str);
 	      history_entry_added++;
 	      add_history(OriginalReadlineResult);
@@ -2917,6 +2935,7 @@ static void exec_stdin_command (gchar * readlineResult)
 	    }
 
 	} //end if (len == 0)
+ switchToReadlineThread:
         g_free (readlineResult);
 
 	g_thread_join(readlineThread);
@@ -3007,6 +3026,9 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
    g_debug("rfm_homePath: %s",rfm_homePath);
    g_debug("rfm_thumbDir: %s",rfm_thumbDir);
 
+#ifdef PythonEmbedded
+   startPythonEmbedding();
+#endif
    ReadFromPipeStdinIfAny(pipefd);
 
    using_history();
@@ -3053,8 +3075,12 @@ static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx)
      else if (e=write_history(rfm_historyFileLocation))
        g_warning("failed to write_history(%s) error code:%d", rfm_historyFileLocation,e);
    }
-   gtk_main_quit();
 
+#ifdef PythonEmbedded
+   endPythonEmbedding();
+#endif
+   
+   gtk_main_quit();
 }
 
 /* From http://dwm.suckless.org/ */

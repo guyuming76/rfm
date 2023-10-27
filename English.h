@@ -21,9 +21,9 @@
 "    with difference in data source, two types of view can be shown, one is current directory view, with the left-most toolbar button showing its path(and git branch). The other is search result view. You can switch between these two views with the left-most toolbar button.\n" \
 "    with difference in layout, there are also two types of view: icon view and list view, icons such as picture thumbnails are shown in icon view.\n" \
 "command prompt:\n" \
-"    *> means there is selected file(s) in rfm view\n" \
-"    >  means no selected files\n" \
-"    ?> means in refreshing and file selection cannot be determined, try press enter after refresh.\n" \
+"    b*> means there is selected file(s) in rfm view, and current command interpreter is Bash, which can be configured in config.h\n" \
+"    b>  means no selected files\n" \
+"    b?> means in refreshing and file selection cannot be determined, try press enter after refresh.\n" \
 "    prompt won't update when selection changes in rfm view, press Enter to refresh\n" \
 "builtin commands for current window:\n" \
 "    cd address  go to address, note that PWD is not changed, just open address in rfm. In search result view, select one of files or folders, and key in cd command, you will enter the directory of the selected file with rfm view switched to directory view.\n" \
