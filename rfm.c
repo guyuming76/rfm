@@ -290,7 +290,8 @@ static gint currentFileNum=0;
 static char* pipefd="0";
 static GList *CurrentPage_SearchResultView=NULL;
 static gint PageSize_SearchResultView=20;
-
+/*keep the original user inputs for add_history*/
+static gchar *OriginalReadlineResult=NULL;
 static guint history_entry_added=0;
 static char* rfm_historyFileLocation;
 //used by exec_stdin_command and exec_stdin_command_builtin to share status
@@ -2565,17 +2566,17 @@ static void free_default_pixbufs(RFM_defaultPixbufs *defaultPixbufs)
 
 static gboolean redirectToStdin=FALSE; // we need to pass this status from exec_stdin_command to readlineInSeperatedThread, however, we can only pass one parameter in g_thread_new, so, i use a global variable here.
 
-static void readlineInSeperateThread(GString * readlineResultStringFromPreviousReadlineCall) {
-  if (readlineResultStringFromPreviousReadlineCall!=NULL){ //this means it's not initial run after rfm start, so i should first run cmd from previous readline here
+static void readlineInSeperateThread(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution) {
+  if (readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution!=NULL){ //this means it's not initial run after rfm start, so i should first run cmd from previous readline here
 	  GError *err = NULL;
 	  gchar* cmd_stdout;
 	  if (redirectToStdin && g_spawn_sync(rfm_curPath, 
-					      stdin_command(g_string_erase(readlineResultStringFromPreviousReadlineCall, readlineResultStringFromPreviousReadlineCall->len-2, 2)->str),
+					      stdin_command(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str),
 					      NULL,
 					      G_SPAWN_SEARCH_PATH|G_SPAWN_CHILD_INHERITS_STDIN|G_SPAWN_CHILD_INHERITS_STDERR,
 					      NULL,NULL,&cmd_stdout,NULL,NULL,&err)){ //remove the ending ">0" in cmd with g_string_erase
 	      g_idle_add_once(update_SearchResultFileNameList_and_refresh_store, (gpointer)cmd_stdout);
-	  } else if (!redirectToStdin && g_spawn_sync(rfm_curPath, stdin_command(readlineResultStringFromPreviousReadlineCall->str), NULL,
+	  } else if (!redirectToStdin && g_spawn_sync(rfm_curPath, stdin_command(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str), NULL,
                            G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN |
                                G_SPAWN_CHILD_INHERITS_STDOUT |
                                G_SPAWN_CHILD_INHERITS_STDERR,
@@ -2584,11 +2585,13 @@ static void readlineInSeperateThread(GString * readlineResultStringFromPreviousR
               g_warning("%d;%s", err->code, err->message);
 	      g_free(err);
 	  }
-	  add_history(readlineResultStringFromPreviousReadlineCall->str);
+	  add_history(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str);
 	  history_entry_added++;
-          g_string_free(readlineResultStringFromPreviousReadlineCall,TRUE);
+	  add_history(OriginalReadlineResult);
+	  history_entry_added++;
+          g_string_free(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution,TRUE);
   }
-  gchar *readlineResult;
+
   gchar *prompt;
   redirectToStdin=FALSE;
   if (keep_selection_across_refresh && In_refresh_store) prompt="?>";
@@ -2597,9 +2600,10 @@ static void readlineInSeperateThread(GString * readlineResultStringFromPreviousR
 #ifdef PythonEmbedded
   //if (pyProgramName!=NULL) prompt = 
 #endif
-  while ((readlineResult = readline(prompt))==NULL);
+  g_free(OriginalReadlineResult);
+  while ((OriginalReadlineResult = readline(prompt))==NULL);
 
-  stdin_command_Scheduler = g_idle_add_once(exec_stdin_command, readlineResult);
+  stdin_command_Scheduler = g_idle_add_once(exec_stdin_command, strdup(OriginalReadlineResult));
 }
 
 static void stdin_command_help() {
@@ -2742,7 +2746,7 @@ static void show_hide_treeview_columns(wordexp_t * parsed_msg){
 static void null_log_handler(const gchar *log_domain,GLogLevelFlags log_level,const gchar *message,gpointer user_data){
 }
 
-static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, GString* readline_result_string){
+static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution){
 	for(int i=0;i<G_N_ELEMENTS(builtinCMD);i++){
 	  if (g_strcmp0(parsed_msg->we_wordv[0], builtinCMD[i].cmd)==0) {
 		builtinCMD[i].action();
@@ -2824,7 +2828,8 @@ static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, GString* read
 	  }
 	}else if (g_strcmp0(parsed_msg->we_wordv[0], "showcolumn")==0){
 	  show_hide_treeview_columns(parsed_msg);
-	  add_history(readline_result_string->str);
+	  add_history(readline_result_string_after_file_name_substitution->str);
+	  history_entry_added++;
 	  return TRUE;
 	}else if (g_strcmp0(parsed_msg->we_wordv[0], "glog")==0){
 	  if (parsed_msg->we_wordc>1){
@@ -2855,7 +2860,13 @@ static void exec_stdin_command (gchar * readlineResult)
 
 	    g_debug ("Read length %u from stdin: %s", len, readlineResult);	
 	    stdin_cmd_ending_space = (readlineResult[len-1]==' ');
-	    readlineResultString=g_string_new(strdup(readlineResult));
+	    while (readlineResult[len-1]==' ') { readlineResult[len-1]='\0'; len--; } //remove ending space
+
+            if (len > 2 && readlineResult[len-2]=='>' && readlineResult[len-1]=='0'){ //TODO: better way to check ending with ">0"?
+		redirectToStdin=TRUE;
+		readlineResult[len-1]='\0';readlineResult[len-2]='\0';
+	    }
+            readlineResultString=g_string_new(strdup(readlineResult));
 	    if (stdin_cmd_ending_space){
 	      // combine runCmd with selected files to get gchar** v
 	      // TODO: the following code share the same pattern as g_spawn_wrapper_for_selected_fileList_ , anyway to remove the duplicate code?
@@ -2871,7 +2882,7 @@ static void exec_stdin_command (gchar * readlineResult)
 
 		  //if there is %s in msg, replace it with selected filename one by one, otherwise, append filenames to the end.
 		  //TODO: what if userinput need %s literally? how to escape?
-		  if (strstr(readlineResultString->str, "%s") == NULL) g_string_append(readlineResultString, "%s ");
+		  if (strstr(readlineResultString->str, "%s") == NULL) g_string_append(readlineResultString, " %s ");
 		  //if file path contains space, wrap path inside ''
                   if (strstr(stdin_cmd_selection_fileAttributes->path," ") != NULL) g_string_replace(readlineResultString, "%s", "'%s'", 1);
 		  g_string_replace(readlineResultString, "%s",stdin_cmd_selection_fileAttributes->path, 1);
@@ -2887,16 +2898,8 @@ static void exec_stdin_command (gchar * readlineResult)
 	    if (wordexp_retval==0 && exec_stdin_command_builtin(&parsed_msg, readlineResultString)){
 	      g_string_free(readlineResultString,TRUE);
 	      readlineResultString=NULL; //since readlineInseperatethread function will check this, we must clear it here after cmd already been executed.
-	    }else{
-	      add_history(readlineResult);
 	    }
 	    if (wordexp_retval == 0) wordfree(&parsed_msg);
-	    else if (wordexp_retval==WRDE_BADCHAR) {
-	      if (len > 2 && readlineResult[len-2]=='>' && readlineResult[len-1]=='0'){ //TODO: better way to check ending with ">0"?
-		redirectToStdin=TRUE;
-	      }
-	      add_history(readlineResult);
-	    }
 
 	    if (stdin_cmd_selection_list!=NULL){
 	      g_list_free_full(stdin_cmd_selection_list, (GDestroyNotify)gtk_tree_path_free);
