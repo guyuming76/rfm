@@ -424,15 +424,13 @@ static void startPythonEmbedding(){
   Py_Initialize();
 }
 
-//    PyRun_SimpleString("from time import time,ctime\n"
-//                       "print('Today is', ctime(time()))\n");
-
 static void endPythonEmbedding(){
     if (Py_FinalizeEx() < 0) {
         g_warning("Py_FinalizeEx()<0");
 	return;
     }
     PyMem_RawFree(pyProgramName);
+    pyProgramName=NULL;
 }
 #endif
 
@@ -2592,14 +2590,14 @@ static void readlineInSeperateThread(GString * readlineResultStringFromPreviousR
           g_string_free(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution,TRUE);
   }
 
-  gchar *prompt;
-  ToSearchResultFilenameList=FALSE;
-  if (keep_selection_across_refresh && In_refresh_store) prompt="?>";
-  else if (ItemSelected==0) prompt=">";
-  else prompt="*>";
+  gchar prompt[5]="";
 #ifdef PythonEmbedded
-  //if (pyProgramName!=NULL) prompt = 
+  if (pyProgramName!=NULL) strcat(prompt, "Py");
 #endif
+  ToSearchResultFilenameList=FALSE;
+  if (keep_selection_across_refresh && In_refresh_store) strcat(prompt,"?>");
+  else if (ItemSelected==0) strcat(prompt,">");
+  else strcat(prompt,"*>");
   g_free(OriginalReadlineResult);
   while ((OriginalReadlineResult = readline(prompt))==NULL);
 
@@ -2900,7 +2898,19 @@ static void exec_stdin_command (gchar * readlineResult)
 	      readlineResultString=NULL; //since readlineInseperatethread function will check this, we must clear it here after cmd already been executed.
 	    }
 	    if (wordexp_retval == 0) wordfree(&parsed_msg);
-
+#ifdef PythonEmbedded
+	    if (readlineResultString!=NULL && pyProgramName!=NULL){
+	      add_history(readlineResultString->str);
+	      history_entry_added++;
+	      add_history(OriginalReadlineResult);
+	      history_entry_added++;
+	      //TODO: investigation add_history, what if Originalreadlineresult equals readlineresultstring?
+              readlineResultString = g_string_append(readlineResultString, "\n");
+	      PyRun_SimpleString(readlineResultString->str);
+	      g_string_free(readlineResultString, TRUE);
+	      readlineResultString=NULL;
+	    }
+#endif
 	    if (stdin_cmd_selection_list!=NULL){
 	      g_list_free_full(stdin_cmd_selection_list, (GDestroyNotify)gtk_tree_path_free);
 	      stdin_cmd_selection_list=NULL;
