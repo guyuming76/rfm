@@ -1016,9 +1016,9 @@ static void free_fileAttributes(RFM_FileAttributes *fileAttributes) {
    g_free(fileAttributes->mtime);
    g_free(fileAttributes->atime);
    g_free(fileAttributes->ctime);
-   g_free(fileAttributes->file_mtime);
-   g_free(fileAttributes->file_atime);
-   g_free(fileAttributes->file_ctime);
+   if (fileAttributes->file_mtime!=NULL) g_date_time_unref(fileAttributes->file_mtime);
+   if (fileAttributes->file_atime!=NULL) g_date_time_unref(fileAttributes->file_atime);
+   if (fileAttributes->file_ctime!=NULL) g_date_time_unref(fileAttributes->file_ctime);
    g_free(fileAttributes);
 }
 
