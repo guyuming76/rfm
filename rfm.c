@@ -2591,7 +2591,7 @@ static void readlineInSeperateThread(GString * readlineResultStringFromPreviousR
 			   NULL, NULL, NULL, NULL, NULL, &err)) {
 	  } else {
               g_warning("%d;%s", err->code, err->message);
-	      g_free(err);
+	      g_error_free(err);
 	  }
 	  add_history(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str);
 	  history_entry_added++;
