@@ -2968,7 +2968,9 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
    if (e=read_history(rfm_historyFileLocation))
      g_warning("failed to read_history(%s) error code:%d.",rfm_historyFileLocation,e);
 
-   rfm_prePath= strdup(getenv("OLDPWD"));
+   rfm_prePath= getenv("OLDPWD");
+   if (rfm_prePath!=NULL) rfm_prePath=strdup(rfm_prePath);
+   
    if (initDir == NULL)
      set_rfm_curPath(rfm_homePath);
    else
