@@ -22,8 +22,8 @@ CFLAGS = -g -Wall -std=c11 -O0 ${GTK_CFLAGS} ${INCS} ${CPPFLAGS}
 LDFLAGS = -g ${LIBS}
 
 ifneq (${PythonEmbedded}, )
-CFLAGS += `python3.10-config --cflags`
-LDFLAGS += `python3.10-config --ldflags --embed`
+CFLAGS += `python3.11-config --cflags`
+LDFLAGS += `python3.11-config --ldflags --embed`
 endif
 
 # compiler and linker
