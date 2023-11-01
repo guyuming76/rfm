@@ -267,7 +267,9 @@ static int rfm_curPath_wd;    /* Current path (rfm_curPath) watch */
 static int rfm_thumbnail_wd;  /* Thumbnail watch */
 
 static gchar *rfm_curPath=NULL;  /* The current directory */
+static gchar *rfm_SearchResultPath=NULL; /*keep the rfm_curPath value when SearchResult was created */
 static gchar *rfm_prePath=NULL;  /* Previous directory: only set when up button is pressed, otherwise should be NULL */
+static char cwd[PATH_MAX];
 
 static GtkAccelGroup *agMain = NULL;
 static RFM_toolbar *tool_bar = NULL;
@@ -1101,6 +1103,8 @@ static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guin
    gchar *absoluteaddr;
    if (name[0]=='/')
      absoluteaddr = canonicalize_file_name(g_build_filename(name, NULL)); /*if mlocate index not updated with updatedb, address returned by locate will return NULL after canonicalize */
+   else if (SearchResultViewInsteadOfDirectoryView)
+     absoluteaddr = canonicalize_file_name(g_build_filename(rfm_SearchResultPath, name, NULL));
    else
      absoluteaddr = canonicalize_file_name(g_build_filename(rfm_curPath, name, NULL));
      //address returned by find can be ./blabla, and g_build_filename return something like /rfm/./blabla, so, need to be canonicalized here
@@ -3098,7 +3102,6 @@ int main(int argc, char *argv[])
 {
    char *initDir=NULL;
    struct stat statbuf;
-   char cwd[PATH_MAX];
 
    g_log_set_handler (G_LOG_DOMAIN, G_LOG_LEVEL_MASK | G_LOG_FLAG_FATAL| G_LOG_FLAG_RECURSION, g_log_default_handler, NULL);
 
@@ -3221,6 +3224,8 @@ static void ReadFromPipeStdinIfAny(char * fd)
            SearchResultFileNameList = g_list_first(SearchResultFileNameList);
 	   CurrentPage_SearchResultView=SearchResultFileNameList;
 	   currentFileNum=1;
+	   g_free(rfm_SearchResultPath);
+	   rfm_SearchResultPath=strdup(cwd);
 	 }
 
          if (atoi(fd) == 0) { // open parent stdin to replace pipe
@@ -3246,6 +3251,8 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
 
   if (SearchResultFileNameList != NULL) SearchResultFileNameList=g_list_first(g_list_reverse(SearchResultFileNameList));
   SearchResultViewInsteadOfDirectoryView = TRUE;
+  g_free(rfm_SearchResultPath);
+  rfm_SearchResultPath=strdup(rfm_curPath);
   FirstPage(rfmCtx);
   if (old_filenamelist!=NULL) g_list_free(old_filenamelist);
 }
