@@ -8,6 +8,6 @@ read -p "Please input the copy destination(default $destination ): " -r input_de
 
 [[ ! -z "$input_destination" ]] && destination=$input_destination
 
-/bin/cp -p -r -i $@ -t $destination
+/bin/cp -p -r -i $@ $destination
 
 read -p "press enter to close this window"
