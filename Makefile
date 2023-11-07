@@ -75,8 +75,10 @@ install: all
 	@cp -f scripts/rfmChangeOwner_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmChangeOwner.sh
 #	@cp -f scripts/rfmNewFile.sh ${DESTDIR}${PREFIX}/bin
 #	@cp -f scripts/rfmNewDir.sh ${DESTDIR}${PREFIX}/bin
-#	@cp -f rfm.desktop /usr/share/applications/rfm.desktop  
-# .desktop is installed in gentoo .ebuild
+	@cp -f rfm.desktop /usr/share/applications/rfm.desktop
+	xdg-mime default rfm.desktop inode/directory
+	update-desktop-database
+
 	@chmod 755 ${DESTDIR}${PREFIX}/bin/rfm
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmRefreshImage.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmVTforCMD.sh
@@ -114,5 +116,7 @@ uninstall:
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmChangeOwner.sh
 #	@rm -f ${DESTDIR}${PREFIX}/bin/rfmNewFile.sh
 #	@rm -f ${DESTDIR}${PREFIX}/bin/rfmNewDir.sh
+	@rm -f /usr/share/applications/rfm.desktop
+	update-desktop-database
 
 .PHONY: all options clean install uninstall
