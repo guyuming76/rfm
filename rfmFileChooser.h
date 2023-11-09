@@ -2,8 +2,8 @@
 
 GList *rfmFileChooser(GList** fileSelectionStringList);
 
+static GList* selectionList=NULL;
 void Test_rfmFileChooser(){
-  GList* selectionList=NULL;
   rfmFileChooser(&selectionList);
   while(selectionList!=NULL){
     printf("%s\n",selectionList->data);

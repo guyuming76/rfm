@@ -1,8 +1,8 @@
 #!/bin/bash
 
-export rfmReturnSelectionDestination=$(tty)
-export rfmReturnSelectionNumber=0
+export rfmFileChooserReturnSelectionIntoFilename=$(tty)
+export rfmFileChooserResultNumber=0
 
 eval '/usr/bin/foot --log-level=warning  rfm -r "$@"'
 
-exit $rfmReturnSelectionNumber
+exit $rfmFileChooserResultNumber

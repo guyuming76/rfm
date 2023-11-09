@@ -14,6 +14,7 @@
 #define RFM_DATETIME_FORMAT "%Y-%m-%d,%H:%M:%S"
 #define RFM_HISTORY_SIZE 10000
 #define RFM_AUTOSELECT_OLDPWD_IN_VIEW TRUE
+#define RFM_FILE_CHOOSER_NAMED_PIPE_PREFIX "/tmp/rfmFileChooser_"
 
 //add the two line follows into ~/.inputrc so that readline can search history based on prefix. read https://www.man7.org/linux/man-pages/man3/readline.3.html  for more
 // arrow up
@@ -83,6 +84,7 @@ static RFM_builtinCMD builtinCMD[] = {
 #ifdef PythonEmbedded
         {"py",     startPythonEmbedding,    "Embedding Python" },
         {"pyq",    endPythonEmbedding,      "quit Python Embedding" },
+       	{"test_rfmFileChooser",Test_rfmFileChooser,"test rfmFileChooser" },
 #endif
 };
 

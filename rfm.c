@@ -232,9 +232,10 @@ typedef struct {
 
 static gchar*  PROG_NAME = NULL;
 
-static gboolean returnSelection = FALSE;
-static int returnSelectionNum = 0;
-  
+static gboolean StartedAs_rfmFileChooser = FALSE;
+static int rfmFileChooserResultNumber = 0;
+static gchar *rfmFileChooserReturnSelectionIntoFilename = NULL;
+
 // I need a method to show in stdin prompt whether there are selected files in
 // gtk view. if there are, *> is prompted, otherwise, just prompt >
 static gint ItemSelected = 0;
@@ -569,6 +570,7 @@ static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_
 
    if (child_attribs->runOpts!=RFM_EXEC_NONE) read_char_pipe(child_attribs->stdOut_fd, PIPE_SZ, &child_attribs->stdOut);
    read_char_pipe(child_attribs->stdErr_fd, PIPE_SZ, &child_attribs->stdErr);
+   
    if (child_attribs->runOpts!=RFM_EXEC_OUPUT_READ_BY_PROGRAM && child_attribs->runOpts!=RFM_EXEC_NONE) show_child_output(child_attribs);
    if (child_attribs->status==-1)
        return TRUE;
@@ -577,6 +579,7 @@ static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_
    close(child_attribs->stdErr_fd);
    g_spawn_close_pid(child_attribs->pid);
 
+   if (child_attribs->stdErr!=NULL) g_warning(child_attribs->stdErr);
    rfm_childList=g_list_remove(rfm_childList, child_attribs);
    /* if (rfm_childList==NULL) */
    /*    gtk_widget_set_sensitive(GTK_WIDGET(info_button), FALSE); */
@@ -651,6 +654,7 @@ static int read_char_pipe(gint fd, ssize_t block_size, char **buffer)
       free(txt);
       return -1;
    }
+   g_debug("read_char_pipe fd:%d read_size:%ld",fd,read_size);
    txt[read_size]='\0';
 
    txt_size=strlen(txt);   /* Remove embedded null characters */
@@ -741,7 +745,7 @@ static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *ch
       child_attribs->pid=-1;
       rv=g_spawn_async_with_pipes(rfm_curPath, v, NULL, G_SPAWN_DO_NOT_REAP_CHILD,
 				  GSpawnChildSetupFunc_setenv,child_attribs,
-                                  &child_attribs->pid, NULL, &child_attribs->stdOut_fd,
+                                  &child_attribs->pid, NULL, ((child_attribs->stdOut_fd<=0)? &child_attribs->stdOut_fd: NULL), // stdOut_fd>0, means we use existing fd to read result from, so we pass in NULL, otherwise stdout_fd will be overwriten. For example, we use existing fd in rfmFileChooser
                                   &child_attribs->stdErr_fd, NULL);
 
       g_debug("g_spawn_async_with_pipes_wrapper:  workingdir:%s, argv:%s, G_SPAWN_DO_NOT_REAP_CHILD",rfm_curPath,v[0]);
@@ -3069,37 +3073,39 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
    return 0;
 }
 
+
 static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx)
 {
    int e;
 
-   if (returnSelection){
+   if (StartedAs_rfmFileChooser){
       GtkTreeIter iter;
       int returnToFile_fd;
       FILE* returnToFile_stream;
-      gchar* returnToFile = getenv("rfmReturnSelectionDestination");
-      if (returnToFile!=NULL){
-        returnToFile_fd=open(returnToFile,O_RDWR);
-	returnToFile_stream = fdopen(returnToFile_fd, "w+");
-	GList *selectionList = get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
-        selectionList=g_list_first(selectionList);
-	while(selectionList!=NULL){
-	  GValue fullpath = G_VALUE_INIT;
-	  gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, selectionList->data);
-	  gtk_tree_model_get_value(treemodel, &iter, COL_FULL_PATH, &fullpath);
-	  fprintf(returnToFile_stream, "%s\n", g_value_get_string(&fullpath));
-	  selectionList=g_list_next(selectionList);
-	  returnSelectionNum++;
+      if (rfmFileChooserReturnSelectionIntoFilename==NULL) rfmFileChooserReturnSelectionIntoFilename = getenv("rfmFileChooserReturnSelectionIntoFilename");
+      if (rfmFileChooserReturnSelectionIntoFilename!=NULL){
+        returnToFile_fd=open(rfmFileChooserReturnSelectionIntoFilename,O_WRONLY|O_NONBLOCK);
+	if (returnToFile_fd>0){
+	  GList *selectionList = get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
+	  selectionList=g_list_first(selectionList);
+	  while(selectionList!=NULL){
+	    GValue fullpath = G_VALUE_INIT;
+	    gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, selectionList->data);
+	    gtk_tree_model_get_value(treemodel, &iter, COL_FULL_PATH, &fullpath);
+	    write(returnToFile_fd, g_value_get_string(&fullpath), strlen(g_value_get_string(&fullpath)));
+	    write(returnToFile_fd,"\n",1);
+	    selectionList=g_list_next(selectionList);
+	    rfmFileChooserResultNumber++;
+	  }
+	  close(returnToFile_fd);
+
+	  char buff[sizeof(int)*8+1];
+	  sprintf(buff, "%d", rfmFileChooserResultNumber);
+	  setenv("rfmFileChooserResultNumber",buff,1);
+	  // i don't know which way to pass data is better, with environment variable or with return value, so, i implemenented both
+
+	  g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
 	}
-	fclose(returnToFile_stream);
-	close(returnToFile_fd);
-
-	char buff[sizeof(int)*8+1];
-	sprintf(buff, "%d", returnSelectionNum);
-	setenv("rfmReturnSelectionNumber",buff,1);
-	// i don't know which way to pass data is better, with environment variable or with return value, so, i implemenented both
-
-	g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
       }
    }
    //https://unix.stackexchange.com/questions/534657/do-inotify-watches-automatically-stop-when-a-program-ends
@@ -3203,7 +3209,11 @@ int main(int argc, char *argv[])
 	printf(rfmLaunchHelp, PROG_NAME);
 	return 0;
       case 'r':
-	returnSelection=TRUE;
+	StartedAs_rfmFileChooser=TRUE;
+	if (argc>c+1 && g_str_has_prefix(argv[c+1], RFM_FILE_CHOOSER_NAMED_PIPE_PREFIX)){
+	  rfmFileChooserReturnSelectionIntoFilename = argv[c+1];
+	  c++;
+	}
 	break;
       default:
 	 die("invalid parameter, %s -h for help\n",PROG_NAME);
@@ -3228,7 +3238,7 @@ int main(int argc, char *argv[])
       die("ERROR: %s: setup() failed\n", PROG_NAME);
 
    system("reset -I");
-   return (returnSelection && returnSelectionNum>0)?returnSelectionNum:0;
+   return (StartedAs_rfmFileChooser && rfmFileChooserResultNumber>0)?rfmFileChooserResultNumber:0;
 }
 
 static void ReadFromPipeStdinIfAny(char * fd)
@@ -3294,11 +3304,12 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
 }
 
 
-void rfmFileChooserReturnedSelectionReader(RFM_ChildAttribs* child_attribs){
+
+void rfmFileChooserResultReader(RFM_ChildAttribs* child_attribs){
   gchar *child_StdOut = child_attribs->stdOut;
   //int returnedSelectionNumber = child_attribs->exitcode;
+  //TODO: g_spawn_wrapper seem not dealing with exitcode
   GList** fileSelectionList = child_attribs->customCallbackUserData;
-  if (child_attribs->stdErr!=NULL) g_warning(child_attribs->stdErr);
   if(child_StdOut!=NULL) {
     gchar * oneline=strtok(child_StdOut,"\n");
     while (oneline!=NULL){
@@ -3309,12 +3320,31 @@ void rfmFileChooserReturnedSelectionReader(RFM_ChildAttribs* child_attribs){
   }else{
     g_debug("rfmFileChooser return nothing");
   }
+
+  char named_pipe_name[50];
+  sprintf(named_pipe_name, "%s%d", RFM_FILE_CHOOSER_NAMED_PIPE_PREFIX,getpid());
+  unlink(named_pipe_name);
 }
 
 //TODO: with async, we need to notify user with signal or let user pass in callback function.
-GList *rfmFileChooser(GList* fileSelectionStringList){
-  if (!g_spawn_wrapper(rfmFileChooser_cmd, NULL, 0, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, TRUE, rfmFileChooserReturnedSelectionReader, &fileSelectionStringList)){
-    return NULL;
-  }
-  return fileSelectionStringList;
+GList *rfmFileChooser(GList** fileSelectionStringList){
+  char named_pipe_name[50];
+  sprintf(named_pipe_name, "%s%d", RFM_FILE_CHOOSER_NAMED_PIPE_PREFIX,getpid());
+  if (mkfifo(named_pipe_name, 0700)==0){ //0700 is  rwx------ https://jameshfisher.com/2017/02/24/what-is-mode_t/
+    int named_pipe_fd = open(named_pipe_name, O_RDONLY|O_NONBLOCK);
+    if (named_pipe_fd>0){
+      RFM_ChildAttribs *child_attribs=calloc(1,sizeof(RFM_ChildAttribs));
+      child_attribs->customCallBackFunc = rfmFileChooserResultReader;
+      child_attribs->customCallbackUserData = fileSelectionStringList;
+      child_attribs->runOpts=RFM_EXEC_OUPUT_READ_BY_PROGRAM;
+      child_attribs->RunCmd = rfmFileChooser_cmd;
+      child_attribs->stdOut_fd = named_pipe_fd;
+      child_attribs->stdOut = NULL;
+      child_attribs->stdErr = NULL;
+      child_attribs->spawn_async = TRUE;
+      child_attribs->name=g_strdup(rfmFileChooser_cmd[0]);
+      if (g_spawn_wrapper_(NULL, 0, named_pipe_name, child_attribs)) return fileSelectionStringList;
+    }
+  };
+  return NULL;
 }
