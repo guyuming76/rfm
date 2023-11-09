@@ -62,6 +62,7 @@ static const char *ffmpegThumb[] =  { "/usr/bin/ffmpeg", "-i","", "-frames", "1"
     /* Tool button commands */
 static const char *term_cmd[]  = { "/usr/bin/foot", NULL };
 static const char *new_rfm[]  = { rfmBinPath "/rfmVTforCMD.sh", rfmBinPath "/rfm", NULL };
+static const char *rfmFileChooser_cmd[] = { rfmBinPath "/rfmFileChooser.sh",NULL};
 
 #ifdef GitIntegration
 static const char *git_inside_work_tree_cmd[] = {"/usr/bin/git", "rev-parse","--is-inside-work-tree", NULL};

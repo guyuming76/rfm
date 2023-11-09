@@ -28,6 +28,7 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 #include <wordexp.h>
+#include "rfmFileChooser.h"
 
 #ifdef PythonEmbedded
 #define PY_SSIZE_T_CLEAN
@@ -231,6 +232,9 @@ typedef struct {
 
 static gchar*  PROG_NAME = NULL;
 
+static gboolean returnSelection = FALSE;
+static int returnSelectionNum = 0;
+  
 // I need a method to show in stdin prompt whether there are selected files in
 // gtk view. if there are, *> is prompted, otherwise, just prompt >
 static gint ItemSelected = 0;
@@ -3068,6 +3072,36 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
 static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx)
 {
    int e;
+
+   if (returnSelection){
+      GtkTreeIter iter;
+      int returnToFile_fd;
+      FILE* returnToFile_stream;
+      gchar* returnToFile = getenv("rfmReturnSelectionDestination");
+      if (returnToFile!=NULL){
+        returnToFile_fd=open(returnToFile,O_RDWR);
+	returnToFile_stream = fdopen(returnToFile_fd, "w+");
+	GList *selectionList = get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
+        selectionList=g_list_first(selectionList);
+	while(selectionList!=NULL){
+	  GValue fullpath = G_VALUE_INIT;
+	  gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, selectionList->data);
+	  gtk_tree_model_get_value(treemodel, &iter, COL_FULL_PATH, &fullpath);
+	  fprintf(returnToFile_stream, "%s\n", g_value_get_string(&fullpath));
+	  selectionList=g_list_next(selectionList);
+	  returnSelectionNum++;
+	}
+	fclose(returnToFile_stream);
+	close(returnToFile_fd);
+
+	char buff[sizeof(int)*8+1];
+	sprintf(buff, "%d", returnSelectionNum);
+	setenv("rfmReturnSelectionNumber",buff,1);
+	// i don't know which way to pass data is better, with environment variable or with return value, so, i implemenented both
+
+	g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
+      }
+   }
    //https://unix.stackexchange.com/questions/534657/do-inotify-watches-automatically-stop-when-a-program-ends
    inotify_rm_watch(rfm_inotify_fd, rfm_curPath_wd);
    if (rfm_do_thumbs==1) {
@@ -3168,7 +3202,9 @@ int main(int argc, char *argv[])
       case 'h':
 	printf(rfmLaunchHelp, PROG_NAME);
 	return 0;
-
+      case 'r':
+	returnSelection=TRUE;
+	break;
       default:
 	 die("invalid parameter, %s -h for help\n",PROG_NAME);
       }
@@ -3192,7 +3228,7 @@ int main(int argc, char *argv[])
       die("ERROR: %s: setup() failed\n", PROG_NAME);
 
    system("reset -I");
-   return 0;
+   return (returnSelection && returnSelectionNum>0)?returnSelectionNum:0;
 }
 
 static void ReadFromPipeStdinIfAny(char * fd)
@@ -3255,4 +3291,30 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
   rfm_SearchResultPath=strdup(rfm_curPath);
   FirstPage(rfmCtx);
   if (old_filenamelist!=NULL) g_list_free(old_filenamelist);
+}
+
+
+void rfmFileChooserReturnedSelectionReader(RFM_ChildAttribs* child_attribs){
+  gchar *child_StdOut = child_attribs->stdOut;
+  //int returnedSelectionNumber = child_attribs->exitcode;
+  GList** fileSelectionList = child_attribs->customCallbackUserData;
+  if (child_attribs->stdErr!=NULL) g_warning(child_attribs->stdErr);
+  if(child_StdOut!=NULL) {
+    gchar * oneline=strtok(child_StdOut,"\n");
+    while (oneline!=NULL){
+      *fileSelectionList = g_list_prepend(*fileSelectionList, oneline);
+      g_debug("rfmFileChooser return:%s",oneline);
+      oneline=strtok(NULL, "\n");
+    }
+  }else{
+    g_debug("rfmFileChooser return nothing");
+  }
+}
+
+//TODO: with async, we need to notify user with signal or let user pass in callback function.
+GList *rfmFileChooser(GList* fileSelectionStringList){
+  if (!g_spawn_wrapper(rfmFileChooser_cmd, NULL, 0, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, TRUE, rfmFileChooserReturnedSelectionReader, &fileSelectionStringList)){
+    return NULL;
+  }
+  return fileSelectionStringList;
 }
