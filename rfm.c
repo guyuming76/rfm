@@ -28,7 +28,6 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 #include <wordexp.h>
-#include "rfmFileChooser.h"
 
 #ifdef PythonEmbedded
 #define PY_SSIZE_T_CLEAN
@@ -450,6 +449,7 @@ static void endPythonEmbedding(){
 }
 #endif
 
+#include "rfmFileChooser.h"
 #include "config.h"
 
 static char * st_mode_str(guint32 st_mode){
@@ -770,6 +770,9 @@ static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *ch
    return rv;
 }
 
+// TODO: The char* in file_list will be used (WITHOUT strdup) in returned
+// gchar** v and owned by rfm_FileAttributelist before,
+// However, after rfmFilechooser added, the file_list data is not owned by rfm_Fileattributelist, and should be freed, shall we make any adjustment here?
 static gchar **build_cmd_vector(const char **cmd, GList *file_list, long n_args, char *dest_path)
 {
    long j=0;
@@ -791,6 +794,7 @@ static gchar **build_cmd_vector(const char **cmd, GList *file_list, long n_args,
      else if (listElement != NULL) {
        // before this commit, file_list and dest_path are all appended after cmd, but commands like ffmpeg to create thumbnail need to have file name in the middle of the argv, appended at the end won't work. So i modify the rule here so that if we have empty string in cmd, we replace it with item in file_list. So, file_list can work as generic argument list later, not necessarily the filename. And replacing empty string place holders in cmd with items in file_list can be something like printf.
        v[j]=listElement->data;
+       //listElement->data = NULL;  ?TODO: this data is owned by rfm_FileAttributes and was not freed before, but now, v and file_list share the reference, shall we set one of them to NULL here? g_list_free_full never called on file_list before except on rfm_FileAttributes?
        listElement=g_list_next(listElement);
      }
 
@@ -845,7 +849,7 @@ static gboolean g_spawn_wrapper_(GList *file_list, long n_args, char *dest_path,
 	            ExecCallback_freeChildAttribs(child_attribs);
       }
       
-      free(v);
+      free(v);//TODO: what does this mean? and double check whether v passed into g_spawn freed?
    }
    else{
       g_warning("g_spawn_wrapper_: %s failed to execute: build_cmd_vector() returned NULL.",child_attribs->RunCmd[0]);
@@ -3081,7 +3085,6 @@ static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx)
    if (StartedAs_rfmFileChooser){
       GtkTreeIter iter;
       int returnToFile_fd;
-      FILE* returnToFile_stream;
       if (rfmFileChooserReturnSelectionIntoFilename==NULL) rfmFileChooserReturnSelectionIntoFilename = getenv("rfmFileChooserReturnSelectionIntoFilename");
       if (rfmFileChooserReturnSelectionIntoFilename!=NULL){
         returnToFile_fd=open(rfmFileChooserReturnSelectionIntoFilename,O_WRONLY|O_NONBLOCK);
@@ -3105,8 +3108,10 @@ static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx)
 	  // i don't know which way to pass data is better, with environment variable or with return value, so, i implemenented both
 
 	  g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
-	}
-      }
+	}else
+	  g_warning("failed to open rfmFileChooserReturnSelectionIntoFilename:%s",rfmFileChooserReturnSelectionIntoFilename);
+      }else
+	g_warning("rfmFileChooserReturnSelectionIntoFilename NULL");
    }
    //https://unix.stackexchange.com/questions/534657/do-inotify-watches-automatically-stop-when-a-program-ends
    inotify_rm_watch(rfm_inotify_fd, rfm_curPath_wd);
@@ -3310,6 +3315,7 @@ void rfmFileChooserResultReader(RFM_ChildAttribs* child_attribs){
   //int returnedSelectionNumber = child_attribs->exitcode;
   //TODO: g_spawn_wrapper seem not dealing with exitcode
   GList** fileSelectionList = child_attribs->customCallbackUserData;
+  g_list_free_full(*fileSelectionList, (GDestroyNotify)g_free); // The file path str have already been freed with command returned by build_cmd_vector called by g_spawn_wrapper_ ? Maybe not, the build_cmd_vector take file names owned by rfm_FileAttributelist before and never free filefullpath. but here filefullpath comes from test_rfmFilechooser
   if(child_StdOut!=NULL) {
     gchar * oneline=strtok(child_StdOut,"\n");
     while (oneline!=NULL){
@@ -3327,7 +3333,8 @@ void rfmFileChooserResultReader(RFM_ChildAttribs* child_attribs){
 }
 
 //TODO: with async, we need to notify user with signal or let user pass in callback function.
-GList *rfmFileChooser(GList** fileSelectionStringList){
+/* default selection files can be passed in with fileSelectionList. After user interaction, this list is returned with user selection. And the default selection is freed in rfmFileChooserResultReader*/
+GList *rfmFileChooser(GList** fileSelectionStringList, uint fileSelectionStringListCount){
   char named_pipe_name[50];
   sprintf(named_pipe_name, "%s%d", RFM_FILE_CHOOSER_NAMED_PIPE_PREFIX,getpid());
   if (mkfifo(named_pipe_name, 0700)==0){ //0700 is  rwx------ https://jameshfisher.com/2017/02/24/what-is-mode_t/
@@ -3343,7 +3350,7 @@ GList *rfmFileChooser(GList** fileSelectionStringList){
       child_attribs->stdErr = NULL;
       child_attribs->spawn_async = TRUE;
       child_attribs->name=g_strdup(rfmFileChooser_cmd[0]);
-      if (g_spawn_wrapper_(NULL, 0, named_pipe_name, child_attribs)) return fileSelectionStringList;
+      if (g_spawn_wrapper_(*fileSelectionStringList, fileSelectionStringListCount, named_pipe_name, child_attribs)) return *fileSelectionStringList;
     }
   };
   return NULL;
