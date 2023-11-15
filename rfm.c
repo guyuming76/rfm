@@ -865,6 +865,7 @@ static gboolean g_spawn_wrapper(const char **action, GList *file_list, long n_ar
   child_attribs->customCallbackUserData=callbackfuncUserData;
   child_attribs->runOpts=run_opts;
   child_attribs->RunCmd = action;
+  child_attribs->stdOut_fd = -1;// please see the reference of stdOut_fd in g_spawn_with_pipe_wrappeer
   child_attribs->stdOut = NULL;
   child_attribs->stdErr = NULL;
   child_attribs->spawn_async = async;
@@ -3310,12 +3311,13 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
 
 
 
-void rfmFileChooserResultReader(RFM_ChildAttribs* child_attribs){
+static void rfmFileChooserResultReader(RFM_ChildAttribs* child_attribs){
   gchar *child_StdOut = child_attribs->stdOut;
   //int returnedSelectionNumber = child_attribs->exitcode;
   //TODO: g_spawn_wrapper seem not dealing with exitcode
   GList** fileSelectionList = child_attribs->customCallbackUserData;
   g_list_free_full(*fileSelectionList, (GDestroyNotify)g_free); // The file path str have already been freed with command returned by build_cmd_vector called by g_spawn_wrapper_ ? Maybe not, the build_cmd_vector take file names owned by rfm_FileAttributelist before and never free filefullpath. but here filefullpath comes from test_rfmFilechooser
+  *fileSelectionList=NULL;
   if(child_StdOut!=NULL) {
     gchar * oneline=strtok(child_StdOut,"\n");
     while (oneline!=NULL){
@@ -3334,7 +3336,7 @@ void rfmFileChooserResultReader(RFM_ChildAttribs* child_attribs){
 
 //TODO: with async, we need to notify user with signal or let user pass in callback function.
 /* default selection files can be passed in with fileSelectionList. After user interaction, this list is returned with user selection. And the default selection is freed in rfmFileChooserResultReader*/
-GList *rfmFileChooser(GList** fileSelectionStringList, uint fileSelectionStringListCount){
+GList *rfmFileChooser(GList** fileSelectionStringList, uint fileSelectionStringListCount, gboolean startWithVirtualTerminal){
   char named_pipe_name[50];
   sprintf(named_pipe_name, "%s%d", RFM_FILE_CHOOSER_NAMED_PIPE_PREFIX,getpid());
   if (mkfifo(named_pipe_name, 0700)==0){ //0700 is  rwx------ https://jameshfisher.com/2017/02/24/what-is-mode_t/
@@ -3344,7 +3346,7 @@ GList *rfmFileChooser(GList** fileSelectionStringList, uint fileSelectionStringL
       child_attribs->customCallBackFunc = rfmFileChooserResultReader;
       child_attribs->customCallbackUserData = fileSelectionStringList;
       child_attribs->runOpts=RFM_EXEC_OUPUT_READ_BY_PROGRAM;
-      child_attribs->RunCmd = rfmFileChooser_cmd;
+      child_attribs->RunCmd = startWithVirtualTerminal? rfmFileChooser_cmd : rfmFileChooserNoVT_cmd;
       child_attribs->stdOut_fd = named_pipe_fd;
       child_attribs->stdOut = NULL;
       child_attribs->stdErr = NULL;

@@ -1,11 +1,16 @@
 
-GList *rfmFileChooser(GList** fileSelectionStringList, uint fileSelectionStringListCount);
+GList *rfmFileChooser(GList** fileSelectionStringList, uint fileSelectionStringListCount, gboolean startWithVirtualTerminal);
 
 static GList* selectionList=NULL;
 static void Test_rfmFileChooser(){
 	      GtkTreeIter iter;
 	      GList *listElement;
 	      GList *view_selection_list = get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
+
+	      if (selectionList!=NULL){
+		g_list_free_full(selectionList, (GDestroyNotify)g_free);
+		selectionList = NULL;
+	      };
 	      uint count=0;
 	      RFM_FileAttributes *fileAttributes;
 	      if (view_selection_list!=NULL) {
@@ -20,5 +25,5 @@ static void Test_rfmFileChooser(){
 	      }
 	      g_list_free_full(view_selection_list, (GDestroyNotify)gtk_tree_path_free);
 	      
-	      selectionList = rfmFileChooser(&selectionList,count);
+	      selectionList = rfmFileChooser(&selectionList,count,FALSE);
 }

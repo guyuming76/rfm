@@ -64,7 +64,7 @@ static const char *ffmpegThumb[] =  { "/usr/bin/ffmpeg", "-i","", "-frames", "1"
 static const char *term_cmd[]  = { "/usr/bin/foot", NULL };
 static const char *new_rfm[]  = { rfmBinPath "/rfmVTforCMD.sh", rfmBinPath "/rfm", NULL };
 static const char *rfmFileChooser_cmd[] = { rfmBinPath "/rfmFileChooser.sh",NULL};
-
+static const char *rfmFileChooserNoVT_cmd[] = { rfmBinPath "/rfmFileChooserNoVT.sh", NULL };
 #ifdef GitIntegration
 static const char *git_inside_work_tree_cmd[] = {"/usr/bin/git", "rev-parse","--is-inside-work-tree", NULL};
 static const char *git_ls_files_cmd[] = {"/usr/bin/git", "ls-files", "--full-name",NULL};
@@ -84,10 +84,9 @@ static RFM_builtinCMD builtinCMD[] = {
 #ifdef PythonEmbedded
         {"py",     startPythonEmbedding,    "Embedding Python" },
         {"pyq",    endPythonEmbedding,      "quit Python Embedding" },
-       	{"test_rfmFileChooser",Test_rfmFileChooser,"test rfmFileChooser" },
 #endif
+       	{"test_rfmFileChooser",Test_rfmFileChooser,"test rfmFileChooser" },
 };
-
 
 /* Menu Items
  * NOTES: The first matched mime type will become the default action for that kind of file
