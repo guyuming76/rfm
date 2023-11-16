@@ -41,7 +41,7 @@ options:
 	@echo CC $<
 	@${CC} -c ${CFLAGS} $<
 
-${OBJ}: config.h
+${OBJ}: config.h rfmFileChooser.h
 
 config.h:
 	@echo creating $@ from config.def.h
