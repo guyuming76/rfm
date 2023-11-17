@@ -18,7 +18,7 @@ INCS = -I. -I/usr/include
 LIBS += -L/usr/lib `pkg-config --libs ${GTK_VERSION} readline`
 CPPFLAGS += -DVERSION=\"${VERSION}\"
 GTK_CFLAGS = `pkg-config --cflags ${GTK_VERSION}`
-CFLAGS = -g -Wall -std=c11 -O0 ${GTK_CFLAGS} ${INCS} ${CPPFLAGS}
+CFLAGS = -g -Wall -std=c11 -O0 -fPIC -pie  ${GTK_CFLAGS} ${INCS} ${CPPFLAGS}
 LDFLAGS = -g ${LIBS}
 
 ifneq (${PythonEmbedded}, )
@@ -29,7 +29,7 @@ endif
 # compiler and linker
 CC = gcc
 
-all: options rfm
+all: options rfm librfm.so
 
 options:
 	@echo rfm build options:
@@ -51,13 +51,21 @@ rfm: ${OBJ}
 	@echo CC -o $@
 	@${CC} -o $@ ${OBJ} ${LDFLAGS}
 
+librfm.so: ${OBJ}
+	@echo CC -o $@
+	@${CC} -o $@ ${OBJ} ${LDFLAGS} -shared -Wl,-E
+#	@${CC} -o $@ ${OBJ} ${LDFLAGS} -shared -Wl,-E,-e,main
+# i tried to use librfm.so as both lib and exec and set entry point for librfm.so, however, i got segfault after launching librfm.so
+# https://unix.stackexchange.com/questions/223385/why-and-how-are-some-shared-libraries-runnable-as-though-they-are-executables
+
 clean:
 	@echo cleaning
-	@rm -f rfm ${OBJ}
+	@rm -f rfm librfm.so ${OBJ}
 
 install: all
-	@echo installing executable file to ${DESTDIR}${PREFIX}/bin
+	@echo installing files to ${DESTDIR}${PREFIX}/{bin,lib}
 	@mkdir -p ${DESTDIR}${PREFIX}/bin
+	@cp -f librfm.so ${DESTDIR}${PREFIX}/lib
 	@cp -f rfm ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmRefreshImage.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmVTforCMD.sh ${DESTDIR}${PREFIX}/bin
@@ -81,6 +89,7 @@ install: all
 	xdg-mime default rfm.desktop inode/directory
 	update-desktop-database
 
+	@chmod 755 ${DESTDIR}${PREFIX}/lib/librfm.so
 	@chmod 755 ${DESTDIR}${PREFIX}/bin/rfm
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmRefreshImage.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmVTforCMD.sh
@@ -102,7 +111,8 @@ install: all
 #	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmNewDir.sh
 
 uninstall:
-	@echo removing executable file from ${DESTDIR}${PREFIX}/bin
+	@echo removing files from ${DESTDIR}${PREFIX}/{bin,lib}
+	@rm -f ${DESTDIR}${PREFIX}/lib/librfm.so
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfm
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmRefreshImage.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmVTforCMD.sh
