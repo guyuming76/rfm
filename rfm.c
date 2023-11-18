@@ -3334,9 +3334,31 @@ static void rfmFileChooserResultReader(RFM_ChildAttribs* child_attribs){
   unlink(named_pipe_name);
 }
 
-//TODO: with async, we need to notify user with signal or let user pass in callback function.
-/* default selection files can be passed in with fileSelectionList. After user interaction, this list is returned with user selection. And the default selection is freed in rfmFileChooserResultReader*/
-GList *rfmFileChooser(GList** fileSelectionStringList, uint fileSelectionStringListCount, gboolean startWithVirtualTerminal){
+GList* str_array_ToGList(char* a[]){
+  GList * ret = NULL;
+  for(int i=0;i<G_N_ELEMENTS(a);i++) ret=g_list_prepend(ret, a[i]);
+  //free(a);
+  return ret;
+}
+
+char** GList_to_str_array(GList *l, int count) {
+  char* ret[count];
+  l=g_list_first(l);
+  for(int i=0;i<count;i++) {
+    ret[i]=l->data;
+    l=g_list_next(l);
+  }
+  g_list_free(l);
+  return ret;
+}
+
+// TODO: with async, we need to notify user with signal or let user pass in
+// callback function.
+/* default selection files can be passed in with fileSelectionList. After user
+   interaction, this list is returned with user selection. And the default
+   selection is freed in rfmFileChooserResultReader*/
+
+GList* rfmFileChooser_glist(GList** fileSelectionStringList, gboolean startWithVirtualTerminal) {
   char named_pipe_name[50];
   sprintf(named_pipe_name, "%s%d", RFM_FILE_CHOOSER_NAMED_PIPE_PREFIX,getpid());
   if (mkfifo(named_pipe_name, 0700)==0){ //0700 is  rwx------ https://jameshfisher.com/2017/02/24/what-is-mode_t/
@@ -3352,8 +3374,17 @@ GList *rfmFileChooser(GList** fileSelectionStringList, uint fileSelectionStringL
       child_attribs->stdErr = NULL;
       child_attribs->spawn_async = TRUE;
       child_attribs->name=g_strdup(rfmFileChooser_cmd[0]);
-      if (g_spawn_wrapper_(*fileSelectionStringList, fileSelectionStringListCount, named_pipe_name, child_attribs)) return *fileSelectionStringList;
+      if (g_spawn_wrapper_(*fileSelectionStringList, g_list_length(*fileSelectionStringList), named_pipe_name, child_attribs)) return *fileSelectionStringList;
     }
   };
   return NULL;
+}
+
+// input (array) pointer to a (char) pointer array, and return pointer array
+// char*[] rfmFileChooser(char*(*fileSelectionStringArray)[], uint fileSelectionStringArrayCount, gboolean startWithVirtualTerminal){}
+
+char** rfmFileChooser(char *fileSelectionStringArray[], gboolean startWithVirtualTerminal) {
+  GList* fileSelectionStringList = str_array_ToGList(fileSelectionStringArray);
+  rfmFileChooser_glist(&fileSelectionStringList, startWithVirtualTerminal);
+  return GList_to_str_array(fileSelectionStringList,g_list_length(fileSelectionStringList));
 }
