@@ -3185,6 +3185,7 @@ int main(int argc, char *argv[])
 	    initDir=canonicalize_file_name(argv[c+1]);
 	 }else{
 	    initDir=g_path_get_dirname(argv[c+1]);
+	    //TODO: at this point of execution, Searchresultviewinsteadofdirectoryview value always be false. We should find some way to detect whether we are in search result mode here, to make default file selection works with -d parameter in search result mode. Or just keep the value here temperorily here and adjust it with the correct searchresultviewinsteadofdirectoryview later.
 	    view_selection_file_path_list[SearchResultViewInsteadOfDirectoryView] = g_list_prepend(view_selection_file_path_list[SearchResultViewInsteadOfDirectoryView], g_strdup(argv[c+1]));
          }           
 	 c++;
@@ -3197,11 +3198,11 @@ int main(int argc, char *argv[])
          printf("%s-%s, Copyright (C) Rodney Padgett, guyuming, see LICENSE for details\n", PROG_NAME, VERSION);
          return 0;
       case 'p':
-	 //if (rfmReadFileNamesFromPipeStdIn){
+	   SearchResultViewInsteadOfDirectoryView = TRUE;
+	   //TODO: note that if both we want to set default selection for search result, we cannot omit -p, and -p must proceed -d
 	   gchar *pagesize=argv[c] + 2 * sizeof(gchar);
 	   int ps=atoi(pagesize);
 	   if (ps!=0) PageSize_SearchResultView=ps;
-	 //}
          break;
 
       case 'l':
