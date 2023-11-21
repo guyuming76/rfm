@@ -133,6 +133,10 @@ emacs lsp-mode 查看源码需要 compile_commands.json 文件, 我自己尝试�
 find .. -name *.c -o -name *.h | rfm -p100 -l
 ```
 
+# TODO 备忘  #
+和 readline (或替代品) 集成, 在现在输入 %s 的场景,可以直接把文件名插入到命令行,而不是显示为 %s, 这样,尤其是在输入复杂命令,且脑力不足的时候,好理解些. 
+进而, 在命令行输入类似 $(uname -r) 这样时,可否能选择先把这一段计算结果插入命令行. 先要研究下 readline 有没有现有实现,插件啥的
+
 # 一些TroubleShooting记录 #
 
 ## 显示调试信息 ##
