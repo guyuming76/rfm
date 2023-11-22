@@ -3,11 +3,11 @@
 
 int main(int argc, char *argv[]){
 	char** selectionList;
-	char** (*fileChooser)(char**, bool);
+	char** (*fileChooser)(char**, bool, char*);
 
     	void* handle = dlopen("librfm.so", RTLD_LAZY);
-	fileChooser = (char** (*)(char**, bool))dlsym(handle,"rfmFileChooser");
+	fileChooser = (char** (*)(char**, bool, char*))dlsym(handle,"rfmFileChooser");
 
-	selectionList = fileChooser(argv, 0);
+	selectionList = fileChooser(argv, 0, "/usr/bin/locate rfm.c");
     	dlclose(handle);
 }

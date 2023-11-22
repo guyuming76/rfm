@@ -65,6 +65,7 @@ static const char *term_cmd[]  = { "/usr/bin/foot", NULL };
 static const char *new_rfm[]  = { rfmBinPath "/rfmVTforCMD.sh", rfmBinPath "/rfm", NULL };
 static const char *rfmFileChooser_cmd[] = { rfmBinPath "/rfmFileChooser.sh",NULL};
 static const char *rfmFileChooserNoVT_cmd[] = { rfmBinPath "/rfmFileChooserNoVT.sh", NULL };
+//static const char *rfmFileChooserNoVT4searchResult_cmd[] = { rfmBinPath "/rfmFileChooserNoVT4searchResult.sh", NULL };
 #ifdef GitIntegration
 static const char *git_inside_work_tree_cmd[] = {"/usr/bin/git", "rev-parse","--is-inside-work-tree", NULL};
 static const char *git_ls_files_cmd[] = {"/usr/bin/git", "ls-files", "--full-name",NULL};
@@ -269,7 +270,7 @@ static gboolean ignored_filename(gchar *name){
 }
 
 static gchar shell_cmd_buffer[ARG_MAX]; //TODO: notice that this is shared single instance. But we only run shell command in sync mode now. so, no more than one thread will use this
-static gchar* stdin_cmd_template_bash[]={"bash","-i","-c", shell_cmd_buffer, NULL};
+static gchar* stdin_cmd_template_bash[]={"/bin/bash","-i","-c", shell_cmd_buffer, NULL};
 static gchar* stdin_cmd_template_nu[]={"nu","-c", shell_cmd_buffer, NULL};
 static gchar** stdin_command_bash(gchar* user_input_cmd) {
   sprintf(shell_cmd_buffer,"set -o history; %s; exit 2>/dev/null",g_strdup(user_input_cmd));
@@ -281,6 +282,17 @@ static gchar** stdin_command_bash(gchar* user_input_cmd) {
 static gchar** stdin_command_nu(gchar* user_input_cmd) {
   sprintf(shell_cmd_buffer,"%s",g_strdup(user_input_cmd));
   return stdin_cmd_template_nu;
+}
+
+static gchar** fileChooserNoVT_search_cmd_bash(gchar* defaultFileSelection, gchar* search_cmd, gchar* rfmFileChooserReturnSelectionIntoFilename){
+  if (defaultFileSelection == NULL)
+    //sprintf(shell_cmd_buffer, "\"%s/rfm -r %s -p 1>/dev/null < <(%s)\"", rfmBinPath, rfmFileChooserReturnSelectionIntoFilename, g_strdup(search_cmd));
+    sprintf(shell_cmd_buffer, "\"%s | %s/rfm -r %s -p 1>/dev/null\"", g_strdup(search_cmd), rfmBinPath, rfmFileChooserReturnSelectionIntoFilename);
+  else
+    //sprintf(shell_cmd_buffer, "\"%s/rfm -r %s -p -d %s 1>/dev/null < <(%s)\"", rfmBinPath, rfmFileChooserReturnSelectionIntoFilename, g_strdup(defaultFileSelection), g_strdup(search_cmd));
+    sprintf(shell_cmd_buffer, "\"%s | %s/rfm -r %s -p -d %s 1>/dev/null\"", g_strdup(search_cmd), rfmBinPath, rfmFileChooserReturnSelectionIntoFilename, g_strdup(defaultFileSelection));
+
+  return stdin_cmd_template_bash;
 }
 
 static stdin_cmd_interpretor stdin_cmd_interpretors[] = {

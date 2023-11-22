@@ -1,6 +1,6 @@
 
-char** rfmFileChooser(char* fileSelectionStringArray[], gboolean startWithVirtualTerminal);
-GList* rfmFileChooser_glist(GList** fileSelectionStringList, gboolean startWithVirtualTerminal);
+char** rfmFileChooser(char* fileSelectionStringArray[], gboolean startWithVirtualTerminal,char* search_cmd);
+GList* rfmFileChooser_glist(GList** fileSelectionStringList, gboolean startWithVirtualTerminal,char* search_cmd);
 
 static GList* selectionList=NULL;
 static void Test_rfmFileChooser(){
@@ -25,5 +25,5 @@ static void Test_rfmFileChooser(){
 	      }
 	      g_list_free_full(view_selection_list, (GDestroyNotify)gtk_tree_path_free);
 
-	      selectionList = rfmFileChooser_glist(&selectionList,FALSE);
+	      selectionList = rfmFileChooser_glist(&selectionList,FALSE, "/usr/bin/locate rfm.c");
 }
