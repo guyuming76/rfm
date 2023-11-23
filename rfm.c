@@ -3230,6 +3230,7 @@ int main(int argc, char *argv[])
       }
     }
     else if (g_strcmp0(g_utf8_substring(argv[c], 0, 8),"/dev/fd/")==0) {
+      //try  `gdb --args rfm <(locate rfm.c)` and find in htop what this /dev/fd means
       pipefd=g_utf8_substring(argv[c], 8, strlen(argv[c]));
     }
     c++;
