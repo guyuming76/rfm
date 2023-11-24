@@ -287,10 +287,10 @@ static gchar** stdin_command_nu(gchar* user_input_cmd) {
 static gchar** fileChooserNoVT_search_cmd_bash(gchar* defaultFileSelection, gchar* search_cmd, gchar* rfmFileChooserReturnSelectionIntoFilename){
   if (defaultFileSelection == NULL)
     //sprintf(shell_cmd_buffer, "\"%s/rfm -r %s -p 1>/dev/null < <(%s)\"", rfmBinPath, rfmFileChooserReturnSelectionIntoFilename, g_strdup(search_cmd));
-    sprintf(shell_cmd_buffer, "\"%s | %s/rfm -r %s -p 1>/dev/null\"", g_strdup(search_cmd), rfmBinPath, rfmFileChooserReturnSelectionIntoFilename);
+    sprintf(shell_cmd_buffer, "\" %s/rfm -r %s -p -x '%s' 1>/dev/null\"", rfmBinPath, rfmFileChooserReturnSelectionIntoFilename, g_strdup(search_cmd));
   else
     //sprintf(shell_cmd_buffer, "\"%s/rfm -r %s -p -d %s 1>/dev/null < <(%s)\"", rfmBinPath, rfmFileChooserReturnSelectionIntoFilename, g_strdup(defaultFileSelection), g_strdup(search_cmd));
-    sprintf(shell_cmd_buffer, "\"%s | %s/rfm -r %s -p -d %s 1>/dev/null\"", g_strdup(search_cmd), rfmBinPath, rfmFileChooserReturnSelectionIntoFilename, g_strdup(defaultFileSelection));
+    sprintf(shell_cmd_buffer, "\" %s/rfm -r %s -p -x '%s' -d %s 1>/dev/null\"", rfmBinPath, rfmFileChooserReturnSelectionIntoFilename, g_strdup(search_cmd), g_strdup(defaultFileSelection));
 
   return stdin_cmd_template_bash;
 }

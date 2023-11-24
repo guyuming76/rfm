@@ -288,6 +288,7 @@ static GtkTreeModel *treemodel=NULL;
 
 static gboolean treeview=FALSE;
 static gchar* treeviewcolumn_init_order_sequence = NULL;
+static gchar* auto_execution_command_after_rfm_start = NULL;
 // keep previous selection when go back from cd directory to search result
 // two elements, one for search result view, the other for directory view
 static GList * view_selection_file_path_list[2] = {NULL,NULL};
@@ -2594,6 +2595,14 @@ static void free_default_pixbufs(RFM_defaultPixbufs *defaultPixbufs)
 static gboolean ToSearchResultFilenameList=FALSE; // we need to pass this status from exec_stdin_command to readlineInSeperatedThread, however, we can only pass one parameter in g_thread_new, so, i use a global variable here.
 
 static void readlineInSeperateThread(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution) {
+  if (auto_execution_command_after_rfm_start!=NULL){
+    gchar *tempToPreventRaceCondition = strdup(auto_execution_command_after_rfm_start);
+    g_free(auto_execution_command_after_rfm_start);
+    auto_execution_command_after_rfm_start = NULL;
+    stdin_command_Scheduler = g_idle_add_once(exec_stdin_command, tempToPreventRaceCondition);
+    return;
+  }
+  
   if (readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution!=NULL){ //this means it's not initial run after rfm start, so i should first run cmd from previous readline here
 	  GError *err = NULL;
 	  gchar* cmd_stdout;
@@ -2615,8 +2624,10 @@ static void readlineInSeperateThread(GString * readlineResultStringFromPreviousR
 	  }
 	  add_history(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str);
 	  history_entry_added++;
-	  add_history(OriginalReadlineResult);
-	  history_entry_added++;
+	  if (OriginalReadlineResult!=NULL){ //with rfm -x , i.e., Originalreadlineresult can be null here
+	    add_history(OriginalReadlineResult);
+	    history_entry_added++;
+	  }
           g_string_free(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution,TRUE);
   }
 
@@ -3067,7 +3078,7 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
      set_rfm_curPath(initDir);
 
    add_toolbar(rfm_main_box, defaultPixbufs, rfmCtx);
-   refresh_store(rfmCtx);
+   if (auto_execution_command_after_rfm_start==NULL) refresh_store(rfmCtx);
 
    //block Ctrl+C. Without this, Ctrl+C in readline will terminate rfm. Now, if you run htop with readline, Ctrl+C only terminate htop. BTW, it's strange that i had tried sigprocmask, pthread_sigmask, and rl_clear_signals, and they didn't work.
    struct sigaction newaction;
@@ -3224,6 +3235,11 @@ int main(int argc, char *argv[])
 	  rfmFileChooserReturnSelectionIntoFilename = argv[c+1];
 	  c++;
 	}
+	break;
+      case 'x': //auto execute after start. for example, start with locate rfm.c >0, to avoid locate rfm.c|rfm. We can use rfm -x "locate rfm.c>0"
+	if (argc<=(c+1)) die("ERROR: %s: A command string which can be executed by rfm is required for the option. for example: rfm -x \"locate rfm.c>0\"\n", PROG_NAME);
+	auto_execution_command_after_rfm_start = g_strdup(argv[c+1]);
+	c++;
 	break;
       default:
 	 die("invalid parameter, %s -h for help\n",PROG_NAME);
