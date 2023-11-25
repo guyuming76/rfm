@@ -2,6 +2,7 @@
 
 /*#define RFM_ICON_THEME "elementary"*/
 /*#define RFM_SINGLE_CLICK "True"*/
+#include <linux/limits.h>
 #define RFM_TOOL_SIZE 22
 #define RFM_ICON_SIZE 48
 #define RFM_THUMBNAIL_SIZE 128 /* Maximum size for thumb dir normal is 128 */
@@ -284,15 +285,21 @@ static gchar** stdin_command_nu(gchar* user_input_cmd) {
   return stdin_cmd_template_nu;
 }
 
-static gchar** fileChooserNoVT_search_cmd_bash(gchar* defaultFileSelection, gchar* search_cmd, gchar* rfmFileChooserReturnSelectionIntoFilename){
-  if (defaultFileSelection == NULL)
-    //sprintf(shell_cmd_buffer, "\"%s/rfm -r %s -p 1>/dev/null < <(%s)\"", rfmBinPath, rfmFileChooserReturnSelectionIntoFilename, g_strdup(search_cmd));
-    sprintf(shell_cmd_buffer, "\" %s/rfm -r %s -p -x '%s' 1>/dev/null\"", rfmBinPath, rfmFileChooserReturnSelectionIntoFilename, g_strdup(search_cmd));
-  else
-    //sprintf(shell_cmd_buffer, "\"%s/rfm -r %s -p -d %s 1>/dev/null < <(%s)\"", rfmBinPath, rfmFileChooserReturnSelectionIntoFilename, g_strdup(defaultFileSelection), g_strdup(search_cmd));
-    sprintf(shell_cmd_buffer, "\" %s/rfm -r %s -p -x '%s' -d %s 1>/dev/null\"", rfmBinPath, rfmFileChooserReturnSelectionIntoFilename, g_strdup(search_cmd), g_strdup(defaultFileSelection));
+static gchar fileChooserNoVT_search_cmd_returnFileName[PATH_MAX];
+static gchar fileChooserNoVT_search_cmd[ARG_MAX];
+static gchar* fileChooserNoVT_search_cmd_autoselection[PATH_MAX];
+static gchar* fileChooserNoVT_search_cmd_template[] = { "rfm", "-r", fileChooserNoVT_search_cmd_returnFileName, "-x", fileChooserNoVT_search_cmd, "0>/dev/null", "1>/dev/null",NULL };
+static gchar* fileChooserNoVT_search_cmd_template_autoselection[] = { "rfm", "-r", fileChooserNoVT_search_cmd_returnFileName , "-p", "-x", fileChooserNoVT_search_cmd, "-d",fileChooserNoVT_search_cmd_autoselection, "1>/dev/null",NULL };
 
-  return stdin_cmd_template_bash;
+static gchar** rfmFileChooserNoVT_search_cmd(gchar* defaultFileSelection, gchar* search_cmd, gchar* rfmFileChooserReturnSelectionIntoFilename){
+    sprintf(fileChooserNoVT_search_cmd_returnFileName, rfmFileChooserReturnSelectionIntoFilename);
+    sprintf(fileChooserNoVT_search_cmd, "%s", g_strdup(search_cmd));
+
+    if (defaultFileSelection == NULL) return fileChooserNoVT_search_cmd_template;
+    else {
+      sprintf(fileChooserNoVT_search_cmd_autoselection, g_strdup(defaultFileSelection));
+      return fileChooserNoVT_search_cmd_template_autoselection;
+    }
 }
 
 static stdin_cmd_interpretor stdin_cmd_interpretors[] = {

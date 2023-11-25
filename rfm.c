@@ -745,11 +745,12 @@ static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *ch
    if (child_attribs!=NULL) {
       child_attribs->pid=-1;
       GError* err = NULL;
-      rv=g_spawn_async_with_pipes(rfm_curPath, v, NULL, G_SPAWN_DO_NOT_REAP_CHILD,
+      rv=g_spawn_async_with_pipes(rfm_curPath, v, NULL, G_SPAWN_DO_NOT_REAP_CHILD | ((child_attribs->stdOut_fd>0)? G_SPAWN_STDOUT_TO_DEV_NULL: G_SPAWN_DEFAULT),
 				  GSpawnChildSetupFunc_setenv,child_attribs,
                                   &child_attribs->pid, NULL, ((child_attribs->stdOut_fd<=0)? &child_attribs->stdOut_fd: NULL), // stdOut_fd>0, means we use existing fd to read result from, so we pass in NULL, otherwise stdout_fd will be overwriten. For example, we use existing fd in rfmFileChooser
                                   &child_attribs->stdErr_fd, &err);
-
+      // TODO: we check child_attribs->stdOut_fd>0 or <=0 above, this is for use in rfmFileChooser, where we use special fd to get returned selection. This make the code difficult to read. We need refact this.
+      
       g_debug("g_spawn_async_with_pipes_wrapper:  workingdir:%s, argv:%s, G_SPAWN_DO_NOT_REAP_CHILD",rfm_curPath,v[0]);
       if (rv==TRUE) {
          /* Don't block on read if nothing in pipe */
@@ -2624,7 +2625,7 @@ static void readlineInSeperateThread(GString * readlineResultStringFromPreviousR
 	  }
 	  add_history(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str);
 	  history_entry_added++;
-	  if (OriginalReadlineResult!=NULL){ //with rfm -x , i.e., Originalreadlineresult can be null here
+	  if (OriginalReadlineResult!=NULL){ //with rfm -x , Originalreadlineresult can be null here
 	    add_history(OriginalReadlineResult);
 	    history_entry_added++;
 	  }
@@ -2889,7 +2890,8 @@ static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, GString* read
 static void exec_stdin_command (gchar * readlineResult)
 {
         gint len = strlen(readlineResult);
-	GString *readlineResultString = NULL;
+	g_debug ("readline return length %u: %s", len, readlineResult);
+        GString *readlineResultString = NULL;
 	if (len == 0){
 	    time_t now_time=time(NULL);
             if ((now_time - lastEnter)<=1){
@@ -2905,7 +2907,6 @@ static void exec_stdin_command (gchar * readlineResult)
 	      }
 	    }
 
-	    g_debug ("Read length %u from stdin: %s", len, readlineResult);	
 	    stdin_cmd_ending_space = (readlineResult[len-1]==' ');
 	    while (readlineResult[len-1]==' ') { readlineResult[len-1]='\0'; len--; } //remove ending space
 
@@ -3393,16 +3394,17 @@ GList* rfmFileChooser_glist(GList** fileSelectionStringList, gboolean startWithV
       child_attribs->stdOut = NULL;
       child_attribs->stdErr = NULL;
       child_attribs->spawn_async = TRUE;
-      child_attribs->name=g_strdup(rfmFileChooser_cmd[0]);
+      
       if (search_cmd==NULL){
+	child_attribs->name=g_strdup(rfmFileChooser_cmd[0]);
 	child_attribs->RunCmd = startWithVirtualTerminal? rfmFileChooser_cmd : rfmFileChooserNoVT_cmd;
 	if (g_spawn_wrapper_(*fileSelectionStringList, g_list_length(*fileSelectionStringList), named_pipe_name, child_attribs)) return *fileSelectionStringList;
       }else{
+	child_attribs->name=g_strdup("rfmFileChooserNoVT_search_cmd");
 	//TODO: fileSelectionlist to char* conversion not implemenented, i just omit the default file selection now.
-	child_attribs->RunCmd = fileChooserNoVT_search_cmd_bash(NULL ,search_cmd, named_pipe_name);
+	child_attribs->RunCmd = rfmFileChooserNoVT_search_cmd(NULL, search_cmd, named_pipe_name);
 	if (g_spawn_wrapper_(NULL, 0, NULL, child_attribs)) return *fileSelectionStringList;
-      }
-     
+      }     
     }
   }else g_warning("mkfifo mode 0700 (rwx------) failed for:%s",named_pipe_name);
   return NULL;

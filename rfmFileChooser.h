@@ -25,5 +25,6 @@ static void Test_rfmFileChooser(){
 	      }
 	      g_list_free_full(view_selection_list, (GDestroyNotify)gtk_tree_path_free);
 
-	      selectionList = rfmFileChooser_glist(&selectionList,FALSE, "/usr/bin/locate rfm.c>0");
+      	      //selectionList = rfmFileChooser_glist(&selectionList,FALSE, NULL);
+	      selectionList = rfmFileChooser_glist(&selectionList,FALSE, "locate rfm.c>0");
 }
