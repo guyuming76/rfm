@@ -2597,11 +2597,8 @@ static gboolean ToSearchResultFilenameList=FALSE; // we need to pass this status
 
 static void readlineInSeperateThread(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution) {
   if (auto_execution_command_after_rfm_start!=NULL){
-    gchar *tempToPreventRaceCondition = strdup(auto_execution_command_after_rfm_start);
-    g_free(auto_execution_command_after_rfm_start);
+    //auto_execution_command_after_rfm_start was freed in exec_stdin_command as readlineresult
     auto_execution_command_after_rfm_start = NULL;
-    stdin_command_Scheduler = g_idle_add_once(exec_stdin_command, tempToPreventRaceCondition);
-    return;
   }
   
   if (readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution!=NULL){ //this means it's not initial run after rfm start, so i should first run cmd from previous readline here
@@ -2632,16 +2629,18 @@ static void readlineInSeperateThread(GString * readlineResultStringFromPreviousR
           g_string_free(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution,TRUE);
   }
 
-  gchar prompt[5]="";
-  strcat(prompt, stdin_cmd_interpretors[current_stdin_cmd_interpretor].prompt);
-  ToSearchResultFilenameList=FALSE;
-  if (keep_selection_across_refresh && In_refresh_store) strcat(prompt,"?>");
-  else if (ItemSelected==0) strcat(prompt,">");
-  else strcat(prompt,"*>");
-  g_free(OriginalReadlineResult);
-  while ((OriginalReadlineResult = readline(prompt))==NULL);
+  if(isatty(0)){
+    gchar prompt[5]="";
+    strcat(prompt, stdin_cmd_interpretors[current_stdin_cmd_interpretor].prompt);
+    ToSearchResultFilenameList=FALSE;
+    if (keep_selection_across_refresh && In_refresh_store) strcat(prompt,"?>");
+    else if (ItemSelected==0) strcat(prompt,">");
+    else strcat(prompt,"*>");
+    g_free(OriginalReadlineResult);
+    while ((OriginalReadlineResult = readline(prompt))==NULL);
 
-  stdin_command_Scheduler = g_idle_add_once(exec_stdin_command, strdup(OriginalReadlineResult));
+    stdin_command_Scheduler = g_idle_add_once(exec_stdin_command, strdup(OriginalReadlineResult));
+  }
 }
 
 static void stdin_command_help() {
@@ -2970,8 +2969,10 @@ static void exec_stdin_command (gchar * readlineResult)
  switchToReadlineThread:
         g_free (readlineResult);
 
-	g_thread_join(readlineThread);
-	readlineThread=g_thread_new("readline", readlineInSeperateThread, readlineResultString);
+	if(isatty(0) || auto_execution_command_after_rfm_start!=NULL){
+	  if (auto_execution_command_after_rfm_start==NULL) g_thread_join(readlineThread);
+	  readlineThread=g_thread_new("readline", readlineInSeperateThread, readlineResultString);
+	}
 }
 
 static int setup(char *initDir, RFM_ctx *rfmCtx)
@@ -3079,17 +3080,20 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
      set_rfm_curPath(initDir);
 
    add_toolbar(rfm_main_box, defaultPixbufs, rfmCtx);
-   if (auto_execution_command_after_rfm_start==NULL) refresh_store(rfmCtx);
 
+   if (auto_execution_command_after_rfm_start==NULL) refresh_store(rfmCtx);
+   else stdin_command_Scheduler = g_idle_add_once(exec_stdin_command, auto_execution_command_after_rfm_start);
+   
    //block Ctrl+C. Without this, Ctrl+C in readline will terminate rfm. Now, if you run htop with readline, Ctrl+C only terminate htop. BTW, it's strange that i had tried sigprocmask, pthread_sigmask, and rl_clear_signals, and they didn't work.
    struct sigaction newaction;
    newaction.sa_handler = SIG_IGN;
    newaction.sa_flags = 0;
    sigaction(SIGINT, &newaction,NULL);
 
-   stdin_command_help();
-   readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);
-
+   if(isatty(0) && auto_execution_command_after_rfm_start==NULL){
+     stdin_command_help();
+     readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);
+   }
    return 0;
 }
 

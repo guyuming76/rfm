@@ -288,8 +288,8 @@ static gchar** stdin_command_nu(gchar* user_input_cmd) {
 static gchar fileChooserNoVT_search_cmd_returnFileName[PATH_MAX];
 static gchar fileChooserNoVT_search_cmd[ARG_MAX];
 static gchar* fileChooserNoVT_search_cmd_autoselection[PATH_MAX];
-static gchar* fileChooserNoVT_search_cmd_template[] = { "rfm", "-r", fileChooserNoVT_search_cmd_returnFileName, "-x", fileChooserNoVT_search_cmd, "0>/dev/null", "1>/dev/null",NULL };
-static gchar* fileChooserNoVT_search_cmd_template_autoselection[] = { "rfm", "-r", fileChooserNoVT_search_cmd_returnFileName , "-p", "-x", fileChooserNoVT_search_cmd, "-d",fileChooserNoVT_search_cmd_autoselection, "1>/dev/null",NULL };
+static gchar* fileChooserNoVT_search_cmd_template[] = { "rfm", "-r", fileChooserNoVT_search_cmd_returnFileName, "-x", fileChooserNoVT_search_cmd, NULL };
+static gchar* fileChooserNoVT_search_cmd_template_autoselection[] = { "rfm", "-r", fileChooserNoVT_search_cmd_returnFileName , "-p", "-x", fileChooserNoVT_search_cmd, "-d",fileChooserNoVT_search_cmd_autoselection, NULL };
 
 static gchar** rfmFileChooserNoVT_search_cmd(gchar* defaultFileSelection, gchar* search_cmd, gchar* rfmFileChooserReturnSelectionIntoFilename){
     sprintf(fileChooserNoVT_search_cmd_returnFileName, rfmFileChooserReturnSelectionIntoFilename);
