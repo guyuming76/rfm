@@ -745,11 +745,10 @@ static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *ch
    if (child_attribs!=NULL) {
       child_attribs->pid=-1;
       GError* err = NULL;
-      rv=g_spawn_async_with_pipes(rfm_curPath, v, NULL, G_SPAWN_DO_NOT_REAP_CHILD | ((child_attribs->stdOut_fd>0)? G_SPAWN_STDOUT_TO_DEV_NULL: G_SPAWN_DEFAULT),
+      rv=g_spawn_async_with_pipes(rfm_curPath, v, NULL, G_SPAWN_DO_NOT_REAP_CHILD,
 				  GSpawnChildSetupFunc_setenv,child_attribs,
                                   &child_attribs->pid, NULL, ((child_attribs->stdOut_fd<=0)? &child_attribs->stdOut_fd: NULL), // stdOut_fd>0, means we use existing fd to read result from, so we pass in NULL, otherwise stdout_fd will be overwriten. For example, we use existing fd in rfmFileChooser
                                   &child_attribs->stdErr_fd, &err);
-      // TODO: we check child_attribs->stdOut_fd>0 or <=0 above, this is for use in rfmFileChooser, where we use special fd to get returned selection. This make the code difficult to read. We need refact this.
       
       g_debug("g_spawn_async_with_pipes_wrapper:  workingdir:%s, argv:%s, G_SPAWN_DO_NOT_REAP_CHILD",rfm_curPath,v[0]);
       if (rv==TRUE) {
