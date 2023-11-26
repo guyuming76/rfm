@@ -580,7 +580,7 @@ static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_
    close(child_attribs->stdErr_fd);
    g_spawn_close_pid(child_attribs->pid);
 
-   if (child_attribs->stdErr!=NULL) g_warning("g_spawn_async_with_wrapper_child_supervisor: %s",child_attribs->stdErr);
+   if (child_attribs->stdErr!=NULL && strlen(child_attribs->stdErr)>0) g_warning("g_spawn_async_with_wrapper_child_supervisor: %s",child_attribs->stdErr);
    rfm_childList=g_list_remove(rfm_childList, child_attribs);
    /* if (rfm_childList==NULL) */
    /*    gtk_widget_set_sensitive(GTK_WIDGET(info_button), FALSE); */
@@ -603,7 +603,6 @@ static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_
       }
       g_error_free(err);
    }
-
 
    ExecCallback_freeChildAttribs(child_attribs);
    return FALSE;
@@ -3268,8 +3267,9 @@ int main(int argc, char *argv[])
    else
       die("ERROR: %s: setup() failed\n", PROG_NAME);
 
-   system("reset -I");
-   return (StartedAs_rfmFileChooser && rfmFileChooserResultNumber>0)?rfmFileChooserResultNumber:0;
+   if (isatty(0)) system("reset -I");
+   return 0;
+   //return (StartedAs_rfmFileChooser && rfmFileChooserResultNumber>0)?rfmFileChooserResultNumber:0;
 }
 
 static void ReadFromPipeStdinIfAny(char * fd)
@@ -3346,7 +3346,7 @@ static void rfmFileChooserResultReader(RFM_ChildAttribs* child_attribs){
   if(child_StdOut!=NULL) {
     gchar * oneline=strtok(child_StdOut,"\n");
     while (oneline!=NULL){
-      *fileSelectionList = g_list_prepend(*fileSelectionList, oneline);
+      *fileSelectionList = g_list_prepend(*fileSelectionList, strdup(oneline));
       g_debug("rfmFileChooser return:%s",oneline);
       oneline=strtok(NULL, "\n");
     }
@@ -3356,7 +3356,7 @@ static void rfmFileChooserResultReader(RFM_ChildAttribs* child_attribs){
 
   char named_pipe_name[50];
   sprintf(named_pipe_name, "%s%d", RFM_FILE_CHOOSER_NAMED_PIPE_PREFIX,getpid());
-  unlink(named_pipe_name);
+  remove(named_pipe_name);
 }
 
 GList* str_array_ToGList(char* a[]){
