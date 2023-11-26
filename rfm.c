@@ -3079,8 +3079,13 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
 
    add_toolbar(rfm_main_box, defaultPixbufs, rfmCtx);
 
-   if (auto_execution_command_after_rfm_start==NULL) refresh_store(rfmCtx);
-   else stdin_command_Scheduler = g_idle_add_once(exec_stdin_command, auto_execution_command_after_rfm_start);
+   if (isatty(0)) stdin_command_help();
+   if (auto_execution_command_after_rfm_start==NULL){
+     refresh_store(rfmCtx);
+     if(isatty(0)){
+       readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);
+     }
+   }else stdin_command_Scheduler = g_idle_add_once(exec_stdin_command, auto_execution_command_after_rfm_start);
    
    //block Ctrl+C. Without this, Ctrl+C in readline will terminate rfm. Now, if you run htop with readline, Ctrl+C only terminate htop. BTW, it's strange that i had tried sigprocmask, pthread_sigmask, and rl_clear_signals, and they didn't work.
    struct sigaction newaction;
@@ -3088,10 +3093,6 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
    newaction.sa_flags = 0;
    sigaction(SIGINT, &newaction,NULL);
 
-   if(isatty(0) && auto_execution_command_after_rfm_start==NULL){
-     stdin_command_help();
-     readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);
-   }
    return 0;
 }
 
@@ -3168,11 +3169,9 @@ int main(int argc, char *argv[])
 
    g_log_set_handler (G_LOG_DOMAIN, G_LOG_LEVEL_MASK | G_LOG_FLAG_FATAL| G_LOG_FLAG_RECURSION, g_log_default_handler, NULL);
 
-   g_debug("test g_debug");
-   g_info("test g_info");
-   g_warning("test g_warning. set env G_MESSAGES_DEBUG=rfm if you want to see g_debug output");
-   //g_error("test g_error");
-   //g_critical("test g_critical");
+   //g_debug("test g_debug");
+   //g_info("test g_info");
+   //g_warning("test g_warning. set env G_MESSAGES_DEBUG=rfm if you want to see g_debug output");
    
    rfmCtx=calloc(1,sizeof(RFM_ctx));
    if (rfmCtx==NULL) return 1;
@@ -3319,6 +3318,7 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
   SearchResultFileNameList = NULL;
   fileNum=0;
 
+  g_debug("update_SearchResultFileNameList length %d",strlen((gchar*)filenamelist));
   gchar * oneline=strtok((gchar*)filenamelist,"\n");
   while (oneline!=NULL){
     SearchResultFileNameList = g_list_prepend(SearchResultFileNameList, oneline);
