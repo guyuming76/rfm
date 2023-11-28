@@ -286,9 +286,9 @@ static gchar** stdin_command_nu(gchar* user_input_cmd) {
 
 static gchar** rfmFileChooserNoVT_search_cmd(gchar* defaultFileSelection, gchar* search_cmd, gchar* rfmFileChooserReturnSelectionIntoFilename){
     if (defaultFileSelection == NULL){
-	sprintf(shell_cmd_buffer, "exec %s | rfm -r %s -p", g_strdup(search_cmd), g_strdup(rfmFileChooserReturnSelectionIntoFilename));
+	sprintf(shell_cmd_buffer, "exec %s | rfm -t -r %s -p", g_strdup(search_cmd), g_strdup(rfmFileChooserReturnSelectionIntoFilename));
     } else {
-        sprintf(shell_cmd_buffer, "exec %s | rfm -r %s -p -d %s", g_strdup(search_cmd), g_strdup(rfmFileChooserReturnSelectionIntoFilename), g_strdup(defaultFileSelection));
+        sprintf(shell_cmd_buffer, "exec %s | rfm -t -r %s -p -d %s", g_strdup(search_cmd), g_strdup(rfmFileChooserReturnSelectionIntoFilename), g_strdup(defaultFileSelection));
     }
     return stdin_cmd_template_bash;
 }

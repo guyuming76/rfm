@@ -313,7 +313,9 @@ static char* rfm_historyFileLocation;
 static gboolean stdin_cmd_ending_space=FALSE;
 static GList * stdin_cmd_selection_list=NULL;
 static RFM_FileAttributes *stdin_cmd_selection_fileAttributes;
-static uint current_stdin_cmd_interpretor=0;
+static uint current_stdin_cmd_interpretor = 0;
+static gboolean rfmStartWithVirtualTerminal = TRUE;
+
 #ifdef GitIntegration
 // value " M " for modified
 // value "M " for staged
@@ -328,6 +330,7 @@ static void set_terminal_window_title(char * title);
 #endif
 
 void move_array_item_a_after_b(void * array, int index_b, int index_a, uint32_t array_item_size, uint32_t array_length);
+static gboolean startWithVT();
 static void show_msgbox(gchar *msg, gchar *title, gint type);
 static void die(const char *errstr, ...);
 static RFM_defaultPixbufs *load_default_pixbufs(void);
@@ -2627,7 +2630,7 @@ static void readlineInSeperateThread(GString * readlineResultStringFromPreviousR
           g_string_free(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution,TRUE);
   }
 
-  if(isatty(0)){
+  if(startWithVT()){
     gchar prompt[5]="";
     strcat(prompt, stdin_cmd_interpretors[current_stdin_cmd_interpretor].prompt);
     ToSearchResultFilenameList=FALSE;
@@ -2967,7 +2970,7 @@ static void exec_stdin_command (gchar * readlineResult)
  switchToReadlineThread:
         g_free (readlineResult);
 
-	if(isatty(0) || auto_execution_command_after_rfm_start!=NULL){
+	if(startWithVT() || auto_execution_command_after_rfm_start!=NULL){
 	  if (auto_execution_command_after_rfm_start==NULL) g_thread_join(readlineThread);
 	  readlineThread=g_thread_new("readline", readlineInSeperateThread, readlineResultString);
 	}
@@ -3079,10 +3082,10 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
 
    add_toolbar(rfm_main_box, defaultPixbufs, rfmCtx);
 
-   if (isatty(0)) stdin_command_help();
+   if (startWithVT()) stdin_command_help();
    if (auto_execution_command_after_rfm_start==NULL){
      refresh_store(rfmCtx);
-     if(isatty(0)){
+     if(startWithVT()){
        readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);
      }
    }else stdin_command_Scheduler = g_idle_add_once(exec_stdin_command, auto_execution_command_after_rfm_start);
@@ -3243,6 +3246,9 @@ int main(int argc, char *argv[])
 	auto_execution_command_after_rfm_start = g_strdup(argv[c+1]);
 	c++;
 	break;
+      case 't':
+	rfmStartWithVirtualTerminal=FALSE;
+	break;
       default:
 	 die("invalid parameter, %s -h for help\n",PROG_NAME);
       }
@@ -3266,7 +3272,7 @@ int main(int argc, char *argv[])
    else
       die("ERROR: %s: setup() failed\n", PROG_NAME);
 
-   if (isatty(0)) system("reset -I");
+   if (startWithVT()) system("reset -I");
    return 0;
    //return (StartedAs_rfmFileChooser && rfmFileChooserResultNumber>0)?rfmFileChooserResultNumber:0;
 }
@@ -3335,6 +3341,9 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
 }
 
 
+static gboolean startWithVT(){
+  return rfmStartWithVirtualTerminal && isatty(0);
+}
 
 static void rfmFileChooserResultReader(RFM_ChildAttribs* child_attribs){
   gchar *child_StdOut = child_attribs->stdOut;
