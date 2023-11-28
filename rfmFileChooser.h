@@ -1,8 +1,25 @@
+/* this is for client which does not reference glib*/
+void
+rfmFileChooser(char *fileSelectionStringArray[],
+               gboolean startWithVirtualTerminal, char *search_cmd,
+               void (*fileChooserClientCallback)(char **));
 
-char** rfmFileChooser(char* fileSelectionStringArray[], gboolean startWithVirtualTerminal,char* search_cmd);
-GList* rfmFileChooser_glist(GList** fileSelectionStringList, gboolean startWithVirtualTerminal,char* search_cmd);
+/* this is for client which reference glib and hence glist*/
+void
+rfmFileChooser_glist(
+    GList **fileSelectionStringList, gboolean startWithVirtualTerminal,
+    char *search_cmd,
+    void (*fileChooserClientCallback)(char **));
 
-static GList* selectionList=NULL;
+
+static GList *selectionList = NULL;
+
+static void fileChooserCallback(char** fileSelectionArray){
+  for(int i=0; fileSelectionArray[i]!=NULL; i++)
+    printf("%s\n",fileSelectionArray[i]);
+  free(fileSelectionArray); //content of fileSelectionArray, the char*, is also referenced by selectionList, so we just free the array, don't free full.
+}
+
 static void Test_rfmFileChooser(){
 	      GtkTreeIter iter;
 	      GList *listElement;
@@ -25,6 +42,6 @@ static void Test_rfmFileChooser(){
 	      }
 	      g_list_free_full(view_selection_list, (GDestroyNotify)gtk_tree_path_free);
 
-      	      //selectionList = rfmFileChooser_glist(&selectionList,FALSE, NULL);
-	      selectionList = rfmFileChooser_glist(&selectionList,FALSE, "locate rfm.c");
+      	      //rfmFileChooser_glist(&selectionList,FALSE, NULL,fileChooserCallback);
+	      rfmFileChooser_glist(&selectionList,FALSE, "locate rfm.c",fileChooserCallback);
 }
