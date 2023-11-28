@@ -284,21 +284,13 @@ static gchar** stdin_command_nu(gchar* user_input_cmd) {
   return stdin_cmd_template_nu;
 }
 
-static gchar fileChooserNoVT_search_cmd_returnFileName[PATH_MAX];
-static gchar fileChooserNoVT_search_cmd[ARG_MAX];
-static gchar* fileChooserNoVT_search_cmd_autoselection[PATH_MAX];
-static gchar* fileChooserNoVT_search_cmd_template[] = { "rfm", "-r", fileChooserNoVT_search_cmd_returnFileName, "-x", fileChooserNoVT_search_cmd, NULL };
-static gchar* fileChooserNoVT_search_cmd_template_autoselection[] = { "rfm", "-r", fileChooserNoVT_search_cmd_returnFileName , "-p", "-x", fileChooserNoVT_search_cmd, "-d",fileChooserNoVT_search_cmd_autoselection, NULL };
-
 static gchar** rfmFileChooserNoVT_search_cmd(gchar* defaultFileSelection, gchar* search_cmd, gchar* rfmFileChooserReturnSelectionIntoFilename){
-    sprintf(fileChooserNoVT_search_cmd_returnFileName, rfmFileChooserReturnSelectionIntoFilename);
-    sprintf(fileChooserNoVT_search_cmd, "%s", g_strdup(search_cmd));
-
-    if (defaultFileSelection == NULL) return fileChooserNoVT_search_cmd_template;
-    else {
-      sprintf(fileChooserNoVT_search_cmd_autoselection, g_strdup(defaultFileSelection));
-      return fileChooserNoVT_search_cmd_template_autoselection;
+    if (defaultFileSelection == NULL){
+	sprintf(shell_cmd_buffer, "exec %s | rfm -r %s -p", g_strdup(search_cmd), g_strdup(rfmFileChooserReturnSelectionIntoFilename));
+    } else {
+        sprintf(shell_cmd_buffer, "exec %s | rfm -r %s -p -d %s", g_strdup(search_cmd), g_strdup(rfmFileChooserReturnSelectionIntoFilename), g_strdup(defaultFileSelection));
     }
+    return stdin_cmd_template_bash;
 }
 
 static stdin_cmd_interpretor stdin_cmd_interpretors[] = {

@@ -8,6 +8,6 @@ int main(int argc, char *argv[]){
     	void* handle = dlopen("librfm.so", RTLD_LAZY);
 	fileChooser = (char** (*)(char**, bool, char*))dlsym(handle,"rfmFileChooser");
 
-	selectionList = fileChooser(argv, 0, "locate rfm.c>0");
+	selectionList = fileChooser(argv, 0, "locate rfm.c");
     	dlclose(handle);
 }
