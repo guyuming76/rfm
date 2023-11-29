@@ -40,6 +40,7 @@
 #define   RFM_EXEC_NONE     G_SPAWN_STDOUT_TO_DEV_NULL
 #define   RFM_EXEC_STDOUT   G_SPAWN_CHILD_INHERITS_STDIN | G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR
 #define   RFM_EXEC_OUPUT_READ_BY_PROGRAM G_SPAWN_DEFAULT
+#define   RFM_EXEC_FILE_CHOOSER G_SPAWN_STDIN_FROM_DEV_NULL
 #define   RFM_EXEC_MOUNT   G_SPAWN_CHILD_INHERITS_STDIN | G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR  //TODO: i don't know what this mean yet.
 
 typedef struct {
@@ -553,7 +554,7 @@ static void rfm_stop_all(RFM_ctx *rfmCtx) {
 
 static gboolean ExecCallback_freeChildAttribs(RFM_ChildAttribs * child_attribs){
    if(child_attribs->exitcode==0 && (child_attribs->customCallBackFunc)!=NULL){
-     if (child_attribs->runOpts!=RFM_EXEC_OUPUT_READ_BY_PROGRAM){
+     if (child_attribs->runOpts!=RFM_EXEC_OUPUT_READ_BY_PROGRAM && child_attribs->runOpts!=RFM_EXEC_FILE_CHOOSER){
        //for old callback such as refresh_store, there is no need for child_attribs->stdout, so pass in customcallbackuserdata as parameter to remain compatible.
 
        (child_attribs->customCallBackFunc)(child_attribs->customCallbackUserData);
@@ -747,9 +748,9 @@ static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *ch
    if (child_attribs!=NULL) {
       child_attribs->pid=-1;
       GError* err = NULL;
-      rv=g_spawn_async_with_pipes(rfm_curPath, v, NULL, G_SPAWN_DO_NOT_REAP_CHILD,
+      rv=g_spawn_async_with_pipes(rfm_curPath, v, NULL, G_SPAWN_DO_NOT_REAP_CHILD | child_attribs->runOpts,
 				  GSpawnChildSetupFunc_setenv,child_attribs,
-                                  &child_attribs->pid, NULL, ((child_attribs->stdOut_fd<=0)? &child_attribs->stdOut_fd: NULL), // stdOut_fd>0, means we use existing fd to read result from, so we pass in NULL, otherwise stdout_fd will be overwriten. For example, we use existing fd in rfmFileChooser
+                                  &child_attribs->pid, NULL, ((child_attribs->runOpts==RFM_EXEC_FILE_CHOOSER)? NULL: &child_attribs->stdOut_fd),
                                   &child_attribs->stdErr_fd, &err);
       
       g_debug("g_spawn_async_with_pipes_wrapper:  workingdir:%s, argv:%s, G_SPAWN_DO_NOT_REAP_CHILD",rfm_curPath,v[0]);
@@ -3389,7 +3390,7 @@ static void rfmFileChooserResultReader(RFM_ChildAttribs* child_attribs){
   sprintf(named_pipe_name, "%s%d", RFM_FILE_CHOOSER_NAMED_PIPE_PREFIX,getpid());
   remove(named_pipe_name);
 
-  if (FileChooserClientCallback!=NULL) FileChooserClientCallback(GList_to_str_array(*fileSelectionList,returnedCount));
+  if (FileChooserClientCallback!=NULL) (*FileChooserClientCallback)(GList_to_str_array(*fileSelectionList,returnedCount));
 }
 
 
@@ -3407,20 +3408,19 @@ void rfmFileChooser_glist(GList** fileSelectionStringList, gboolean startWithVir
       RFM_ChildAttribs *child_attribs=calloc(1,sizeof(RFM_ChildAttribs));
       child_attribs->customCallBackFunc = rfmFileChooserResultReader;
       child_attribs->customCallbackUserData = fileSelectionStringList;
-      child_attribs->runOpts=RFM_EXEC_OUPUT_READ_BY_PROGRAM;
       child_attribs->stdOut_fd = named_pipe_fd;
       child_attribs->stdOut = NULL;
       child_attribs->stdErr = NULL;
       child_attribs->spawn_async = TRUE;
-      
+      child_attribs->runOpts=RFM_EXEC_FILE_CHOOSER;      
       if (search_cmd==NULL){
 	child_attribs->name=g_strdup(rfmFileChooser_cmd[0]);
-	child_attribs->RunCmd = startWithVirtualTerminal? rfmFileChooser_cmd : rfmFileChooserNoVT_cmd;
+        child_attribs->RunCmd = startWithVirtualTerminal? rfmFileChooser_cmd : rfmFileChooserNoVT_cmd;
 	g_spawn_wrapper_(*fileSelectionStringList, g_list_length(*fileSelectionStringList), named_pipe_name, child_attribs);
       }else{
 	child_attribs->name=g_strdup("rfmFileChooserNoVT_search_cmd");
 	//TODO: fileSelectionlist to char* conversion not implemenented, i just omit the default file selection now.
-	child_attribs->RunCmd = rfmFileChooserNoVT_search_cmd(NULL, search_cmd, named_pipe_name);
+        child_attribs->RunCmd = rfmFileChooserNoVT_search_cmd(NULL, search_cmd, named_pipe_name);
 	g_spawn_wrapper_(NULL, 0, NULL, child_attribs);
       }     
     }
