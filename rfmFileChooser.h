@@ -1,4 +1,4 @@
-/* this is for client which does not reference glib*/
+/* this is for client which does not reference glib, my test is that async==TRUE don't work here, the callback never called, i guess this is because the client does not have a gmainloop*/
 char**
 rfmFileChooser(char *fileSelectionStringArray[],
                gboolean startWithVirtualTerminal, char *search_cmd, gboolean async,

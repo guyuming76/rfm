@@ -848,7 +848,6 @@ static gboolean g_spawn_wrapper_(GList *file_list, long n_args, char *dest_path,
 	       child_attribs->exitcode=0;
 	       child_attribs->status=-1;
 	       g_debug("g_spawn_wrapper_->g_spawn_sync, workingdir:%s, argv:%s ",rfm_curPath,v[0]);
-	       //TODO: i am trying to call rfmFileChooser sync, however, the parameter have stdOut, but no stdOut_fd, then how can we specify our custom namedpipefd?
 	       if (!g_spawn_sync(rfm_curPath, v, NULL,child_attribs->runOpts, GSpawnChildSetupFunc_setenv,child_attribs, &child_attribs->stdOut, &child_attribs->stdErr,&child_attribs->status,NULL)){
 	            g_warning("g_spawn_wrapper_->g_spawn_sync %s failed to execute. Check command in config.h!", v[0]);
 	            free_child_attribs(child_attribs);
@@ -3371,7 +3370,15 @@ char** GList_to_str_array(GList *l, int count) {
 }
 
 static void rfmFileChooserResultReader(RFM_ChildAttribs* child_attribs){
-  gchar *child_StdOut = child_attribs->stdOut;
+  gchar *child_StdOut=NULL;
+  if (child_attribs->spawn_async){
+    child_StdOut = child_attribs->stdOut;
+  }else{
+    //g_spawn_sync has the parameter stdOut, but no stdOut_fd as g_spawn_async, so i readout from the namedpipefd here.
+    read_char_pipe(child_attribs->stdOut_fd, PIPE_SZ, &child_StdOut);
+    close(child_attribs->stdOut_fd);
+  }
+
   int returnedCount = 0;
   //TODO: g_spawn_wrapper seem not dealing with exitcode
   GList** fileSelectionList = child_attribs->customCallbackUserData;
@@ -3385,6 +3392,7 @@ static void rfmFileChooserResultReader(RFM_ChildAttribs* child_attribs){
       oneline=strtok(NULL, "\n");
       returnedCount++;
     }
+    if (!child_attribs->spawn_async) g_free(child_StdOut);
   }else{
     g_debug("rfmFileChooser return nothing");
   }
