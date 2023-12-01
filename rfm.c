@@ -1046,7 +1046,7 @@ static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter)
      thumbData->thumb_size = RFM_THUMBNAIL_SIZE;
    }
    thumbData->path=g_strdup(fileAttributes->path);
-   thumbData->mtime_file = g_date_time_to_unix(fileAttributes->file_mtime);
+   thumbData->mtime_file = fileAttributes->file_mtime==NULL? 0 : g_date_time_to_unix(fileAttributes->file_mtime);
    thumbData->uri=g_filename_to_uri(thumbData->path, NULL, NULL);
    thumbData->md5=g_compute_checksum_for_string(G_CHECKSUM_MD5, thumbData->uri, -1);
    thumbData->thumb_name=g_strdup_printf("%s.png", thumbData->md5);
@@ -1360,8 +1360,8 @@ static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,
       //gchar * git_commit_msg=g_hash_table_lookup(gitCommitMsg,fileAttributes->path);
 #endif
       fileAttributes->mime_sort=g_strjoin(NULL,fileAttributes->mime_root,fileAttributes->mime_sub_type,NULL);
-      fileAttributes->mtime=g_date_time_format(fileAttributes->file_mtime,RFM_DATETIME_FORMAT);
-      fileAttributes->atime=g_date_time_format(fileAttributes->file_atime,RFM_DATETIME_FORMAT);
+      fileAttributes->mtime= fileAttributes->file_mtime==NULL ? NULL : g_date_time_format(fileAttributes->file_mtime,RFM_DATETIME_FORMAT);
+      fileAttributes->atime= fileAttributes->file_atime==NULL ? NULL : g_date_time_format(fileAttributes->file_atime,RFM_DATETIME_FORMAT);
       fileAttributes->ctime= fileAttributes->file_ctime==NULL ? NULL : g_date_time_format(fileAttributes->file_ctime,RFM_DATETIME_FORMAT);
       gtk_list_store_insert_with_values(store, iter, -1,
                           COL_MODE_STR, fileAttributes->file_mode_str,
@@ -1369,7 +1369,7 @@ static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,
 			  COL_FILENAME,fileAttributes->file_name,
 			  COL_FULL_PATH,fileAttributes->path,
                           COL_PIXBUF, fileAttributes->pixbuf,
-		          COL_MTIME, g_date_time_to_unix(fileAttributes->file_mtime),
+			  COL_MTIME, fileAttributes->file_mtime==NULL? 0 : g_date_time_to_unix(fileAttributes->file_mtime),
 			  COL_MTIME_STR,fileAttributes->mtime,
              		  COL_SIZE,fileAttributes->file_size,
                           COL_ATTR, fileAttributes,
