@@ -7,11 +7,11 @@ rfmFileChooser(char *fileSelectionStringArray[],
 /* this is for client which reference glib and hence glist*/
 GList*
 rfmFileChooser_glist(
-    GList **fileSelectionStringList, gboolean startWithVirtualTerminal,
-    char *search_cmd, gboolean async,
-    void (*fileChooserClientCallback)(char **));
+               GList **fileSelectionStringList, gboolean startWithVirtualTerminal,
+               char *search_cmd, gboolean async,
+               void (*fileChooserClientCallback)(char **));
 
-
+/* hold default file selection before, and hold returned user selection in fileChooser after*/
 static GList *fileChooserSelectionList = NULL;
 
 void fileChooserCallback(char** fileSelectionArray){

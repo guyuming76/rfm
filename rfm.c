@@ -3353,7 +3353,6 @@ GList* str_array_ToGList(char* a[]){
   GList * ret = NULL;
   if (a!=NULL)
     for(int i=0;i<G_N_ELEMENTS(a);i++) ret=g_list_prepend(ret, a[i]);
-  //free(a);
   return ret;
 }
 
@@ -3409,7 +3408,7 @@ static void rfmFileChooserResultReader(RFM_ChildAttribs* child_attribs){
    interaction, this list is returned with user selection. And the default
    selection is freed in rfmFileChooserResultReader*/
 
-GList* rfmFileChooser_glist(GList** fileSelectionStringList, gboolean startWithVirtualTerminal, char* search_cmd, gboolean async, void (*fileChooserClientCallback)(char **)) {
+GList* rfmFileChooser_glist(GList** fileChooserSelectionListAddress, gboolean startWithVirtualTerminal, char* search_cmd, gboolean async, void (*fileChooserClientCallback)(char **)) {
   char named_pipe_name[50];
   sprintf(named_pipe_name, "%s%d", RFM_FILE_CHOOSER_NAMED_PIPE_PREFIX,getpid());
   if (async && fileChooserClientCallback==NULL) { g_warning("to call rfmFileChooser async, fileChooserClientCallback function pointer must be provided."); return NULL; }
@@ -3419,7 +3418,7 @@ GList* rfmFileChooser_glist(GList** fileSelectionStringList, gboolean startWithV
     if (named_pipe_fd>0){
       RFM_ChildAttribs *child_attribs=calloc(1,sizeof(RFM_ChildAttribs));
       child_attribs->customCallBackFunc = rfmFileChooserResultReader;
-      child_attribs->customCallbackUserData = fileSelectionStringList;
+      child_attribs->customCallbackUserData = fileChooserSelectionListAddress;
       child_attribs->stdOut_fd = named_pipe_fd;
       child_attribs->stdOut = NULL;
       child_attribs->stdErr = NULL;
@@ -3428,12 +3427,11 @@ GList* rfmFileChooser_glist(GList** fileSelectionStringList, gboolean startWithV
       if (search_cmd==NULL){
 	child_attribs->name=g_strdup(rfmFileChooser_cmd[0]);
         child_attribs->RunCmd = startWithVirtualTerminal? rfmFileChooser_cmd : rfmFileChooserNoVT_cmd;
-	if (g_spawn_wrapper_(*fileSelectionStringList, g_list_length(*fileSelectionStringList), named_pipe_name, child_attribs)) return *fileSelectionStringList;
+	if (g_spawn_wrapper_(*fileChooserSelectionListAddress, g_list_length(*fileChooserSelectionListAddress), named_pipe_name, child_attribs)) return *fileChooserSelectionListAddress;
       }else{
-	child_attribs->name=g_strdup("rfmFileChooserNoVT_search_cmd");
-	//TODO: fileSelectionlist to char* conversion not implemenented, i just omit the default file selection now.
-        child_attribs->RunCmd = rfmFileChooserNoVT_search_cmd(NULL, search_cmd, named_pipe_name);
-	if (g_spawn_wrapper_(NULL, 0, NULL, child_attribs)) return *fileSelectionStringList;
+	child_attribs->name=g_strdup("rfmFileChooser");
+        child_attribs->RunCmd = rfmFileChooser_CMD(GList_to_str_array(*fileChooserSelectionListAddress, g_list_length(*fileChooserSelectionListAddress)) , search_cmd, named_pipe_name);
+	if (g_spawn_wrapper_(NULL, 0, NULL, child_attribs)) return *fileChooserSelectionListAddress;
       }
     }else g_warning("failed to open %s",named_pipe_name);
   }else g_warning("mkfifo mode 0700 (rwx------) failed for:%s",named_pipe_name);

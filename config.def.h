@@ -284,15 +284,6 @@ static gchar** stdin_command_nu(gchar* user_input_cmd) {
   return stdin_cmd_template_nu;
 }
 
-static gchar** rfmFileChooserNoVT_search_cmd(gchar* defaultFileSelection, gchar* search_cmd, gchar* rfmFileChooserReturnSelectionIntoFilename){
-    if (defaultFileSelection == NULL){
-	sprintf(shell_cmd_buffer, "exec %s | rfm -t -r %s -p", g_strdup(search_cmd), g_strdup(rfmFileChooserReturnSelectionIntoFilename));
-    } else {
-        sprintf(shell_cmd_buffer, "exec %s | rfm -t -r %s -p -d %s", g_strdup(search_cmd), g_strdup(rfmFileChooserReturnSelectionIntoFilename), g_strdup(defaultFileSelection));
-    }
-    return stdin_cmd_template_bash;
-}
-
 static stdin_cmd_interpretor stdin_cmd_interpretors[] = {
         //Name             activationKey          prompt            cmdTransformer
 	{"Bash",           "b>",                  "b",              stdin_command_bash },
@@ -301,3 +292,20 @@ static stdin_cmd_interpretor stdin_cmd_interpretors[] = {
 	{"PythonEmbedded", "p>",                  "p",              NULL               },
 #endif
 };
+
+static gchar** rfmFileChooser_CMD(gchar** defaultFileSelection, gchar* search_cmd, gchar* rfmFileChooserReturnSelectionIntoFilename){
+    char* defaultFiles = strdup(""); // str join gchar** into char*, space as seperator
+    if (defaultFileSelection != NULL){
+      for(int i=0; i<G_N_ELEMENTS(defaultFileSelection); i++)
+	if (defaultFileSelection[i]!=NULL && strlen(defaultFileSelection[i])>0){
+	  strcat(defaultFiles, strdup(" "));
+	  strcat(defaultFiles, defaultFileSelection[i]);
+	};
+    };
+    if (strlen(defaultFiles)>0){
+	sprintf(shell_cmd_buffer, "exec %s | rfm -t -r %s -p -d %s", g_strdup(search_cmd), g_strdup(rfmFileChooserReturnSelectionIntoFilename), g_strdup(defaultFiles));
+    } else {
+	sprintf(shell_cmd_buffer, "exec %s | rfm -t -r %s -p", g_strdup(search_cmd), g_strdup(rfmFileChooserReturnSelectionIntoFilename));
+    }
+    return stdin_cmd_template_bash;
+}
