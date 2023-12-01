@@ -1,17 +1,16 @@
 /* this is for client which does not reference glib, my test is that async==TRUE don't work here, the callback never called, i guess this is because the client does not have a gmainloop*/
 char**
-rfmFileChooser(char *fileSelectionStringArray[],
-               gboolean startWithVirtualTerminal, char *search_cmd, gboolean async,
+rfmFileChooser(gboolean startWithVirtualTerminal, char *search_cmd, gboolean async,
+	       char *fileSelectionStringArray[],
                void (*fileChooserClientCallback)(char **));
 
 /* this is for client which reference glib and hence glist*/
 GList*
-rfmFileChooser_glist(
-               GList **fileSelectionStringList, gboolean startWithVirtualTerminal,
-               char *search_cmd, gboolean async,
+rfmFileChooser_glist(gboolean startWithVirtualTerminal, char *search_cmd, gboolean async,
+	       GList **fileSelectionStringList, 
                void (*fileChooserClientCallback)(char **));
 
-/* hold default file selection before, and hold returned user selection in fileChooser after*/
+/* hold default file selection before, and hold returned user selection in fileChooser after, so this will be freed during rfmFileChooser calling*/
 static GList *fileChooserSelectionList = NULL;
 
 void fileChooserCallback(char** fileSelectionArray){
@@ -46,6 +45,5 @@ static void Test_rfmFileChooser(){
 	      }
 	      g_list_free_full(view_selection_list, (GDestroyNotify)gtk_tree_path_free);
 
-      	      //rfmFileChooser_glist(&selectionList,FALSE, NULL,fileChooserCallback);
-	      rfmFileChooser_glist(&fileChooserSelectionList,FALSE, "locate rfm.c", TRUE, fileChooserCallback);
+	      rfmFileChooser_glist(FALSE, "locate rfm.c", TRUE, &fileChooserSelectionList, fileChooserCallback);
 }

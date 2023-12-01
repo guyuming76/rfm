@@ -64,9 +64,7 @@ static const char *ffmpegThumb[] =  { "/usr/bin/ffmpeg", "-i","", "-frames", "1"
     /* Tool button commands */
 static const char *term_cmd[]  = { "/usr/bin/foot", NULL };
 static const char *new_rfm[]  = { rfmBinPath "/rfmVTforCMD.sh", rfmBinPath "/rfm", NULL };
-static const char *rfmFileChooser_cmd[] = { rfmBinPath "/rfmFileChooser.sh",NULL};
-static const char *rfmFileChooserNoVT_cmd[] = { rfmBinPath "/rfmFileChooserNoVT.sh", NULL };
-//static const char *rfmFileChooserNoVT4searchResult_cmd[] = { rfmBinPath "/rfmFileChooserNoVT4searchResult.sh", NULL };
+
 #ifdef GitIntegration
 static const char *git_inside_work_tree_cmd[] = {"/usr/bin/git", "rev-parse","--is-inside-work-tree", NULL};
 static const char *git_ls_files_cmd[] = {"/usr/bin/git", "ls-files", "--full-name",NULL};
@@ -293,19 +291,26 @@ static stdin_cmd_interpretor stdin_cmd_interpretors[] = {
 #endif
 };
 
-static gchar** rfmFileChooser_CMD(gchar** defaultFileSelection, gchar* search_cmd, gchar* rfmFileChooserReturnSelectionIntoFilename){
-    char* defaultFiles = strdup(""); // str join gchar** into char*, space as seperator
+static gchar* rfmFileChooserVT_cmd[] = { "/usr/bin/foot", "/bin/bash", "-i", "-c", shell_cmd_buffer, NULL };
+static gchar** rfmFileChooser_CMD(gboolean startWithVT, gchar* search_cmd, gchar** defaultFileSelection, gchar* rfmFileChooserReturnSelectionIntoFilename){
+    if (search_cmd == NULL || g_strcmp0(search_cmd,"")==0)
+    	sprintf(shell_cmd_buffer, "rfm -r %s", g_strdup(rfmFileChooserReturnSelectionIntoFilename));
+    else
+	sprintf(shell_cmd_buffer, "exec %s | rfm -r %s -p", g_strdup(search_cmd), g_strdup(rfmFileChooserReturnSelectionIntoFilename));
+
     if (defaultFileSelection != NULL){
+      strcat(shell_cmd_buffer, strdup(" -d"));
       for(int i=0; i<G_N_ELEMENTS(defaultFileSelection); i++)
 	if (defaultFileSelection[i]!=NULL && strlen(defaultFileSelection[i])>0){
-	  strcat(defaultFiles, strdup(" "));
-	  strcat(defaultFiles, defaultFileSelection[i]);
+	  strcat(shell_cmd_buffer, strdup(" "));
+	  strcat(shell_cmd_buffer, defaultFileSelection[i]);
 	};
     };
-    if (strlen(defaultFiles)>0){
-	sprintf(shell_cmd_buffer, "exec %s | rfm -t -r %s -p -d %s", g_strdup(search_cmd), g_strdup(rfmFileChooserReturnSelectionIntoFilename), g_strdup(defaultFiles));
-    } else {
-	sprintf(shell_cmd_buffer, "exec %s | rfm -t -r %s -p", g_strdup(search_cmd), g_strdup(rfmFileChooserReturnSelectionIntoFilename));
+
+    if (startWithVT){
+	return rfmFileChooserVT_cmd;
+    }else{
+	strcat(shell_cmd_buffer, strdup(" -t"));
+        return stdin_cmd_template_bash;
     }
-    return stdin_cmd_template_bash;
 }

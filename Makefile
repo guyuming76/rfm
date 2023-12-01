@@ -81,9 +81,6 @@ install: all
 #	@cp -f scripts/rfmGitShowPictures_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmGitShowPictures.sh
 	@cp -f scripts/rfmGitCommit_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmGitCommit.sh
 	@cp -f scripts/rfmChangeOwner_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmChangeOwner.sh
-	@cp -f scripts/rfmFileChooser.sh ${DESTDIR}${PREFIX}/bin
-	@cp -f scripts/rfmFileChooserNoVT.sh ${DESTDIR}${PREFIX}/bin
-#	@cp -f scripts/rfmFileChooserNoVT4searchResult.sh ${DESTDIR}${PREFIX}/bin
 #	@cp -f scripts/rfmNewFile.sh ${DESTDIR}${PREFIX}/bin
 #	@cp -f scripts/rfmNewDir.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f rfm.desktop /usr/share/applications/rfm.desktop
@@ -105,9 +102,6 @@ install: all
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmMoveClipboardToCurPath.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmGitCommit.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmChangeOwner.sh
-	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmFileChooser.sh
-	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmFileChooserNoVT.sh
-#	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmFileChooserNoVT4searchResult.sh
 #	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmGitShowPictures.sh
 #	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmNewFile.sh
 #	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmNewDir.sh
@@ -130,9 +124,6 @@ uninstall:
 #	@rm -f ${DESTDIR}${PREFIX}/bin/rfmGitShowPictures.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmGitCommit.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmChangeOwner.sh
-	@rm -f ${DESTDIR}${PREFIX}/bin/rfmFileChooser.sh
-	@rm -f ${DESTDIR}${PREFIX}/bin/rfmFileChooserNoVT.sh
-#	@rm -f ${DESTDIR}${PREFIX}/bin/rfmFileChooserNoVT4searchResult.sh
 #	@rm -f ${DESTDIR}${PREFIX}/bin/rfmNewFile.sh
 #	@rm -f ${DESTDIR}${PREFIX}/bin/rfmNewDir.sh
 	@rm -f /usr/share/applications/rfm.desktop

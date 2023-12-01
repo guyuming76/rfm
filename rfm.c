@@ -3380,7 +3380,7 @@ static void rfmFileChooserResultReader(RFM_ChildAttribs* child_attribs){
 
   int returnedCount = 0;
   //TODO: g_spawn_wrapper seem not dealing with exitcode
-  GList** fileSelectionList = child_attribs->customCallbackUserData;
+  GList** fileSelectionList = child_attribs->customCallbackUserData; //This is actually the global fileChooserSelectionList
   g_list_free_full(*fileSelectionList, (GDestroyNotify)g_free); // The file path str have already been freed with command returned by build_cmd_vector called by g_spawn_wrapper_ ? Maybe not, the build_cmd_vector take file names owned by rfm_FileAttributelist before and never free filefullpath. but here filefullpath comes from test_rfmFilechooser
   *fileSelectionList=NULL;
   if(child_StdOut!=NULL) {
@@ -3408,7 +3408,7 @@ static void rfmFileChooserResultReader(RFM_ChildAttribs* child_attribs){
    interaction, this list is returned with user selection. And the default
    selection is freed in rfmFileChooserResultReader*/
 
-GList* rfmFileChooser_glist(GList** fileChooserSelectionListAddress, gboolean startWithVirtualTerminal, char* search_cmd, gboolean async, void (*fileChooserClientCallback)(char **)) {
+GList* rfmFileChooser_glist(gboolean startWithVirtualTerminal, char* search_cmd, gboolean async, GList** fileChooserSelectionListAddress, void (*fileChooserClientCallback)(char **)) {
   char named_pipe_name[50];
   sprintf(named_pipe_name, "%s%d", RFM_FILE_CHOOSER_NAMED_PIPE_PREFIX,getpid());
   if (async && fileChooserClientCallback==NULL) { g_warning("to call rfmFileChooser async, fileChooserClientCallback function pointer must be provided."); return NULL; }
@@ -3424,23 +3424,18 @@ GList* rfmFileChooser_glist(GList** fileChooserSelectionListAddress, gboolean st
       child_attribs->stdErr = NULL;
       child_attribs->spawn_async = async;
       child_attribs->runOpts=RFM_EXEC_FILE_CHOOSER;
-      if (search_cmd==NULL){
-	child_attribs->name=g_strdup(rfmFileChooser_cmd[0]);
-        child_attribs->RunCmd = startWithVirtualTerminal? rfmFileChooser_cmd : rfmFileChooserNoVT_cmd;
-	if (g_spawn_wrapper_(*fileChooserSelectionListAddress, g_list_length(*fileChooserSelectionListAddress), named_pipe_name, child_attribs)) return *fileChooserSelectionListAddress;
-      }else{
-	child_attribs->name=g_strdup("rfmFileChooser");
-        child_attribs->RunCmd = rfmFileChooser_CMD(GList_to_str_array(*fileChooserSelectionListAddress, g_list_length(*fileChooserSelectionListAddress)) , search_cmd, named_pipe_name);
-	if (g_spawn_wrapper_(NULL, 0, NULL, child_attribs)) return *fileChooserSelectionListAddress;
-      }
+      child_attribs->name=g_strdup("rfmFileChooser");
+      child_attribs->RunCmd = rfmFileChooser_CMD(startWithVirtualTerminal, search_cmd, GList_to_str_array(*fileChooserSelectionListAddress, g_list_length(*fileChooserSelectionListAddress)), named_pipe_name);
+
+      if (g_spawn_wrapper_(NULL, 0, NULL, child_attribs)) return *fileChooserSelectionListAddress;
     }else g_warning("failed to open %s",named_pipe_name);
   }else g_warning("mkfifo mode 0700 (rwx------) failed for:%s",named_pipe_name);
   return NULL;
 }
 
-char** rfmFileChooser(char *fileSelectionStringArray[], gboolean startWithVirtualTerminal, char* search_cmd, gboolean async, void (*fileChooserClientCallback)(char**)) {
+char** rfmFileChooser(gboolean startWithVirtualTerminal, char* search_cmd, gboolean async, char *fileSelectionStringArray[], void (*fileChooserClientCallback)(char**)) {
   fileChooserSelectionList = str_array_ToGList(fileSelectionStringArray);
-  rfmFileChooser_glist(&fileChooserSelectionList, startWithVirtualTerminal, search_cmd, async, fileChooserClientCallback);
+  rfmFileChooser_glist(startWithVirtualTerminal, search_cmd, async, &fileChooserSelectionList, fileChooserClientCallback);
   if (async) return NULL;
   else return GList_to_str_array(fileChooserSelectionList, g_list_length(fileChooserSelectionList));
 }
