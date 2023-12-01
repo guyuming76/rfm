@@ -1122,15 +1122,21 @@ static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guin
 
    gchar *absoluteaddr;
    if (name[0]=='/')
-     absoluteaddr = canonicalize_file_name(g_build_filename(name, NULL)); /*if mlocate index not updated with updatedb, address returned by locate will return NULL after canonicalize */
+     absoluteaddr = g_build_filename(name, NULL); /*if mlocate index not updated with updatedb, address returned by locate will return NULL after canonicalize */
    else if (SearchResultViewInsteadOfDirectoryView)
-     absoluteaddr = canonicalize_file_name(g_build_filename(rfm_SearchResultPath, name, NULL));
+     absoluteaddr = g_build_filename(rfm_SearchResultPath, name, NULL);
    else
-     absoluteaddr = canonicalize_file_name(g_build_filename(rfm_curPath, name, NULL));
+     absoluteaddr = g_build_filename(rfm_curPath, name, NULL);
      //address returned by find can be ./blabla, and g_build_filename return something like /rfm/./blabla, so, need to be canonicalized here
-   if (absoluteaddr==NULL){
+   
+   if (canonicalize_file_name(absoluteaddr)==NULL){
      g_warning("invalid address:%s",name);
-     return NULL;
+     fileAttributes->pixbuf=g_object_ref(defaultPixbufs->broken);
+     fileAttributes->file_name=g_strdup(name);
+     fileAttributes->path=absoluteaddr;
+     fileAttributes->mime_root=g_strdup("na");
+     fileAttributes->mime_sub_type=g_strdup("na");
+     return fileAttributes;
    }else{
      fileAttributes->path=absoluteaddr;
      g_debug("fileAttributes->path:%s",fileAttributes->path);
@@ -1142,6 +1148,7 @@ static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guin
    g_object_unref(file); file=NULL;
 
    if (info == NULL ) {
+      g_warning("g_file_query_info return NULL for %s",fileAttributes->path);
       g_free(fileAttributes->path);
       g_free(fileAttributes);
       return NULL;
@@ -1468,7 +1475,7 @@ static void load_GitTrackedFiles_into_HashTable()
 
       g_hash_table_insert(gitTrackedFiles,g_strdup(fullpath),status);
       
-      if (g_strcmp0(" D", status)==0 || g_strcmp0("D ", status)==0){
+      if (!SearchResultViewInsteadOfDirectoryView && (g_strcmp0(" D", status)==0 || g_strcmp0("D ", status)==0) && g_strcmp0(g_path_get_dirname(fullpath), rfm_curPath)==0){
 	//add item into fileattributelist so that user can git stage on it
 	RFM_FileAttributes *fileAttributes=malloc_fileAttributes();
 	if (fileAttributes==NULL)
