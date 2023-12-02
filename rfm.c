@@ -309,7 +309,11 @@ static gint PageSize_SearchResultView=20;
 /*keep the original user inputs for add_history*/
 static gchar *OriginalReadlineResult=NULL;
 static guint history_entry_added=0;
-static char* rfm_historyFileLocation;
+static char *rfm_historyFileLocation;
+static char** (*OLD_rl_attempted_completion_function)(const char *text, int start, int end);
+static char **rfm_filename_completion(const char *text, int start, int end);
+static char *rfm_selection_completion = NULL;
+static GMutex rfm_selection_completion_lock;
 //used by exec_stdin_command and exec_stdin_command_builtin to share status
 static gboolean stdin_cmd_ending_space=FALSE;
 static GList * stdin_cmd_selection_list=NULL;
@@ -1833,7 +1837,21 @@ static void sync_view_selection_file_path_list(){
 static void selectionChanged(GtkWidget *view, gpointer user_data)
 {
   GList *selectionList=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
-  ItemSelected = (selectionList==NULL? 0 : 1);
+  if (selectionList==NULL){
+    ItemSelected=0;
+  }else{
+    GtkTreeIter iter;
+    GValue fullpath = G_VALUE_INIT;
+    selectionList = g_list_first(selectionList);
+    gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, selectionList->data);
+    gtk_tree_model_get_value (GTK_TREE_MODEL(store), &iter, COL_FULL_PATH, &fullpath);
+
+    g_mutex_lock(&rfm_selection_completion_lock);
+    free(rfm_selection_completion);
+    rfm_selection_completion = g_strdup(g_value_get_string(&fullpath));
+    ItemSelected=1;
+    g_mutex_unlock(&rfm_selection_completion_lock);
+  }
   g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
 }
 
@@ -2984,6 +3002,18 @@ static void exec_stdin_command (gchar * readlineResult)
 	}
 }
 
+static char** rfm_filename_completion(const char *text, int start, int end){
+  if (ItemSelected && (text==NULL || g_strcmp0(text, "")==0)) {
+    //rl_attempted_completion_over = 1;
+    char** ret = calloc(2,sizeof(char*));
+    g_mutex_lock(&rfm_selection_completion_lock);
+    ret[0] = strdup(rfm_selection_completion);
+    //see the update of rfm_selection_completion and usage of lock, it possible that when ItemSelected=0 here, we read the old rfm_selection_completion value, but i just prevent read just after rfm_selection_completion been freed here.
+    g_mutex_unlock(&rfm_selection_completion_lock);
+    return ret;
+  } else if (OLD_rl_attempted_completion_function!=NULL) return OLD_rl_attempted_completion_function(text,start,end);
+}
+
 static int setup(char *initDir, RFM_ctx *rfmCtx)
 {
    RFM_fileMenu *fileMenu=NULL;
@@ -3090,6 +3120,9 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
 
    add_toolbar(rfm_main_box, defaultPixbufs, rfmCtx);
 
+   OLD_rl_attempted_completion_function = rl_attempted_completion_function;
+   rl_attempted_completion_function = rfm_filename_completion;
+
    if (startWithVT()) stdin_command_help();
    if (auto_execution_command_after_rfm_start==NULL){
      refresh_store(rfmCtx);
@@ -3154,6 +3187,8 @@ static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx)
      else if (e=write_history(rfm_historyFileLocation))
        g_warning("failed to write_history(%s) error code:%d", rfm_historyFileLocation,e);
    }
+
+   rl_attempted_completion_function = OLD_rl_attempted_completion_function;
 
 #ifdef PythonEmbedded
    endPythonEmbedding();
