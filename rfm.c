@@ -93,9 +93,8 @@ typedef struct {
    char *stdOut;
    char *stdErr;
    int   status;
-   void (*customCallBackFunc)(gpointer);
-  //In readfrom pipeline situation, after runAction such as Move, i need to fill_store to reflect remove of files, so, i need a callback function. Rodney's original code only deals with working directory, and use INotify to reflect the change.
-   gpointer customCallbackUserData;
+   void (*customCallBackFunc)(gpointer); //In Searchresultviewinsteadofdirectoryview situation, after runAction such as Move, i need to fill_store to reflect remove of files, so, i need a callback function. Rodney's original code only deals with working directory, and use INotify to reflect the change.
+   gpointer customCallbackUserData; //this is not freed in free_child_attribs, user should free it.
    gboolean spawn_async;
    gint exitcode;
 } RFM_ChildAttribs;
@@ -525,7 +524,7 @@ static void free_child_attribs(RFM_ChildAttribs *child_attribs)
    g_free(child_attribs->stdOut);
    g_free(child_attribs->stdErr);
    g_free(child_attribs->name);
-   //TODO: how can we memcpy the content of customCallbackUserData and free it here?
+   //how can we memcpy the content of customCallbackUserData and free it here?
    //g_free(child_attribs->customCallbackUserData);
    g_free(child_attribs);
 }
@@ -1312,7 +1311,6 @@ static void load_ExtColumns_and_iconview_markup_tooltip(RFM_FileAttributes* file
 	      gtk_tree_model_get_value(treemodel, iter, treeviewColumns[i].enumCol, &enumColValue);;
 	      if (cell->iconview_markup) gtk_list_store_set(store, cell->iter, COL_ICONVIEW_MARKUP, &enumColValue, -1);
 	      if (cell->iconview_tooltip) gtk_list_store_set(store, cell->iter, COL_ICONVIEW_TOOLTIP, &enumColValue, -1);
-	      //g_value_unset(&enumColValue);
 	    }
 	  }
 	}
