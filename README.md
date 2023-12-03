@@ -110,6 +110,10 @@ rfm 原来只实现了用icon_view显示内容，这里增加了-l 参数，使�
 
 在rfm列表视图里，若想不用鼠标选中多个文件，可以按住ctrl键后用上下键移到到待选文件，按空格选中。但我用fcitx5拼音输入法，默认ctrl+space是开启/禁用输入法按键。我不知道如何更换gtk视图的快捷键，但可以通过fcitx5-configtool更改拼音输入法的快捷键解决冲突。
 
+git 仓库目录中,若包含子目录, 可以用下面命令查看目录内容:
+```
+git ls-files | rfm -l -p100
+```
 
 如果在多个tty分别启动了wayland和xorg显示服务，可以用如下命令决定rfm这样的gtk应用窗口显示在那里：
 
@@ -122,6 +126,13 @@ GDK_BACKEND=x11 rfm
 
 Firefox 下载界面有个"open containning folder" 按钮，用文件管理器打开下载目录。我图形界面用DWL,没有KDE啥的设置默认文件管理器的功能。可以编辑 /usr/share/applications/mimeinfo.cache 文件，找到 inode/directory= 这一行，然后把 rfm.desktop 设置为等号后面第一项。我的rfm Makefile里面包含了rfm.desktop文件的安装。[参见](https://askubuntu.com/questions/267514/open-containing-folder-in-firefox-does-not-use-my-default-file-manager)
 
+
+# 用作文件选择器(rfmFileChooser) #
+rfm还可以用在诸如程序文件打开菜单里,返回选中的文件名列表. 在实现此功能前,我考虑过把rfm现有的视图,工具栏等图形界面元素包装成 gtk widget, 以便用户使用. 但后来觉得改动有些大, 就选择让用户通过启动单独rfm进程来使用. 
+rfm加 -r 参数就可以在退出时通过命名管道返回选中文件名列表. 一开始想直接在标准输出返回, 但标准输出可能还会包含rfm运行时的其他输出内容, 客户端读取时需要排除,比较麻烦. 更重要的是, 文件选择器有时要和虚拟终端一起启动: `foot rfm -r`, 我不知道客户程序如何才能"隔着foot程序"读取rfm的标准输出, 就只能通过事先约定好的命名管道传递结果.
+建立命名管道,启动rfm进程,读取返回值的过程稍嫌麻烦,我就添加了 rfmFileChooser_glist 和 rfmFileChooser 这两个函数, 前者需要用户引用 glib glist, 而后者不需要.
+
+测试文件选择器,可以使用 test_rfmFileChooser 内置命令, 也可以 `gcc -g test_rfmFileChooser.c` 编译并运行.
 
 # 使用rfm配合emacs lsp-mode 查看源码 #
 
