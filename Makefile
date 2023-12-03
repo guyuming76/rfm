@@ -86,6 +86,7 @@ install: all
 	@cp -f rfm.desktop /usr/share/applications/rfm.desktop
 	xdg-mime default rfm.desktop inode/directory
 	update-desktop-database
+	ldconfig
 
 	@chmod 755 ${DESTDIR}${PREFIX}/lib/librfm.so
 	@chmod 755 ${DESTDIR}${PREFIX}/bin/rfm
@@ -128,5 +129,6 @@ uninstall:
 #	@rm -f ${DESTDIR}${PREFIX}/bin/rfmNewDir.sh
 	@rm -f /usr/share/applications/rfm.desktop
 	update-desktop-database
+	ldconfig
 
 .PHONY: all options clean install uninstall
