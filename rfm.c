@@ -271,6 +271,7 @@ static int rfm_inotify_fd;
 static int rfm_curPath_wd;    /* Current path (rfm_curPath) watch */
 static int rfm_thumbnail_wd;  /* Thumbnail watch */
 
+static char *initDir=NULL;
 static gchar *rfm_curPath=NULL;  /* The current directory */
 static gchar *rfm_SearchResultPath=NULL; /*keep the rfm_curPath value when SearchResult was created */
 static gchar *rfm_prePath=NULL;  /* Previous directory: only set when up button is pressed, otherwise should be NULL */
@@ -340,7 +341,7 @@ static void show_msgbox(gchar *msg, gchar *title, gint type);
 static void die(const char *errstr, ...);
 static RFM_defaultPixbufs *load_default_pixbufs(void);
 static void set_rfm_curPath(gchar *path);
-static int setup(char *initDir, RFM_ctx *rfmCtx);
+static int setup(RFM_ctx *rfmCtx);
 static void ReadFromPipeStdinIfAny(char *fd);
 static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamelist);
 // read input from parent process stdin , and handle input such as
@@ -3015,7 +3016,7 @@ static char** rfm_filename_completion(const char *text, int start, int end){
   } else if (OLD_rl_attempted_completion_function!=NULL) return OLD_rl_attempted_completion_function(text,start,end);
 }
 
-static int setup(char *initDir, RFM_ctx *rfmCtx)
+static int setup(RFM_ctx *rfmCtx)
 {
    RFM_fileMenu *fileMenu=NULL;
 
@@ -3102,7 +3103,8 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
 #ifdef PythonEmbedded
    startPythonEmbedding();
 #endif
-   ReadFromPipeStdinIfAny(pipefd);
+   if (getcwd(cwd, sizeof(cwd)) == NULL) die("ERROR: %s: getcwd() failed.\n", PROG_NAME); /* getcwd returns NULL if cwd[] not big enough! */
+   ReadFromPipeStdinIfAny(pipefd); //rfm_SearchResultPath may be filled with cwd here
 
    using_history();
    stifle_history(RFM_HISTORY_SIZE);
@@ -3113,11 +3115,9 @@ static int setup(char *initDir, RFM_ctx *rfmCtx)
 
    rfm_prePath= getenv("OLDPWD");
    if (rfm_prePath!=NULL) rfm_prePath=strdup(rfm_prePath);
-   
-   if (initDir == NULL)
-     set_rfm_curPath(rfm_homePath);
-   else
-     set_rfm_curPath(initDir);
+
+   if (initDir == NULL) initDir = cwd;
+   set_rfm_curPath(initDir);
 
    add_toolbar(rfm_main_box, defaultPixbufs, rfmCtx);
 
@@ -3212,7 +3212,6 @@ static void die(const char *errstr, ...) {
 
 int main(int argc, char *argv[])
 {
-   char *initDir=NULL;
    struct stat statbuf;
 
    g_log_set_handler (G_LOG_DOMAIN, G_LOG_LEVEL_MASK | G_LOG_FLAG_FATAL| G_LOG_FLAG_RECURSION, g_log_default_handler, NULL);
@@ -3249,7 +3248,6 @@ int main(int argc, char *argv[])
 	    initDir=canonicalize_file_name(argv[c+1]);
 	 }else{
 	    initDir=g_path_get_dirname(argv[c+1]);
-	    //TODO: at this point of execution, Searchresultviewinsteadofdirectoryview value always be false. We should find some way to detect whether we are in search result mode here, to make default file selection works with -d parameter in search result mode. Or just keep the value here temperorily here and adjust it with the correct searchresultviewinsteadofdirectoryview later.
 	    view_selection_file_path_list[SearchResultViewInsteadOfDirectoryView] = g_list_prepend(view_selection_file_path_list[SearchResultViewInsteadOfDirectoryView], g_strdup(argv[c+1]));
          }           
 	 c++;
@@ -3262,8 +3260,8 @@ int main(int argc, char *argv[])
          printf("%s-%s, Copyright (C) Rodney Padgett, guyuming, see LICENSE for details\n", PROG_NAME, VERSION);
          return 0;
       case 'p':
+	   if (initDir!=NULL) die("if you have -d specified, and read file name list from pipeline, -p parameter must goes BEFORE -d\n");
 	   SearchResultViewInsteadOfDirectoryView = TRUE;
-	   //TODO: note that if both we want to set default selection for search result, we cannot omit -p, and -p must proceed -d
 	   gchar *pagesize=argv[c] + 2 * sizeof(gchar);
 	   int ps=atoi(pagesize);
 	   if (ps!=0) PageSize_SearchResultView=ps;
@@ -3307,14 +3305,7 @@ int main(int argc, char *argv[])
     c++;
    }
 
-   if (initDir == NULL) {
-       if (getcwd(cwd, sizeof(cwd)) != NULL) /* getcwd returns NULL if cwd[] not big enough! */
-           initDir=cwd;
-       else
-           die("ERROR: %s: getcwd() failed.\n", PROG_NAME);
-   }
-
-   if (setup(initDir, rfmCtx)==0)
+   if (setup(rfmCtx)==0)
       gtk_main();
    else
       die("ERROR: %s: setup() failed\n", PROG_NAME);
@@ -3334,7 +3325,9 @@ static void ReadFromPipeStdinIfAny(char * fd)
    g_debug("readlink for %s: %s",name,buf);
 
    if (strlen(buf)>4 && g_strcmp0(g_utf8_substring(buf, 0, 4),"pipe")==0){
-	 SearchResultViewInsteadOfDirectoryView=1;
+         if (initDir!=NULL && !SearchResultViewInsteadOfDirectoryView) die("if you have -d specified, and read file name list from pipeline, -p parameter must goes BEFORE -d\n");
+	 else SearchResultViewInsteadOfDirectoryView=TRUE;
+	 
 	 gchar *oneline_stdin=calloc(1,PATH_MAX);
 	 FILE *pipeStream = stdin;
 	 if (atoi(fd) != 0) pipeStream = fdopen(atoi(fd),"r");
