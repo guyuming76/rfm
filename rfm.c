@@ -412,6 +412,7 @@ static void copy_curPath_to_clipboard(GtkWidget *menuitem, gpointer user_data);
 
 static void g_spawn_wrapper_for_selected_fileList_(RFM_ChildAttribs *childAttribs);
 /* instantiate childAttribs and call g_spawn_wrapper_ */
+/* caller should g_list_free(file_list), but usually not g_list_free_full, since the file char* is usually owned by rfm_fileattributes */
 static gboolean g_spawn_wrapper(const char **action, GList *file_list, long n_args, int run_opts, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData);
 /* call build_cmd_vector to create the argv parameter for g_spawn_* */
 /* call different g_spawn_* functions based on child_attribs->spawn_async and child_attribs->runOpts */
@@ -782,9 +783,7 @@ static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *ch
    return rv;
 }
 
-// TODO: The char* in file_list will be used (WITHOUT strdup) in returned
-// gchar** v and owned by rfm_FileAttributelist before,
-// However, after rfmFilechooser added, the file_list data is not owned by rfm_Fileattributelist, and should be freed, shall we make any adjustment here?
+// The char* in file_list will be used (WITHOUT strdup) in returned gchar** v and owned by rfm_FileAttributelist before
 static gchar **build_cmd_vector(const char **cmd, GList *file_list, long n_args, char *dest_path)
 {
    long j=0;
@@ -805,8 +804,7 @@ static gchar **build_cmd_vector(const char **cmd, GList *file_list, long n_args,
        v[j]=(gchar*)cmd[j]; /* FIXME: gtk spawn functions require gchar*, but we have const gchar*; should probably g_strdup() and create a free_cmd_vector() function */
      else if (listElement != NULL) {
        // before this commit, file_list and dest_path are all appended after cmd, but commands like ffmpeg to create thumbnail need to have file name in the middle of the argv, appended at the end won't work. So i modify the rule here so that if we have empty string in cmd, we replace it with item in file_list. So, file_list can work as generic argument list later, not necessarily the filename. And replacing empty string place holders in cmd with items in file_list can be something like printf.
-       v[j]=listElement->data;
-       //listElement->data = NULL;  ?TODO: this data is owned by rfm_FileAttributes and was not freed before, but now, v and file_list share the reference, shall we set one of them to NULL here? g_list_free_full never called on file_list before except on rfm_FileAttributes?
+       v[j]=listElement->data; //this data is owned by rfm_FileAttributes and was not freed before, but now, v and file_list share the reference.  g_list_free_full never called on file_list, and filename char* is not freed when free(v),  but freed with rfm_FileAttributes.
        listElement=g_list_next(listElement);
      }
 
@@ -836,6 +834,7 @@ static void GSpawnChildSetupFunc_setenv(gpointer user_data) {
       //working_directory won't update child process PWD env, which inherits parents PWD env,why?
 }
 
+//caller should g_list_free(file_list), but usually not g_list_free_full, since the file char* is usually owned by rfm_fileattributes
 static gboolean g_spawn_wrapper_(GList *file_list, long n_args, char *dest_path, RFM_ChildAttribs * child_attribs)
 {
    gchar **v=NULL;
@@ -861,7 +860,7 @@ static gboolean g_spawn_wrapper_(GList *file_list, long n_args, char *dest_path,
 	            ExecCallback_freeChildAttribs(child_attribs);
       }
       
-      free(v);//TODO: what does this mean? and double check whether v passed into g_spawn freed?
+      free(v); //only free v, but char* data such as filename in command not freed here.
    }
    else{
       g_warning("g_spawn_wrapper_: %s failed to execute: build_cmd_vector() returned NULL.",child_attribs->RunCmd[0]);
@@ -1268,8 +1267,8 @@ static void load_gitCommitMsg_for_store_row(GtkTreeIter *iter){
 	GtkTreeIter **iterPointerPointer=calloc(1, sizeof(GtkTreeIter**));//This will be passed into childAttribs, which will be freed in g_spawn_wrapper. but we shall not free iter, so i use pointer to pointer here.
 	*iterPointerPointer=iter;
 	if(!g_spawn_wrapper(git_commit_message_cmd, file_list,1,RFM_EXEC_OUPUT_READ_BY_PROGRAM ,NULL, FALSE, readGitCommitMsgFromGitLogCmdAndUpdateStore, iterPointerPointer)){
-
 	}
+	g_list_free(file_list);
       }
 }
 #endif
