@@ -413,13 +413,13 @@ static void copy_curPath_to_clipboard(GtkWidget *menuitem, gpointer user_data);
 static void g_spawn_wrapper_for_selected_fileList_(RFM_ChildAttribs *childAttribs);
 /* instantiate childAttribs and call g_spawn_wrapper_ */
 /* caller should g_list_free(file_list), but usually not g_list_free_full, since the file char* is usually owned by rfm_fileattributes */
-static gboolean g_spawn_wrapper(const char **action, GList *file_list, long n_args, int run_opts, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData);
+static gboolean g_spawn_wrapper(const char **action, GList *file_list, int run_opts, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData);
 /* call build_cmd_vector to create the argv parameter for g_spawn_* */
 /* call different g_spawn_* functions based on child_attribs->spawn_async and child_attribs->runOpts */
 /* free child_attribs */
-static gboolean g_spawn_wrapper_(GList *file_list, long n_args, char *dest_path, RFM_ChildAttribs * childAttribs);
+static gboolean g_spawn_wrapper_(GList *file_list, char *dest_path, RFM_ChildAttribs * childAttribs);
 /* create argv parameter for g_spawn functions  */
-static gchar **build_cmd_vector(const char **cmd, GList *file_list, long n_args, char *dest_path);
+static gchar **build_cmd_vector(const char **cmd, GList *file_list, char *dest_path);
 static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *child_attribs);
 static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_data);
 static void child_handler_to_set_finished_status_for_child_supervisor(GPid pid, gint status, RFM_ChildAttribs *child_attribs);
@@ -783,19 +783,15 @@ static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *ch
 }
 
 // The char* in file_list will be used (WITHOUT strdup) in returned gchar** v and owned by rfm_FileAttributelist before
-static gchar **build_cmd_vector(const char **cmd, GList *file_list, long n_args, char *dest_path)
+static gchar **build_cmd_vector(const char **cmd, GList *file_list, char *dest_path)
 {
    long j=0;
    gchar **v=NULL;
    GList *listElement=NULL;
 
    listElement = (file_list==NULL)? NULL : g_list_first(file_list);
-   //if (listElement==NULL) return NULL;
-   if (listElement==NULL && n_args!=0) return NULL; //Rodney's originally don't have this n_arg!=0 criteria, but sometime, i just need g_spawn_wrapper for arbitory command, and can have empty file_list. 
-   
-   n_args+=2; /* Account for terminating NULL & possible destination path argument */
-   
-   if((v=calloc((RFM_MX_ARGS+n_args), sizeof(gchar*)))==NULL)
+  
+   if((v=calloc((RFM_MX_ARGS), sizeof(gchar*)))==NULL)
       return NULL;
 
    while (cmd[j]!=NULL && j<RFM_MX_ARGS) {
@@ -834,12 +830,12 @@ static void GSpawnChildSetupFunc_setenv(gpointer user_data) {
 }
 
 //caller should g_list_free(file_list), but usually not g_list_free_full, since the file char* is usually owned by rfm_fileattributes
-static gboolean g_spawn_wrapper_(GList *file_list, long n_args, char *dest_path, RFM_ChildAttribs * child_attribs)
+static gboolean g_spawn_wrapper_(GList *file_list, char *dest_path, RFM_ChildAttribs * child_attribs)
 {
    gchar **v=NULL;
    gboolean ret=TRUE;
 
-   v=build_cmd_vector(child_attribs->RunCmd, file_list, n_args, dest_path);
+   v=build_cmd_vector(child_attribs->RunCmd, file_list, dest_path);
    if (v != NULL) {
       if (child_attribs->spawn_async){
 	       if (!g_spawn_async_with_pipes_wrapper(v, child_attribs)) {
@@ -869,7 +865,7 @@ static gboolean g_spawn_wrapper_(GList *file_list, long n_args, char *dest_path,
    return ret;
 }
 
-static gboolean g_spawn_wrapper(const char **action, GList *file_list, long n_args, int run_opts, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData){
+static gboolean g_spawn_wrapper(const char **action, GList *file_list, int run_opts, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData){
   RFM_ChildAttribs *child_attribs=calloc(1,sizeof(RFM_ChildAttribs));
   child_attribs->customCallBackFunc=callbackfunc;
   child_attribs->customCallbackUserData=callbackfuncUserData;
@@ -881,7 +877,7 @@ static gboolean g_spawn_wrapper(const char **action, GList *file_list, long n_ar
   child_attribs->spawn_async = async;
   child_attribs->name=g_strdup(action[0]);
 	
-  return g_spawn_wrapper_(file_list,n_args,dest_path,child_attribs);
+  return g_spawn_wrapper_(file_list,dest_path,child_attribs);
 }
 
 /* Load and update a thumbnail from disk cache: key is the md5 hash of the required thumbnail */
@@ -1007,7 +1003,7 @@ static gboolean mkThumb()
       gchar *thumb_path=g_build_filename(rfm_thumbDir, thumbData->thumb_name, NULL);
       GList * input_files=NULL;
       input_files=g_list_prepend(input_files, g_strdup(thumbData->path));
-      g_spawn_wrapper(thumbnailers[thumbData->t_idx].thumbCmd, input_files, 1, RFM_EXEC_NONE, thumb_path, FALSE, NULL, NULL);
+      g_spawn_wrapper(thumbnailers[thumbData->t_idx].thumbCmd, input_files, RFM_EXEC_NONE, thumb_path, FALSE, NULL, NULL);
       g_list_free(input_files);
    }
    
@@ -1265,7 +1261,7 @@ static void load_gitCommitMsg_for_store_row(GtkTreeIter *iter){
 	file_list = g_list_append(file_list,g_value_get_string(&full_path));
 	GtkTreeIter **iterPointerPointer=calloc(1, sizeof(GtkTreeIter**));//This will be passed into childAttribs, which will be freed in g_spawn_wrapper. but we shall not free iter, so i use pointer to pointer here.
 	*iterPointerPointer=iter;
-	if(!g_spawn_wrapper(git_commit_message_cmd, file_list,1,RFM_EXEC_OUPUT_READ_BY_PROGRAM ,NULL, FALSE, readGitCommitMsgFromGitLogCmdAndUpdateStore, iterPointerPointer)){
+	if(!g_spawn_wrapper(git_commit_message_cmd, file_list, RFM_EXEC_OUPUT_READ_BY_PROGRAM ,NULL, FALSE, readGitCommitMsgFromGitLogCmdAndUpdateStore, iterPointerPointer)){
 	}
 	g_list_free(file_list);
       }
@@ -1301,7 +1297,7 @@ static void load_ExtColumns_and_iconview_markup_tooltip(RFM_FileAttributes* file
 	    if (treeviewColumns[i].ValueCmd!=NULL){
               gchar* ExtColumn_cmd = g_strdup_printf(treeviewColumns[i].ValueCmd, fileAttributes->path);
 	      gchar* ExtColumn_cmd_template[] = {"/bin/bash", "-c", ExtColumn_cmd, NULL};
-	      g_spawn_wrapper(ExtColumn_cmd_template, NULL, 0, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, FALSE, Update_Store_ExtColumns, &cell);
+	      g_spawn_wrapper(ExtColumn_cmd_template, NULL, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, FALSE, Update_Store_ExtColumns, &cell);
 	    }else if (treeviewColumns[i].ValueFunc!=NULL){
 	    //TODO:ValueCmd==NULL but with function!=NULL
 	    }else if ((cell->iconview_markup) || (cell->iconview_tooltip)){
@@ -1687,7 +1683,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
   }
 #ifdef GitIntegration
    if (!SearchResultViewInsteadOfDirectoryView && curPath_is_git_repo)
-      g_spawn_wrapper(git_current_branch_cmd, NULL, 0, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, TRUE, set_window_title_with_git_branch_and_sort_view_with_git_status, NULL);
+      g_spawn_wrapper(git_current_branch_cmd, NULL, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, TRUE, set_window_title_with_git_branch_and_sort_view_with_git_status, NULL);
    else set_Titles(title);
 #else
    set_Titles(title);
@@ -1797,7 +1793,7 @@ static void set_rfm_curPath(gchar* path)
    /*     g_warning("failed to read_history(%s) error code:%d. it's normal if you enter this directory for the first time with rfm.",g_build_filename(rfm_curPath,".rfm_history", NULL),e); */
    /* history_entry_added=0; */
 #ifdef GitIntegration
-   g_spawn_wrapper(git_inside_work_tree_cmd, NULL, 0, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, FALSE, set_curPath_is_git_repo, NULL);
+   g_spawn_wrapper(git_inside_work_tree_cmd, NULL, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, FALSE, set_curPath_is_git_repo, NULL);
    /* if (!rfmReadFileNamesFromPipeStdIn && curPath_is_git_repo) */
    /*    g_spawn_wrapper(git_current_branch_cmd, NULL, 0, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, TRUE, set_window_title_with_git_branch, NULL); */
 #endif
@@ -1879,7 +1875,7 @@ static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointe
       }
 
       if (r_idx != -1)
-         g_spawn_wrapper(run_actions[r_idx].runCmd, file_list, 2, RFM_EXEC_STDOUT, NULL,TRUE,NULL,NULL);
+         g_spawn_wrapper(run_actions[r_idx].runCmd, file_list, RFM_EXEC_STDOUT, NULL,TRUE,NULL,NULL);
       else {
          msg=g_strdup_printf("No run action defined for mime type:\n %s/%s\n", fileAttributes->mime_root, fileAttributes->mime_sub_type);
          show_msgbox(msg, "Run Action", GTK_MESSAGE_INFO);
@@ -1985,7 +1981,7 @@ static void exec_user_tool(GtkToolItem *item, RFM_ChildAttribs *childAttribs)
      child_attribs->spawn_async = childAttribs->spawn_async;
      child_attribs->name=g_strdup(childAttribs->name);
 
-     g_spawn_wrapper_(NULL, 0, NULL, child_attribs);
+     g_spawn_wrapper_(NULL, NULL, child_attribs);
    }
 }
 
@@ -2034,7 +2030,6 @@ static void g_spawn_wrapper_for_selected_fileList_(RFM_ChildAttribs *childAttrib
    GList *listElement;
    GList *actionFileList=NULL;
    GList *selectionList=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
-   guint i=0;
    RFM_FileAttributes *fileAttributes;
 
    if (selectionList!=NULL) {
@@ -2045,9 +2040,8 @@ static void g_spawn_wrapper_for_selected_fileList_(RFM_ChildAttribs *childAttrib
          gtk_tree_model_get (GTK_TREE_MODEL(store), &iter, COL_ATTR, &fileAttributes, -1);
          actionFileList=g_list_append(actionFileList, fileAttributes->path);
          listElement=g_list_next(listElement);
-         i++;
       }
-      g_spawn_wrapper_(actionFileList,i,NULL,childAttribs);
+      g_spawn_wrapper_(actionFileList,NULL,childAttribs);
       g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
       g_list_free(actionFileList); /* Do not free list elements: owned by GList rfm_fileAttributeList */
    }
@@ -3459,7 +3453,7 @@ GList* rfmFileChooser_glist(gboolean startWithVirtualTerminal, char* search_cmd,
       child_attribs->name=g_strdup("rfmFileChooser");
       child_attribs->RunCmd = rfmFileChooser_CMD(startWithVirtualTerminal, search_cmd, GList_to_str_array(*fileChooserSelectionListAddress, g_list_length(*fileChooserSelectionListAddress)), named_pipe_name);
 
-      if (g_spawn_wrapper_(NULL, 0, NULL, child_attribs)) return *fileChooserSelectionListAddress;
+      if (g_spawn_wrapper_(NULL, NULL, child_attribs)) return *fileChooserSelectionListAddress;
     }else g_warning("failed to open %s",named_pipe_name);
   }else g_warning("mkfifo mode 0700 (rwx------) failed for:%s",named_pipe_name);
   return NULL;
