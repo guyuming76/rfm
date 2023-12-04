@@ -871,7 +871,6 @@ static gboolean g_spawn_wrapper(const char **action, GList *file_list, int run_o
   child_attribs->customCallbackUserData=callbackfuncUserData;
   child_attribs->runOpts=run_opts;
   child_attribs->RunCmd = action;
-  child_attribs->stdOut_fd = -1;// please see the reference of stdOut_fd in g_spawn_with_pipe_wrappeer
   child_attribs->stdOut = NULL;
   child_attribs->stdErr = NULL;
   child_attribs->spawn_async = async;
