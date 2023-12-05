@@ -1666,6 +1666,7 @@ static void set_Titles(gchar * title){
    if (title_is_rfm_curPath) gtk_window_set_title(GTK_WINDOW(window), title);
    if (!(SearchResultViewInsteadOfDirectoryView && title_is_rfm_curPath)) gtk_tool_button_set_label(PathAndRepositoryNameDisplay, title);
    if (title_is_rfm_curPath && startWithVT() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)) set_terminal_window_title(title);
+
    g_free(title);
 }
 
