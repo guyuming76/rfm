@@ -295,8 +295,8 @@ static stdin_cmd_interpretor stdin_cmd_interpretors[] = {
 #endif
 };
 
-static gchar* rfmFileChooserVT_cmd[] = { "/usr/bin/foot", "/bin/bash", "-i", "-c", shell_cmd_buffer, NULL };
-static gchar** rfmFileChooser_CMD(gboolean startWithVT, gchar* search_cmd, gchar** defaultFileSelection, gchar* rfmFileChooserReturnSelectionIntoFilename){
+static gchar* rfmFileChooser_newVT[] = { "/usr/bin/foot", "/bin/bash", "-i", "-c", shell_cmd_buffer, NULL };
+static gchar** rfmFileChooser_CMD(enum rfmTerminal startWithVT, gchar* search_cmd, gchar** defaultFileSelection, gchar* rfmFileChooserReturnSelectionIntoFilename){
     if (search_cmd == NULL || g_strcmp0(search_cmd,"")==0)
     	sprintf(shell_cmd_buffer, "rfm -r %s", g_strdup(rfmFileChooserReturnSelectionIntoFilename));
     else
@@ -311,10 +311,10 @@ static gchar** rfmFileChooser_CMD(gboolean startWithVT, gchar* search_cmd, gchar
 	};
     };
 
-    if (startWithVT){
-	return rfmFileChooserVT_cmd;
-    }else{
+    if (startWithVT == NEW_TERMINAL){
+	return rfmFileChooser_newVT;
+    }else if (startWithVT == NO_TERMINAL){
 	strcat(shell_cmd_buffer, strdup(" -t"));
         return stdin_cmd_template_bash;
-    }
+    }else return stdin_cmd_template_bash;
 }

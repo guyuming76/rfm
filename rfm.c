@@ -228,6 +228,12 @@ typedef struct {
   gchar** (*cmdTransformer)(gchar *);
 } stdin_cmd_interpretor;
 
+enum rfmTerminal{
+  NO_TERMINAL,
+  NEW_TERMINAL,
+  INHERIT_TERMINAL,
+};
+
 
 static gchar*  PROG_NAME = NULL;
 #ifdef RFM_FILE_CHOOSER
@@ -319,7 +325,7 @@ static gboolean stdin_cmd_ending_space=FALSE;
 static GList * stdin_cmd_selection_list=NULL;
 static RFM_FileAttributes *stdin_cmd_selection_fileAttributes;
 static uint current_stdin_cmd_interpretor = 0;
-static gboolean rfmStartWithVirtualTerminal = TRUE;
+static enum rfmTerminal rfmStartWithVirtualTerminal = INHERIT_TERMINAL;
 
 #ifdef GitIntegration
 // value " M " for modified
@@ -1640,7 +1646,7 @@ static gint sort_func(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, gpoin
 static void set_Titles(gchar * title){
    gtk_window_set_title(GTK_WINDOW(window), title);
    gtk_tool_button_set_label(PathAndRepositoryNameDisplay, title);
-   set_terminal_window_title(title);
+   if (startWithVT() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)) set_terminal_window_title(title);
    g_free(title);
 }
 
@@ -2648,7 +2654,7 @@ static void readlineInSeperateThread(GString * readlineResultStringFromPreviousR
           g_string_free(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution,TRUE);
   }
 
-  if(startWithVT()){
+  if(startWithVT() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)){
     gchar prompt[5]="";
     strcat(prompt, stdin_cmd_interpretors[current_stdin_cmd_interpretor].prompt);
     ToSearchResultFilenameList=FALSE;
@@ -3114,10 +3120,10 @@ static int setup(RFM_ctx *rfmCtx)
    OLD_rl_attempted_completion_function = rl_attempted_completion_function;
    rl_attempted_completion_function = rfm_filename_completion;
 
-   if (startWithVT()) stdin_command_help();
+   if (startWithVT() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)) stdin_command_help();
    if (auto_execution_command_after_rfm_start==NULL){
      refresh_store(rfmCtx);
-     if(startWithVT()){
+     if(startWithVT() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)){
        readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);
      }
    }else stdin_command_Scheduler = g_idle_add_once(exec_stdin_command, auto_execution_command_after_rfm_start);
@@ -3138,34 +3144,27 @@ static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx)
 #ifdef RFM_FILE_CHOOSER
    if (StartedAs_rfmFileChooser){
       GtkTreeIter iter;
-      int returnToFile_fd;
-      if (rfmFileChooserReturnSelectionIntoFilename==NULL) rfmFileChooserReturnSelectionIntoFilename = getenv("rfmFileChooserReturnSelectionIntoFilename");
-      if (rfmFileChooserReturnSelectionIntoFilename!=NULL){
-        returnToFile_fd=open(rfmFileChooserReturnSelectionIntoFilename,O_WRONLY|O_NONBLOCK);
-	if (returnToFile_fd>0){
+      int returnToFile_fd=-1;
+      
+      if (rfmFileChooserReturnSelectionIntoFilename!=NULL && (returnToFile_fd=open(rfmFileChooserReturnSelectionIntoFilename,O_WRONLY|O_NONBLOCK))<0)
+	g_warning("failed to open rfmFileChooserReturnSelectionIntoFilename:%s",rfmFileChooserReturnSelectionIntoFilename);
+      else if(returnToFile_fd>=0 || rfmFileChooserReturnSelectionIntoFilename==NULL ){
 	  GList *selectionList = get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
 	  selectionList=g_list_first(selectionList);
 	  while(selectionList!=NULL){
 	    GValue fullpath = G_VALUE_INIT;
 	    gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, selectionList->data);
 	    gtk_tree_model_get_value(treemodel, &iter, COL_FULL_PATH, &fullpath);
-	    write(returnToFile_fd, g_value_get_string(&fullpath), strlen(g_value_get_string(&fullpath)));
-	    write(returnToFile_fd,"\n",1);
+	    if (returnToFile_fd>=0){
+	      write(returnToFile_fd, g_value_get_string(&fullpath), strlen(g_value_get_string(&fullpath)));
+	      write(returnToFile_fd,"\n",1);
+	    }else printf("%s\n",g_value_get_string(&fullpath));
 	    selectionList=g_list_next(selectionList);
 	    rfmFileChooserResultNumber++;
-	  }
-	  close(returnToFile_fd);
-
-	  char buff[sizeof(int)*8+1];
-	  sprintf(buff, "%d", rfmFileChooserResultNumber);
-	  setenv("rfmFileChooserResultNumber",buff,1);
-	  // i don't know which way to pass data is better, with environment variable or with return value, so, i implemenented both
-
+	  };
+	  if (returnToFile_fd>0) close(returnToFile_fd);
 	  g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
-	}else
-	  g_warning("failed to open rfmFileChooserReturnSelectionIntoFilename:%s",rfmFileChooserReturnSelectionIntoFilename);
-      }else
-	g_warning("rfmFileChooserReturnSelectionIntoFilename NULL");
+      }
    }
 #endif
    //https://unix.stackexchange.com/questions/534657/do-inotify-watches-automatically-stop-when-a-program-ends
@@ -3274,6 +3273,7 @@ int main(int argc, char *argv[])
 	  rfmFileChooserReturnSelectionIntoFilename = argv[c+1];
 	  c++;
 	}
+	if (rfmFileChooserReturnSelectionIntoFilename==NULL) rfmFileChooserReturnSelectionIntoFilename = getenv("rfmFileChooserReturnSelectionIntoFilename");
 	break;
 #endif
       case 'x': //auto execute after start. for example, start with locate rfm.c >0, to avoid locate rfm.c|rfm. We can use rfm -x "locate rfm.c>0"
@@ -3437,7 +3437,7 @@ static void rfmFileChooserResultReader(RFM_ChildAttribs* child_attribs){
    interaction, this list is returned with user selection. And the default
    selection is freed in rfmFileChooserResultReader*/
 
-GList* rfmFileChooser_glist(gboolean startWithVirtualTerminal, char* search_cmd, gboolean async, GList** fileChooserSelectionListAddress, void (*fileChooserClientCallback)(char **)) {
+GList* rfmFileChooser_glist(enum rfmTerminal startWithVirtualTerminal, char* search_cmd, gboolean async, GList** fileChooserSelectionListAddress, void (*fileChooserClientCallback)(char **)) {
   char named_pipe_name[50];
   sprintf(named_pipe_name, "%s%d", RFM_FILE_CHOOSER_NAMED_PIPE_PREFIX,getpid());
   if (async && fileChooserClientCallback==NULL) { g_warning("to call rfmFileChooser async, fileChooserClientCallback function pointer must be provided."); return NULL; }
@@ -3462,7 +3462,7 @@ GList* rfmFileChooser_glist(gboolean startWithVirtualTerminal, char* search_cmd,
   return NULL;
 }
 
-char** rfmFileChooser(gboolean startWithVirtualTerminal, char* search_cmd, gboolean async, char *fileSelectionStringArray[], void (*fileChooserClientCallback)(char**)) {
+char** rfmFileChooser(enum rfmTerminal startWithVirtualTerminal, char* search_cmd, gboolean async, char *fileSelectionStringArray[], void (*fileChooserClientCallback)(char**)) {
   fileChooserSelectionList = str_array_ToGList(fileSelectionStringArray);
   rfmFileChooser_glist(startWithVirtualTerminal, search_cmd, async, &fileChooserSelectionList, fileChooserClientCallback);
   if (async) return NULL;

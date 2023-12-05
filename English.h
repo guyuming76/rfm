@@ -57,6 +57,7 @@
 "-l       open with listview instead of iconview,you can also switch view with toolbar button or builtin cmd /\n" \
 "-s       specify columns to show in listview and their order, refer to builtin command showcolumn for detail.\n" \
 "-r       followed by named pipe through which file selection is returned. Used when rfm works as file chooser, such as with program file open menu.\n" \
+"         if no named pipe follows, selection will be returned through printf, and rfm will start without readline thread, as if -t parameter is also added.\n" \
 "-t       start rfm without readline thread, neither show command prompt nor accept command line input.\n" \
 "-h       show this help\n"
 
