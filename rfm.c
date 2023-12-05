@@ -629,8 +629,8 @@ static void show_child_output(RFM_ChildAttribs *child_attribs)
    /* Show any output we have regardless of error status */
    if (child_attribs->stdOut!=NULL && child_attribs->stdOut[0]!=0) {
      if (child_attribs->runOpts==RFM_EXEC_STDOUT || strlen(child_attribs->stdOut) > RFM_MX_MSGBOX_CHARS)
-	 printf("%s",child_attribs->stdOut);
-      else
+       printf("PID %s:%s",child_attribs->pid,child_attribs->stdOut);
+     else
          show_msgbox(child_attribs->stdOut, child_attribs->name, GTK_MESSAGE_INFO);
      child_attribs->stdOut[0]=0;
    }
@@ -762,9 +762,9 @@ static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *ch
       if (rv==TRUE) {
          /* Don't block on read if nothing in pipe */
          if (! g_unix_set_fd_nonblocking(child_attribs->stdOut_fd, TRUE, NULL))
-            g_warning("Can't set child stdout to non-blocking mode.");
+	    g_warning("Can't set child stdout to non-blocking mode, PID:%d,FD:%d",child_attribs->pid,child_attribs->stdOut_fd);
          if (! g_unix_set_fd_nonblocking(child_attribs->stdErr_fd, TRUE, NULL))
-            g_warning("Can't set child stderr to non-blocking mode.");
+	    g_warning("Can't set child stderr to non-blocking mode, PID:%d,FD:%d",child_attribs->pid,child_attribs->stdErr_fd);
 
          if(child_attribs->name==NULL) child_attribs->name=g_strdup(v[0]);
          child_attribs->status=-1;  /* -1 indicates child is running; set to wait wstatus on exit */
@@ -1874,7 +1874,7 @@ static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointe
       }
 
       if (r_idx != -1)
-         g_spawn_wrapper(run_actions[r_idx].runCmd, file_list, RFM_EXEC_STDOUT, NULL,TRUE,NULL,NULL);
+         g_spawn_wrapper(run_actions[r_idx].runCmd, file_list, G_SPAWN_DEFAULT, NULL,TRUE,NULL,NULL);
       else {
          msg=g_strdup_printf("No run action defined for mime type:\n %s/%s\n", fileAttributes->mime_root, fileAttributes->mime_sub_type);
          show_msgbox(msg, "Run Action", GTK_MESSAGE_INFO);
@@ -2088,7 +2088,7 @@ static RFM_fileMenu *setup_file_menu(RFM_ctx * rfmCtx){
       // and it will be copied to a new instance in file_menu_exec.
       // but if menuitem not clicked? currently, setup_file_menu won't be called many times, so, it will be freed after application quit, no need to free manually.
       child_attribs->RunCmd = run_actions[i].runCmd;      
-      child_attribs->runOpts = RFM_EXEC_STDOUT;
+      child_attribs->runOpts = G_SPAWN_DEFAULT;
       child_attribs->stdOut = NULL;
       child_attribs->stdErr = NULL;
       child_attribs->spawn_async = TRUE;
@@ -2296,7 +2296,7 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
 
       RFM_ChildAttribs *child_attribs = calloc(1,sizeof(RFM_ChildAttribs));
       child_attribs->RunCmd = tool_buttons[i].RunCmd;
-      child_attribs->runOpts = RFM_EXEC_STDOUT;
+      child_attribs->runOpts = G_SPAWN_DEFAULT;
       child_attribs->stdOut = NULL;
       child_attribs->stdErr = NULL;
       child_attribs->spawn_async = TRUE;
