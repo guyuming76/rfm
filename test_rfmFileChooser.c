@@ -9,10 +9,10 @@ void* handle = NULL;
 
 int main(int argc, char *argv[]){
 	char** selectionList = NULL;
-	char** (*fileChooser)(bool, char*, bool, char**, void(*)(char**));// startwithVT, search_cmd, async, selectionList, callbackfunction
+	char** (*fileChooser)(int, char*, bool, char**, void(*)(char**));// startwithVT, search_cmd, async, selectionList, callbackfunction
 	void (*fileChooserResultPrint)(char**);
     	handle = dlopen("librfm.so", RTLD_LAZY);
-	fileChooser = (char** (*)(bool, char*, bool, char**, void(*)(char**)))dlsym(handle,"rfmFileChooser");
+	fileChooser = (char** (*)(int, char*, bool, char**, void(*)(char**)))dlsym(handle,"rfmFileChooser");
 	fileChooserResultPrint = (void (*)(char**))dlsym(handle,"fileChooserCallback");
 
         if (argc>4){
