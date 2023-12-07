@@ -1761,6 +1761,7 @@ static void set_rfm_curPath_internal(gchar* path){
       }  
 }
 
+/* caller owns path, free(rfm_prePath), rfm_curPath assigned to rfm_prePath; strdup(path) will be assigned to rfm_curPath,*/
 static void set_rfm_curPath(gchar* path)
 {
    char *msg;
