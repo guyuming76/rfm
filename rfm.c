@@ -2399,10 +2399,14 @@ static void switch_iconview_treeview(RFM_ctx *rfmCtx) {
 
 static void Switch_SearchResultView_DirectoryView(GtkToolItem *item,RFM_ctx *rfmCtx)
 {
-  //if (FileNameList_FromPipeStdin != NULL && rfm_curPath!= NULL) { 
+  //TODO:
+  //inotify handler don't do anything in searchresultview
+  //set_rfm_curpath don't setup inotify handler in searchresultview
+  //in searchresultview, we can still call set_rfm_curpath, without inotify handler created
+  //so, after switching from searchresultview to directory view, we need to setup inotify handler
+  //Or shall i setup inotify handler in set_rfm_curpath even if in searchresultview? maybe this is better.
     SearchResultViewInsteadOfDirectoryView=!SearchResultViewInsteadOfDirectoryView;
     refresh_store(rfmCtx);
-  //}
 }
 
 static void inotify_insert_item(gchar *name, gboolean is_dir)
