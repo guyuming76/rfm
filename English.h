@@ -27,9 +27,11 @@
 "    b?> means in refreshing and file selection cannot be determined, try press enter after refresh.\n" \
 "    prompt won't update when selection changes in rfm view, press Enter to refresh\n" \
 "builtin commands for current window:\n" \
-"    cd address  go to address, note that PWD is not changed, just open address in rfm. In search result view, select one of files or folders, and key in cd command, you will enter the directory of the selected file with rfm view switched to directory view.\n" \
+"    cd address  go to address, note that PWD is not changed, just open address in rfm.\n" \
 "    cd ..       go up to parent directory.\n" \
 "    cd -        go to directory in OLDPWD environment variable, that is, previously opened directory.\n" \
+"    cd          cd followed by space key with directory selected will enter that directory, and will enter parent directory of a file if file selected.\n" \
+"                cd without parameter or space just output current directory, which can be different from the output of pwd command.\n" \
 "    quit        quit rfm\n" \
 "    help        print this message\n" \
 "    press Enter key two times (double enter) to refresh rfm view\n" \
