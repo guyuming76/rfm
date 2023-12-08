@@ -322,7 +322,7 @@ static char *rfm_selection_completion = NULL;
 static GMutex rfm_selection_completion_lock;
 //used by exec_stdin_command and exec_stdin_command_builtin to share status
 static gboolean stdin_cmd_ending_space=FALSE;
-static GList * stdin_cmd_selection_list=NULL;
+static GList * stdin_cmd_selection_list=NULL; //selected files used in stdin cmd expansion(or we call it substitution) which replace ending space and %s with selected file names
 static RFM_FileAttributes *stdin_cmd_selection_fileAttributes;
 static uint current_stdin_cmd_interpretor = 0;
 static enum rfmTerminal rfmStartWithVirtualTerminal = INHERIT_TERMINAL;
@@ -2847,7 +2847,7 @@ static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, GString* read
 	      set_rfm_curPath(g_build_filename(rfm_curPath, addr, NULL));
 	      return TRUE;
 	    }
-	  }else if (parsed_msg->we_wordc==1){
+	  }else if (parsed_msg->we_wordc==1){ // cd without parameter
 	      if (stdin_cmd_ending_space){
 		if (stdin_cmd_selection_list!=NULL && stdin_cmd_selection_fileAttributes!=NULL){
 		  //user can accidentally select multple files, but we only use one of them here.
