@@ -1397,8 +1397,8 @@ static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,
                           -1);
 
       g_debug("Inserted into store:%s",fileAttributes->file_name);
-      // keep view selections across refresh_store
-      if (keep_selection_across_refresh) {
+      
+      if (keep_selection_on_view_across_refresh) {
 	GList * selection_filepath_list = g_list_first(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView]);
 	while(selection_filepath_list!=NULL){
 	  if (g_strcmp0(fileAttributes->path, selection_filepath_list->data)==0){
@@ -1661,7 +1661,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
    // for the first refresh_store after rfm launch, we don't need to sync_view_selection, we should keep view_selection list content which is specified by rfm arguments, we use scroll_window==NULL to detect first refresh_store after rfm launch
    if (skip_sync_filepath_list_for_selection_on_view_once)
      skip_sync_filepath_list_for_selection_on_view_once = FALSE;
-   else if (keep_selection_across_refresh && scroll_window)
+   else if (keep_selection_on_view_across_refresh && scroll_window)
      sync_filepath_list_from_selection_on_view();
    
    gtk_widget_hide(rfm_main_box);
@@ -2668,7 +2668,7 @@ static void readlineInSeperateThread(GString * readlineResultStringFromPreviousR
     gchar prompt[5]="";
     strcat(prompt, stdin_cmd_interpretors[current_stdin_cmd_interpretor].prompt);
     ToSearchResultFilenameList=FALSE;
-    if (keep_selection_across_refresh && In_refresh_store) strcat(prompt,"?>");
+    if (keep_selection_on_view_across_refresh && In_refresh_store) strcat(prompt,"?>");
     else if (ItemSelected==0) strcat(prompt,">");
     else strcat(prompt,"*>");
     g_free(OriginalReadlineResult);
