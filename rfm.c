@@ -298,8 +298,8 @@ static gchar* treeviewcolumn_init_order_sequence = NULL;
 static gchar* auto_execution_command_after_rfm_start = NULL;
 // keep previous selection when go back from cd directory to search result.
 // two elements, one for search result view, the other for directory view
-static GList * filepath_list_for_selection_on_view[2] = {NULL,NULL};
-static gboolean skip_sync_view_selection_file_path_list_once = FALSE;
+static GList * filepath_lists_for_selection_on_view[2] = {NULL,NULL};
+static gboolean skip_sync_filepath_list_for_selection_on_view_once = FALSE;
 // if true, means that rfm read file names in following way:
 //      ls|xargs realpath|rfm
 // or
@@ -361,7 +361,7 @@ static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer rfmCtx
 static void inotify_insert_item(gchar *name, gboolean is_dir);
 static gboolean delayed_refreshAll(gpointer user_data);
 static void refresh_store(RFM_ctx *rfmCtx);
-static void sync_view_selection_file_path_list();
+static void sync_filepath_list_from_selection_on_view();
 static void clear_store(void);
 static void rfm_stop_all(RFM_ctx *rfmCtx);
 static gboolean fill_fileAttributeList_with_filenames_from_search_result_and_then_insert_into_store();
@@ -1397,14 +1397,14 @@ static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,
       g_debug("Inserted into store:%s",fileAttributes->file_name);
       // keep view selections across refresh_store
       if (keep_selection_across_refresh) {
-	GList * selection_filepath_list = g_list_first(filepath_list_for_selection_on_view[SearchResultViewInsteadOfDirectoryView]);
+	GList * selection_filepath_list = g_list_first(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView]);
 	while(selection_filepath_list!=NULL){
 	  if (g_strcmp0(fileAttributes->path, selection_filepath_list->data)==0){
 	    g_debug("re-select file during refresh:%s",fileAttributes->path);
 	    treePath=gtk_tree_model_get_path(GTK_TREE_MODEL(store), iter);
 	    set_view_selection(icon_or_tree_view, treeview, treePath);
 	    gtk_tree_path_free(treePath);
-	    filepath_list_for_selection_on_view[SearchResultViewInsteadOfDirectoryView] = g_list_remove_link(filepath_list_for_selection_on_view[SearchResultViewInsteadOfDirectoryView], selection_filepath_list);
+	    filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView] = g_list_remove_link(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView], selection_filepath_list);
 	    g_list_free_full(selection_filepath_list, g_free);
 	    break;
 	  }
@@ -1656,10 +1656,10 @@ static void refresh_store(RFM_ctx *rfmCtx)
 {
    In_refresh_store = TRUE;
    // for the first refresh_store after rfm launch, we don't need to sync_view_selection, we should keep view_selection list content which is specified by rfm arguments, we use scroll_window==NULL to detect first refresh_store after rfm launch
-   if (skip_sync_view_selection_file_path_list_once)
-     skip_sync_view_selection_file_path_list_once = FALSE;
+   if (skip_sync_filepath_list_for_selection_on_view_once)
+     skip_sync_filepath_list_for_selection_on_view_once = FALSE;
    else if (keep_selection_across_refresh && scroll_window)
-     sync_view_selection_file_path_list();
+     sync_filepath_list_from_selection_on_view();
    
    gtk_widget_hide(rfm_main_box);
    if (scroll_window) gtk_widget_destroy(scroll_window);
@@ -1809,7 +1809,7 @@ static void set_rfm_curPath(gchar* path)
 
 }
 
-static void sync_view_selection_file_path_list(){
+static void sync_filepath_list_from_selection_on_view(){
       GtkTreeIter iter;
       GList *newSelectionFilePathList=NULL;
       GList *selectionList = get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
@@ -1829,8 +1829,8 @@ static void sync_view_selection_file_path_list(){
 	rfm_prePath=NULL;
       }
       
-      g_list_free_full(filepath_list_for_selection_on_view[SearchResultViewInsteadOfDirectoryView],g_free);
-      filepath_list_for_selection_on_view[SearchResultViewInsteadOfDirectoryView] = newSelectionFilePathList;
+      g_list_free_full(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView],g_free);
+      filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView] = newSelectionFilePathList;
 
       g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
 }
@@ -2855,9 +2855,10 @@ static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, GString* read
 		    set_rfm_curPath(stdin_cmd_selection_fileAttributes->path);
 		    if (SearchResultViewInsteadOfDirectoryView) Switch_SearchResultView_DirectoryView(NULL, rfmCtx);		  
 		  }else if (SearchResultViewInsteadOfDirectoryView){
-		    g_list_free_full(filepath_list_for_selection_on_view[!SearchResultViewInsteadOfDirectoryView],g_free);
-		    filepath_list_for_selection_on_view[!SearchResultViewInsteadOfDirectoryView]=g_list_prepend(filepath_list_for_selection_on_view[!SearchResultViewInsteadOfDirectoryView],strdup(stdin_cmd_selection_fileAttributes->path));
-		    skip_sync_view_selection_file_path_list_once = TRUE;
+		    g_list_free_full(filepath_lists_for_selection_on_view[!SearchResultViewInsteadOfDirectoryView],g_free);
+		    filepath_lists_for_selection_on_view[!SearchResultViewInsteadOfDirectoryView]=g_list_prepend(filepath_lists_for_selection_on_view[!SearchResultViewInsteadOfDirectoryView],strdup(stdin_cmd_selection_fileAttributes->path));
+		    skip_sync_filepath_list_for_selection_on_view_once = TRUE;
+		    // sync_filepath_lists_from_selection_on_view will free the filepath list if no file selected, 
 		    //set_rfm_curPath in Searchresultview won't have inotify handler triggered, so there is only one refresh next from the Switch_SearchResultView_DirectoryView, so skip once is enough.
 		    char * parentdir = g_path_get_dirname(stdin_cmd_selection_fileAttributes->path);
 		    set_rfm_curPath(parentdir);
@@ -3244,7 +3245,7 @@ int main(int argc, char *argv[])
 	    initDir=canonicalize_file_name(argv[c+1]);
 	 }else{
 	    initDir=g_path_get_dirname(argv[c+1]);
-	    filepath_list_for_selection_on_view[SearchResultViewInsteadOfDirectoryView] = g_list_prepend(filepath_list_for_selection_on_view[SearchResultViewInsteadOfDirectoryView], g_strdup(argv[c+1]));
+	    filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView] = g_list_prepend(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView], g_strdup(argv[c+1]));
          }           
 	 c++;
 
