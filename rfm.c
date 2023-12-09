@@ -298,6 +298,7 @@ static gchar* treeviewcolumn_init_order_sequence = NULL;
 static gchar* auto_execution_command_after_rfm_start = NULL;
 // keep previous selection when go back from cd directory to search result.
 // two elements, one for search result view, the other for directory view
+// filepath string in this list is created with strdup.
 static GList * filepath_lists_for_selection_on_view[2] = {NULL,NULL};
 static gboolean skip_sync_filepath_list_for_selection_on_view_once = FALSE;
 // if true, means that rfm read file names in following way:
@@ -1405,8 +1406,9 @@ static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,
 	    treePath=gtk_tree_model_get_path(GTK_TREE_MODEL(store), iter);
 	    set_view_selection(icon_or_tree_view, treeview, treePath);
 	    gtk_tree_path_free(treePath);
+	     //once item in filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView] matches and set_view_selection on view, it is removed from the list so that it will not be in the loop of comparison for the next file to Insert into store. This will decrease the total number of comparison and improve performance, but we have to call sync_filepath_list_from_selection_on_view() at the beginning of refresh to populate the selected items again from view to list;
 	    filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView] = g_list_remove_link(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView], selection_filepath_list);
-	    g_list_free_full(selection_filepath_list, g_free);
+	    g_list_free_full(selection_filepath_list, g_free);  //This is to free the matched item that was just removed from the list, not to free the whole list.
 	    break;
 	  }
 	  selection_filepath_list = g_list_next(selection_filepath_list);
