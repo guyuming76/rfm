@@ -24,7 +24,7 @@
 // "\e[B":history-search-forward
 
 
-static gboolean keep_selection_across_refresh = TRUE; 
+static gboolean keep_selection_on_view_across_refresh = TRUE; 
 /* Built in commands - MUST be present */
 /* rfmBinPath is passed in by compiler via Makefile*/
 static const char *f_rm[]   = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmRemove.sh",NULL };
