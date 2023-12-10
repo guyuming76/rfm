@@ -1499,6 +1499,10 @@ static void load_GitTrackedFiles_into_HashTable()
 	  fileAttributes->mime_sub_type=g_strdup("na");
 	  //rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
 	  Insert_fileAttributes_into_store_with_thumbnail_and_more(fileAttributes);
+	  //TODO: after i run `git rm -r --cached video`, rfm will show video subdir as shown on devPicAndVideo/20231210_15h14m08s_grim.png
+	  //so we should not insert fileattributes if the file is still in directory, and it is just removed from git track, not deleted
+	  //or we can insert fileattributes here, but update it when read fileattribute later from directory, instead of insert it again.
+	  //Furthur, think about we need to load extended attribs for files, such as those in email, shall we consider general multiple pass fileattributes loading framework?
 	}
       }
       
