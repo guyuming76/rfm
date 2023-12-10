@@ -1,0 +1,6 @@
+[submodule "PicAndVideo"]
+	path = PicAndVideo
+	url = https://gitee.com/guyuming76/rfm-pic-and-video.git
+[submodule "devPicAndVideo"]
+	path = devPicAndVideo
+	url = https://gitee.com/guyuming76/rfm-dev-pic-and-video.git
