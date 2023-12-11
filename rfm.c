@@ -1049,11 +1049,7 @@ static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter)
       return NULL;  /* Don't show thumbnails for files types with no thumbnailer */
    }
 
-   if (SearchResultViewInsteadOfDirectoryView) {
-     thumbData->thumb_size = RFM_THUMBNAIL_LARGE_SIZE;
-   } else {
-     thumbData->thumb_size = RFM_THUMBNAIL_SIZE;
-   }
+   thumbData->thumb_size = RFM_THUMBNAIL_SIZE;
    thumbData->path=g_strdup(fileAttributes->path);
    thumbData->mtime_file = fileAttributes->file_mtime==NULL? 0 : g_date_time_to_unix(fileAttributes->file_mtime);
    thumbData->uri=g_filename_to_uri(thumbData->path, NULL, NULL);
@@ -2386,11 +2382,6 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
      g_debug("gtk_icon_view_get_margin:%d", gtk_icon_view_get_margin((GtkIconView *)_view));
    }
    
-   if (SearchResultViewInsteadOfDirectoryView) {
-     /*a single cell will be too wide if width is set automatically, one cell can take a whole row, don't know why*/
-     if (!treeview) gtk_icon_view_set_item_width((GtkIconView *)_view,RFM_THUMBNAIL_LARGE_SIZE);
-   }
-
    return _view;
 }
 
@@ -3045,10 +3036,7 @@ static int setup(RFM_ctx *rfmCtx)
 
    rfm_homePath=g_strdup(g_get_home_dir());
    
-   if (SearchResultViewInsteadOfDirectoryView)
-     rfm_thumbDir=g_build_filename(g_get_user_cache_dir(), "thumbnails", "large", NULL);
-   else
-     rfm_thumbDir=g_build_filename(g_get_user_cache_dir(), "thumbnails", "normal", NULL);
+   rfm_thumbDir=g_build_filename(g_get_user_cache_dir(), "thumbnails", "normal", NULL);
 
    thumb_hash=g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)gtk_tree_row_reference_free);
 
