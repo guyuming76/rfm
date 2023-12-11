@@ -306,7 +306,7 @@ static gboolean skip_sync_filepath_list_for_selection_on_view_once = FALSE;
 // or
 //      locate blablablaa |rfm
 // , instead of from a directory
-static gboolean SearchResultViewInsteadOfDirectoryView=FALSE;
+static unsigned int SearchResultViewInsteadOfDirectoryView=0;
 static GList *SearchResultFileNameList = NULL;
 static gint fileNum=0;
 static gint currentFileNum=0;
@@ -1481,7 +1481,7 @@ static void load_GitTrackedFiles_into_HashTable()
 
       g_hash_table_insert(gitTrackedFiles,g_strdup(fullpath),status);
       
-      if (!SearchResultViewInsteadOfDirectoryView && (g_strcmp0(" D", status)==0 || g_strcmp0("D ", status)==0) && g_strcmp0(g_path_get_dirname(fullpath), rfm_curPath)==0){
+      if ((SearchResultViewInsteadOfDirectoryView^1) && (g_strcmp0(" D", status)==0 || g_strcmp0("D ", status)==0) && g_strcmp0(g_path_get_dirname(fullpath), rfm_curPath)==0){
 	//add item into fileattributelist so that user can git stage on it
 	RFM_FileAttributes *fileAttributes=malloc_fileAttributes();
 	if (fileAttributes==NULL)
@@ -1694,7 +1694,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
      rfm_readDirSheduler=g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, (GSourceFunc)read_one_DirItem_into_fileAttributeList_and_insert_into_store_in_each_call, dir, (GDestroyNotify)g_dir_close);
   }
 #ifdef GitIntegration
-   if (!SearchResultViewInsteadOfDirectoryView && curPath_is_git_repo)
+   if ((SearchResultViewInsteadOfDirectoryView^1) && curPath_is_git_repo)
       g_spawn_wrapper(git_current_branch_cmd, NULL, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, TRUE, set_window_title_with_git_branch_and_sort_view_with_git_status, NULL);
    else set_Titles(title);
 #else
@@ -2404,7 +2404,7 @@ static void Switch_SearchResultView_DirectoryView(GtkToolItem *item,RFM_ctx *rfm
   //in searchresultview, we can still call set_rfm_curpath, without inotify handler created
   //so, after switching from searchresultview to directory view, we need to setup inotify handler
   //Or shall i setup inotify handler in set_rfm_curpath even if in searchresultview? maybe this is better.
-    SearchResultViewInsteadOfDirectoryView=!SearchResultViewInsteadOfDirectoryView;
+    SearchResultViewInsteadOfDirectoryView=SearchResultViewInsteadOfDirectoryView^1;
     refresh_store(rfmCtx);
 }
 
@@ -2855,8 +2855,8 @@ static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, GString* read
 		    set_rfm_curPath(stdin_cmd_selection_fileAttributes->path);
 		    if (SearchResultViewInsteadOfDirectoryView) Switch_SearchResultView_DirectoryView(NULL, rfmCtx);		  
 		  }else if (SearchResultViewInsteadOfDirectoryView){
-		    g_list_free_full(filepath_lists_for_selection_on_view[!SearchResultViewInsteadOfDirectoryView],g_free);
-		    filepath_lists_for_selection_on_view[!SearchResultViewInsteadOfDirectoryView]=g_list_prepend(filepath_lists_for_selection_on_view[!SearchResultViewInsteadOfDirectoryView],strdup(stdin_cmd_selection_fileAttributes->path));
+		    g_list_free_full(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView^1],g_free);
+		    filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView^1]=g_list_prepend(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView^1],strdup(stdin_cmd_selection_fileAttributes->path));
 		    skip_sync_filepath_list_for_selection_on_view_once = TRUE;
 		    // sync_filepath_lists_from_selection_on_view will free the filepath list if no file selected, 
 		    //set_rfm_curPath in Searchresultview won't have inotify handler triggered, so there is only one refresh next from the Switch_SearchResultView_DirectoryView, so skip once is enough.
@@ -3257,7 +3257,7 @@ int main(int argc, char *argv[])
          return 0;
       case 'p':
 	   if (initDir!=NULL) die("if you have -d specified, and read file name list from pipeline, -p parameter must goes BEFORE -d\n");
-	   SearchResultViewInsteadOfDirectoryView = TRUE;
+	   SearchResultViewInsteadOfDirectoryView = 1;
 	   gchar *pagesize=argv[c] + 2 * sizeof(gchar);
 	   int ps=atoi(pagesize);
 	   if (ps!=0) PageSize_SearchResultView=ps;
@@ -3322,8 +3322,8 @@ static void ReadFromPipeStdinIfAny(char * fd)
    g_debug("readlink for %s: %s",name,buf);
 
    if (strlen(buf)>4 && g_strcmp0(g_utf8_substring(buf, 0, 4),"pipe")==0){
-         if (initDir!=NULL && !SearchResultViewInsteadOfDirectoryView) die("if you have -d specified, and read file name list from pipeline, -p parameter must goes BEFORE -d\n");
-	 else SearchResultViewInsteadOfDirectoryView=TRUE;
+     if (initDir!=NULL && (SearchResultViewInsteadOfDirectoryView^1)) die("if you have -d specified, and read file name list from pipeline, -p parameter must goes BEFORE -d\n");
+	 else SearchResultViewInsteadOfDirectoryView=1;
 	 
 	 gchar *oneline_stdin=calloc(1,PATH_MAX);
 	 FILE *pipeStream = stdin;
@@ -3370,7 +3370,7 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
   }
 
   if (SearchResultFileNameList != NULL) SearchResultFileNameList=g_list_first(g_list_reverse(SearchResultFileNameList));
-  SearchResultViewInsteadOfDirectoryView = TRUE;
+  SearchResultViewInsteadOfDirectoryView = 1;
   g_free(rfm_SearchResultPath);
   rfm_SearchResultPath=strdup(rfm_curPath);
   FirstPage(rfmCtx);
