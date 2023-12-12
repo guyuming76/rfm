@@ -2828,7 +2828,7 @@ static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, GString* read
 	    }
 	  }else if (parsed_msg->we_wordc==1){ // cd without parameter
 	      if (stdin_cmd_ending_space){
-		if (stdin_cmd_selection_list!=NULL && stdin_cmd_selection_fileAttributes!=NULL){
+		if (stdin_cmd_selection_list!=NULL && stdin_cmd_selection_fileAttributes!=NULL && stdin_cmd_selection_fileAttributes->file_mode_str!=NULL){
 		  //user can accidentally select multple files, but we only use one of them here.
 		  if (stdin_cmd_selection_fileAttributes->file_mode_str[0]=='d'){
 		    set_rfm_curPath(stdin_cmd_selection_fileAttributes->path);
@@ -2841,7 +2841,8 @@ static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, GString* read
 		    set_rfm_curPath(parentdir);
 		    g_free(parentdir);
 		  }
-		}
+		}else
+		  g_warning("file or directory not selected, or invalid");
 	      }else { //!stdin_cmd_ending_space
 		printf("%s\n",rfm_curPath);
 	      }
