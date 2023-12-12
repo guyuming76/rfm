@@ -2809,22 +2809,17 @@ static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, GString* read
 	  if (parsed_msg->we_wordc==2){
 	    gchar * addr=parsed_msg->we_wordv[1];
 	    g_debug("cd %s", addr);
-
 	    if (g_strcmp0(addr, "..")==0) {
 	      up_clicked(NULL);
-	      return TRUE;
 	    }else if (g_strcmp0(addr, ".")==0){
-	      return TRUE;
+
 	    }else if (g_strcmp0(addr, "-")==0){
 	      set_rfm_curPath(getenv("OLDPWD"));
-	      return TRUE;
 	    }else if (addr[0]=='/'){
 	      //TODO: what if in searchresult, select filename, and tabcomplete the filename here? Shall we enter directory and switch to directory view as only selected filename but not tabcomplete?
 	      set_rfm_curPath(addr);
-	      return TRUE;
 	    }else{
 	      set_rfm_curPath(g_build_filename(rfm_curPath, addr, NULL));
-	      return TRUE;
 	    }
 	  }else if (parsed_msg->we_wordc==1){ // cd without parameter
 	      if (stdin_cmd_ending_space){
@@ -2846,47 +2841,37 @@ static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, GString* read
 	      }else { //!stdin_cmd_ending_space
 		printf("%s\n",rfm_curPath);
 	      }
-	      return TRUE;
 	  //when we set_rfm_curPath, we don't change rfm environment variable PWD
 	  //so, shall we consider update env PWD value for rfm in set_rfm_curPath?
 	  //The answer is we should not, since we sometime, with need PWD, which child process will inherit, to be different from the directory of files selected that will be used by child process.
 	  //Instead, we use the setpwd command.
-	  }
+	  }//end cd without parameter
         }else if (g_strcmp0(parsed_msg->we_wordv[0],"setpwd")==0) {
 	  setenv("PWD",rfm_curPath,1);
 	  printf("%s\n",getenv("PWD"));
-	  return TRUE;
         }else if (g_strcmp0(parsed_msg->we_wordv[0],"pwd")==0) {
 	  printf("%s\n",getenv("PWD"));
-	  return TRUE;
         }else if (g_strcmp0(parsed_msg->we_wordv[0],"quit")==0) {
 	  cleanup(NULL,rfmCtx);
-	  return TRUE;
         }else if (g_strcmp0(parsed_msg->we_wordv[0],"help")==0) {
 	  stdin_command_help();
-	  return TRUE;
 	}else if (g_strcmp0(parsed_msg->we_wordv[0],"/")==0) {
 	  switch_iconview_treeview(rfmCtx);
-	  return TRUE;
 	}else if (g_strcmp0(parsed_msg->we_wordv[0],"//")==0) {
 	  Switch_SearchResultView_DirectoryView(NULL, rfmCtx);
-	  return TRUE;
         }else if (g_strcmp0(parsed_msg->we_wordv[0], "pagesize")==0 && parsed_msg->we_wordc==2){
 	  guint ps = atoi(parsed_msg->we_wordv[1]); 
 	  if (ps > 0) set_DisplayingPageSize_ForFileNameListFromPipesStdIn(ps);
-	  return TRUE;
         }else if (g_strcmp0(parsed_msg->we_wordv[0], "thumbnailsize")==0){
 	  if (parsed_msg->we_wordc==2){
 	    guint ts = atoi(parsed_msg->we_wordv[1]);
 	    if (ts>0) RFM_THUMBNAIL_SIZE=ts;
 	    else g_warning("invalid thumbnailsize");
 	  }else printf("%d\n",RFM_THUMBNAIL_SIZE);
-	  return TRUE;
 	}else if (g_strcmp0(parsed_msg->we_wordv[0], "showcolumn")==0){
 	  show_hide_treeview_columns(parsed_msg);
 	  add_history(readline_result_string_after_file_name_substitution->str);
 	  history_entry_added++;
-	  return TRUE;
 	}else if (g_strcmp0(parsed_msg->we_wordv[0], "glog")==0){
 	  if (parsed_msg->we_wordc>1){
 	    if (g_strcmp0(parsed_msg->we_wordv[1],"off")==0)
@@ -2896,10 +2881,9 @@ static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, GString* read
 	    else printf("Usage: glog off|on\n");
 	  }else
 	    printf("Usage: glog off|on\n");
-	  return TRUE;
-	}
-	//TODO: default to return TRUE, so that we can remove so many return TRUE line
-	return FALSE;
+	}else return FALSE; // parsed_msg->we_wordv[0] does not match any build command
+
+	return TRUE; //execution reaches here if parsed_msg->we_wordv[0] matchs any keyword, and have finished the corresponding logic
 }
 
 static void exec_stdin_command (gchar * readlineResult)
