@@ -300,7 +300,7 @@ static gchar* auto_execution_command_after_rfm_start = NULL;
 // two elements, one for search result view, the other for directory view
 // filepath string in this list is created with strdup.
 static GList * filepath_lists_for_selection_on_view[2] = {NULL,NULL};
-static gboolean skip_sync_filepath_list_for_selection_on_view_once = FALSE;
+static GList * filepath_lists_for_selection_on_view_clone;
 // if true, means that rfm read file names in following way:
 //      ls|xargs realpath|rfm
 // or
@@ -362,7 +362,6 @@ static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer rfmCtx
 static void inotify_insert_item(gchar *name, gboolean is_dir);
 static gboolean delayed_refreshAll(gpointer user_data);
 static void refresh_store(RFM_ctx *rfmCtx);
-static void sync_filepath_list_from_selection_on_view();
 static void clear_store(void);
 static void rfm_stop_all(RFM_ctx *rfmCtx);
 static gboolean fill_fileAttributeList_with_filenames_from_search_result_and_then_insert_into_store();
@@ -1395,17 +1394,15 @@ static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,
       g_debug("Inserted into store:%s",fileAttributes->file_name);
       
       if (keep_selection_on_view_across_refresh) {
-	GList * selection_filepath_list = g_list_first(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView]);
+	GList * selection_filepath_list = g_list_first(filepath_lists_for_selection_on_view_clone);
 	while(selection_filepath_list!=NULL){
 	  if (g_strcmp0(fileAttributes->path, selection_filepath_list->data)==0){
 	    g_debug("re-select file during refresh:%s",fileAttributes->path);
 	    treePath=gtk_tree_model_get_path(GTK_TREE_MODEL(store), iter);
 	    set_view_selection(icon_or_tree_view, treeview, treePath);
 	    gtk_tree_path_free(treePath);
-	     //once item in filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView] matches and set_view_selection on view, it is removed from the list so that it will not be in the loop of comparison for the next file to Insert into store. This will decrease the total number of comparison and improve performance, but we have to call sync_filepath_list_from_selection_on_view() at the beginning of refresh to populate the selected items again from view to list. 
-	    //TODO: try not to sync from views to list, just clone this list instead, and use one copy in this compare logic, so that we can remove the confusing and maybe buggy skip_sync_filepath_list_for_selection_on_view_once logic. But a benefit of sync_filepath_list_from_selection_on_view() is we don't have to update the list everytime selectionchanges. But, since we have already called get_view_selection_list() in selectionchanges, this will not be a big burden.
-	    filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView] = g_list_remove_link(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView], selection_filepath_list);
-	    g_list_free_full(selection_filepath_list, g_free);  //This is to free the matched item that was just removed from the list, not to free the whole list.
+	    //once item in filepath_lists_for_selection_on_view_clone matches and set_view_selection on view, it is removed from the list so that it will not be in the loop of comparison for the next file to Insert into store. This will decrease the total number of comparison and improve performance, but we have to re-clone the list at the begin of refresh.
+	    filepath_lists_for_selection_on_view_clone = g_list_remove_link(filepath_lists_for_selection_on_view_clone, selection_filepath_list);
 	    break;
 	  }
 	  selection_filepath_list = g_list_next(selection_filepath_list);
@@ -1659,11 +1656,16 @@ static void set_Titles(gchar * title){
 static void refresh_store(RFM_ctx *rfmCtx)
 {
    In_refresh_store = TRUE;
-   // for the first refresh_store after rfm launch, we don't need to sync_view_selection, we should keep view_selection list content which is specified by rfm arguments, we use scroll_window==NULL to detect first refresh_store after rfm launch
-   if (skip_sync_filepath_list_for_selection_on_view_once)
-     skip_sync_filepath_list_for_selection_on_view_once = FALSE;
-   else if (keep_selection_on_view_across_refresh && scroll_window)
-     sync_filepath_list_from_selection_on_view();
+   //clone filepath_lists_for_selection_on_view
+   g_list_free(filepath_lists_for_selection_on_view_clone);
+   filepath_lists_for_selection_on_view_clone=NULL;
+   GList * selection_filepath_list = g_list_first(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView]);
+   while (selection_filepath_list!=NULL) {
+     filepath_lists_for_selection_on_view_clone = g_list_prepend(filepath_lists_for_selection_on_view_clone, selection_filepath_list->data);
+     selection_filepath_list=g_list_next(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView]);
+   }
+   if (RFM_AUTOSELECT_OLDPWD_IN_VIEW && rfm_prePath!=NULL)
+     filepath_lists_for_selection_on_view_clone = g_list_prepend(filepath_lists_for_selection_on_view_clone, rfm_prePath);
    
    gtk_widget_hide(rfm_main_box);
    if (scroll_window) gtk_widget_destroy(scroll_window);
@@ -1811,55 +1813,38 @@ static void set_rfm_curPath(gchar* path)
    /* if (!rfmReadFileNamesFromPipeStdIn && curPath_is_git_repo) */
    /*    g_spawn_wrapper(git_current_branch_cmd, NULL, 0, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, TRUE, set_window_title_with_git_branch, NULL); */
 #endif
-
 }
 
-static void sync_filepath_list_from_selection_on_view(){
-      GtkTreeIter iter;
-      GList *newSelectionFilePathList=NULL;
-      GList *selectionList = get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
-      selectionList=g_list_first(selectionList);
-      while(selectionList!=NULL){
+
+/*why i maintain this ItemSelected value here instead of getting it on need?*/
+/*because it is used in the readline thread, and i don't think the get_view_selection_list is thread safe*/
+static void selectionChanged(GtkWidget *view, gpointer user_data)
+{
+  GList *newSelectionFilePathList=NULL;
+  GList *selectionList=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
+  if (selectionList==NULL){
+    ItemSelected=0;
+  }else{
+    GtkTreeIter iter;
+    selectionList = g_list_first(selectionList);
+    while(selectionList!=NULL){
 	GValue fullpath = G_VALUE_INIT;
         gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, selectionList->data);
 	gtk_tree_model_get_value(treemodel, &iter, COL_FULL_PATH, &fullpath);
 	newSelectionFilePathList = g_list_prepend(newSelectionFilePathList, g_strdup(g_value_get_string(&fullpath)));
 	g_debug("selected file before refresh:%s",(char *)newSelectionFilePathList->data);
 	selectionList=g_list_next(selectionList);
-      }
-
-      if (RFM_AUTOSELECT_OLDPWD_IN_VIEW && rfm_prePath!=NULL){
-	newSelectionFilePathList = g_list_prepend(newSelectionFilePathList, strdup(rfm_prePath));
-	g_free(rfm_prePath);
-	rfm_prePath=NULL;
-      }
-      
-      g_list_free_full(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView],g_free);
-      filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView] = newSelectionFilePathList;
-
-      g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
-}
-
-/*why i maintain this ItemSelected value here instead of getting it on need?*/
-/*because it is used in the readline thread, and i don't think the get_view_selection_list is thread safe*/
-static void selectionChanged(GtkWidget *view, gpointer user_data)
-{
-  GList *selectionList=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
-  if (selectionList==NULL){
-    ItemSelected=0;
-  }else{
-    GtkTreeIter iter;
-    GValue fullpath = G_VALUE_INIT;
-    selectionList = g_list_first(selectionList);
-    gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, selectionList->data);
-    gtk_tree_model_get_value (GTK_TREE_MODEL(store), &iter, COL_FULL_PATH, &fullpath);
-
+    }
     g_mutex_lock(&rfm_selection_completion_lock);
     free(rfm_selection_completion);
-    rfm_selection_completion = g_strdup(g_value_get_string(&fullpath));
+    rfm_selection_completion = g_strdup(newSelectionFilePathList->data);
     ItemSelected=1;
     g_mutex_unlock(&rfm_selection_completion_lock);
   }
+
+  g_list_free_full(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView],g_free);
+  filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView] = newSelectionFilePathList;
+
   g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
 }
 
@@ -2398,12 +2383,6 @@ static void switch_iconview_treeview(RFM_ctx *rfmCtx) {
 
 static void Switch_SearchResultView_DirectoryView(GtkToolItem *item,RFM_ctx *rfmCtx)
 {
-  //TODO:
-  //inotify handler don't do anything in searchresultview
-  //set_rfm_curpath don't setup inotify handler in searchresultview
-  //in searchresultview, we can still call set_rfm_curpath, without inotify handler created
-  //so, after switching from searchresultview to directory view, we need to setup inotify handler
-  //Or shall i setup inotify handler in set_rfm_curpath even if in searchresultview? maybe this is better.
     SearchResultViewInsteadOfDirectoryView=SearchResultViewInsteadOfDirectoryView^1;
     refresh_store(rfmCtx);
 }
@@ -2855,16 +2834,12 @@ static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, GString* read
 		    set_rfm_curPath(stdin_cmd_selection_fileAttributes->path);
 		    if (SearchResultViewInsteadOfDirectoryView) Switch_SearchResultView_DirectoryView(NULL, rfmCtx);		  
 		  }else if (SearchResultViewInsteadOfDirectoryView){
-		    g_list_free_full(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView^1],g_free);
-		    filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView^1]=g_list_prepend(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView^1],strdup(stdin_cmd_selection_fileAttributes->path));
-		    skip_sync_filepath_list_for_selection_on_view_once = TRUE;
-		    // sync_filepath_lists_from_selection_on_view will free the filepath list if no file selected, 
-		    //set_rfm_curPath in Searchresultview won't have inotify handler triggered, so there is only one refresh next from the Switch_SearchResultView_DirectoryView, so skip once is enough.
-		    //TODO: but why the refresh is called in inotify handler? will it be better if called directly in set_rfm_curPath?
+		    SearchResultViewInsteadOfDirectoryView = SearchResultViewInsteadOfDirectoryView^1;
+		    g_list_free_full(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView],g_free);
+		    filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView]=g_list_prepend(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView],strdup(stdin_cmd_selection_fileAttributes->path));
 		    char * parentdir = g_path_get_dirname(stdin_cmd_selection_fileAttributes->path);
 		    set_rfm_curPath(parentdir);
 		    g_free(parentdir);
-		    Switch_SearchResultView_DirectoryView(NULL, rfmCtx);
 		  }
 		}
 	      }else { //!stdin_cmd_ending_space
