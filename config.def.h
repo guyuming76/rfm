@@ -157,7 +157,6 @@ static RFM_MenuItem run_actions[] = {
  * the command environment is changed to the currently displayed directory.
  * 
  * TODO: currently for functions, parameters are all rfmCtx if any. In future, we may need another column to specify a global variable as parameter for function. And we need to make rfmCtx global for this.
- * TODO: do we need a RunOption column here as the file menu items?
  * If both RunCmd and function is not NULL, function is run as callback after RunCmd finishs
  *
  * The difference between Toolbar button and file menu RunActions is that RunActions is for selected files while Toolbar RunCmd won't deal with selected files, it is for current directory */

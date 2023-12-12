@@ -1008,6 +1008,8 @@ static gboolean mkThumb()
 	}
       }
    }else {
+      //TODO: for thumbnail created with rfm_saveThumbnail above, tmp filename used and renamed next, in inotify handler, create and move event are both captured
+      //but here, we don't have this rename operation, but why Rodney use rename?
       gchar *thumb_path=g_build_filename(rfm_thumbDir, thumbData->thumb_name, NULL);
       GList * input_files=NULL;
       input_files=g_list_prepend(input_files, g_strdup(thumbData->path));
@@ -1054,8 +1056,6 @@ static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter)
    thumbData->md5=g_compute_checksum_for_string(G_CHECKSUM_MD5, thumbData->uri, -1);
    thumbData->thumb_name=g_strdup_printf("%s_%d.png", thumbData->md5, thumbData->thumb_size);
    thumbData->rfm_pid=getpid();  /* pid is used to generate a unique temporary thumbnail name */
-
-   
 
    /* Map thumb path to model reference for inotify */
    treePath=gtk_tree_model_get_path(GTK_TREE_MODEL(store), iter);
