@@ -2819,6 +2819,7 @@ static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, GString* read
 	      set_rfm_curPath(getenv("OLDPWD"));
 	      return TRUE;
 	    }else if (addr[0]=='/'){
+	      //TODO: what if in searchresult, select filename, and tabcomplete the filename here? Shall we enter directory and switch to directory view as only selected filename but not tabcomplete?
 	      set_rfm_curPath(addr);
 	      return TRUE;
 	    }else{
