@@ -40,6 +40,7 @@
 "    pwd         get rfm env PWD\n" \
 "    setpwd      set rfm env PWD with current directory\n" \
 "    pagesize    set files shown per page in search result view. for example, pagesize 100\n" \
+"    thumbnailsize  set thumbnail size in icon view. \n" \
 "    showcolumn  show or hide column (if currently in listview)\n" \
 "Shell commands:\n" \
 "    non-builtin commands will be sent to shell to execute.\n" \
@@ -50,7 +51,7 @@
 
 #define rfmLaunchHelp \
 "This is the help for command line argumants you can use to launch program with, there is another help in command window for commands you can use there.\n" \
-"Usage: %s [-h] || [-d <full path>] [-i] [-v] [-l] [-p<custom pagesize>] [-p] [-s]\n" \
+"Usage: %s [-h] || [-d <full path>] [-i] [-v] [-l] [-p<custom pagesize>] [-p] [-s] [-t] [-T<thumbnailsize>]\n" \
 "       press q in rfm window to quit.\n" \
 "-p       read file name list from StdIn, through pipeline, this -p can be omitted, for example:\n           locate 20230420|grep .png|rfm\n" \
 "-px      when read filename list from pipeline, show only x number of items in a batch, for example: -p9. you can also set this in command window with builtin cmd pagesize\n" \
@@ -61,6 +62,7 @@
 "-r       followed by named pipe through which file selection is returned. Used when rfm works as file chooser, such as with program file open menu.\n" \
 "         if no named pipe follows, selection will be returned through printf, and rfm will start without readline thread, as if -t parameter is also added.\n" \
 "-t       start rfm without readline thread, neither show command prompt nor accept command line input.\n" \
+"-T       set RFM_THUMBNAIL_SIZE, same as thumbnailsize command above.\n" \
 "-h       show this help\n"
 
 #define SHOWCOLUMN_USAGE \

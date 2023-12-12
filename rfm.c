@@ -1052,7 +1052,7 @@ static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter)
    thumbData->mtime_file = fileAttributes->file_mtime==NULL? 0 : g_date_time_to_unix(fileAttributes->file_mtime);
    thumbData->uri=g_filename_to_uri(thumbData->path, NULL, NULL);
    thumbData->md5=g_compute_checksum_for_string(G_CHECKSUM_MD5, thumbData->uri, -1);
-   thumbData->thumb_name=g_strdup_printf("%s.png", thumbData->md5);
+   thumbData->thumb_name=g_strdup_printf("%s_%d.png", thumbData->md5, thumbData->thumb_size);
    thumbData->rfm_pid=getpid();  /* pid is used to generate a unique temporary thumbnail name */
 
    
@@ -2339,6 +2339,7 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
      gtk_icon_view_set_markup_column(GTK_ICON_VIEW(_view),COL_ICONVIEW_MARKUP);
      gtk_icon_view_set_tooltip_column(GTK_ICON_VIEW(_view), COL_ICONVIEW_TOOLTIP);
      gtk_icon_view_set_pixbuf_column(GTK_ICON_VIEW(_view), COL_PIXBUF);
+     gtk_icon_view_set_item_width(GTK_ICON_VIEW(_view), RFM_THUMBNAIL_SIZE);
    }
    #ifdef RFM_SINGLE_CLICK
    gtk_icon_view_set_activate_on_single_click(GTK_ICON_VIEW(icon_view), TRUE);
@@ -2461,10 +2462,10 @@ static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer user_d
       return TRUE;
    }
 
-   if (SearchResultViewInsteadOfDirectoryView) return TRUE;
-   
    while (i<len) {
       struct inotify_event *event=(struct inotify_event *) (buffer+i);
+
+      if (SearchResultViewInsteadOfDirectoryView && event->wd!=rfm_thumbnail_wd) return TRUE;
       
       if (event->len && !ignored_filename(event->name)) {
          if (event->wd==rfm_thumbnail_wd) {
@@ -2877,6 +2878,13 @@ static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, GString* read
 	    set_DisplayingPageSize_ForFileNameListFromPipesStdIn(ps);
 	    return TRUE;
 	  }
+        }else if (g_strcmp0(parsed_msg->we_wordv[0], "thumbnailsize")==0){
+	  if (parsed_msg->we_wordc==2){
+	    guint ts = atoi(parsed_msg->we_wordv[1]);
+	    if (ts>0) RFM_THUMBNAIL_SIZE=ts;
+	    else g_warning("invalid thumbnailsize");
+	  }else printf("%d\n",RFM_THUMBNAIL_SIZE);
+	  return TRUE;
 	}else if (g_strcmp0(parsed_msg->we_wordv[0], "showcolumn")==0){
 	  show_hide_treeview_columns(parsed_msg);
 	  add_history(readline_result_string_after_file_name_substitution->str);
@@ -3263,6 +3271,12 @@ int main(int argc, char *argv[])
 	break;
       case 't':
 	rfmStartWithVirtualTerminal=FALSE;
+	break;
+      case 'T':
+	gchar *thumbnailsize =argv[c] + 2 * sizeof(gchar); // remove the '-T' prefix in argv[c]
+	int ts=atoi(thumbnailsize);
+	if (ts!=0) RFM_THUMBNAIL_SIZE=ts;
+	else die("-T should be followd with custom RFM_THUMBNAIL_SIZE, for example: -T256");
 	break;
       default:
 	 die("invalid parameter, %s -h for help\n",PROG_NAME);
