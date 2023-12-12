@@ -1580,10 +1580,8 @@ static void FirstPage(RFM_ctx *rfmCtx){
 }
 
 static void set_DisplayingPageSize_ForFileNameListFromPipesStdIn(uint pagesize){
-  if (SearchResultViewInsteadOfDirectoryView && SearchResultFileNameList!=NULL) {
-    PageSize_SearchResultView = pagesize;
-    FirstPage(rfmCtx);
-  }
+  PageSize_SearchResultView = pagesize;
+  if (SearchResultViewInsteadOfDirectoryView && SearchResultFileNameList!=NULL) FirstPage(rfmCtx);
 }
 
 
@@ -2874,10 +2872,8 @@ static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, GString* read
 	  return TRUE;
         }else if (g_strcmp0(parsed_msg->we_wordv[0], "pagesize")==0 && parsed_msg->we_wordc==2){
 	  guint ps = atoi(parsed_msg->we_wordv[1]); 
-	  if (ps > 0) {
-	    set_DisplayingPageSize_ForFileNameListFromPipesStdIn(ps);
-	    return TRUE;
-	  }
+	  if (ps > 0) set_DisplayingPageSize_ForFileNameListFromPipesStdIn(ps);
+	  return TRUE;
         }else if (g_strcmp0(parsed_msg->we_wordv[0], "thumbnailsize")==0){
 	  if (parsed_msg->we_wordc==2){
 	    guint ts = atoi(parsed_msg->we_wordv[1]);
@@ -2901,6 +2897,7 @@ static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, GString* read
 	    printf("Usage: glog off|on\n");
 	  return TRUE;
 	}
+	//TODO: default to return TRUE, so that we can remove so many return TRUE line
 	return FALSE;
 }
 
