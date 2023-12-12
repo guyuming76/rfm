@@ -1798,7 +1798,6 @@ static void set_rfm_curPath(gchar* path)
        // and it will destory and recreate view base on conditions such as whether curPath_is_git_repo
        inotify_rm_watch(rfm_inotify_fd, rfm_curPath_wd);
        rfm_curPath_wd = rfm_new_wd;
-       refresh_store(rfmCtx);
      }
    }
 
@@ -2483,23 +2482,23 @@ static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer user_d
                refresh_view=1; /* Item IN_CLOSE_WRITE, deleted or moved */
          }
       }
-      // if (event->mask & IN_IGNORED) /* Watch changed i.e. rfm_curPath changed */
-      // refresh_view=2; //do not call refresh in handler here, call it in set_rfm_curPath.
+      if (event->mask & IN_IGNORED) /* Watch changed i.e. rfm_curPath changed */
+         refresh_view=2;
 
       if (event->mask & IN_DELETE_SELF || event->mask & IN_MOVE_SELF) {
          show_msgbox("Parent directory deleted!", "Error", GTK_MESSAGE_ERROR);
          set_rfm_curPath(rfm_homePath);
-         //refresh_view=2; since we now call refresh in set_rfm_curPath, don't need to set refresh_view to refresh again.
+         refresh_view=2;
       }
       if (event->mask & IN_UNMOUNT) {
          show_msgbox("Parent directory unmounted!", "Error", GTK_MESSAGE_ERROR);
          set_rfm_curPath(rfm_homePath);
-         //refresh_view=2;
+         refresh_view=2;
       }
       if (event->mask & IN_Q_OVERFLOW) {
          show_msgbox("Inotify event queue overflowed!", "Error", GTK_MESSAGE_ERROR);
          set_rfm_curPath(rfm_homePath);
-         //refresh_view=2;         
+         refresh_view=2;         
       }
       i+=sizeof(*event)+event->len;
    }
@@ -3085,10 +3084,10 @@ static int setup(RFM_ctx *rfmCtx)
    rfm_prePath= getenv("OLDPWD");
    if (rfm_prePath!=NULL) rfm_prePath=strdup(rfm_prePath);
 
-   add_toolbar(rfm_main_box, defaultPixbufs, rfmCtx);
-   
    if (initDir == NULL) initDir = cwd;
    set_rfm_curPath(initDir);
+
+   add_toolbar(rfm_main_box, defaultPixbufs, rfmCtx);
 
    OLD_rl_attempted_completion_function = rl_attempted_completion_function;
    rl_attempted_completion_function = rfm_filename_completion;
