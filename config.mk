@@ -9,3 +9,7 @@ GitIntegration = -DGitIntegration
 
 #PythonEmbedded = -DPythonEmbedded
 PythonEmbedded =
+
+#CFLAGS = -fsanitize=address
+
+#LDFLAGS = -lasan
