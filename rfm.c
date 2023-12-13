@@ -1675,11 +1675,6 @@ static void refresh_store(RFM_ctx *rfmCtx)
      g_list_free_full(g_list_first(filepath_lists_for_selection_on_view_clone),(GDestroyNotify)g_free);
      filepath_lists_for_selection_on_view_clone = g_list_copy_deep(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView],g_strdup,NULL);
      g_debug("Number of view selection copied:%d",g_list_length(filepath_lists_for_selection_on_view_clone));
-     /* GList * selection_filepath_list = g_list_first(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView]); */
-     /* while (selection_filepath_list!=NULL) { */
-     /*   filepath_lists_for_selection_on_view_clone = g_list_prepend(filepath_lists_for_selection_on_view_clone, selection_filepath_list->data); */
-     /*   selection_filepath_list=g_list_next(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView]); */
-     /* } */
      if (RFM_AUTOSELECT_OLDPWD_IN_VIEW && rfm_prePath!=NULL)
        filepath_lists_for_selection_on_view_clone = g_list_prepend(filepath_lists_for_selection_on_view_clone, g_strdup(rfm_prePath));
    }
