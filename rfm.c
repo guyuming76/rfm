@@ -2470,8 +2470,10 @@ static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer user_d
 {
    char buffer[(sizeof(struct inotify_event)+16)*1024];
    int len=0, i=0;
-   int refresh_view=0;
    RFM_ctx *rfmCtx=user_data;
+   int eventCount=0;
+   gboolean refreshImediately=FALSE;
+   gboolean refreshDelayed=FALSE;
 
    len=read(fd, buffer, sizeof(buffer));
    if (len<0) {
@@ -2498,42 +2500,41 @@ static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer user_d
             if (event->mask & IN_CREATE)
                inotify_insert_item(event->name, event->mask & IN_ISDIR);
             else
-               refresh_view=1; /* Item IN_CLOSE_WRITE, deleted or moved */
+               refreshDelayed=TRUE; /* Item IN_CLOSE_WRITE, deleted or moved */
          }
       }
       if (event->mask & IN_IGNORED) /* Watch changed i.e. rfm_curPath changed */
-         refresh_view=2;
+         refreshImediately=TRUE;
 
       if (event->mask & IN_DELETE_SELF || event->mask & IN_MOVE_SELF) {
          show_msgbox("Parent directory deleted!", "Error", GTK_MESSAGE_ERROR);
          set_rfm_curPath(rfm_homePath);
-         refresh_view=2;
+         refreshImediately=TRUE;
       }
       if (event->mask & IN_UNMOUNT) {
          show_msgbox("Parent directory unmounted!", "Error", GTK_MESSAGE_ERROR);
          set_rfm_curPath(rfm_homePath);
-         refresh_view=2;
+         refreshImediately=TRUE;
       }
       if (event->mask & IN_Q_OVERFLOW) {
          show_msgbox("Inotify event queue overflowed!", "Error", GTK_MESSAGE_ERROR);
          set_rfm_curPath(rfm_homePath);
-         refresh_view=2;         
+         refreshImediately=TRUE;         
       }
       i+=sizeof(*event)+event->len;
+      eventCount++;
    }
-   
-   switch (refresh_view) {
-      case 1:  /* Delayed refresh: rate-limiter */
+
+   g_debug("inotify_handler, refreshDelay:%d, refreshImediately:%d in %d events.",refreshDelayed,refreshImediately,eventCount);
+   if (refreshDelayed){  /* Delayed refresh: rate-limiter */
          if (rfmCtx->delayedRefresh_GSourceID>0)
             g_source_remove(rfmCtx->delayedRefresh_GSourceID);
          rfmCtx->delayedRefresh_GSourceID=g_timeout_add(RFM_INOTIFY_TIMEOUT, delayed_refreshAll, user_data);
-      break;
-      case 2: /* Refresh imediately: refresh_store() will remove delayedRefresh_GSourceID if required */
+   };
+   //if both refreshdelayed and refreshimediately, i guess refreshdelayed will be removed imediately in rfm_stop_all by the refreshimediately below.
+   if (refreshImediately){ /* Refresh imediately: refresh_store() will remove delayedRefresh_GSourceID if required */
 	 g_debug("refresh_store imediately from inotify_handler");
          refresh_store(rfmCtx);
-      break;
-      default: /* Refresh not required */
-      break;
    }
    return TRUE;
 }
