@@ -275,6 +275,7 @@ static GThread * readlineThread=NULL;
 static int rfm_inotify_fd;
 static int rfm_curPath_wd;    /* Current path (rfm_curPath) watch */
 static int rfm_thumbnail_wd;  /* Thumbnail watch */
+static gulong viewSelectionChangedSignalConnection=0;
 
 static char *initDir=NULL;
 static gchar *rfm_curPath=NULL;  /* The current directory */
@@ -385,7 +386,7 @@ static gint find_thumbnailer(gchar *mime_root, gchar *mime_sub_type);
 static int load_thumbnail(gchar *key);
 static void rfm_saveThumbnail(GdkPixbuf *thumb, RFM_ThumbQueueData *thumbData);
 static gboolean mkThumb();
-
+static void selectionChanged(GtkWidget *view, gpointer user_data);
 static GtkWidget *add_view(RFM_ctx *rfmCtx);
 static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixbufs, RFM_ctx *rfmCtx);
 static void refresh_toolbar();
@@ -1403,6 +1404,7 @@ static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,
 	    gtk_tree_path_free(treePath);
 	    //once item in filepath_lists_for_selection_on_view_clone matches and set_view_selection on view, it is removed from the list so that it will not be in the loop of comparison for the next file to Insert into store. This will decrease the total number of comparison and improve performance, but we have to re-clone the list at the begin of refresh.
 	    filepath_lists_for_selection_on_view_clone = g_list_remove_link(filepath_lists_for_selection_on_view_clone, selection_filepath_list);
+	    g_list_free_full(selection_filepath_list,(GDestroyNotify)g_free);
 	    break;
 	  }
 	  selection_filepath_list = g_list_next(selection_filepath_list);
@@ -1547,6 +1549,14 @@ static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store_in
 
    rfm_readDirSheduler=0;
    g_hash_table_destroy(mount_hash);
+
+   /* if (treeview){ */
+   /*   viewSelectionChangedSignalConnection = g_signal_connect(gtk_tree_view_get_selection(GTK_TREE_VIEW(icon_or_tree_view)), "changed", G_CALLBACK(selectionChanged), NULL); */
+   /* } */
+   /* else{ */
+   /*   viewSelectionChangedSignalConnection = g_signal_connect(icon_or_tree_view, "selection-changed", G_CALLBACK(selectionChanged), NULL); */
+   /* } */
+
    In_refresh_store = FALSE;
    gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
    return FALSE;
@@ -1654,21 +1664,30 @@ static void set_Titles(gchar * title){
 static void refresh_store(RFM_ctx *rfmCtx)
 {
    In_refresh_store = TRUE;
-   //clone filepath_lists_for_selection_on_view
-   g_list_free(filepath_lists_for_selection_on_view_clone);
-   filepath_lists_for_selection_on_view_clone=NULL;
-   GList * selection_filepath_list = g_list_first(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView]);
-   while (selection_filepath_list!=NULL) {
-     filepath_lists_for_selection_on_view_clone = g_list_prepend(filepath_lists_for_selection_on_view_clone, selection_filepath_list->data);
-     selection_filepath_list=g_list_next(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView]);
+   rfm_stop_all(rfmCtx);
+
+   /* if (icon_or_tree_view!=NULL && viewSelectionChangedSignalConnection!=0) { */
+   /*   g_signal_handler_disconnect((treeview? gtk_tree_view_get_selection(GTK_TREE_VIEW(icon_or_tree_view)) : icon_or_tree_view), viewSelectionChangedSignalConnection); */
+   /*   viewSelectionChangedSignalConnection=0; */
+   /* } */
+   if (keep_selection_on_view_across_refresh){
+     //clone filepath_lists_for_selection_on_view
+     g_list_free_full(g_list_first(filepath_lists_for_selection_on_view_clone),(GDestroyNotify)g_free);
+     filepath_lists_for_selection_on_view_clone = g_list_copy_deep(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView],g_strdup,NULL);
+     g_debug("Number of view selection copied:%d",g_list_length(filepath_lists_for_selection_on_view_clone));
+     /* GList * selection_filepath_list = g_list_first(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView]); */
+     /* while (selection_filepath_list!=NULL) { */
+     /*   filepath_lists_for_selection_on_view_clone = g_list_prepend(filepath_lists_for_selection_on_view_clone, selection_filepath_list->data); */
+     /*   selection_filepath_list=g_list_next(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView]); */
+     /* } */
+     if (RFM_AUTOSELECT_OLDPWD_IN_VIEW && rfm_prePath!=NULL)
+       filepath_lists_for_selection_on_view_clone = g_list_prepend(filepath_lists_for_selection_on_view_clone, g_strdup(rfm_prePath));
    }
-   if (RFM_AUTOSELECT_OLDPWD_IN_VIEW && rfm_prePath!=NULL)
-     filepath_lists_for_selection_on_view_clone = g_list_prepend(filepath_lists_for_selection_on_view_clone, rfm_prePath);
    
    gtk_widget_hide(rfm_main_box);
    if (scroll_window) gtk_widget_destroy(scroll_window);
   
-   rfm_stop_all(rfmCtx);
+
    gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, FALSE);
    clear_store();
 
@@ -1819,18 +1838,21 @@ static void selectionChanged(GtkWidget *view, gpointer user_data)
 {
   GList *newSelectionFilePathList=NULL;
   GList *selectionList=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
+  int count=0;
   if (selectionList==NULL){
     ItemSelected=0;
   }else{
     GtkTreeIter iter;
-    selectionList = g_list_first(selectionList);
-    while(selectionList!=NULL){
+    GList * selectionListElement = g_list_first(selectionList);
+    while(selectionListElement!=NULL){
 	GValue fullpath = G_VALUE_INIT;
-        gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, selectionList->data);
+        gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, selectionListElement->data);
 	gtk_tree_model_get_value(treemodel, &iter, COL_FULL_PATH, &fullpath);
 	newSelectionFilePathList = g_list_prepend(newSelectionFilePathList, g_strdup(g_value_get_string(&fullpath)));
 	g_debug("selected file before refresh:%s",(char *)newSelectionFilePathList->data);
-	selectionList=g_list_next(selectionList);
+	count++;
+	//if (In_refresh_store) break;
+	selectionListElement=g_list_next(selectionListElement);
     }
     g_mutex_lock(&rfm_selection_completion_lock);
     free(rfm_selection_completion);
@@ -1839,9 +1861,12 @@ static void selectionChanged(GtkWidget *view, gpointer user_data)
     g_mutex_unlock(&rfm_selection_completion_lock);
   }
 
-  g_list_free_full(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView],g_free);
-  filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView] = newSelectionFilePathList;
-
+  //if (!In_refresh_store){
+    g_list_free_full(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView],g_free);
+    filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView] = newSelectionFilePathList;
+    g_debug("Number of view selection:%d",count);
+  //}
+  
   g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
 }
 
@@ -2347,11 +2372,11 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
 
    if (treeview){
      g_signal_connect(_view, "row-activated", G_CALLBACK(row_activated), NULL);
-     g_signal_connect(gtk_tree_view_get_selection(GTK_TREE_VIEW(_view)), "changed", G_CALLBACK(selectionChanged), NULL);
+     viewSelectionChangedSignalConnection = g_signal_connect(gtk_tree_view_get_selection(GTK_TREE_VIEW(_view)), "changed", G_CALLBACK(selectionChanged), NULL);
    }
    else{
      g_signal_connect(_view, "item-activated", G_CALLBACK(item_activated), NULL);
-     g_signal_connect(_view, "selection-changed", G_CALLBACK(selectionChanged), NULL);
+     viewSelectionChangedSignalConnection = g_signal_connect(_view, "selection-changed", G_CALLBACK(selectionChanged), NULL);
    }
    
    gtk_container_add(GTK_CONTAINER(scroll_window), _view);
@@ -2829,7 +2854,8 @@ static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, GString* read
 		    if (SearchResultViewInsteadOfDirectoryView) Switch_SearchResultView_DirectoryView(NULL, rfmCtx);		  
 		  }else if (SearchResultViewInsteadOfDirectoryView){
 		    SearchResultViewInsteadOfDirectoryView = SearchResultViewInsteadOfDirectoryView^1;
-		    g_list_free_full(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView],g_free);
+		    g_list_free_full(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView],(GDestroyNotify)g_free);
+		    filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView]=NULL;
 		    filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView]=g_list_prepend(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView],strdup(stdin_cmd_selection_fileAttributes->path));
 		    char * parentdir = g_path_get_dirname(stdin_cmd_selection_fileAttributes->path);
 		    set_rfm_curPath(parentdir);
