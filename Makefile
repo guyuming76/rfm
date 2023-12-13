@@ -18,8 +18,8 @@ INCS = -I. -I/usr/include
 LIBS += -L/usr/lib `pkg-config --libs ${GTK_VERSION} readline`
 CPPFLAGS += -DVERSION=\"${VERSION}\"
 GTK_CFLAGS = `pkg-config --cflags ${GTK_VERSION}`
-CFLAGS = -g -Wall -std=c11 -O0 -fPIC -pie  ${GTK_CFLAGS} ${INCS} ${CPPFLAGS}
-LDFLAGS = -g ${LIBS}
+CFLAGS += -g -Wall -std=c11 -O0 -fPIC -pie  ${GTK_CFLAGS} ${INCS} ${CPPFLAGS}
+LDFLAGS += -g ${LIBS}
 
 ifneq (${PythonEmbedded}, )
 CFLAGS += `python3.11-config --cflags`
