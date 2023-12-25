@@ -191,8 +191,12 @@ static RFM_ToolButton tool_buttons[] = {
 };
 
 
-#define getImageSize  "exiftool %s |grep \"^Image Size\"|awk -F : '{print $2}'"
-#define getComment  "exiftool %s |grep \"^Comment\"|awk -F : '{print $2}'"
+//exiftool is based on perl while exiv2 c++
+//exiv2 -M'set Exif.Photo.UserComment 翠铜矿' filename   //the command used to set comment
+//#define getImageSize  "exiftool %s |grep \"^Image Size\"|awk -F : '{print $2}'"
+#define getImageSize  "exiv2 %s |grep \"^Image size\"|awk -F : '{print $2}'"
+//#define getComment  "exiftool %s |grep \"^Comment\"|awk -F : '{print $2}'"
+#define getComment  "exiv2 %s |grep \"^Exif comment\"|awk -F : '{print $2}'"
 #define getMailFrom  "mu view %s |grep \"^From:\" |cut -c 6-"
 #define getMailTo  "mu view %s |grep \"^To:\" |cut -c 4-"
 #define getMailSubject "mu view %s |grep \"^Subject:\" |cut -c 9-"
