@@ -179,3 +179,11 @@ https://blog.gtk.org/2017/05/04/logging-and-more/
 
 后来 `euse -i gdk-pixbuf` 发现有 x11-libs/gdk-pixbuf 这个包，包上有个jpeg USE flag没打开，打开后 .jpg文件就可以产生缩略图了。
 
+
+# 计划更改备忘 #
+Terminal窗口的Title只显示当前目录,不显示Search结果统计
+
+如果有文件不停更新触发 inotifier 导致界面不停刷新怎么办?怎加PauseRefresh内置命令
+
+是否有必要处理 grep -r xxx /dir|rfm 这样的结果,也就是说 search 结果里面不仅包含文件名,还有摘要信息.这个改动会比较大
+
