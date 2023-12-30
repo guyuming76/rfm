@@ -328,6 +328,7 @@ static GList * stdin_cmd_selection_list=NULL; //selected files used in stdin cmd
 static RFM_FileAttributes *stdin_cmd_selection_fileAttributes;
 static uint current_stdin_cmd_interpretor = 0;
 static enum rfmTerminal rfmStartWithVirtualTerminal = INHERIT_TERMINAL;
+static gboolean pauseInotifyHandler=FALSE;
 
 #ifdef GitIntegration
 // value " M " for modified
@@ -2490,6 +2491,8 @@ static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer user_d
       return TRUE;
    }
 
+   if (pauseInotifyHandler) return TRUE;
+   
    while (i<len) {
       struct inotify_event *event=(struct inotify_event *) (buffer+i);
 
@@ -2884,6 +2887,11 @@ static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, GString* read
 	  cleanup(NULL,rfmCtx);
         }else if (g_strcmp0(parsed_msg->we_wordv[0],"help")==0) {
 	  stdin_command_help();
+        }else if (g_strcmp0(parsed_msg->we_wordv[0],"toggleInotifyHandler")==0) {
+	  pauseInotifyHandler = !pauseInotifyHandler;
+	  if (pauseInotifyHandler) printf("InotifyHandler Off\n"); else printf("InotifyHandler On\n");
+	  add_history(readline_result_string_after_file_name_substitution->str);
+	  history_entry_added++;	  
 	}else if (g_strcmp0(parsed_msg->we_wordv[0],"/")==0) {
 	  switch_iconview_treeview(rfmCtx);
 	}else if (g_strcmp0(parsed_msg->we_wordv[0],"//")==0) {
@@ -3268,6 +3276,7 @@ int main(int argc, char *argv[])
       case 'h':
 	printf(rfmLaunchHelp, PROG_NAME);
 	return 0;
+      case 'H': pauseInotifyHandler=TRUE; break;
 #ifdef RFM_FILE_CHOOSER
       case 'r':
 	StartedAs_rfmFileChooser=TRUE;

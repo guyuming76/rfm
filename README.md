@@ -182,7 +182,4 @@ https://blog.gtk.org/2017/05/04/logging-and-more/
 
 # 计划更改备忘 #
 
-如果有文件不停更新触发 inotifier 导致界面不停刷新怎么办?怎加PauseRefresh内置命令
-
 是否有必要处理 grep -r xxx /dir|rfm 这样的结果,也就是说 search 结果里面不仅包含文件名,还有摘要信息.这个改动会比较大
-

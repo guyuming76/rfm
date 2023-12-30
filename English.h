@@ -42,6 +42,7 @@
 "    pagesize    set files shown per page in search result view. for example, pagesize 100\n" \
 "    thumbnailsize  set thumbnail size in icon view. \n" \
 "    showcolumn  show or hide column (if currently in listview)\n" \
+"    toggleInotifyHandler  stop/start auto refresh\n" \
 "Shell commands:\n" \
 "    non-builtin commands will be sent to shell to execute.\n" \
 "    if there is ending space in command entered, selected filename(s) will be appended at the end. for example, you can view currently selected maildir mail file with `mu view `, with ending space before return.\n" \
@@ -51,7 +52,7 @@
 
 #define rfmLaunchHelp \
 "This is the help for command line argumants you can use to launch program with, there is another help in command window for commands you can use there.\n" \
-"Usage: %s [-h] || [-d <full path>] [-i] [-v] [-l] [-p<custom pagesize>] [-p] [-s] [-t] [-T<thumbnailsize>]\n" \
+"Usage: %s [-h] [-H] [-d <full path>] [-i] [-v] [-l] [-p<custom pagesize>] [-p] [-s] [-t] [-T<thumbnailsize>]\n" \
 "       press q in rfm window to quit.\n" \
 "-p       read file name list from StdIn, through pipeline, this -p can be omitted, for example:\n           locate 20230420|grep .png|rfm\n" \
 "-px      when read filename list from pipeline, show only x number of items in a batch, for example: -p9. you can also set this in command window with builtin cmd pagesize\n" \
@@ -63,7 +64,8 @@
 "         if no named pipe follows, selection will be returned through printf, and rfm will start without readline thread, as if -t parameter is also added.\n" \
 "-t       start rfm without readline thread, neither show command prompt nor accept command line input.\n" \
 "-T       set RFM_THUMBNAIL_SIZE, same as thumbnailsize command above.\n" \
-"-h       show this help\n"
+"-h       show this help\n" \
+"-H       stop auto refresh\n"
 
 #define SHOWCOLUMN_USAGE \
 "showncolumn command can have mulitple arguments deliminated with space, argument can be positive or negative column number, or (negative)column numbers connected with ',' or ';'. showcolumn without any argument display column name and number mapping, and current displaying status. Note that numbers in showcolumn argument are column number for column name, not the displaying position.\n\n" \
