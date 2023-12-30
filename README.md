@@ -181,7 +181,6 @@ https://blog.gtk.org/2017/05/04/logging-and-more/
 
 
 # 计划更改备忘 #
-Terminal窗口的Title只显示当前目录,不显示Search结果统计
 
 如果有文件不停更新触发 inotifier 导致界面不停刷新怎么办?怎加PauseRefresh内置命令
 
