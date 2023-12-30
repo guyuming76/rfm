@@ -1655,9 +1655,11 @@ static gint sort_func(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, gpoin
 }
 
 static void set_Titles(gchar * title){
-   gtk_window_set_title(GTK_WINDOW(window), title);
-   gtk_tool_button_set_label(PathAndRepositoryNameDisplay, title);
-   if (startWithVT() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)) set_terminal_window_title(title);
+   if (title==NULL) return;
+   gboolean title_is_rfm_curPath = (title[0]=='/');
+   if (title_is_rfm_curPath) gtk_window_set_title(GTK_WINDOW(window), title);
+   if (!(SearchResultViewInsteadOfDirectoryView && title_is_rfm_curPath)) gtk_tool_button_set_label(PathAndRepositoryNameDisplay, title);
+   if (title_is_rfm_curPath && startWithVT() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)) set_terminal_window_title(title);
    g_free(title);
 }
 
@@ -1819,10 +1821,16 @@ static void set_rfm_curPath(gchar* path)
    /* if (e=read_history(g_build_filename(rfm_curPath,".rfm_history", NULL))) */
    /*     g_warning("failed to read_history(%s) error code:%d. it's normal if you enter this directory for the first time with rfm.",g_build_filename(rfm_curPath,".rfm_history", NULL),e); */
    /* history_entry_added=0; */
+
 #ifdef GitIntegration
    g_spawn_wrapper(git_inside_work_tree_cmd, NULL, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, FALSE, set_curPath_is_git_repo, NULL);
-   /* if (!rfmReadFileNamesFromPipeStdIn && curPath_is_git_repo) */
-   /*    g_spawn_wrapper(git_current_branch_cmd, NULL, 0, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, TRUE, set_window_title_with_git_branch, NULL); */
+   if (SearchResultViewInsteadOfDirectoryView){
+     if (curPath_is_git_repo)
+       g_spawn_wrapper(git_current_branch_cmd, NULL, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, TRUE, set_window_title_with_git_branch_and_sort_view_with_git_status, NULL);
+     else set_Titles(g_strdup(rfm_curPath));
+   }
+#else
+   if (SearchResultViewInsteadOfDirectoryView) set_Titles(g_strdup(rfm_curPath));
 #endif
 }
 
