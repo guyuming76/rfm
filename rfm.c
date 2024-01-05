@@ -184,6 +184,7 @@ enum RFM_treeviewCol{
    COL_GIT_STATUS_STR,
    COL_GIT_COMMIT_MSG,
 #endif
+   COL_GREP_MATCH,
    COL_Ext1,
    COL_Ext2,
    COL_Ext3,
@@ -290,6 +291,7 @@ static RFM_defaultPixbufs *defaultPixbufs=NULL;
 static GtkIconTheme *icon_theme;
 
 static GHashTable *thumb_hash=NULL; /* Thumbnails in the current view */
+static GHashTable *grepMatch_hash = NULL;
 
 static GtkListStore *store=NULL;
 static GtkTreeModel *treemodel=NULL;
@@ -343,6 +345,7 @@ static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpoin
 static void set_terminal_window_title(char * title);
 #endif
 
+static gchar *getGrepMatchFromHashTable(gchar *filepathAsHashKey);
 void move_array_item_a_after_b(void * array, int index_b, int index_a, uint32_t array_item_size, uint32_t array_length);
 static gboolean startWithVT();
 static void show_msgbox(gchar *msg, gchar *title, gint type);
@@ -1311,7 +1314,8 @@ static void load_ExtColumns_and_iconview_markup_tooltip(RFM_FileAttributes* file
 	      gchar* ExtColumn_cmd_template[] = {"/bin/bash", "-c", ExtColumn_cmd, NULL};
 	      g_spawn_wrapper(ExtColumn_cmd_template, NULL, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, FALSE, Update_Store_ExtColumns, &cell);
 	    }else if (treeviewColumns[i].ValueFunc!=NULL){
-	    //TODO:ValueCmd==NULL but with function!=NULL
+	      gtk_list_store_set(store,cell->iter, cell->store_column, treeviewColumns[i].ValueFunc(fileAttributes->path), -1);
+	      //for grepMatch column, fileAttributes->file_name is added as key into grepMatch_hash, however, we suppose grep output absoluteaddr, so filenamne equals fileattributes->path here
 	    }else if ((cell->iconview_markup) || (cell->iconview_tooltip)){
 	      GValue enumColValue = G_VALUE_INIT;
 	      gtk_tree_model_get_value(treemodel, iter, treeviewColumns[i].enumCol, &enumColValue);;
@@ -3048,7 +3052,6 @@ static int setup(RFM_ctx *rfmCtx)
    rfm_thumbDir=g_build_filename(g_get_user_cache_dir(), "thumbnails", "normal", NULL);
 
    thumb_hash=g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)gtk_tree_row_reference_free);
-
 #ifdef GitIntegration
    gitTrackedFiles=g_hash_table_new_full(g_str_hash, g_str_equal,g_free, g_free);
    //gitCommitMsg=g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
@@ -3101,6 +3104,7 @@ static int setup(RFM_ctx *rfmCtx)
 			      G_TYPE_STRING,     //git commit message
 #endif
 			      G_TYPE_STRING, //mime_sort
+			      G_TYPE_STRING, //grepMatch
 			    G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING, //COL_Ext1..5
                             G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING); //COL_Ext6..10
    treemodel=GTK_TREE_MODEL(store);
@@ -3328,6 +3332,27 @@ int main(int argc, char *argv[])
    //return (StartedAs_rfmFileChooser && rfmFileChooserResultNumber>0)?rfmFileChooserResultNumber:0;
 }
 
+static void ProcessOnelineForSearchResult(gchar* oneline){
+	   //if there is : in oneline_stdin, copy str after : into description str, and remove str after : from oneline_stdin
+	   uint seperatorPositionForGrepMatch=0;
+	   if ((seperatorPositionForGrepMatch = strcspn(oneline, ":"))<strlen(oneline)){ // : found in oneline_stdin
+	       gchar* grepMatch = oneline + seperatorPositionForGrepMatch + 1;
+	       oneline[seperatorPositionForGrepMatch] = 0;
+	       if (grepMatch_hash==NULL) grepMatch_hash = g_hash_table_new_full(g_str_hash, g_str_equal,g_free, g_free);
+	       g_hash_table_insert(grepMatch_hash, strdup(oneline), strdup(grepMatch));
+	   }
+	   if (!ignored_filename(oneline)){ //TODO: shall we call ignored_filename here? we way remove it to align with the GetGlist implementation. User can filter those files with grep before rfm
+	       SearchResultFileNameList=g_list_prepend(SearchResultFileNameList, oneline);
+	       fileNum++;
+	       g_debug("appended into SearchResultFileNameList:%s", oneline);
+	   }
+}
+
+static gchar *getGrepMatchFromHashTable(gchar *filepathAsHashKey) {
+   if (grepMatch_hash==NULL) return NULL;
+   return g_hash_table_lookup(grepMatch_hash, filepathAsHashKey);
+}
+
 static void ReadFromPipeStdinIfAny(char * fd)
 {
    static char buf[PATH_MAX];
@@ -3347,12 +3372,8 @@ static void ReadFromPipeStdinIfAny(char * fd)
          while (fgets(oneline_stdin, PATH_MAX,pipeStream ) != NULL) {
    	   g_debug("%s",oneline_stdin);
            oneline_stdin[strcspn(oneline_stdin, "\n")] = 0; //manual set the last char to NULL to eliminate the trailing \n from fgets
-	   if (!ignored_filename(oneline_stdin)){ //TODO: shall we call ignored_filename here? we way remove it to align with the GetGlist implementation. User can filter those files with grep before rfm
-	       SearchResultFileNameList=g_list_prepend(SearchResultFileNameList, oneline_stdin);
-	       fileNum++;
-	       g_debug("appended into FileNameListWithAbsolutePath_FromPipeStdin:%s", oneline_stdin);
-	   }
-	   oneline_stdin=calloc(1,PATH_MAX);
+	   ProcessOnelineForSearchResult(oneline_stdin);
+           oneline_stdin=calloc(1,PATH_MAX);
          }
          if (SearchResultFileNameList != NULL) {
            SearchResultFileNameList = g_list_reverse(SearchResultFileNameList);
@@ -3374,14 +3395,15 @@ static void ReadFromPipeStdinIfAny(char * fd)
 
 static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamelist){
   GList * old_filenamelist = SearchResultFileNameList;
+  GHashTable* old_grepMatch_hash = grepMatch_hash;
   SearchResultFileNameList = NULL;
+  grepMatch_hash = NULL;
   fileNum=0;
 
   g_debug("update_SearchResultFileNameList length %d",strlen((gchar*)filenamelist));
   gchar * oneline=strtok((gchar*)filenamelist,"\n");
   while (oneline!=NULL){
-    SearchResultFileNameList = g_list_prepend(SearchResultFileNameList, oneline);
-    fileNum++;
+    ProcessOnelineForSearchResult(oneline);
     oneline=strtok(NULL, "\n");
   }
 
@@ -3391,6 +3413,7 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
   rfm_SearchResultPath=strdup(rfm_curPath);
   FirstPage(rfmCtx);
   if (old_filenamelist!=NULL) g_list_free(old_filenamelist);
+  if (old_grepMatch_hash!=NULL) g_hash_table_destroy(old_grepMatch_hash);
 }
 
 

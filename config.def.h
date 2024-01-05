@@ -244,6 +244,7 @@ static RFM_treeviewColumn treeviewColumns[] = {
   {"MailSubject",             COL_Ext5,                   FALSE,  NULL, path_in_maildir,      COL_Ext5,                 getMailSubject,  NULL,     "*",         "*",    FALSE,FALSE},
   {"MailAttachments",         COL_Ext6,                   FALSE,  NULL, path_in_maildir,      COL_Ext6,                 getMailAttachments,NULL,   "*",         "*",    FALSE,FALSE},
   {"MailTo",                  COL_Ext7,                   FALSE,  NULL, path_in_maildir,      COL_Ext7,                 getMailTo,       NULL,     "*",         "*",    FALSE,FALSE},
+  {"grepMatch",               COL_GREP_MATCH,             FALSE,  NULL, NULL,                 COL_GREP_MATCH,           NULL,   getGrepMatchFromHashTable, "*", "*",    FALSE,FALSE},
 };
 
 
