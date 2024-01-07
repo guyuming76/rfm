@@ -124,7 +124,8 @@ typedef struct {
 } RFM_ctx;
 
 typedef struct {  /* Update free_fileAttributes() and malloc_fileAttributes() if new items are added */
-   gchar *path;
+   guint id; // usually, path can be unique id for fileAttributelist, however, for searchresult from grep, same file can appear more than once, so we need a id as key for grepMatch_hash and others.
+   gchar *path; // absolute path
    gchar *file_name;
   //gchar *display_name;
    gboolean is_dir;
@@ -206,7 +207,7 @@ typedef struct {
   gboolean (*showCondition)(RFM_FileAttributes * fileAttributes);
   enum RFM_treeviewCol enumSortCol;
   gchar* ValueCmd;
-  gchar* (*ValueFunc)(gchar*);
+  gchar* (*ValueFunc)(guint);
   gchar* MIME_root;
   gchar* MIME_sub;
   gboolean iconview_markup;
@@ -311,6 +312,7 @@ static GList * filepath_lists_for_selection_on_view_clone;
 // , instead of from a directory
 static unsigned int SearchResultViewInsteadOfDirectoryView=0;
 static GList *SearchResultFileNameList = NULL;
+static guint fileAttributeID=0; //fileAttributeid include file that ignored, file that cannot get attribute info, but fileNum don't include ignored file
 static gint fileNum=0;
 static gint currentFileNum=0;
 static char* pipefd="0";
@@ -333,7 +335,8 @@ static enum rfmTerminal rfmStartWithVirtualTerminal = INHERIT_TERMINAL;
 static gboolean pauseInotifyHandler=FALSE;
 
 static char cmd_to_set_terminal_title[PATH_MAX];
-static void set_terminal_window_title(char* title);
+static gchar* non_grepMatchTreeViewColumns=NULL;
+
 
 #ifdef GitIntegration
 // value " M " for modified
@@ -346,8 +349,8 @@ static gboolean curPath_is_git_repo = FALSE;
 static gboolean cur_path_is_git_repo(RFM_FileAttributes * fileAttributes) { return curPath_is_git_repo; }
 static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpointer *child_attribs);
 #endif
-
-static gchar *getGrepMatchFromHashTable(gchar *filepathAsHashKey);
+static void set_terminal_window_title(char* title);
+static gchar *getGrepMatchFromHashTable(guint fileAttributeId);
 void move_array_item_a_after_b(void * array, int index_b, int index_a, uint32_t array_item_size, uint32_t array_length);
 static gboolean startWithVT();
 static void show_msgbox(gchar *msg, gchar *title, gint type);
@@ -1138,7 +1141,7 @@ static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guin
    gchar *is_mounted=NULL;
    gint i;
    RFM_FileAttributes *fileAttributes=malloc_fileAttributes();
-
+   fileAttributes->id = fileAttributeID++;
    gchar *absoluteaddr;
    if (name[0]=='/')
      absoluteaddr = g_build_filename(name, NULL); /*if mlocate index not updated with updatedb, address returned by locate will return NULL after canonicalize */
@@ -1260,7 +1263,7 @@ static void load_thumbnail_or_enqueue_thumbQueue_for_store_row(GtkTreeIter *iter
       thumbData=get_thumbData(iter); /* Returns NULL if thumbnail not handled */
       if (thumbData!=NULL) {
          /* Try to load any existing thumbnail */
-	int ld=load_thumbnail(thumbData->thumb_name);
+	 int ld=load_thumbnail(thumbData->thumb_name);
 	 if ( ld == 0) { /* Success: thumbnail exists in cache and is valid */
 	   g_debug("thumbnail %s exists for %s",thumbData->thumb_name, thumbData->path);
            free_thumbQueueData(thumbData);
@@ -1319,7 +1322,7 @@ static void load_ExtColumns_and_iconview_markup_tooltip(RFM_FileAttributes* file
 	      gchar* ExtColumn_cmd_template[] = {"/bin/bash", "-c", ExtColumn_cmd, NULL};
 	      g_spawn_wrapper(ExtColumn_cmd_template, NULL, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, FALSE, Update_Store_ExtColumns, &cell);
 	    }else if (treeviewColumns[i].ValueFunc!=NULL){
-	      gtk_list_store_set(store,cell->iter, cell->store_column, treeviewColumns[i].ValueFunc(fileAttributes->path), -1);
+	      gtk_list_store_set(store,cell->iter, cell->store_column, treeviewColumns[i].ValueFunc(fileAttributes->id), -1);
 	      //for grepMatch column, fileAttributes->file_name is added as key into grepMatch_hash, however, we suppose grep output absoluteaddr, so filenamne equals fileattributes->path here
 	    }else if ((cell->iconview_markup) || (cell->iconview_tooltip)){
 	      GValue enumColValue = G_VALUE_INIT;
@@ -1679,7 +1682,7 @@ static void set_Titles(gchar * title){
    g_free(title);
 }
 
-static gchar* non_grepMatchTreeViewColumns=NULL;
+
 static void refresh_store(RFM_ctx *rfmCtx)
 {
    In_refresh_store = TRUE;
@@ -1723,7 +1726,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
      }
    }
    icon_or_tree_view = add_view(rfmCtx);
-   
+   fileAttributeID=0;
    gchar * title;
    if (SearchResultViewInsteadOfDirectoryView) {
      title=g_strdup_printf(PipeTitle, currentFileNum,fileNum,PageSize_SearchResultView);
@@ -3371,7 +3374,9 @@ static void ProcessOnelineForSearchResult(gchar* oneline){
 	       gchar* grepMatch = oneline + seperatorPositionForGrepMatch + 1;
 	       oneline[seperatorPositionForGrepMatch] = 0;
 	       if (grepMatch_hash==NULL) grepMatch_hash = g_hash_table_new_full(g_str_hash, g_str_equal,g_free, g_free);
-	       g_hash_table_insert(grepMatch_hash, strdup(oneline), strdup(grepMatch));
+	       gchar* key=calloc(10, sizeof(char));
+	       sprintf(key, "%d", fileAttributeID++);
+	       g_hash_table_insert(grepMatch_hash, key, strdup(grepMatch));
 	   }
 	   if (!ignored_filename(oneline)){ //TODO: shall we call ignored_filename here? we way remove it to align with the GetGlist implementation. User can filter those files with grep before rfm
 	       SearchResultFileNameList=g_list_prepend(SearchResultFileNameList, oneline);
@@ -3380,9 +3385,13 @@ static void ProcessOnelineForSearchResult(gchar* oneline){
 	   }
 }
 
-static gchar *getGrepMatchFromHashTable(gchar *filepathAsHashKey) {
+static gchar *getGrepMatchFromHashTable(guint fileAttributeId) {
    if (grepMatch_hash==NULL) return NULL;
-   return g_hash_table_lookup(grepMatch_hash, filepathAsHashKey);
+   gchar* key = calloc(10, sizeof(char));
+   sprintf(key, "%d", fileAttributeId);
+   gchar* ret = g_hash_table_lookup(grepMatch_hash, key);
+   g_free(key);
+   return ret;
 }
 
 static void ReadFromPipeStdinIfAny(char * fd)
@@ -3395,9 +3404,9 @@ static void ReadFromPipeStdinIfAny(char * fd)
    g_debug("readlink for %s: %s",name,buf);
 
    if (strlen(buf)>4 && g_strcmp0(g_utf8_substring(buf, 0, 4),"pipe")==0){
-     if (initDir!=NULL && (SearchResultViewInsteadOfDirectoryView^1)) die("if you have -d specified, and read file name list from pipeline, -p parameter must goes BEFORE -d\n");
+         if (initDir!=NULL && (SearchResultViewInsteadOfDirectoryView^1)) die("if you have -d specified, and read file name list from pipeline, -p parameter must goes BEFORE -d\n");
 	 else SearchResultViewInsteadOfDirectoryView=1;
-	 
+	 fileAttributeID=0;
 	 gchar *oneline_stdin=calloc(1,PATH_MAX);
 	 FILE *pipeStream = stdin;
 	 if (atoi(fd) != 0) pipeStream = fdopen(atoi(fd),"r");
@@ -3431,7 +3440,7 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
   SearchResultFileNameList = NULL;
   grepMatch_hash = NULL;
   fileNum=0;
-
+  fileAttributeID=0;
   g_debug("update_SearchResultFileNameList length %d",strlen((gchar*)filenamelist));
   gchar * oneline=strtok((gchar*)filenamelist,"\n");
   while (oneline!=NULL){
