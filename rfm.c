@@ -332,6 +332,9 @@ static uint current_stdin_cmd_interpretor = 0;
 static enum rfmTerminal rfmStartWithVirtualTerminal = INHERIT_TERMINAL;
 static gboolean pauseInotifyHandler=FALSE;
 
+static char cmd_to_set_terminal_title[PATH_MAX];
+static void set_terminal_window_title(char* title);
+
 #ifdef GitIntegration
 // value " M " for modified
 // value "M " for staged
@@ -342,7 +345,6 @@ static GHashTable *gitTrackedFiles;
 static gboolean curPath_is_git_repo = FALSE;
 static gboolean cur_path_is_git_repo(RFM_FileAttributes * fileAttributes) { return curPath_is_git_repo; }
 static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpointer *child_attribs);
-static void set_terminal_window_title(char * title);
 #endif
 
 static gchar *getGrepMatchFromHashTable(gchar *filepathAsHashKey);
@@ -1750,6 +1752,19 @@ static void refresh_store(RFM_ctx *rfmCtx)
 }
 
 
+//echo -en "\033]0;title\a"
+static void set_terminal_window_title(char * title)
+{
+  sprintf(cmd_to_set_terminal_title, "echo -en \"\\033]0;%s\\a\"", title);
+  char* cmd[]={ "bash", "-c", cmd_to_set_terminal_title,NULL};
+  g_spawn_sync(rfm_curPath, cmd, NULL,
+                           G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN |
+                               G_SPAWN_CHILD_INHERITS_STDOUT |
+                               G_SPAWN_CHILD_INHERITS_STDERR,
+	       NULL, NULL, NULL, NULL, NULL, NULL);
+}
+
+
 #ifdef GitIntegration
 static void set_curPath_is_git_repo(gpointer *child_attribs)
 {
@@ -1761,19 +1776,6 @@ static void set_curPath_is_git_repo(gpointer *child_attribs)
   }
   
   g_debug("curPath_is_git_repo:%d",curPath_is_git_repo);
-}
-
-static char cmd_to_set_terminal_title[PATH_MAX];
-//echo -en "\033]0;title\a"
-static void set_terminal_window_title(char * title)
-{
-  sprintf(cmd_to_set_terminal_title, "echo -en \"\\033]0;%s\\a\"", title);
-  char* cmd[]={ "bash", "-c", cmd_to_set_terminal_title,NULL};
-  g_spawn_sync(rfm_curPath, cmd, NULL,
-                           G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN |
-                               G_SPAWN_CHILD_INHERITS_STDOUT |
-                               G_SPAWN_CHILD_INHERITS_STDERR,
-	       NULL, NULL, NULL, NULL, NULL, NULL);
 }
 
 static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpointer *child_attribs) {
