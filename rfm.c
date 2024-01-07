@@ -359,6 +359,9 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
 // cd .
 // cd /tmp
 static RFM_treeviewColumn* GetColumnByEnun(enum RFM_treeviewCol col);
+static gchar* get_current_treeview_columns_showcolumn_cmd();
+static void show_hide_treeview_columns_in_order(gchar *order_sequence);
+
 static void exec_stdin_command(gchar *msg);
 static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, GString* readline_result_string);
 static void stdin_command_help();
@@ -2819,12 +2822,25 @@ static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
 	      g_free(order_seq_array);
 }
 
+static gchar* get_current_treeview_columns_showcolumn_cmd(){
+            gchar* showColumnHistory=calloc(G_N_ELEMENTS(treeviewColumns)*5+11, sizeof(char)); // we suppose no more than 999 treeview_columns, and ",-999" takes 5 chars ; leading "showcolumn " take 11 char
+	    showColumnHistory = strcat(showColumnHistory, "showcolumn ,");
+	    for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++){
+	      showColumnHistory = strcat(showColumnHistory, treeviewColumns[i].Show? "%d,":"-%d,");
+	      sprintf(showColumnHistory, showColumnHistory, treeviewColumns[i].enumCol);
+	    }
+	    return showColumnHistory;
+}
+
 static void show_hide_treeview_columns(wordexp_t * parsed_msg){
 	  if (parsed_msg->we_wordc==1){
 	    printf("current column status(negative means invisible):\n");
 	    for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++)
 	      printf("    %d: %s\n",treeviewColumns[i].Show? treeviewColumns[i].enumCol:(-1)*treeviewColumns[i].enumCol,treeviewColumns[i].title);
 	    printf(SHOWCOLUMN_USAGE);
+	    gchar* cmd=get_current_treeview_columns_showcolumn_cmd();
+	    add_history(cmd);
+	    g_free(cmd);
 	  }else{
             for(guint i=1;i<parsed_msg->we_wordc;i++){
 	      show_hide_treeview_columns_in_order(parsed_msg->we_wordv[i]);

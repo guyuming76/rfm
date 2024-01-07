@@ -41,7 +41,7 @@
 "    setpwd      设置rfm PWD 为当前显示目录\n" \
 "    pagesize    设置文件搜素结果视图每葉文件数, 如 pagesize 100\n" \
 "    thumbnailsize  设置图标视图缩略图尺寸\n" \
-"    showcolumn  显示或隐藏列(若当前在列表视图)\n" \
+"    showcolumn  显示或隐藏列(若当前在列表视图), 并且当参数为空的时候,把当前列表视图列设置作为一条showcolumn命令加入命令历史,方便通过命令历史记录恢复当前列设置\n" \
 "    toggleInotifyHandler 关/开自动刷新\n" \
 "创建Shell子进程执行的命令:\n" \
 "    非rfm内置命令会被发送到操作系统Shell执行,可在config.h内配置shell类型如bash, nushell等.\n" \

@@ -41,7 +41,7 @@
 "    setpwd      set rfm env PWD with current directory\n" \
 "    pagesize    set files shown per page in search result view. for example, pagesize 100\n" \
 "    thumbnailsize  set thumbnail size in icon view. \n" \
-"    showcolumn  show or hide column (if currently in listview)\n" \
+"    showcolumn  show or hide column (if currently in listview); current treeview column layout will be added in to command history if no parameter follows showcolumn\n" \
 "    toggleInotifyHandler  stop/start auto refresh\n" \
 "Shell commands:\n" \
 "    non-builtin commands will be sent to shell to execute.\n" \
