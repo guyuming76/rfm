@@ -1677,6 +1677,7 @@ static void set_Titles(gchar * title){
    g_free(title);
 }
 
+static gchar* non_grepMatchTreeViewColumns=NULL;
 static void refresh_store(RFM_ctx *rfmCtx)
 {
    In_refresh_store = TRUE;
@@ -1696,7 +1697,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
    }
    
    gtk_widget_hide(rfm_main_box);
-   if (scroll_window) gtk_widget_destroy(scroll_window);
+   if (scroll_window) {gtk_widget_destroy(scroll_window); icon_or_tree_view=NULL;}
   
 
    gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, FALSE);
@@ -1705,7 +1706,20 @@ static void refresh_store(RFM_ctx *rfmCtx)
 #ifdef GitIntegration
    if (curPath_is_git_repo) load_GitTrackedFiles_into_HashTable();
 #endif
-
+   if(grepMatch_hash!=NULL){
+     if (SearchResultViewInsteadOfDirectoryView){
+       if (non_grepMatchTreeViewColumns==NULL){//newly in searchresultview with grepMatch, keep old treeview columns
+	 gchar* cmd=get_current_treeview_columns_showcolumn_cmd();
+	 non_grepMatchTreeViewColumns=strdup(cmd + 11); //exclude leading "showcolumn "
+	 show_hide_treeview_columns_in_order(",4,19,");
+       }
+     }else{// in DirectoryView
+       if (non_grepMatchTreeViewColumns!=NULL){
+	 show_hide_treeview_columns_in_order(non_grepMatchTreeViewColumns);
+	 g_free(non_grepMatchTreeViewColumns); non_grepMatchTreeViewColumns=NULL;
+       }
+     }
+   }
    icon_or_tree_view = add_view(rfmCtx);
    
    gchar * title;
@@ -2782,7 +2796,7 @@ static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
 
 		    treeviewColumns[col_index].Show = (col_enum_with_sign>=0);
 		    if (treeviewColumns[col_index].gtkCol!=NULL){
-		      if (treeview) {
+		      if (icon_or_tree_view!=NULL && treeview) {
 			gtk_tree_view_column_set_visible(treeviewColumns[col_index].gtkCol,treeviewColumns[col_index].Show);
 			if (j>=1) gtk_tree_view_move_column_after(GTK_TREE_VIEW(icon_or_tree_view) , treeviewColumns[col_index].gtkCol, baseColumnIndex<0? NULL:treeviewColumns[baseColumnIndex].gtkCol);
 		      }
@@ -2813,7 +2827,7 @@ static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
                     for (guint i = baseColumnIndex + 1;
                          i < G_N_ELEMENTS(treeviewColumns); i++) {
 		      treeviewColumns[i].Show = FALSE;
-		      if (treeviewColumns[i].gtkCol!=NULL && treeview) gtk_tree_view_column_set_visible(treeviewColumns[i].gtkCol, FALSE);
+		      if (treeviewColumns[i].gtkCol!=NULL && icon_or_tree_view!=NULL && treeview) gtk_tree_view_column_set_visible(treeviewColumns[i].gtkCol, FALSE);
 		      g_debug("%d invisible after ending ','",treeviewColumns[i].enumCol);
                     }
                 }
