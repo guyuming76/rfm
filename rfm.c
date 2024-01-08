@@ -1056,11 +1056,11 @@ static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter)
    thumbData->mtime_file = fileAttributes->file_mtime==NULL? 0 : g_date_time_to_unix(fileAttributes->file_mtime);
    thumbData->uri=g_filename_to_uri(thumbData->path, NULL, NULL);
    //don't generate thumbnail for thumbnail, show itself for picture in rfm_thumbDir
-   if (strncmp(rfm_thumbDir, thumbData->path, strlen(rfm_thumbDir))==0){
+   if (strncmp(rfm_thumbDir, thumbData->path, strlen(rfm_thumbDir))!=0){
      thumbData->md5=g_compute_checksum_for_string(G_CHECKSUM_MD5, thumbData->uri, -1);
      thumbData->thumb_name=g_strdup_printf("%s_%d.png", thumbData->md5, thumbData->thumb_size);
    }else{
-     thumbData->thumb_name=g_strdup(thumbData->path + strlen(rfm_thumbDir) + 1); //rfm_thumbDir does not have ending '/'
+     thumbData->thumb_name=g_strdup(thumbData->path + strlen(rfm_thumbDir) + 1); //get the thumbnail filename without rfm_thumbDir path,  rfm_thumbDir does not have ending '/', so +1
    }
    thumbData->rfm_pid=getpid();  /* pid is used to generate a unique temporary thumbnail name */
 
