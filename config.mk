@@ -9,3 +9,6 @@ GitIntegration = -DGitIntegration
 
 #PythonEmbedded = -DPythonEmbedded
 PythonEmbedded =
+
+RFM_FILE_CHOOSER = -DRFM_FILE_CHOOSER
+#RFM_FILE_CHOOSER =
