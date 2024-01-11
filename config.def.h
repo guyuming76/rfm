@@ -186,7 +186,7 @@ static RFM_ToolButton tool_buttons[] = {
 #ifdef GitIntegration
    { "gitCommit",    NULL,                      refresh_store,          git_commit,        FALSE,          TRUE,      0,                      NULL,                   cur_path_is_git_repo  },
 #endif
-   { "cpPath",       NULL,                      copy_curPath_to_clipboard, NULL,           TRUE,           TRUE,      0,                      "copy current path to clipboard", NULL},
+   { cpPath,         NULL,                      copy_curPath_to_clipboard, NULL,           TRUE,           TRUE,      0,                      "copy current path to clipboard", NULL},
 // { "mounts",       "drive-harddisk",          show_disk_devices,      dev_disk_path },
 };
 
