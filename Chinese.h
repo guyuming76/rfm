@@ -3,7 +3,7 @@
 #define Up "父"
 #define SwitchView "表/图"
 #define Menu "菜单"
-#define RunActionCopy "复制(启动复制脚本,复制当前选中文件,需输入目的路径)"
+#define RunActionCopy "复制(新开虚拟终端窗口,运行复制脚本,按提示输入目的路径后,新开rfm窗口查看复制结果)"
 #define RunActionMove "移动(改名,启动移动脚本,需输入目的路径)"
 #define RunActionDelete "删除"
 #define RunActionGitStage "git 暂存"

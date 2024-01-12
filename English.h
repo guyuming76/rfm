@@ -3,7 +3,7 @@
 #define Up "UP"
 #define SwitchView "List/Icon"
 #define Menu "Menu"
-#define RunActionCopy "Copy(start copy script,you need to input destination)"
+#define RunActionCopy "Copy(new VT window, open new rfm window for the inputted destination)"
 #define RunActionMove "Move(rename, you need to input destination)"
 #define RunActionDelete "Delete"
 #define RunActionGitStage "git stage"
