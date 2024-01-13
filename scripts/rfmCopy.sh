@@ -1,15 +1,11 @@
 #!/bin/bash
 # accept filenames to copy as parameter
 
-set -x
+#set -x
 
 export destination=$(pwd)
 
 read -p "Please input the copy destination(default $destination ): " -r input_destination
 
-[[ ! -z "$input_destination" ]] && destination=$input_destination && (rfm -d $destination &)
+[[ ! -z "$input_destination" ]] && destination=$input_destination && cpcmd="/bin/cp -p -r -i '$@' $destination" && rfm -d $destination -x "$cpcmd"
 #TODO: autoselect the copied filenames in newly opened rfm window
-
-/bin/cp -p -r -i $@ $destination
-
-read -p "press enter to close this window"
