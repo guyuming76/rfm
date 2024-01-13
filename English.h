@@ -56,7 +56,7 @@
 "       press q in rfm window to quit.\n" \
 "-p       read file name list from StdIn, through pipeline, this -p can be omitted, for example:\n           locate 20230420|grep .png|rfm\n" \
 "-px      when read filename list from pipeline, show only x number of items in a batch, for example: -p9. you can also set this in command window with builtin cmd pagesize\n" \
-"-d       specify full path to show, such as -d /home/somebody/maildir, instead of default current working directory. If file name follows -d, the directory of the file will be opened and the file selected in view\n" \
+"-d       specify full path to show, such as -d /home/somebody/maildir, instead of default current working directory. If file name follows -d, the directory of the file will be opened and the file selected in view. If multiple path follows -d, rfm will enter the first directory name after start.\n" \
 "-i       show mime type\n" \
 "-l       open with listview instead of iconview,you can also switch view with toolbar button or builtin cmd /\n" \
 "-s       specify columns to show in listview and their order, refer to builtin command showcolumn for detail.\n" \

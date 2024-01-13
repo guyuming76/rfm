@@ -3295,7 +3295,7 @@ int main(int argc, char *argv[])
 	    filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView] = g_list_prepend(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView], g_strdup(argv[c+1]));
          }           
 	 c++;
-
+	 while(argc>c && argv[c][0]!='-') filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView] = g_list_prepend(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView], g_strdup(argv[c++]));
          break;
       case 'i':
             rfmCtx->showMimeType=1;
