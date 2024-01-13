@@ -3,7 +3,7 @@
 
 #set -x
 
-read -p "Please input the copy destination(default $(pwd)): " -r input_destination
+read -p "Please input the copy destination(current $(pwd)), selected filenames will be copied into clipboard if enter pressed with no input: " -r input_destination
 
 if [[ ! -z "$input_destination" ]]; then
 	destination="$(realpath -s $input_destination)"

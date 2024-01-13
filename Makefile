@@ -79,7 +79,7 @@ endif
 	@cp -f scripts/rfmRefreshImage.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmVTforCMD.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmVTforCMD_hold.sh ${DESTDIR}${PREFIX}/bin
-	@cp -f scripts/rfmCopy.sh ${DESTDIR}${PREFIX}/bin
+	@cp -f scripts/rfmCopy_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmCopy.sh
 	@cp -f scripts/rfmMove_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmMove.sh
 	@cp -f scripts/rfmRemove_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmRemove.sh
 	@cp -f scripts/rfmProperties.sh ${DESTDIR}${PREFIX}/bin
