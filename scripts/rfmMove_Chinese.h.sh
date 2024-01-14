@@ -1,40 +1,50 @@
 #!/bin/bash
+# 接受一个或多个文件名作为参数,目前从rfm上下文菜单点击操作里面传出的都是完整路径文件名
 
-set -x
+#set -x
 
-export destination=$(pwd)
+echo "请输入移动目的路径,绝对路径或相对与当前默认路径($(pwd)),直接回车表示默认路径并复制选择文件名至剪贴板:"
+read -r input_destination
 
-read -p "请输入移动目的地址(默认 $destination ): " -r input_destination
+if [[ -z "$input_destination" ]]; then
+	input_destination=$(pwd)
+	# 用户很有可能是在查询结果视图里面选中文件,然后移动到当前目录的,所以目的地默认为当前目录还是很有用的
+	# TODO: 判断文件来源目录和目的目录如果相同,类似windows,建个新文件名,或提示用户
+	# if destination not entered, we copy the selected file names into clipboard so that user can paste in newly opened rfm
+	echo "$@" | wl-copy
+	# TODO: wl-copy is for wayland, what if x11?
+	# TODO, 理想的状态应该是用户在下面 mv -i 命令里选择不 overwrite 同名文件后在复制此文件名至剪贴板,以便用户在新打开的rfm窗口里导航到合适的目录后选择粘贴或移动到此, 若是用户选择overwrite 文件,则此文件名就复制到剪贴板了. 但我现在不知道如何获知用户在 cp -i 命令里的选择
+fi
 
-[[ ! -z "$input_destination" ]] && destination=$input_destination
+if [[ ! -z "$input_destination" ]]; then
+	destination="$(realpath -s $input_destination)"
 
-/bin/mv -i $@ $destination
-
-read -p "输入 1 在新窗口用 rfm 打开路径 $destination, 或回车关闭此窗口: " -r next_action
-
-[[ "$next_action" == "1" ]]  && rfm -d $destination
-
-#[[ "$next_action" == "1" ]]  && rfm -d $destination 1>/tmp/rfm1.log 2>/tmp/rfm2.log &
-
-#我本希望上面一行新的rfm启动后，本脚本就终结了，本窗口也就会关闭，但是新的 rfm 作为子进程能够继续。
-#但是我机器上的结果是 新的 rfm 作为本进程的子进程也随着本窗口的关闭立刻关闭了。
-#我下面加了一句sleep, 目的是让我可以观查到新的 rfm 窗口成功打开了，然后10秒后，随着本窗口的关闭而关闭。
-
-#我若是直接在foot里面启动 rfm& ,然后在foot里输入 exit 退出foot，rfm窗口是会保持打开的;但我若是用 MOD+SHIFT+c (DWL 关闭窗口组合键)关闭foot窗口，rfm会随之关闭。
-
-#我直接在foot里面执行  /usr/local/bin/rfmVTforCMD.sh /usr/local/bin/rfmMove.sh /home/guyuming/htopQtWeb1.txt 
-#新的rfm窗口还是会自动关闭，也就是说似乎和我在父进程里面启动本窗口的 g_spawn 参数没关系
-
-#我不知道如何才能在这里让新的 rfm 在本脚本结束后继续保持打开。我如果可以把新的rfm的父进程id，PPID设为和原有rfm进程的PPID相同，能否解决？
-#为此，两个设想：1. 需要一个命令，可以在本脚本里面执行，用以设置新rfm进程的PPID, 同时，老rfm进程的PPID作为命令参数或环境变量传入本脚本。或者 2. 把设置PPID的功能直接用c 语言写在rfm 里面，同时老的 rfm 在间接launch 本脚本的时候，把PPID传过来。两个设想相比，我觉得有专门的修改PPID的命令会比较好，符合专门的工具做专门的事的哲学，不至于把 rfm 代码搞得过于复杂。但我还没搜到这样的命令。
-
-
-#貌似我改不了PPID！
-
-#The parent process id (ppid) of a process cannot be changed outside of the kernel; there is no setppid system call. The kernel will only change the ppid to (pid) 1 after the processes parent has terminated
-#https://unix.stackexchange.com/questions/193902/change-the-parent-process-of-a-process
-
-#a process can change its children's PGID if they're still running the original process image (i.e. they haven't called execve to run a different program).
-#https://unix.stackexchange.com/questions/462188/is-there-a-way-to-change-the-process-group-of-a-running-process
-
-#sleep 10s
+	if [[ -e $destination ]]; then
+		/bin/mv -v -i $@ $destination
+		if [[ -d $destination ]]; then
+			# $@ moved into $destination directory
+			autoselection=""
+			for i in $@; do
+				autoselection+=" $destination/$(basename $i)"
+				# my test show destination returned from realpath do not end with /
+			done
+		else
+			# $@ overrided $destination file
+			# TODO: can we know whether user selected to overwrite existing file or not?
+			autoselection=$destination
+		fi
+	elif [[ ! -z "$destination" ]]; then
+		# i ensure destination -z here to prevent that something wrong from transformation from input_destination to destination and cp use the last selected filename parameter as destination
+		# since destionation does not exists before, my test show that there can only be one source file
+		# it's not possible to copy multiple source items into a non-existing destionation
+		/bin/mv -v $@ $destination
+		autoselection=$destination
+	else
+		echo "$input_destination;$destination" > 2
+		exit 1
+	fi
+	rfm -d $autoselection
+else
+       	echo "pwd return empty" > 2
+       	exit 2
+fi
