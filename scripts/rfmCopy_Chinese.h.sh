@@ -3,7 +3,18 @@
 
 #set -x
 
-read -p "请输入复制目的路径,绝对路径或相对与当前($(pwd)),若不输入路径,直接回车则复制选择文件名至剪贴板: " -r input_destination
+echo "请输入复制目的路径,绝对路径或相对与当前默认路径($(pwd)),直接回车表示默认路径并复制选择文件名至剪贴板:"
+read -r input_destination
+
+if [[ -z "$input_destination" ]]; then
+	input_destination=$(pwd)
+	# 用户很有可能是在查询结果视图里面选中文件,然后复制到当前目录的,所以目的地默认为当前目录还是很有必要,虽然会遇到来源文件也是当前目录的情况, 我测试的结果是cp -i 会直接忽略这个文件,并不提示
+	# TODO: 判断文件来源目录和目的目录如果相同,类似windows,建个新文件名,或提示用户
+	# if destination not entered, we copy the selected file names into clipboard so that user can paste in newly opened rfm
+	echo "$@" | wl-copy
+	# TODO: wl-copy is for wayland, what if x11?
+	# TODO, 理想的状态应该是用户在下面 cp -i 命令里选择不 overwrite 同名文件后在复制此文件名至剪贴板,以便用户在新打开的rfm窗口里导航到合适的目录后选择粘贴或移动到此, 若是用户选择overwrite 文件,则此文件名就复制到剪贴板了. 但我现在不知道如何获知用户在 cp -i 命令里的选择
+fi
 
 if [[ ! -z "$input_destination" ]]; then
 	destination="$(realpath -s $input_destination)"
@@ -34,8 +45,6 @@ if [[ ! -z "$input_destination" ]]; then
 	fi
 	rfm -d $autoselection
 else
-	# if destination not entered, we copy the selected file names into clipboard so that user can paste in newly opened rfm
-	echo "$@" | wl-copy
-	# TODO: wl-copy is for wayland, what if x11?
-	rfm
+       	echo "pwd return empty" > 2
+       	exit 2
 fi

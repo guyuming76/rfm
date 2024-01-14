@@ -3,7 +3,15 @@
 
 #set -x
 
-read -p "Please input the copy destination(current $(pwd)), selected filenames will be copied into clipboard if enter pressed with no input: " -r input_destination
+echo "Please input the copy destination(default to current $(pwd)), selected filenames will be copied into clipboard if default:"
+read -r input_destination
+if [[ -z "$input_destination" ]]; then
+       	input_destination=$(pwd)
+       	# 用户很有可能是在查询结果视图里面选中文件,然后复制到当前目录的,所以目的地默认为当前>
+       	# if destination not entered, we copy the selected file names into clipboard so that>
+       	echo "$@" | wl-copy
+       	# TODO: wl-copy is for wayland, what if x11?
+fi
 
 if [[ ! -z "$input_destination" ]]; then
 	destination="$(realpath -s $input_destination)"
@@ -34,8 +42,6 @@ if [[ ! -z "$input_destination" ]]; then
 	fi
 	rfm -d $autoselection
 else
-	# if destination not entered, we copy the selected file names into clipboard so that user can paste in newly opened rfm
-	echo "$@" | wl-copy
-	# TODO: wl-copy is for wayland, what if x11?
-	rfm
+	echo "pwd return empty" > 2
+	exit 2
 fi
