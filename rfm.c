@@ -317,7 +317,7 @@ static gint fileNum=0;
 static gint currentFileNum=0;
 static char* pipefd="0";
 static GList *CurrentPage_SearchResultView=NULL;
-static gint PageSize_SearchResultView=20;
+static gint PageSize_SearchResultView=100;
 /*keep the original user inputs for add_history*/
 static gchar *OriginalReadlineResult=NULL;
 static guint history_entry_added=0;
