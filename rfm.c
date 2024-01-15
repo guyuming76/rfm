@@ -282,7 +282,7 @@ static gulong viewSelectionChangedSignalConnection=0;
 static char *initDir=NULL;
 static gchar *rfm_curPath=NULL;  /* The current directory */
 static gchar *rfm_SearchResultPath=NULL; /*keep the rfm_curPath value when SearchResult was created */
-static gchar *rfm_prePath=NULL;  /* Previous directory: only set when up button is pressed, otherwise should be NULL */
+static gchar *rfm_prePath=NULL;  /* keep previous rfm_curPath, so that it will be autoselected in view. But manual selection change such as user pressing ESC in view will set it to null. Rodney invented this to autoselect child directory after going to parent directory*/
 static char cwd[PATH_MAX];
 
 static GtkAccelGroup *agMain = NULL;
@@ -1887,7 +1887,6 @@ static void selectionChanged(GtkWidget *view, gpointer user_data)
 	newSelectionFilePathList = g_list_prepend(newSelectionFilePathList, g_strdup(g_value_get_string(&fullpath)));
 	g_debug("selected file before refresh:%s",(char *)newSelectionFilePathList->data);
 	count++;
-	//if (In_refresh_store) break;
 	selectionListElement=g_list_next(selectionListElement);
     }
     g_mutex_lock(&rfm_selection_completion_lock);
@@ -1897,13 +1896,13 @@ static void selectionChanged(GtkWidget *view, gpointer user_data)
     g_mutex_unlock(&rfm_selection_completion_lock);
   }
 
-  //if (!In_refresh_store){
-    g_list_free_full(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView],g_free);
-    filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView] = newSelectionFilePathList;
-    g_debug("Number of view selection:%d",count);
-  //}
+  g_list_free_full(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView],g_free);
+  filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView] = newSelectionFilePathList;
+  g_debug("Number of view selection:%d",count);
   
   g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
+
+  if (rfm_prePath!=NULL) { g_free(rfm_prePath); rfm_prePath=NULL; }
 }
 
 static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointer user_data)
@@ -3165,7 +3164,7 @@ static int setup(RFM_ctx *rfmCtx)
      g_warning("failed to read_history(%s) error code:%d.",rfm_historyFileLocation,e);
 
    rfm_prePath= getenv("OLDPWD");
-   if (rfm_prePath!=NULL) rfm_prePath=strdup(rfm_prePath);
+   if (rfm_prePath!=NULL) rfm_prePath=strdup(rfm_prePath); //i don't remember exactly, but i think i do this because i read somewhere that getenv result is special and i should not free it.
 
    if (initDir == NULL) initDir = cwd;
    set_rfm_curPath(initDir);
