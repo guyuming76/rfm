@@ -4,8 +4,10 @@
 target=$(pwd)
 # rfm使用g_spawn执行脚本时,第一个参数working directory会传入 rfm_curPath, 我的理解这里 pwd 就会得到 rfm_curPath 的值
 
-read -p "从剪贴板读入源文件名还是打开新rfm窗口选取源文件,默认从剪贴板读,若选择新rfm窗口,则输入源文件所在目录" sourceDirectory
-#TODO: 完称上面提示后续代码
+echo "从剪贴板读入源文件名还是打开新rfm窗口选取源文件?"
+echo "直接回车默认从剪贴板读;"
+echo "输入源文件所在目录,则打开新rfm窗口选择源文件:"
+read sourceDirectory
 
 if [[ ! -z "$sourceDirectory" ]];then
 	if [[ -e $sourceDirectory ]];then
@@ -13,9 +15,12 @@ if [[ ! -z "$sourceDirectory" ]];then
 		if [[ ! -p $namedpipe ]];then
 			mkfifo $namedpipe
 			#trap "rm -f $namedpipe" EXIT
-			while read line;do cp -i -v -r $line $target; done < $namedpipe &
+			while read line <$namedpipe;do sleep 30; cp -v -r $line $target; done &
+			subpid=$!
+			echo "cp命令执行进程PID: $subpid"
 			rfm -d $sourceDirectory -r $namedpipe
-			#rm -f $namedpipe
+			wait
+			rm -f $namedpipe
 		else
 			echo "$namedpipe 已存在" > 2
 			exit 4
