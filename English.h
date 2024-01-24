@@ -7,7 +7,6 @@
 #define RunActionMove "Move(rename, you need to input destination)"
 #define RunActionDelete "Delete"
 #define RunActionGitStage "git stage"
-#define RunActionCopySelection "copy file names to clipboard(can be used with Paste or MoveToHere on toolbar)"
 #define Paste "Paste"
 #define MoveTo "MoveToHere"
 #define RunActionChangeOwner "ChangeOwner"

@@ -3,17 +3,23 @@
 
 #set -x
 
-echo "Please input the copy destination(default to current $(pwd)), selected filenames will be copied into clipboard if default:"
-read -r input_destination
+historyFile=~/.rfm_history_directory
+history -r
+
+echo "Please input the copy destination(fullpath or relative to current $(pwd))"
+echo "selected filenames will be copied into clipboard if enter pressed without input:"
+read -e -r input_destination
+
+history -s "$input_destination"
+history -w
+
 if [[ -z "$input_destination" ]]; then
        	input_destination=$(pwd)
        	# 用户很有可能是在查询结果视图里面选中文件,然后复制到当前目录的,所以目的地默认为当前>
        	# if destination not entered, we copy the selected file names into clipboard so that>
        	echo "$@" | wl-copy
        	# TODO: wl-copy is for wayland, what if x11?
-fi
-
-if [[ ! -z "$input_destination" ]]; then
+else
 	destination="$(realpath -s $input_destination)"
 
 	if [[ -e $destination ]]; then
@@ -41,7 +47,5 @@ if [[ ! -z "$input_destination" ]]; then
 		exit 1
 	fi
 	rfm -d $autoselection
-else
-	echo "pwd return empty" > 2
-	exit 2
+
 fi

@@ -3,8 +3,15 @@
 
 #set -x
 
-echo "请输入复制目的路径,绝对路径或相对与当前默认路径($(pwd)),直接回车表示默认路径并复制选择文件名至剪贴板:"
-read -r input_destination
+historyFile=~/.rfm_history_directory
+history -r
+
+echo "请输入复制目的路径,绝对路径或相对与当前默认路径($(pwd))"
+echo "直接回车复制当前选中文件名至剪贴板:"
+read -e -r input_destination
+
+history -s "$input_destination"
+history -w
 
 if [[ -z "$input_destination" ]]; then
 	input_destination=$(pwd)
@@ -14,9 +21,7 @@ if [[ -z "$input_destination" ]]; then
 	echo "$@" | wl-copy
 	# TODO: wl-copy is for wayland, what if x11?
 	# TODO, 理想的状态应该是用户在下面 cp -i 命令里选择不 overwrite 同名文件后在复制此文件名至剪贴板,以便用户在新打开的rfm窗口里导航到合适的目录后选择粘贴或移动到此, 若是用户选择overwrite 文件,则此文件名就复制到剪贴板了. 但我现在不知道如何获知用户在 cp -i 命令里的选择
-fi
-
-if [[ ! -z "$input_destination" ]]; then
+else
 	destination="$(realpath -s $input_destination)"
 
 	if [[ -e $destination ]]; then
@@ -44,7 +49,5 @@ if [[ ! -z "$input_destination" ]]; then
 		exit 1
 	fi
 	rfm -d $autoselection
-else
-       	echo "pwd return empty" > 2
-       	exit 2
+
 fi

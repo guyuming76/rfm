@@ -7,7 +7,6 @@
 #define RunActionMove "移动(改名,启动移动脚本,需输入目的路径)"
 #define RunActionDelete "删除"
 #define RunActionGitStage "git 暂存"
-#define RunActionCopySelection "复制文件名至剪贴板(接下来可配合工具栏上粘贴或移至此按钮实现文件复制或移动)"
 #define Paste "粘帖"
 #define MoveTo "移至此"
 #define RunActionChangeOwner "更改所有者"

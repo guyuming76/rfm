@@ -30,7 +30,6 @@ static gboolean keep_selection_on_view_across_refresh = TRUE;
 static const char *f_rm[]   = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmRemove.sh",NULL };
 static const char *f_cp[]   = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmCopy.sh", NULL };
 static const char *f_mv[]   = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmMove.sh", NULL };
-static const char *cp_selection_to_clipboard[] = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmCopySelectionToClipboard.sh",NULL};
 static const char *cp_clipboard_to_curPath[] = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmCopyClipboardToCurPath.sh",NULL };
 static const char *mv_clipboard_to_curPath[] = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmMoveClipboardToCurPath.sh",NULL };
 static const char *change_owner[] = { rfmBinPath "/rfmVTforCMD.sh", rfmBinPath "/rfmChangeOwner.sh",NULL };
@@ -106,7 +105,6 @@ static RFM_MenuItem run_actions[] = {
    { RunActionCopy,  "*",              "*",                    f_cp,             		NULL },
    { RunActionMove,  "*",              "*",                    f_mv,             		NULL },
    { RunActionDelete, "*",             "*",                    f_rm,             		NULL },
-   { RunActionCopySelection, "*",      "*",                    cp_selection_to_clipboard, 	NULL },
 #ifdef GitIntegration
    { RunActionGitStage,  "*",          "*",                    git_stage_cmd,    		cur_path_is_git_repo },
    { "git log",      "*",              "*",                    git_log_cmd,      		cur_path_is_git_repo },
