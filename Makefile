@@ -79,8 +79,7 @@ endif
 	@cp -f scripts/rfmRefreshImage.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmVTforCMD.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmVTforCMD_hold.sh ${DESTDIR}${PREFIX}/bin
-	@cp -f scripts/rfmCopy_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmCopy.sh
-	@cp -f scripts/rfmMove_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmMove.sh
+	@cp -f scripts/rfmCopyMove_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmCopyMove.sh
 	@cp -f scripts/rfmRemove_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmRemove.sh
 	@cp -f scripts/rfmProperties.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmOpenWith_.sh ${DESTDIR}${PREFIX}/bin
@@ -103,8 +102,7 @@ endif
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmRefreshImage.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmVTforCMD.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmVTforCMD_hold.sh
-	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmCopy.sh
-	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmMove.sh
+	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmCopyMove.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmRemove.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmProperties.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmOpenWith_.sh
@@ -125,8 +123,7 @@ endif
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmRefreshImage.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmVTforCMD.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmVTforCMD_hold.sh
-	@rm -f ${DESTDIR}${PREFIX}/bin/rfmCoy.sh
-	@rm -f ${DESTDIR}${PREFIX}/bin/rfmMove.sh
+	@rm -f ${DESTDIR}${PREFIX}/bin/rfmCopyMove.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmRemove.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmProperties.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmOpenWith_.sh
