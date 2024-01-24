@@ -11,13 +11,10 @@ read sourceDirectory
 
 if [[ ! -z "$sourceDirectory" ]];then
 	if [[ -e $sourceDirectory ]];then
-		namedpipe="/tmp/rfmFileChooser_$$"
+		export namedpipe="/tmp/rfmFileChooser_$$"
 		if [[ ! -p $namedpipe ]];then
-			mkfifo $namedpipe
 			#trap "rm -f $namedpipe" EXIT
-			while read line <$namedpipe;do sleep 30; cp -v -r $line $target; done &
-			subpid=$!
-			echo "cp命令执行进程PID: $subpid"
+		        mkfifo $namedpipe; while read line ;do cp -v -r $line $target; done <$namedpipe &
 			rfm -d $sourceDirectory -r $namedpipe
 			wait
 			rm -f $namedpipe
