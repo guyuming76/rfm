@@ -322,6 +322,7 @@ static gint PageSize_SearchResultView=100;
 static gchar *OriginalReadlineResult=NULL;
 static guint history_entry_added=0;
 static char *rfm_historyFileLocation;
+static char *rfm_historyDirectory_FileLocation;
 static char** (*OLD_rl_attempted_completion_function)(const char *text, int start, int end);
 static char **rfm_filename_completion(const char *text, int start, int end);
 static char *rfm_selection_completion = NULL;
@@ -1826,6 +1827,7 @@ static void set_rfm_curPath(gchar* path)
    if (path==NULL) return;
    add_history(g_strconcat("cd ", path, NULL));
    history_entry_added++;
+   //TODO: i want to add this path into ~/.rfm_historyDirectory file as well as current history list, so that it can be use by 'read -e' in bash scripts. How?
    //TODO: in future if we need some directory specific history file, we may check that if the directory contains .rfm_history file, it will use this local history, otherwise, use the default global history file.
    /* if (rfm_curPath!=NULL && (e=append_history(history_entry_added, g_build_filename(rfm_curPath,".rfm_history", NULL)))) */
    /*     g_warning("failed to append_history(%d,%s) error code:%d",history_entry_added,g_build_filename(rfm_curPath,".rfm_history", NULL),e); */
@@ -3159,6 +3161,7 @@ static int setup(RFM_ctx *rfmCtx)
    using_history();
    stifle_history(RFM_HISTORY_SIZE);
    rfm_historyFileLocation = g_build_filename(getenv("HOME"),".rfm_history", NULL);
+   rfm_historyDirectory_FileLocation = g_build_filename(getenv("HOME"),".rfm_historyDirectory", NULL);
    int e;
    if (e=read_history(rfm_historyFileLocation))
      g_warning("failed to read_history(%s) error code:%d.",rfm_historyFileLocation,e);
