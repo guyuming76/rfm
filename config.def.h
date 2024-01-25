@@ -30,8 +30,8 @@ static gboolean keep_selection_on_view_across_refresh = TRUE;
 static const char *f_rm[]   = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmRemove.sh",NULL };
 static const char *f_cp[]   = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmCopyMove.sh","cp", NULL };
 static const char *f_mv[]   = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmCopyMove.sh", "mv",NULL };
-static const char *cp_clipboard_to_curPath[] = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmCopyClipboardToCurPath.sh",NULL };
-static const char *mv_clipboard_to_curPath[] = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmMoveClipboardToCurPath.sh",NULL };
+static const char *cp_clipboard_to_curPath[] = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmCopyMoveToCurPath.sh","cp",NULL };
+static const char *mv_clipboard_to_curPath[] = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmCopyMoveToCurPath.sh","mv",NULL };
 static const char *change_owner[] = { rfmBinPath "/rfmVTforCMD.sh", rfmBinPath "/rfmChangeOwner.sh",NULL };
 
 /* Run action commands: called as run_action <list of paths to selected files> */
