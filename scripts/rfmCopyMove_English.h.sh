@@ -8,8 +8,9 @@ history -r
 history -s "$(pwd)"
 # 用户很有可能是在查询结果视图里面选中文件,然后复制到当前目录的,所以目的地默认为当前目录还是很有必要,虽然会遇到来源文件也是当前目录的情况, 我测试的结果是cp -i 会直接忽略这个文件,并不提示
 
-echo "Please input the destination(fullpath or relative to current $(pwd))"
-echo "selected filenames will be copied into clipboard if enter pressed without input:"
+echo "press enter to copy selected filenames into clipboard;"
+echo "or input the destination(fullpath or relative to current $(pwd)), up and down arrow keys can be used to choose from input history:"
+
 read -e -r input_destination
 
 
