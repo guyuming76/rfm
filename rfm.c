@@ -327,6 +327,7 @@ static char** (*OLD_rl_attempted_completion_function)(const char *text, int star
 static char **rfm_filename_completion(const char *text, int start, int end);
 static char *rfm_selection_completion = NULL;
 static GMutex rfm_selection_completion_lock;
+static gboolean exec_stdin_cmd_sync = FALSE;
 //used by exec_stdin_command and exec_stdin_command_builtin to share status
 static gboolean stdin_cmd_ending_space=FALSE;
 static GList * stdin_cmd_selection_list=NULL; //selected files used in stdin cmd expansion(or we call it substitution) which replace ending space and %s with selected file names
@@ -3161,7 +3162,7 @@ static int setup(RFM_ctx *rfmCtx)
    using_history();
    stifle_history(RFM_HISTORY_SIZE);
    rfm_historyFileLocation = g_build_filename(getenv("HOME"),".rfm_history", NULL);
-   rfm_historyDirectory_FileLocation = g_build_filename(getenv("HOME"),".rfm_historyDirectory", NULL);
+   rfm_historyDirectory_FileLocation = g_build_filename(getenv("HOME"),".rfm_history_directory", NULL);
    int e;
    if (e=read_history(rfm_historyFileLocation))
      g_warning("failed to read_history(%s) error code:%d.",rfm_historyFileLocation,e);
