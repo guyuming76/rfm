@@ -1,28 +1,29 @@
 #!/bin/bash
 # 接受一个或多个文件名作为参数,目前从rfm上下文菜单点击操作里面传出的都是完整路径文件名
 
-#set -x
-
-historyFile=~/.rfm_history_directory
-history -r
-history -s "$(pwd)"
-# 用户很有可能是在查询结果视图里面选中文件,然后复制到当前目录的,所以目的地默认为当前目录还是很有必要,虽然会遇到来源文件也是当前目录的情况, 我测试的结果是cp -i 会直接忽略这个文件,并不提示
+set -x
 
 echo "直接回车复制当前选中文件名至剪贴板;"
 echo "或输入目的路径,可以是绝对路径或相对与当前路径($(pwd)),可用上下箭头方向键从历史输入中选择:"
 
-read -e -r input_destination
+input_destination=$(bash -c -i '
+				set -x;
+				HISTFILE=~/.rfm_history_directory;
+				history -r;
+				history -s "$(pwd)";
+				read -e -r input;
+				history -s "$input";
+				destination="$(realpath -s $input)";
+				history -s "$destination";
+				history -w;
+				echo "$destination"')
 
+# 用户很有可能是在查询结果视图里面选中文件,然后复制到当前目录的,所以目的地默认为当前目录还是很有必要,虽然会遇到来源文件也是当前目录的情况, 我测试的结果是cp -i 会直接忽略这个文件,并不提示
 
 if [[ -z "$input_destination" ]]; then
 	echo "${@:2}" | wl-copy
 	# TODO: wl-copy is for wayland, what if x11?
 else
-	history -s "$input_destination"
-	destination="$(realpath -s $input_destination)"
-	history -s "$destination"
-	history -w
-
 	if [[ -e $destination ]]; then
 		if [[ -d $destination ]];then
 			autoselection=""
