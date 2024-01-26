@@ -14,9 +14,8 @@ static gint RFM_THUMBNAIL_SIZE = 128; /* Maximum size for thumb dir normal is 12
 #define RFM_DATETIME_FORMAT "%Y-%m-%d,%H:%M:%S"
 #define RFM_HISTORY_SIZE 10000
 #define RFM_AUTOSELECT_OLDPWD_IN_VIEW TRUE
-#ifdef RFM_FILE_CHOOSER
 #define RFM_FILE_CHOOSER_NAMED_PIPE_PREFIX "/tmp/rfmFileChooser_"
-#endif
+
 //add the two line follows into ~/.inputrc so that readline can search history based on prefix. read https://www.man7.org/linux/man-pages/man3/readline.3.html  for more
 // arrow up
 // "\e[A":history-search-backward

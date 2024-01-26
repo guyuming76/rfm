@@ -238,11 +238,11 @@ enum rfmTerminal{
 
 
 static gchar*  PROG_NAME = NULL;
-#ifdef RFM_FILE_CHOOSER
+
 static gboolean StartedAs_rfmFileChooser = FALSE;
 static int rfmFileChooserResultNumber = 0;
 static gchar *rfmFileChooserReturnSelectionIntoFilename = NULL;
-#endif
+
 // I need a method to show in stdin prompt whether there are selected files in
 // gtk view. if there are, *> is prompted, otherwise, just prompt >
 static gint ItemSelected = 0;
@@ -3198,7 +3198,7 @@ static int setup(RFM_ctx *rfmCtx)
 static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx)
 {
    int e;
-#ifdef RFM_FILE_CHOOSER
+
    if (StartedAs_rfmFileChooser){
       GtkTreeIter iter;
       int returnToFile_fd=-1;
@@ -3223,7 +3223,7 @@ static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx)
 	  g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
       }
    }
-#endif
+
    //https://unix.stackexchange.com/questions/534657/do-inotify-watches-automatically-stop-when-a-program-ends
    inotify_rm_watch(rfm_inotify_fd, rfm_curPath_wd);
    if (rfm_do_thumbs==1) {
@@ -3324,7 +3324,6 @@ int main(int argc, char *argv[])
 	printf(rfmLaunchHelp, PROG_NAME);
 	return 0;
       case 'H': pauseInotifyHandler=TRUE; break;
-#ifdef RFM_FILE_CHOOSER
       case 'r':
 	StartedAs_rfmFileChooser=TRUE;
 	if (argc>c+1 && g_str_has_prefix(argv[c+1], RFM_FILE_CHOOSER_NAMED_PIPE_PREFIX)){
@@ -3333,7 +3332,6 @@ int main(int argc, char *argv[])
 	}
 	if (rfmFileChooserReturnSelectionIntoFilename==NULL) rfmFileChooserReturnSelectionIntoFilename = getenv("rfmFileChooserReturnSelectionIntoFilename");
 	break;
-#endif
       case 'x': //auto execute after start. for example, start with locate rfm.c >0, to avoid locate rfm.c|rfm. We can use rfm -x "locate rfm.c>0"
 	if (argc<=(c+1)) die("ERROR: %s: A command string which can be executed by rfm is required for the option. for example: rfm -x \"locate rfm.c>0\"\n", PROG_NAME);
 	auto_execution_command_after_rfm_start = g_strdup(argv[c+1]);
