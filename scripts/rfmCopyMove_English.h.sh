@@ -6,15 +6,7 @@
 echo "press enter to copy selected filenames into clipboard;"
 echo "or input the destination(fullpath or relative to current $(pwd)), up and down arrow keys can be used to choose from input history:"
 
-input_destination="$(bash -c -i 'HISTFILE=~/.rfm_history_directory;
-				HISTCONTROL=ignoreboth;
-				history -r;
-				history -s "$(pwd)";
-				read -e -r input;
-				history -s "$input";
-				history -w;
-				echo $input')"
-
+input_destination="$(rfmReadlineWithSpecificHistoryFile.sh ~/.rfm_history_directory)"
 
 if [[ -z "$input_destination" ]]; then
 	echo "${@:2}" | wl-copy

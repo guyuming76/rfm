@@ -6,14 +6,7 @@
 echo "直接回车复制当前选中文件名至剪贴板;"
 echo "或输入目的路径,可以是绝对路径或相对与当前路径($(pwd)),可用上下箭头方向键从历史输入中选择:"
 
-input_destination="$(bash -c -i 'HISTFILE=~/.rfm_history_directory;
-				HISTCONTROL=ignoreboth;
-				history -r;
-				history -s "$(pwd)";
-				read -e -r input;
-				history -s "$input";
-				history -w;
-				echo $input')"
+input_destination="$(rfmReadlineWithSpecificHistoryFile.sh ~/.rfm_history_directory)"
 
 # 用户很有可能是在查询结果视图里面选中文件,然后复制到当前目录的,所以目的地默认为当前目录还是很有必要,虽然会遇到来源文件也是当前目录的情况, 我测试的结果是cp -i 会直接忽略这个文件,并不提示
 
