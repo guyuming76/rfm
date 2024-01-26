@@ -7,6 +7,7 @@ echo "直接回车复制当前选中文件名至剪贴板;"
 echo "或输入目的路径,可以是绝对路径或相对与当前路径($(pwd)),可用上下箭头方向键从历史输入中选择:"
 
 input_destination="$(bash -c -i 'HISTFILE=~/.rfm_history_directory;
+				HISTCONTROL=ignoreboth;
 				history -r;
 				history -s "$(pwd)";
 				read -e -r input;
