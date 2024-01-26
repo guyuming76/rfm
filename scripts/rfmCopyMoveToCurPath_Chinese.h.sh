@@ -13,10 +13,6 @@ if [[ "$1" != "cp" && "$1" != "mv" ]]; then
 	exit 5
 fi
 
-
-historyFile=~/.rfm_history_directory
-history -r
-
 sourcefiles=$(wl-paste)
 # TODO: wl-paste is for wayland, what if x11?
 
@@ -33,12 +29,9 @@ else
 	echo "或输入源路径(键盘上下箭头选取历史输入):"
 fi
 
-read -e source
+source="$(rfmReadlineWithSpecificHistoryFile.sh ~/.rfm_history_directory)"
 
 if [[ ! -z "$source" ]];then
-
-	history -s "$source"
-	history -w
 
 	if [[ -d $source ]];then
 		read -p "输入路径是个目录,为此目录新开rfm窗口以便选择源文件,还是复制整个目录(Y/n)?回车默认新开rfm,输入n复制整个目录" -r new_rfm
