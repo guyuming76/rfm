@@ -369,8 +369,8 @@ static RFM_treeviewColumn* GetColumnByEnun(enum RFM_treeviewCol col);
 static gchar* get_current_treeview_columns_showcolumn_cmd();
 static void show_hide_treeview_columns_in_order(gchar *order_sequence);
 
-static void exec_stdin_command(gchar *msg);
-static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, GString* readline_result_string);
+static void parse_and_exec_stdin_command(gchar *msg);
+static gboolean parse_and_exec_stdin_command_builtin(wordexp_t * parsed_msg, GString* readline_result_string);
 static void stdin_command_help();
 static void readlineInSeperateThread();
 static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer rfmCtx);
@@ -2714,7 +2714,7 @@ static void readlineInSeperateThread(GString * readlineResultStringFromPreviousR
     g_free(OriginalReadlineResult);
     while ((OriginalReadlineResult = readline(prompt))==NULL);
 
-    stdin_command_Scheduler = g_idle_add_once(exec_stdin_command, strdup(OriginalReadlineResult));
+    stdin_command_Scheduler = g_idle_add_once(parse_and_exec_stdin_command, strdup(OriginalReadlineResult));
   }
 }
 
@@ -2874,7 +2874,7 @@ static void show_hide_treeview_columns(wordexp_t * parsed_msg){
 static void null_log_handler(const gchar *log_domain,GLogLevelFlags log_level,const gchar *message,gpointer user_data){
 }
 
-static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution){
+static gboolean parse_and_exec_stdin_command_builtin(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution){
 
         for(int i=0;i<G_N_ELEMENTS(builtinCMD);i++){
 	  if (g_strcmp0(parsed_msg->we_wordv[0], builtinCMD[i].cmd)==0) {
@@ -2970,7 +2970,7 @@ static gboolean exec_stdin_command_builtin(wordexp_t * parsed_msg, GString* read
 	return TRUE; //execution reaches here if parsed_msg->we_wordv[0] matchs any keyword, and have finished the corresponding logic
 }
 
-static void exec_stdin_command (gchar * readlineResult)
+static void parse_and_exec_stdin_command (gchar * readlineResult)
 {
         gint len = strlen(readlineResult);
 	g_debug ("readline return length %u: %s", len, readlineResult);
@@ -3026,7 +3026,7 @@ static void exec_stdin_command (gchar * readlineResult)
 	    
 	    wordexp_t parsed_msg;
 	    int wordexp_retval = wordexp(readlineResult,&parsed_msg,0);
-	    if (wordexp_retval==0 && exec_stdin_command_builtin(&parsed_msg, readlineResultString)){
+	    if (wordexp_retval==0 && parse_and_exec_stdin_command_builtin(&parsed_msg, readlineResultString)){
 	      g_string_free(readlineResultString,TRUE);
 	      readlineResultString=NULL; //since readlineInseperatethread function will check this, we must clear it here after cmd already been executed.
 	    }
@@ -3184,7 +3184,7 @@ static int setup(RFM_ctx *rfmCtx)
      if(startWithVT() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)){
        readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);
      }
-   }else stdin_command_Scheduler = g_idle_add_once(exec_stdin_command, auto_execution_command_after_rfm_start);
+   }else stdin_command_Scheduler = g_idle_add_once(parse_and_exec_stdin_command, auto_execution_command_after_rfm_start);
    
    //block Ctrl+C. Without this, Ctrl+C in readline will terminate rfm. Now, if you run htop with readline, Ctrl+C only terminate htop. BTW, it's strange that i had tried sigprocmask, pthread_sigmask, and rl_clear_signals, and they didn't work.
    struct sigaction newaction;
