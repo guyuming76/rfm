@@ -369,6 +369,7 @@ static RFM_treeviewColumn* GetColumnByEnun(enum RFM_treeviewCol col);
 static gchar* get_current_treeview_columns_showcolumn_cmd();
 static void show_hide_treeview_columns_in_order(gchar *order_sequence);
 
+static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
 static void parse_and_exec_stdin_command(gchar *msg);
 static gboolean parse_and_exec_stdin_command_builtin(wordexp_t * parsed_msg, GString* readline_result_string);
 static void stdin_command_help();
@@ -2670,7 +2671,7 @@ static void free_default_pixbufs(RFM_defaultPixbufs *defaultPixbufs)
 
 static gboolean ToSearchResultFilenameList=FALSE; // we need to pass this status from exec_stdin_command to readlineInSeperatedThread, however, we can only pass one parameter in g_thread_new, so, i use a global variable here.
 
-static void readlineInSeperateThread(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution) {
+static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution){
   if (auto_execution_command_after_rfm_start!=NULL){
     //auto_execution_command_after_rfm_start was freed in exec_stdin_command as readlineresult
     auto_execution_command_after_rfm_start = NULL;
@@ -2703,14 +2704,18 @@ static void readlineInSeperateThread(GString * readlineResultStringFromPreviousR
 	  }
           g_string_free(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution,TRUE);
   }
+}
 
+static void readlineInSeperateThread(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution) {
+  if (!exec_stdin_cmd_sync) exec_stdin_command(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
+  
   if(startWithVT() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)){
     gchar prompt[5]="";
     strcat(prompt, stdin_cmd_interpretors[current_stdin_cmd_interpretor].prompt);
     ToSearchResultFilenameList=FALSE;
-    if (keep_selection_on_view_across_refresh && In_refresh_store) strcat(prompt,"?>");
-    else if (ItemSelected==0) strcat(prompt,">");
-    else strcat(prompt,"*>");
+    if (keep_selection_on_view_across_refresh && In_refresh_store) strcat(prompt,exec_stdin_cmd_sync ? "?]":"?>");
+    else if (ItemSelected==0) strcat(prompt,exec_stdin_cmd_sync ? "]":">");
+    else strcat(prompt,exec_stdin_cmd_sync ? "*]":"*>");
     g_free(OriginalReadlineResult);
     while ((OriginalReadlineResult = readline(prompt))==NULL);
 
@@ -2965,7 +2970,11 @@ static gboolean parse_and_exec_stdin_command_builtin(wordexp_t * parsed_msg, GSt
 	    else printf("Usage: glog off|on\n");
 	  }else
 	    printf("Usage: glog off|on\n");
-	}else return FALSE; // parsed_msg->we_wordv[0] does not match any build command
+	}else if (g_strcmp0(parsed_msg->we_wordv[0], "toggleExecSync")==0){
+	  exec_stdin_cmd_sync = !exec_stdin_cmd_sync;
+	  add_history(readline_result_string_after_file_name_substitution->str);
+	  history_entry_added++;	  
+        }else return FALSE; // parsed_msg->we_wordv[0] does not match any build command
 
 	return TRUE; //execution reaches here if parsed_msg->we_wordv[0] matchs any keyword, and have finished the corresponding logic
 }
@@ -3054,6 +3063,7 @@ static void parse_and_exec_stdin_command (gchar * readlineResult)
         g_free (readlineResult);
 
 	if(startWithVT() || auto_execution_command_after_rfm_start!=NULL){
+	  if (exec_stdin_cmd_sync) exec_stdin_command(readlineResultString);
 	  if (auto_execution_command_after_rfm_start==NULL) g_thread_join(readlineThread);
 	  readlineThread=g_thread_new("readline", readlineInSeperateThread, readlineResultString);
 	}
@@ -3320,6 +3330,9 @@ int main(int argc, char *argv[])
       case 's':
 	 treeviewcolumn_init_order_sequence = &(argv[c][2]);
 	 show_hide_treeview_columns_in_order(treeviewcolumn_init_order_sequence);
+	 break;
+      case 'S':
+	 exec_stdin_cmd_sync = TRUE;
 	 break;
       case 'h':
 	printf(rfmLaunchHelp, PROG_NAME);

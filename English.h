@@ -25,6 +25,7 @@
 "    b>  means no selected files\n" \
 "    b?> means in refreshing and file selection cannot be determined, try press enter after refresh.\n" \
 "    prompt won't update when selection changes in rfm view, press Enter to refresh\n" \
+"    prompt b*],b>,b?] differ with explanation above only in that commands inputted in stdin is started in gtk thread instead of readline thread. When ] is displayed instead of >, gtk window will not refresh and file selection cannot be changed when command is executing(such as when selected file is being editted).\n" \
 "builtin commands for current window:\n" \
 "    cd address  go to address, note that PWD is not changed, just open address in rfm.\n" \
 "    cd ..       go up to parent directory.\n" \
@@ -42,6 +43,7 @@
 "    thumbnailsize  set thumbnail size in icon view. \n" \
 "    showcolumn  show or hide column (if currently in listview); current treeview column layout will be added in to command history if no parameter follows showcolumn\n" \
 "    toggleInotifyHandler  stop/start auto refresh\n" \
+"    toggleExecSync  switch between gtk window thread and readline thread, from which to start inputted command. Command prompt will switch between > and ]\n" \
 "Shell commands:\n" \
 "    non-builtin commands will be sent to shell to execute.\n" \
 "    if there is ending space in command entered, selected filename(s) will be appended at the end. for example, you can view currently selected maildir mail file with `mu view `, with ending space before return.\n" \
@@ -51,7 +53,7 @@
 
 #define rfmLaunchHelp \
 "This is the help for command line argumants you can use to launch program with, there is another help in command window for commands you can use there.\n" \
-"Usage: %s [-h] [-H] [-d <full path>] [-i] [-v] [-l] [-p<custom pagesize>] [-p] [-s] [-t] [-T<thumbnailsize>]\n" \
+"Usage: %s [-h] [-H] [-d <full path>] [-i] [-v] [-l] [-p<custom pagesize>] [-p] [-s] [-S] [-t] [-T<thumbnailsize>]\n" \
 "       press q in rfm window to quit.\n" \
 "-p       read file name list from StdIn, through pipeline, this -p can be omitted, for example:\n           locate 20230420|grep .png|rfm\n" \
 "-px      when read filename list from pipeline, show only x number of items in a batch, for example: -p9. you can also set this in command window with builtin cmd pagesize\n" \
@@ -59,6 +61,7 @@
 "-i       show mime type\n" \
 "-l       open with listview instead of iconview,you can also switch view with toolbar button or builtin cmd /\n" \
 "-s       specify columns to show in listview and their order, refer to builtin command showcolumn for detail.\n" \
+"-S       default to started inputted command execution from gtk window thread\n" \
 "-r       followed by named pipe through which file selection is returned. Used when rfm works as file chooser, such as with program file open menu.\n" \
 "         if no named pipe follows, selection will be returned through printf, and rfm will start without readline thread, as if -t parameter is also added.\n" \
 "-t       start rfm without readline thread, neither show command prompt nor accept command line input.\n" \
