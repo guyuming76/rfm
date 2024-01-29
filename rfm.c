@@ -3069,10 +3069,11 @@ static void parse_and_exec_stdin_command (gchar * readlineResult)
 	}
 }
 
-//TODO: TAB completion will insert "fullpath " into readlinem, that is, with ending space. I have to backspace to remove this ending space, otherwise, ending space will be replaced with selected filename again. We need to change the behavior into insert leading space instead of ending space. This may need deeper research into the readline library.
+
 static char** rfm_filename_completion(const char *text, int start, int end){
   if (ItemSelected && (text==NULL || g_strcmp0(text, "")==0)) {
     //rl_attempted_completion_over = 1;
+    rl_completion_suppress_append = 1;
     char** ret = calloc(2,sizeof(char*));
     g_mutex_lock(&rfm_selection_completion_lock);
     ret[0] = strdup(rfm_selection_completion);
