@@ -500,9 +500,9 @@ static char * st_mode_str(guint32 st_mode){
       ret[0]='p';
     else if(S_ISLNK(st_mode))//链接文件
       ret[0]='l';
-    //else if(S_ISSOCK(st_mode))//套接字文件
-    //  ret[0]='s';
-    // TODO: code copied from https://blog.csdn.net/xieeryihe/article/details/121715202 ,why S_ISSOCK not defined on my system?
+    else if(S_ISSOCK(st_mode))//套接字文件
+      ret[0]='s';
+    //code copied from https://blog.csdn.net/xieeryihe/article/details/121715202
     else ret[0]='-';
 
     //文件所有者权限
