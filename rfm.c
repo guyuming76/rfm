@@ -485,7 +485,7 @@ static void endPythonEmbedding(){
 #endif
 #include "config.h"
 
-static char * st_mode_str(guint32 st_mode){
+char * strmode(mode_t st_mode){
     char * ret=calloc(11,sizeof(char));
     //文件类型
     if(S_ISDIR(st_mode))//目录文件
@@ -503,7 +503,7 @@ static char * st_mode_str(guint32 st_mode){
     else if(S_ISSOCK(st_mode))//套接字文件
       ret[0]='s';
     //code copied from https://blog.csdn.net/xieeryihe/article/details/121715202
-    else ret[0]='-';
+    else ret[0]='?';
 
     //文件所有者权限
     if(st_mode&S_IRUSR) ret[1]='r';
@@ -1184,7 +1184,7 @@ static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guin
    fileAttributes->file_ctime=g_file_info_get_creation_date_time(info);
    fileAttributes->file_size=g_file_info_get_attribute_uint64(info, G_FILE_ATTRIBUTE_STANDARD_SIZE);
    fileAttributes->file_mode=g_file_info_get_attribute_uint32(info, G_FILE_ATTRIBUTE_UNIX_MODE);
-   fileAttributes->file_mode_str=st_mode_str(fileAttributes->file_mode);
+   fileAttributes->file_mode_str=strmode(fileAttributes->file_mode);
    fileAttributes->file_name=g_strdup(name);
 
    fileAttributes->is_symlink=g_file_info_get_is_symlink(info);
