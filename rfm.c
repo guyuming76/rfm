@@ -1548,6 +1548,11 @@ static void Insert_fileAttributes_into_store_with_thumbnail_and_more(RFM_FileAtt
 	    }  
 }
 
+// TODO: add a configuration option so that user can choose to insert
+// fileAttributes into store in every call to read_one_DirItem as currently is
+// (the pro is user won't wait too long before the first file appear in view,
+// and user can see the progress of loading).
+// or fileAttributes are inserted into store after all DirItem read in the last call, as Rodney's initial design(The pros is that total refresh time might be shorten which i am not so sure yet. but the cons is that user have to wait more before the first file appears).
 static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store_in_each_call(GDir *dir) {
    const gchar *name=NULL;
    time_t mtimeThreshold=time(NULL)-RFM_MTIME_OFFSET;
