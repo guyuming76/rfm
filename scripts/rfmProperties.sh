@@ -11,13 +11,18 @@
 #   09-09-2017: Added ffprobe to display media info
 
 show_info() {
-   printf "\tPerms : <i>$1</i>\n"
+   printf "\tPerms : $1\n"
    # Column 2 is number of hard links; ignore this one!
-   printf "\tOwner : <i>$3</i>\n"
-   printf "\tGroup : <i>$4</i>\n"
-   printf "\tSize  : <i>$5</i>\n"
-   printf "\tDate  : <i>$6</i>\n"
-   printf "\tmtime : <i>$7</i>\n"
+   printf "\tOwner : $3\n"
+   printf "\tGroup : $4\n"
+   printf "\tSize  : $5\n"
+   printf "\tDate  : $6\n"
+   printf "\tmtime : $7\n"
+   printf "\n"
+   printf "GroupMembers:\n"
+   set -x
+   grep ^$4 /etc/group
+   set +x
 }
 
 if [ $# -eq 1 ]; then
@@ -36,19 +41,19 @@ if [ $# -eq 1 ]; then
       file_path=$(echo $(dirname "$1") | sed 's/\&/\&amp\;/g; s/</\&lt\;/g; s/>/\&gt\;/g')
    fi
 
-   printf "<b>Properties for:</b>\n"
-   printf "\t<b>$file_name</b>\n"
+   printf "Properties for:\n"
+   printf "\t$file_name\n"
    printf "\n"
-   printf "<b>Path:</b>\n"
-   printf "\t<i>$file_path</i>\n"
+   printf "Path:\n"
+   printf "\t$file_path\n"
    printf "\n"
-   printf "<b>Info:</b>\n"
+   printf "Info:\n"
    show_info $ls_info
    printf "\n"
-   printf "<b>Mime type:</b>\n"
+   printf "Mime type:\n"
    printf "\t $mime_type\n"
    printf "\n"
-   printf "<b>Contents Indicate:</b>\n"
+   printf "Contents Indicate:\n"
    printf "\t $file_info\n"
    [ ! -z media_info ] && printf "$media_info\n"
 else
@@ -61,3 +66,5 @@ else
       ls -hld "$(basename "$file")"
    done
 fi
+
+read -p "Press enter to quit"
