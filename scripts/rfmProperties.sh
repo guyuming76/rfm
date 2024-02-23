@@ -11,17 +11,15 @@
 #   09-09-2017: Added ffprobe to display media info
 
 show_info() {
-   printf "\tPerms : $1\n"
    # Column 2 is number of hard links; ignore this one!
-   printf "\tOwner : $3\n"
-   printf "\tGroup : $4\n"
-   printf "\tSize  : $5\n"
-   printf "\tDate  : $6\n"
-   printf "\tmtime : $7\n"
+   printf "\tOwner : $4\n"
+   printf "\tGroup : $5\n"
+   printf "\tSize  : $6\n"
+
    printf "\n"
-   printf "GroupMembers:\n"
    set -x
    grep ^$4 /etc/group
+   stat $1
    set +x
 }
 
@@ -41,14 +39,8 @@ if [ $# -eq 1 ]; then
       file_path=$(echo $(dirname "$1") | sed 's/\&/\&amp\;/g; s/</\&lt\;/g; s/>/\&gt\;/g')
    fi
 
-   printf "Properties for:\n"
-   printf "\t$file_name\n"
-   printf "\n"
-   printf "Path:\n"
-   printf "\t$file_path\n"
-   printf "\n"
    printf "Info:\n"
-   show_info $ls_info
+   show_info $1 $ls_info
    printf "\n"
    printf "Mime type:\n"
    printf "\t $mime_type\n"
