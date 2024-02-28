@@ -381,7 +381,7 @@ static void refresh_store(RFM_ctx *rfmCtx);
 static void clear_store(void);
 static void rfm_stop_all(RFM_ctx *rfmCtx);
 static gboolean fill_fileAttributeList_with_filenames_from_search_result_and_then_insert_into_store();
-static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store_in_each_call(GDir *dir);
+static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store(GDir *dir);
 static void toggle_insert_fileAttributes_into_store_one_by_one();
 static void Iterate_through_fileAttribute_list_to_insert_into_store();
 static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,GtkTreeIter *iter);
@@ -1552,7 +1552,7 @@ static void Insert_fileAttributes_into_store_with_thumbnail_and_more(RFM_FileAtt
 	    }  
 }
 
-static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store_in_each_call(GDir *dir) {
+static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store(GDir *dir) {
    const gchar *name=NULL;
    time_t mtimeThreshold=time(NULL)-RFM_MTIME_OFFSET;
    RFM_FileAttributes *fileAttributes;
@@ -1753,7 +1753,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
      dir=g_dir_open(rfm_curPath, 0, NULL);
      if (!dir) return;
      title=g_strdup(rfm_curPath);
-     rfm_readDirSheduler=g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, (GSourceFunc)read_one_DirItem_into_fileAttributeList_and_insert_into_store_in_each_call, dir, (GDestroyNotify)g_dir_close);
+     rfm_readDirSheduler=g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, (GSourceFunc)read_one_DirItem_into_fileAttributeList_and_insert_into_store, dir, (GDestroyNotify)g_dir_close);
   }
 #ifdef GitIntegration
    if ((SearchResultViewInsteadOfDirectoryView^1) && curPath_is_git_repo)
