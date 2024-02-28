@@ -338,7 +338,7 @@ static gboolean pauseInotifyHandler=FALSE;
 
 static char cmd_to_set_terminal_title[PATH_MAX];
 static gchar* non_grepMatchTreeViewColumns=NULL;
-
+static gboolean insert_fileAttributes_into_store_one_by_one=TRUE;
 
 #ifdef GitIntegration
 // value " M " for modified
@@ -382,6 +382,7 @@ static void clear_store(void);
 static void rfm_stop_all(RFM_ctx *rfmCtx);
 static gboolean fill_fileAttributeList_with_filenames_from_search_result_and_then_insert_into_store();
 static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store_in_each_call(GDir *dir);
+static void toggle_insert_fileAttributes_into_store_one_by_one();
 static void Iterate_through_fileAttribute_list_to_insert_into_store();
 static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,GtkTreeIter *iter);
 static void Insert_fileAttributes_into_store_with_thumbnail_and_more(RFM_FileAttributes* fileAttributes);
@@ -595,6 +596,9 @@ static gboolean ExecCallback_freeChildAttribs(RFM_ChildAttribs * child_attribs){
    return TRUE;
 }
 
+static void toggle_insert_fileAttributes_into_store_one_by_one(){
+  insert_fileAttributes_into_store_one_by_one = !insert_fileAttributes_into_store_one_by_one;
+}
 
 /* Supervise the children to prevent blocked pipes */
 static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_data)
@@ -1548,11 +1552,6 @@ static void Insert_fileAttributes_into_store_with_thumbnail_and_more(RFM_FileAtt
 	    }  
 }
 
-// TODO: add a configuration option so that user can choose to insert
-// fileAttributes into store in every call to read_one_DirItem as currently is
-// (the pro is user won't wait too long before the first file appear in view,
-// and user can see the progress of loading).
-// or fileAttributes are inserted into store after all DirItem read in the last call, as Rodney's initial design(The pros is that total refresh time might be shorten which i am not so sure yet. but the cons is that user have to wait more before the first file appears).
 static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store_in_each_call(GDir *dir) {
    const gchar *name=NULL;
    time_t mtimeThreshold=time(NULL)-RFM_MTIME_OFFSET;
@@ -1564,15 +1563,21 @@ static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store_in
      if (!ignored_filename(name)) {
          fileAttributes=get_fileAttributes_for_a_file(name, mtimeThreshold, mount_hash);
          if (fileAttributes!=NULL){
-	   Insert_fileAttributes_into_store_with_thumbnail_and_more(fileAttributes);
+	   if (insert_fileAttributes_into_store_one_by_one) Insert_fileAttributes_into_store_with_thumbnail_and_more(fileAttributes);
+	   else rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
 	 }
       }
       g_hash_table_destroy(mount_hash);
       return TRUE;   /* Return TRUE if more items */
    }
-   else if (rfm_thumbQueue!=NULL)
-      rfm_thumbScheduler=g_idle_add((GSourceFunc)mkThumb, NULL);
-
+   else {
+     if (!insert_fileAttributes_into_store_one_by_one){
+       Iterate_through_fileAttribute_list_to_insert_into_store();
+       if (rfm_do_thumbs == 1 && g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR))
+	 iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_and_load_gitCommitMsg_ifdef_GitIntegration();
+     }else if (rfm_thumbQueue!=NULL)
+       rfm_thumbScheduler=g_idle_add((GSourceFunc)mkThumb, NULL);
+   }
    rfm_readDirSheduler=0;
    g_hash_table_destroy(mount_hash);
 

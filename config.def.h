@@ -86,6 +86,7 @@ static RFM_builtinCMD builtinCMD[] = {
 #ifdef RFM_FILE_CHOOSER
        	{"test_rfmFileChooser",Test_rfmFileChooser,"test rfmFileChooser" },
 #endif
+	{"onebyone",toggle_insert_fileAttributes_into_store_one_by_one,"toggle loading file one by one"},
 };
 
 /* Menu Items
