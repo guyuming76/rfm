@@ -3403,11 +3403,11 @@ static void ProcessOnelineForSearchResult(gchar* oneline){
 	       sprintf(key, "%d", fileAttributeID++);
 	       g_hash_table_insert(grepMatch_hash, key, strdup(grepMatch));
 	   }
-	   if (!ignored_filename(oneline)){ //TODO: shall we call ignored_filename here? we way remove it to align with the GetGlist implementation. User can filter those files with grep before rfm
+	   //if (!ignored_filename(oneline)){ //TODO: shall we call ignored_filename here? we way remove it to align with the GetGlist implementation. User can filter those files with grep before rfm
 	       SearchResultFileNameList=g_list_prepend(SearchResultFileNameList, oneline);
 	       fileNum++;
 	       g_debug("appended into SearchResultFileNameList:%s", oneline);
-	   }
+	   //}
 }
 
 static gchar *getGrepMatchFromHashTable(guint fileAttributeId) {
