@@ -317,9 +317,13 @@ static GList * filepath_lists_for_selection_on_view_clone;
 // , instead of from a directory
 static unsigned int SearchResultViewInsteadOfDirectoryView=0;
 static GList *SearchResultFileNameList = NULL;
-//in search result view, same file can appear more than once(for example, in grep result), which means there can be duplicate files in fileAttribute list, so we use this id as unique key field for fileAttribute list
+// in search result view, same file can appear more than once(for example, in
+// grep result), which means there can be duplicate files in fileAttribute list,
+// so we use this id as unique key field for fileAttribute list
+// In searchresultview, this value equals currentFileNum
 static guint fileAttributeID=0;
 static gint SearchResultFileNameListLength=0;
+//the number shown in upper left button in search result view.
 static gint currentFileNum=0;
 static char* pipefd="0";
 static GList *CurrentPage_SearchResultView=NULL;
@@ -1745,14 +1749,15 @@ static void refresh_store(RFM_ctx *rfmCtx)
      }
    }
    icon_or_tree_view = add_view(rfmCtx);
-   fileAttributeID=0;
    gchar * title;
    if (SearchResultViewInsteadOfDirectoryView) {
+     fileAttributeID=currentFileNum;
      title=g_strdup_printf(PipeTitle, currentFileNum,SearchResultFileNameListLength,PageSize_SearchResultView);
      fill_fileAttributeList_with_filenames_from_search_result_and_then_insert_into_store();
      In_refresh_store=FALSE;
      gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
    } else {
+     fileAttributeID=1;
      gtk_tree_sortable_set_default_sort_func(GTK_TREE_SORTABLE(store), sort_func, NULL, NULL);
      gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(store), rfmCtx->rfm_sortColumn, GTK_SORT_ASCENDING);
      GDir *dir=NULL;
@@ -3437,7 +3442,7 @@ static void ReadFromPipeStdinIfAny(char * fd)
    if (strlen(buf)>4 && g_strcmp0(g_utf8_substring(buf, 0, 4),"pipe")==0){
          if (initDir!=NULL && (SearchResultViewInsteadOfDirectoryView^1)) die("if you have -d specified, and read file name list from pipeline, -p parameter must goes BEFORE -d\n");
 	 else SearchResultViewInsteadOfDirectoryView=1;
-	 fileAttributeID=0;
+	 fileAttributeID=1;
 	 gchar *oneline_stdin=calloc(1,PATH_MAX);
 	 FILE *pipeStream = stdin;
 	 if (atoi(fd) != 0) pipeStream = fdopen(atoi(fd),"r");
@@ -3471,7 +3476,7 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
   SearchResultFileNameList = NULL;
   grepMatch_hashtable = NULL;
   SearchResultFileNameListLength=0;
-  fileAttributeID=0;
+  fileAttributeID=1;
   g_debug("update_SearchResultFileNameList length %d",strlen((gchar*)filenamelist));
   gchar * oneline=strtok((gchar*)filenamelist,"\n");
   while (oneline!=NULL){
