@@ -292,7 +292,8 @@ static RFM_defaultPixbufs *defaultPixbufs=NULL;
 static GtkIconTheme *icon_theme;
 
 static GHashTable *thumb_hash=NULL; /* Thumbnails in the current view */
-static GHashTable *grepMatch_hash = NULL;
+//hash table to store matched string show in grep result, with fileAttributeid as key
+static GHashTable *grepMatch_hashtable = NULL;
 
 static GtkListStore *store=NULL;
 static GtkTreeModel *treemodel=NULL;
@@ -312,7 +313,9 @@ static GList * filepath_lists_for_selection_on_view_clone;
 // , instead of from a directory
 static unsigned int SearchResultViewInsteadOfDirectoryView=0;
 static GList *SearchResultFileNameList = NULL;
-static guint fileAttributeID=0; //fileAttributeid include file that ignored, file that cannot get attribute info, but fileNum don't include ignored file
+//in search result view, same file can appear more than once(for example, in grep result), which means there can be duplicate files in fileAttribute list, so we use this id as unique key field for fileAttribute list
+static guint fileAttributeID=0;
+//fileAttributeid include file that ignored, file that cannot get attribute info, but fileNum don't include ignored file
 static gint fileNum=0;
 static gint currentFileNum=0;
 static char* pipefd="0";
@@ -1724,7 +1727,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
 #ifdef GitIntegration
    if (curPath_is_git_repo) load_GitTrackedFiles_into_HashTable();
 #endif
-   if(grepMatch_hash!=NULL){
+   if(grepMatch_hashtable!=NULL){
      if (SearchResultViewInsteadOfDirectoryView){
        if (non_grepMatchTreeViewColumns==NULL){//newly in searchresultview with grepMatch, keep old treeview columns
 	 gchar* cmd=get_showcolumn_cmd_from_currently_displaying_columns();
@@ -3398,10 +3401,10 @@ static void ProcessOnelineForSearchResult(gchar* oneline){
 	   if ((seperatorPositionForGrepMatch = strcspn(oneline, ":"))<strlen(oneline)){ // : found in oneline_stdin
 	       gchar* grepMatch = oneline + seperatorPositionForGrepMatch + 1;
 	       oneline[seperatorPositionForGrepMatch] = 0;
-	       if (grepMatch_hash==NULL) grepMatch_hash = g_hash_table_new_full(g_str_hash, g_str_equal,g_free, g_free);
+	       if (grepMatch_hashtable==NULL) grepMatch_hashtable = g_hash_table_new_full(g_str_hash, g_str_equal,g_free, g_free);
 	       gchar* key=calloc(10, sizeof(char));
 	       sprintf(key, "%d", fileAttributeID++);
-	       g_hash_table_insert(grepMatch_hash, key, strdup(grepMatch));
+	       g_hash_table_insert(grepMatch_hashtable, key, strdup(grepMatch));
 	   }
 	   //if (!ignored_filename(oneline)){ //TODO: shall we call ignored_filename here? we way remove it to align with the GetGlist implementation. User can filter those files with grep before rfm
 	       SearchResultFileNameList=g_list_prepend(SearchResultFileNameList, oneline);
@@ -3411,10 +3414,10 @@ static void ProcessOnelineForSearchResult(gchar* oneline){
 }
 
 static gchar *getGrepMatchFromHashTable(guint fileAttributeId) {
-   if (grepMatch_hash==NULL) return NULL;
+   if (grepMatch_hashtable==NULL) return NULL;
    gchar* key = calloc(10, sizeof(char));
    sprintf(key, "%d", fileAttributeId);
-   gchar* ret = g_hash_table_lookup(grepMatch_hash, key);
+   gchar* ret = g_hash_table_lookup(grepMatch_hashtable, key);
    g_free(key);
    return ret;
 }
@@ -3461,9 +3464,9 @@ static void ReadFromPipeStdinIfAny(char * fd)
 
 static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamelist){
   GList * old_filenamelist = SearchResultFileNameList;
-  GHashTable* old_grepMatch_hash = grepMatch_hash;
+  GHashTable* old_grepMatch_hash = grepMatch_hashtable;
   SearchResultFileNameList = NULL;
-  grepMatch_hash = NULL;
+  grepMatch_hashtable = NULL;
   fileNum=0;
   fileAttributeID=0;
   g_debug("update_SearchResultFileNameList length %d",strlen((gchar*)filenamelist));
