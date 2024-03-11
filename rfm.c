@@ -315,8 +315,7 @@ static unsigned int SearchResultViewInsteadOfDirectoryView=0;
 static GList *SearchResultFileNameList = NULL;
 //in search result view, same file can appear more than once(for example, in grep result), which means there can be duplicate files in fileAttribute list, so we use this id as unique key field for fileAttribute list
 static guint fileAttributeID=0;
-//fileAttributeid include file that ignored, file that cannot get attribute info, but fileNum don't include ignored file
-static gint fileNum=0;
+static gint SearchResultFileNameListLength=0;
 static gint currentFileNum=0;
 static char* pipefd="0";
 static GList *CurrentPage_SearchResultView=NULL;
@@ -1745,7 +1744,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
    fileAttributeID=0;
    gchar * title;
    if (SearchResultViewInsteadOfDirectoryView) {
-     title=g_strdup_printf(PipeTitle, currentFileNum,fileNum,PageSize_SearchResultView);
+     title=g_strdup_printf(PipeTitle, currentFileNum,SearchResultFileNameListLength,PageSize_SearchResultView);
      fill_fileAttributeList_with_filenames_from_search_result_and_then_insert_into_store();
      In_refresh_store=FALSE;
      gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
@@ -3408,7 +3407,7 @@ static void ProcessOnelineForSearchResult(gchar* oneline){
 	   }
 	   //if (!ignored_filename(oneline)){ //TODO: shall we call ignored_filename here? we way remove it to align with the GetGlist implementation. User can filter those files with grep before rfm
 	       SearchResultFileNameList=g_list_prepend(SearchResultFileNameList, oneline);
-	       fileNum++;
+	       SearchResultFileNameListLength++;
 	       g_debug("appended into SearchResultFileNameList:%s", oneline);
 	   //}
 }
@@ -3467,7 +3466,7 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
   GHashTable* old_grepMatch_hash = grepMatch_hashtable;
   SearchResultFileNameList = NULL;
   grepMatch_hashtable = NULL;
-  fileNum=0;
+  SearchResultFileNameListLength=0;
   fileAttributeID=0;
   g_debug("update_SearchResultFileNameList length %d",strlen((gchar*)filenamelist));
   gchar * oneline=strtok((gchar*)filenamelist,"\n");
