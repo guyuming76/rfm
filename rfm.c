@@ -259,7 +259,11 @@ static RFM_ctx *rfmCtx=NULL;
 static gchar *rfm_homePath;         /* Users home dir */
 static gchar *rfm_thumbDir;         /* Users thumbnail directory */
 static gint rfm_do_thumbs;          /* Show thumbnail images of files: 0: disabled; 1: enabled; 2: disabled for current dir */
-static GList *rfm_fileAttributeList=NULL; /* Store holds references to this list: use clear_store() to free */
+
+// use clear_store() to free
+// in searchresultview, this list only contains files on current view page.
+// The SearchResultViewFileNameList contains files for the whole result.
+static GList *rfm_fileAttributeList=NULL;
 static GList *rfm_thumbQueue=NULL;
 static GList *rfm_childList=NULL;
 
