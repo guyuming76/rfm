@@ -366,7 +366,7 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
 // cd .
 // cd /tmp
 static RFM_treeviewColumn* GetColumnByEnun(enum RFM_treeviewCol col);
-static gchar* get_current_treeview_columns_showcolumn_cmd();
+static gchar* get_showcolumn_cmd_from_currently_displaying_columns();
 static void show_hide_treeview_columns_in_order(gchar *order_sequence);
 
 static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
@@ -1727,7 +1727,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
    if(grepMatch_hash!=NULL){
      if (SearchResultViewInsteadOfDirectoryView){
        if (non_grepMatchTreeViewColumns==NULL){//newly in searchresultview with grepMatch, keep old treeview columns
-	 gchar* cmd=get_current_treeview_columns_showcolumn_cmd();
+	 gchar* cmd=get_showcolumn_cmd_from_currently_displaying_columns();
 	 non_grepMatchTreeViewColumns=strdup(cmd + 11); //exclude leading "showcolumn "
 	 show_hide_treeview_columns_in_order(",4,19,");
        }
@@ -2858,7 +2858,7 @@ static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
 	      g_free(order_seq_array);
 }
 
-static gchar* get_current_treeview_columns_showcolumn_cmd(){
+static gchar* get_showcolumn_cmd_from_currently_displaying_columns(){
             gchar* showColumnHistory=calloc(G_N_ELEMENTS(treeviewColumns)*5+11, sizeof(char)); // we suppose no more than 999 treeview_columns, and ",-999" takes 5 chars ; leading "showcolumn " take 11 char
 	    showColumnHistory = strcat(showColumnHistory, "showcolumn ,");
 	    for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++){
@@ -2874,7 +2874,7 @@ static void show_hide_treeview_columns(wordexp_t * parsed_msg){
 	    for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++)
 	      printf("    %d: %s\n",treeviewColumns[i].Show? treeviewColumns[i].enumCol:(-1)*treeviewColumns[i].enumCol,treeviewColumns[i].title);
 	    printf(SHOWCOLUMN_USAGE);
-	    gchar* cmd=get_current_treeview_columns_showcolumn_cmd();
+	    gchar* cmd=get_showcolumn_cmd_from_currently_displaying_columns();
 	    add_history(cmd);
 	    g_free(cmd);
 	  }else{
