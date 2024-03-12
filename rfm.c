@@ -795,7 +795,7 @@ static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *ch
                                   &child_attribs->pid, NULL, ((child_attribs->runOpts==RFM_EXEC_FILE_CHOOSER)? NULL: &child_attribs->stdOut_fd),
                                   &child_attribs->stdErr_fd, &err);
       
-      g_debug("g_spawn_async_with_pipes_wrapper:  workingdir:%s, argv:%s, G_SPAWN_DO_NOT_REAP_CHILD",rfm_curPath,v[0]);
+      g_log("rfm-gspawn",G_LOG_LEVEL_DEBUG,"g_spawn_async_with_pipes_wrapper:  workingdir:%s, argv:%s, G_SPAWN_DO_NOT_REAP_CHILD",rfm_curPath,v[0]);
       if (rv==TRUE) {
          /* Don't block on read if nothing in pipe */
          if (! g_unix_set_fd_nonblocking(child_attribs->stdOut_fd, TRUE, NULL))
@@ -856,7 +856,7 @@ static gchar **build_cmd_vector(const char **cmd, GList *file_list, char *dest_p
    v[j]=dest_path; /* This may be NULL anyway */
    v[++j]=NULL;
 
-   g_debug("%s",g_strjoinv(" ", v));
+   g_log("rfm-spawn",G_LOG_LEVEL_DEBUG,"%s",g_strjoinv(" ", v));
    return v;
 }
 
@@ -886,7 +886,7 @@ static gboolean g_spawn_wrapper_(GList *file_list, char *dest_path, RFM_ChildAtt
 /* (rfm:11714): GLib-CRITICAL **: 14:05:51.441: g_spawn_sync: assertion 'standard_output == NULL || !(flags & G_SPAWN_STDOUT_TO_DEV_NULL)' failed */
 
 /* (rfm:11714): rfm-WARNING **: 14:05:51.441: g_spawn_wrapper_->g_spawn_sync /usr/bin/ffmpeg failed to execute. Check command in config.h! */	       
-	       g_debug("g_spawn_wrapper_->g_spawn_sync, workingdir:%s, argv:%s ",rfm_curPath,v[0]);
+	       g_log("rfm-gspawn",G_LOG_LEVEL_DEBUG,"g_spawn_wrapper_->g_spawn_sync, workingdir:%s, argv:%s ",rfm_curPath,v[0]);
 	       if (!g_spawn_sync(rfm_curPath, v, NULL,child_attribs->runOpts, GSpawnChildSetupFunc_setenv,child_attribs,(child_attribs->runOpts & G_SPAWN_STDOUT_TO_DEV_NULL)? NULL : &child_attribs->stdOut, &child_attribs->stdErr,&child_attribs->status,NULL)){
 	            g_warning("g_spawn_wrapper_->g_spawn_sync %s failed to execute. Check command in config.h!", v[0]);
 	            free_child_attribs(child_attribs);
@@ -1178,7 +1178,7 @@ static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guin
      return fileAttributes;
    }else{
      fileAttributes->path=absoluteaddr;
-     g_debug("fileAttributes->path:%s",fileAttributes->path);
+     g_log("rfm-data",G_LOG_LEVEL_DEBUG,"fileAttributes->path:%s",fileAttributes->path);
    }
    //attibuteList=g_strdup_printf("%s,%s,%s,%s",G_FILE_ATTRIBUTE_STANDARD_TYPE, G_FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE, G_FILE_ATTRIBUTE_TIME_MODIFIED, G_FILE_ATTRIBUTE_STANDARD_IS_SYMLINK);
    file=g_file_new_for_path(fileAttributes->path);
@@ -1282,11 +1282,11 @@ static void load_thumbnail_or_enqueue_thumbQueue_for_store_row(GtkTreeIter *iter
          /* Try to load any existing thumbnail */
 	 int ld=load_thumbnail(thumbData->thumb_name);
 	 if ( ld == 0) { /* Success: thumbnail exists in cache and is valid */
-	   g_debug("thumbnail %s exists for %s",thumbData->thumb_name, thumbData->path);
+	   g_log("rfm-data",G_LOG_LEVEL_DEBUG,"thumbnail %s exists for %s",thumbData->thumb_name, thumbData->path);
            free_thumbQueueData(thumbData);
          } else { /* Thumbnail doesn't exist or is out of date */
            rfm_thumbQueue = g_list_append(rfm_thumbQueue, thumbData);
-	   g_debug("thumbnail %s creation enqueued for %s; load_thumbnail failure code:%d.",thumbData->thumb_name,thumbData->path,ld);
+	   g_log("rfm-data",G_LOG_LEVEL_DEBUG,"thumbnail %s creation enqueued for %s; load_thumbnail failure code:%d.",thumbData->thumb_name,thumbData->path,ld);
          }
       }
 }
@@ -1323,7 +1323,7 @@ static void Update_Store_ExtColumns(RFM_ChildAttribs *childAttribs) {
 }
 
 static void load_ExtColumns_and_iconview_markup_tooltip(RFM_FileAttributes* fileAttributes, GtkTreeIter *iter){
-      g_debug("load_ExtColumns for %s",fileAttributes->path);
+      g_log("rfm-data",G_LOG_LEVEL_DEBUG,"load_ExtColumns for %s",fileAttributes->path);
       for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++){
 	if ((treeviewColumns[i].Show || treeviewColumns[i].iconview_markup || treeviewColumns[i].iconview_tooltip)
 	    && (g_strcmp0(treeviewColumns[i].MIME_root, "*")==0 || g_strcmp0(fileAttributes->mime_root, treeviewColumns[i].MIME_root)==0)
@@ -1427,7 +1427,7 @@ static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,
 			  COL_ICONVIEW_TOOLTIP,NULL,
                           -1);
 
-      g_debug("Inserted into store:%s",fileAttributes->file_name);
+      g_log("rfm-data",G_LOG_LEVEL_DEBUG,"Inserted into store:%s",fileAttributes->file_name);
       
       if (keep_selection_on_view_across_refresh) {
 	GList * selection_filepath_list = g_list_first(filepath_lists_for_selection_on_view_clone);
@@ -1452,7 +1452,7 @@ static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,
 static void readGitCommitMsgFromGitLogCmdAndUpdateStore(RFM_ChildAttribs * childAttribs){
    gchar * commitMsg=childAttribs->stdOut;
    commitMsg[strcspn(commitMsg, "\n")] = 0;
-   g_debug("gitCommitMsg:%s",commitMsg);
+   g_log("rfm-data",G_LOG_LEVEL_DEBUG,"gitCommitMsg:%s",commitMsg);
    GtkTreeIter *iter= *(GtkTreeIter**)(childAttribs->customCallbackUserData);
    gtk_list_store_set(store,iter,COL_GIT_COMMIT_MSG, commitMsg, -1);
 }
@@ -1483,7 +1483,7 @@ static void load_GitTrackedFiles_into_HashTable()
     while (oneline!=NULL){
       gchar * fullpath=g_build_filename(git_root,oneline,NULL);         
       g_hash_table_insert(gitTrackedFiles,fullpath,g_strdup(""));
-      g_debug("gitTrackedFile:%s",fullpath);
+      g_log("rfm-data",G_LOG_LEVEL_DEBUG,"gitTrackedFile:%s",fullpath);
       oneline=strtok(NULL, "\n");
     }
   }
@@ -1511,7 +1511,7 @@ static void load_GitTrackedFiles_into_HashTable()
       //but the same file path in fileattributes does not have ending /, so , they won't match
       //BTW, git status --porcelain don't have something like ?? test/testfile.md, is it a git issue?
       gchar *fullpath=g_build_filename(git_root,filename,NULL);         
-      g_debug("gitTrackedFile Status:%s,%s",status,fullpath);
+      g_log("rfm-data",G_LOG_LEVEL_DEBUG,"gitTrackedFile Status:%s,%s",status,fullpath);
 
       g_hash_table_insert(gitTrackedFiles,g_strdup(fullpath),status);
       
@@ -1648,7 +1648,7 @@ static gboolean fill_fileAttributeList_with_filenames_from_search_result_and_the
     fileAttributes = get_fileAttributes_for_a_file(name->data, mtimeThreshold, mount_hash);
     if (fileAttributes != NULL) {
       rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
-      g_debug("appended into rfm_fileAttributeList:%s", (char*)name->data);
+      g_log("rfm-data",G_LOG_LEVEL_DEBUG,"appended into rfm_fileAttributeList:%s", (char*)name->data);
     }
     name=g_list_next(name);
     i++;
@@ -3294,10 +3294,6 @@ int main(int argc, char *argv[])
    struct stat statbuf;
 
    g_log_set_handler (G_LOG_DOMAIN, G_LOG_LEVEL_MASK | G_LOG_FLAG_FATAL| G_LOG_FLAG_RECURSION, g_log_default_handler, NULL);
-
-   //g_debug("test g_debug");
-   //g_info("test g_info");
-   //g_warning("test g_warning. set env G_MESSAGES_DEBUG=rfm if you want to see g_debug output");
    
    rfmCtx=calloc(1,sizeof(RFM_ctx));
    if (rfmCtx==NULL) return 1;

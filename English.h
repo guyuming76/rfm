@@ -67,7 +67,8 @@
 "-t       start rfm without readline thread, neither show command prompt nor accept command line input.\n" \
 "-T       set RFM_THUMBNAIL_SIZE, same as thumbnailsize command above.\n" \
 "-h       show this help\n" \
-"-H       stop auto refresh\n"
+"-H       stop auto refresh\n\n" \
+"Show debug message by setting environmental variable: G_MESSAGES_DEBUG=rfm,rfm-data,rfm-gspawn"
 
 #define SHOWCOLUMN_USAGE \
 "showncolumn command can have mulitple arguments deliminated with space, argument can be positive or negative column number, or (negative)column numbers connected with ',' or ';'. showcolumn without any argument display column name and number mapping, and current displaying status. Note that numbers in showcolumn argument are column number for column name, not the displaying position.\n\n" \

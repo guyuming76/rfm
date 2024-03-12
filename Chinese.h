@@ -68,7 +68,9 @@
 "-t       启动rfm后不创建readline线程,不显示命令输入提示,不接受命令输入.\n" \
 "-T       设置缩略图尺寸,同上述thumbnailsize命令.\n" \
 "-h       显示此帮助\n" \
-"-H       关闭自动刷新\n"
+"-H       关闭自动刷新\n\n" \
+"通过设置环境变量显示调试信息:G_MESSAGES_DEBUG=rfm, 这里rfm定义为log_domain(参见项目Makefile);代码中还定义了subdomain如rfm-data, rfm-gspawn 等, 所以,也可以设置环境变量G_MESSAGES_DEBUG=rfm-data,rfm-gspawn\n"
+
 
 #define SHOWCOLUMN_USAGE \
 "showncolumn 命令可包含一个或多个空格分隔的列号序列, 每个列号序列可以是单独的列号,或由逗号分隔的多个列号. 列号为负,表示不显示此列. 列号序列由逗号开头,表示第一个列号在第一列显示.列号序列由逗号结尾,表示最后一个列号后的列都不显示.showcolumn命令不带参数则显示当前列号列名显示状态和顺序.注意上述列号序列中数字表示的是列名对应的编号,而不是列显示的位置顺序号.\n\n" \
