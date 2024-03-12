@@ -2773,34 +2773,34 @@ void move_array_item_a_after_b(void * array, int index_b, int index_a, uint32_t 
                 if ((index_b+1)>index_a){ //第一,第二种情况  比如 2,1 满足 2+1>1
 			for(guint k=0;k<index_a;k++){   // 0 <- 0    
 			  memcpy(temp_array+k*array_item_size, array + k*array_item_size, array_item_size);
-			  g_debug("%d <- %d",k,k);
+			  g_log("rfm-column",G_LOG_LEVEL_DEBUG,"%d <- %d",k,k);
 			}
 			//k=1=col_index
 			for(guint k=index_a+1;k<index_b+1;k++){  // 1 <- 2
 			  memcpy(temp_array+(k-1)*array_item_size, array+k*array_item_size, array_item_size);
-			  g_debug("%d <- %d",k-1,k);
+			  g_log("rfm-column",G_LOG_LEVEL_DEBUG,"%d <- %d",k-1,k);
 			}
 			//上面最后一次memcpy,treeviewColumn[baseColumnIndex]也已经复制到了 temptreeviewcolumns[basecolumnindex-1]
 			memcpy(temp_array+index_b*array_item_size, array+index_a*array_item_size, array_item_size); // 2 <- 1
-			g_debug("%d <- %d",index_b,index_a);
+			g_log("rfm-column",G_LOG_LEVEL_DEBUG,"%d <- %d",index_b,index_a);
 			for(guint k=index_b+1; k<array_length;k++){
 			  memcpy(temp_array+k*array_item_size, array+k*array_item_size, array_item_size);
-			  g_debug("%d <- %d",k,k);
+			  g_log("rfm-column",G_LOG_LEVEL_DEBUG,"%d <- %d",k,k);
 			}
  		}else{//第四种情况, 比如 1,3 满足 1+1 < 3
 			for(guint k=0;k<index_b+1;k++){ // 0 <- 0   1 <- 1
 			  memcpy(temp_array+k*array_item_size, array+k*array_item_size, array_item_size);
-			  g_debug("%d <- %d",k,k);
+			  g_log("rfm-column",G_LOG_LEVEL_DEBUG,"%d <- %d",k,k);
 			}
 			memcpy(temp_array+(index_b+1)*array_item_size, array+index_a*array_item_size, array_item_size); // 2 <- 3
-			g_debug("%d <- %d",index_b+1,index_a);
+			g_log("rfm-column",G_LOG_LEVEL_DEBUG,"%d <- %d",index_b+1,index_a);
 			for(guint k=index_b+1;k<index_a;k++){
 			  memcpy(temp_array+(k+1)*array_item_size, array+k*array_item_size, array_item_size); // 3 <- 2
-			  g_debug("%d <- %d",k+1,k);
+			  g_log("rfm-column",G_LOG_LEVEL_DEBUG,"%d <- %d",k+1,k);
 			}
 			for(guint k=index_a+1;k<array_length;k++){
 			  memcpy(temp_array+k*array_item_size, array+k*array_item_size, array_item_size); // 4 <- 4
-			  g_debug("%d <- %d",k,k);
+			  g_log("rfm-column",G_LOG_LEVEL_DEBUG,"%d <- %d",k,k);
 			}
 		}
 		for(guint k=0;k<array_length;k++) //I think i cannot free treeviewcolumns because of the way it's defined in config.h, so i have to copy temptreeviewcolumns back. we may define treeviewcolumns[2,] and use treeviewcolumns[0,] treeviewcolumns[1,] in turn to eliminate this copy. But anyway, not big deal, current way is more readable.
@@ -2819,7 +2819,7 @@ static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
 		    int col_enum_with_sign = atoi(order_seq_array[j]);
 		    guint col_enum = abs(col_enum_with_sign);
 		    int col_index = GetColumnIndexByEnun(col_enum);
-		    g_debug("col_index:%d  col_enum:%d",col_index,col_enum);
+		    g_log("rfm-column",G_LOG_LEVEL_DEBUG,"col_index:%d  col_enum:%d",col_index,col_enum);
                     g_free(order_seq_array[j]);
 		    if (col_index<0) {
 		      g_warning("cannot find column %d. Memory after columnReorderRation[j] may not released, no big deal.",col_enum);
@@ -2849,19 +2849,19 @@ static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
 		/* 当j>=1时,我们需要完成 basecolumnindex+1 <- col_index 的复制, 因此,在下标小于 min(basecolumnindex+1, col_index)时,直接 k<-k 复制就可以了  */
 		/* 另外baseColumnIndex==col_index时,也就是类似第三种情况,我们无需调整位置,这轮do while 循环只需更新下baseColumnInex就可以了 */
 		    if (j>=1 && (baseColumnIndex+1!=col_index)){
-		      g_debug("baseColumnIndex+1 <- col_index: %d <- %d",baseColumnIndex+1,col_index);
+		      g_log("rfm-column",G_LOG_LEVEL_DEBUG,"baseColumnIndex+1 <- col_index: %d <- %d",baseColumnIndex+1,col_index);
 		      move_array_item_a_after_b(treeviewColumns, baseColumnIndex, col_index, sizeof(RFM_treeviewColumn), G_N_ELEMENTS(treeviewColumns));
 		    }
 		  
 		    if (j>=1) baseColumnIndex = baseColumnIndex + 1;
 		    else baseColumnIndex = col_index; 
-		    g_debug("baseColumnIndex:%d",baseColumnIndex);
+		    g_log("rfm-column",G_LOG_LEVEL_DEBUG,"baseColumnIndex:%d",baseColumnIndex);
                 } else if (order_seq_array[j+1]==NULL) { // (g_strcmp0(order_seq_array[j],"")==0) and the last elements in case 2,
                     for (guint i = baseColumnIndex + 1;
                          i < G_N_ELEMENTS(treeviewColumns); i++) {
 		      treeviewColumns[i].Show = FALSE;
 		      if (treeviewColumns[i].gtkCol!=NULL && icon_or_tree_view!=NULL && treeview) gtk_tree_view_column_set_visible(treeviewColumns[i].gtkCol, FALSE);
-		      g_debug("%d invisible after ending ','",treeviewColumns[i].enumCol);
+		      g_log("rfm-column",G_LOG_LEVEL_DEBUG,"%d invisible after ending ','",treeviewColumns[i].enumCol);
                     }
                 }
                 j++;
