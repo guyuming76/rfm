@@ -3413,7 +3413,7 @@ static void ProcessOnelineForSearchResult(gchar* oneline){
 	   //if (!ignored_filename(oneline)){ //TODO: shall we call ignored_filename here? we way remove it to align with the GetGlist implementation. User can filter those files with grep before rfm
 	       SearchResultFileNameList=g_list_prepend(SearchResultFileNameList, oneline);
 	       SearchResultFileNameListLength++;
-	       g_debug("appended into SearchResultFileNameList:%s", oneline);
+	       g_log("rfm-data",G_LOG_LEVEL_DEBUG,"appended into SearchResultFileNameList:%s", oneline);
 	   //}
 }
 
@@ -3443,7 +3443,7 @@ static void ReadFromPipeStdinIfAny(char * fd)
 	 FILE *pipeStream = stdin;
 	 if (atoi(fd) != 0) pipeStream = fdopen(atoi(fd),"r");
          while (fgets(oneline_stdin, PATH_MAX,pipeStream ) != NULL) {
-   	   g_debug("%s",oneline_stdin);
+   	   g_log("rfm-data",G_LOG_LEVEL_DEBUG,"%s",oneline_stdin);
            oneline_stdin[strcspn(oneline_stdin, "\n")] = 0; //manual set the last char to NULL to eliminate the trailing \n from fgets
 	   ProcessOnelineForSearchResult(oneline_stdin);
            oneline_stdin=calloc(1,PATH_MAX);
