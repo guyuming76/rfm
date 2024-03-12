@@ -1739,6 +1739,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
        if (non_grepMatchTreeViewColumns==NULL){//newly in searchresultview with grepMatch, keep old treeview columns
 	 gchar* cmd=get_showcolumn_cmd_from_currently_displaying_columns();
 	 non_grepMatchTreeViewColumns=strdup(cmd + 11); //exclude leading "showcolumn "
+	 g_free(cmd);
 	 show_hide_treeview_columns_in_order(",4,19,");
        }
      }else{// in DirectoryView
