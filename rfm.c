@@ -795,7 +795,7 @@ static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *ch
                                   &child_attribs->pid, NULL, ((child_attribs->runOpts==RFM_EXEC_FILE_CHOOSER)? NULL: &child_attribs->stdOut_fd),
                                   &child_attribs->stdErr_fd, &err);
       
-      g_log("rfm-gspawn",G_LOG_LEVEL_DEBUG,"g_spawn_async_with_pipes_wrapper:  workingdir:%s, argv:%s, G_SPAWN_DO_NOT_REAP_CHILD",rfm_curPath,v[0]);
+      g_log(RFM_LOG_GSPAWN,G_LOG_LEVEL_DEBUG,"g_spawn_async_with_pipes_wrapper:  workingdir:%s, argv:%s, G_SPAWN_DO_NOT_REAP_CHILD",rfm_curPath,v[0]);
       if (rv==TRUE) {
          /* Don't block on read if nothing in pipe */
          if (! g_unix_set_fd_nonblocking(child_attribs->stdOut_fd, TRUE, NULL))
@@ -856,7 +856,7 @@ static gchar **build_cmd_vector(const char **cmd, GList *file_list, char *dest_p
    v[j]=dest_path; /* This may be NULL anyway */
    v[++j]=NULL;
 
-   g_log("rfm-spawn",G_LOG_LEVEL_DEBUG,"%s",g_strjoinv(" ", v));
+   g_log(RFM_LOG_GSPAWN,G_LOG_LEVEL_DEBUG,"%s",g_strjoinv(" ", v));
    return v;
 }
 
@@ -886,7 +886,7 @@ static gboolean g_spawn_wrapper_(GList *file_list, char *dest_path, RFM_ChildAtt
 /* (rfm:11714): GLib-CRITICAL **: 14:05:51.441: g_spawn_sync: assertion 'standard_output == NULL || !(flags & G_SPAWN_STDOUT_TO_DEV_NULL)' failed */
 
 /* (rfm:11714): rfm-WARNING **: 14:05:51.441: g_spawn_wrapper_->g_spawn_sync /usr/bin/ffmpeg failed to execute. Check command in config.h! */	       
-	       g_log("rfm-gspawn",G_LOG_LEVEL_DEBUG,"g_spawn_wrapper_->g_spawn_sync, workingdir:%s, argv:%s ",rfm_curPath,v[0]);
+	       g_log(RFM_LOG_GSPAWN,G_LOG_LEVEL_DEBUG,"g_spawn_wrapper_->g_spawn_sync, workingdir:%s, argv:%s ",rfm_curPath,v[0]);
 	       if (!g_spawn_sync(rfm_curPath, v, NULL,child_attribs->runOpts, GSpawnChildSetupFunc_setenv,child_attribs,(child_attribs->runOpts & G_SPAWN_STDOUT_TO_DEV_NULL)? NULL : &child_attribs->stdOut, &child_attribs->stdErr,&child_attribs->status,NULL)){
 	            g_warning("g_spawn_wrapper_->g_spawn_sync %s failed to execute. Check command in config.h!", v[0]);
 	            free_child_attribs(child_attribs);
@@ -1178,7 +1178,7 @@ static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guin
      return fileAttributes;
    }else{
      fileAttributes->path=absoluteaddr;
-     g_log("rfm-data",G_LOG_LEVEL_DEBUG,"fileAttributes->path:%s",fileAttributes->path);
+     g_log(RFM_LOG_DATA,G_LOG_LEVEL_DEBUG,"fileAttributes->path:%s",fileAttributes->path);
    }
    //attibuteList=g_strdup_printf("%s,%s,%s,%s",G_FILE_ATTRIBUTE_STANDARD_TYPE, G_FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE, G_FILE_ATTRIBUTE_TIME_MODIFIED, G_FILE_ATTRIBUTE_STANDARD_IS_SYMLINK);
    file=g_file_new_for_path(fileAttributes->path);
@@ -1282,11 +1282,11 @@ static void load_thumbnail_or_enqueue_thumbQueue_for_store_row(GtkTreeIter *iter
          /* Try to load any existing thumbnail */
 	 int ld=load_thumbnail(thumbData->thumb_name);
 	 if ( ld == 0) { /* Success: thumbnail exists in cache and is valid */
-	   g_log("rfm-data",G_LOG_LEVEL_DEBUG,"thumbnail %s exists for %s",thumbData->thumb_name, thumbData->path);
+	   g_log(RFM_LOG_DATA,G_LOG_LEVEL_DEBUG,"thumbnail %s exists for %s",thumbData->thumb_name, thumbData->path);
            free_thumbQueueData(thumbData);
          } else { /* Thumbnail doesn't exist or is out of date */
            rfm_thumbQueue = g_list_append(rfm_thumbQueue, thumbData);
-	   g_log("rfm-data",G_LOG_LEVEL_DEBUG,"thumbnail %s creation enqueued for %s; load_thumbnail failure code:%d.",thumbData->thumb_name,thumbData->path,ld);
+	   g_log(RFM_LOG_DATA,G_LOG_LEVEL_DEBUG,"thumbnail %s creation enqueued for %s; load_thumbnail failure code:%d.",thumbData->thumb_name,thumbData->path,ld);
          }
       }
 }
@@ -1323,7 +1323,7 @@ static void Update_Store_ExtColumns(RFM_ChildAttribs *childAttribs) {
 }
 
 static void load_ExtColumns_and_iconview_markup_tooltip(RFM_FileAttributes* fileAttributes, GtkTreeIter *iter){
-      g_log("rfm-data",G_LOG_LEVEL_DEBUG,"load_ExtColumns for %s",fileAttributes->path);
+      g_log(RFM_LOG_DATA,G_LOG_LEVEL_DEBUG,"load_ExtColumns for %s",fileAttributes->path);
       for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++){
 	if ((treeviewColumns[i].Show || treeviewColumns[i].iconview_markup || treeviewColumns[i].iconview_tooltip)
 	    && (g_strcmp0(treeviewColumns[i].MIME_root, "*")==0 || g_strcmp0(fileAttributes->mime_root, treeviewColumns[i].MIME_root)==0)
@@ -1427,7 +1427,7 @@ static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,
 			  COL_ICONVIEW_TOOLTIP,NULL,
                           -1);
 
-      g_log("rfm-data",G_LOG_LEVEL_DEBUG,"Inserted into store:%s",fileAttributes->file_name);
+      g_log(RFM_LOG_DATA,G_LOG_LEVEL_DEBUG,"Inserted into store:%s",fileAttributes->file_name);
       
       if (keep_selection_on_view_across_refresh) {
 	GList * selection_filepath_list = g_list_first(filepath_lists_for_selection_on_view_clone);
@@ -1452,7 +1452,7 @@ static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,
 static void readGitCommitMsgFromGitLogCmdAndUpdateStore(RFM_ChildAttribs * childAttribs){
    gchar * commitMsg=childAttribs->stdOut;
    commitMsg[strcspn(commitMsg, "\n")] = 0;
-   g_log("rfm-data",G_LOG_LEVEL_DEBUG,"gitCommitMsg:%s",commitMsg);
+   g_log(RFM_LOG_DATA,G_LOG_LEVEL_DEBUG,"gitCommitMsg:%s",commitMsg);
    GtkTreeIter *iter= *(GtkTreeIter**)(childAttribs->customCallbackUserData);
    gtk_list_store_set(store,iter,COL_GIT_COMMIT_MSG, commitMsg, -1);
 }
@@ -1483,7 +1483,7 @@ static void load_GitTrackedFiles_into_HashTable()
     while (oneline!=NULL){
       gchar * fullpath=g_build_filename(git_root,oneline,NULL);         
       g_hash_table_insert(gitTrackedFiles,fullpath,g_strdup(""));
-      g_log("rfm-data",G_LOG_LEVEL_DEBUG,"gitTrackedFile:%s",fullpath);
+      g_log(RFM_LOG_DATA,G_LOG_LEVEL_DEBUG,"gitTrackedFile:%s",fullpath);
       oneline=strtok(NULL, "\n");
     }
   }
@@ -1511,7 +1511,7 @@ static void load_GitTrackedFiles_into_HashTable()
       //but the same file path in fileattributes does not have ending /, so , they won't match
       //BTW, git status --porcelain don't have something like ?? test/testfile.md, is it a git issue?
       gchar *fullpath=g_build_filename(git_root,filename,NULL);         
-      g_log("rfm-data",G_LOG_LEVEL_DEBUG,"gitTrackedFile Status:%s,%s",status,fullpath);
+      g_log(RFM_LOG_DATA,G_LOG_LEVEL_DEBUG,"gitTrackedFile Status:%s,%s",status,fullpath);
 
       g_hash_table_insert(gitTrackedFiles,g_strdup(fullpath),status);
       
@@ -1648,7 +1648,7 @@ static gboolean fill_fileAttributeList_with_filenames_from_search_result_and_the
     fileAttributes = get_fileAttributes_for_a_file(name->data, mtimeThreshold, mount_hash);
     if (fileAttributes != NULL) {
       rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
-      g_log("rfm-data",G_LOG_LEVEL_DEBUG,"appended into rfm_fileAttributeList:%s", (char*)name->data);
+      g_log(RFM_LOG_DATA,G_LOG_LEVEL_DEBUG,"appended into rfm_fileAttributeList:%s", (char*)name->data);
     }
     name=g_list_next(name);
     i++;
@@ -2773,34 +2773,34 @@ void move_array_item_a_after_b(void * array, int index_b, int index_a, uint32_t 
                 if ((index_b+1)>index_a){ //第一,第二种情况  比如 2,1 满足 2+1>1
 			for(guint k=0;k<index_a;k++){   // 0 <- 0    
 			  memcpy(temp_array+k*array_item_size, array + k*array_item_size, array_item_size);
-			  g_log("rfm-column",G_LOG_LEVEL_DEBUG,"%d <- %d",k,k);
+			  g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"%d <- %d",k,k);
 			}
 			//k=1=col_index
 			for(guint k=index_a+1;k<index_b+1;k++){  // 1 <- 2
 			  memcpy(temp_array+(k-1)*array_item_size, array+k*array_item_size, array_item_size);
-			  g_log("rfm-column",G_LOG_LEVEL_DEBUG,"%d <- %d",k-1,k);
+			  g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"%d <- %d",k-1,k);
 			}
 			//上面最后一次memcpy,treeviewColumn[baseColumnIndex]也已经复制到了 temptreeviewcolumns[basecolumnindex-1]
 			memcpy(temp_array+index_b*array_item_size, array+index_a*array_item_size, array_item_size); // 2 <- 1
-			g_log("rfm-column",G_LOG_LEVEL_DEBUG,"%d <- %d",index_b,index_a);
+			g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"%d <- %d",index_b,index_a);
 			for(guint k=index_b+1; k<array_length;k++){
 			  memcpy(temp_array+k*array_item_size, array+k*array_item_size, array_item_size);
-			  g_log("rfm-column",G_LOG_LEVEL_DEBUG,"%d <- %d",k,k);
+			  g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"%d <- %d",k,k);
 			}
  		}else{//第四种情况, 比如 1,3 满足 1+1 < 3
 			for(guint k=0;k<index_b+1;k++){ // 0 <- 0   1 <- 1
 			  memcpy(temp_array+k*array_item_size, array+k*array_item_size, array_item_size);
-			  g_log("rfm-column",G_LOG_LEVEL_DEBUG,"%d <- %d",k,k);
+			  g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"%d <- %d",k,k);
 			}
 			memcpy(temp_array+(index_b+1)*array_item_size, array+index_a*array_item_size, array_item_size); // 2 <- 3
-			g_log("rfm-column",G_LOG_LEVEL_DEBUG,"%d <- %d",index_b+1,index_a);
+			g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"%d <- %d",index_b+1,index_a);
 			for(guint k=index_b+1;k<index_a;k++){
 			  memcpy(temp_array+(k+1)*array_item_size, array+k*array_item_size, array_item_size); // 3 <- 2
-			  g_log("rfm-column",G_LOG_LEVEL_DEBUG,"%d <- %d",k+1,k);
+			  g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"%d <- %d",k+1,k);
 			}
 			for(guint k=index_a+1;k<array_length;k++){
 			  memcpy(temp_array+k*array_item_size, array+k*array_item_size, array_item_size); // 4 <- 4
-			  g_log("rfm-column",G_LOG_LEVEL_DEBUG,"%d <- %d",k,k);
+			  g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"%d <- %d",k,k);
 			}
 		}
 		for(guint k=0;k<array_length;k++) //I think i cannot free treeviewcolumns because of the way it's defined in config.h, so i have to copy temptreeviewcolumns back. we may define treeviewcolumns[2,] and use treeviewcolumns[0,] treeviewcolumns[1,] in turn to eliminate this copy. But anyway, not big deal, current way is more readable.
@@ -2811,7 +2811,7 @@ void move_array_item_a_after_b(void * array, int index_b, int index_a, uint32_t 
 }
 
 static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
-              g_log("rfm-column",G_LOG_LEVEL_DEBUG,"order sequence:%s",order_sequence);
+              g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"order sequence:%s",order_sequence);
               gchar** order_seq_array = g_strsplit_set(order_sequence, ",;", G_N_ELEMENTS(treeviewColumns));
 	      guint j=0;
 	      int baseColumnIndex=-1;
@@ -2820,7 +2820,7 @@ static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
 		    int col_enum_with_sign = atoi(order_seq_array[j]);
 		    guint col_enum = abs(col_enum_with_sign);
 		    int col_index = GetColumnIndexByEnun(col_enum);
-		    g_log("rfm-column",G_LOG_LEVEL_DEBUG,"col_index:%d  col_enum:%d",col_index,col_enum);
+		    g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"col_index:%d  col_enum:%d",col_index,col_enum);
                     g_free(order_seq_array[j]);
 		    if (col_index<0) {
 		      g_warning("cannot find column %d. Memory after columnReorderRation[j] may not released, no big deal.",col_enum);
@@ -2850,20 +2850,20 @@ static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
 		/* 当j>=1时,我们需要完成 basecolumnindex+1 <- col_index 的复制, 因此,在下标小于 min(basecolumnindex+1, col_index)时,直接 k<-k 复制就可以了  */
 		/* 另外baseColumnIndex==col_index时,也就是类似第三种情况,我们无需调整位置,这轮do while 循环只需更新下baseColumnInex就可以了 */
 		    if (j>=1 && (baseColumnIndex+1!=col_index)){
-		      g_log("rfm-column",G_LOG_LEVEL_DEBUG,"baseColumnIndex+1 <- col_index: %d <- %d",baseColumnIndex+1,col_index);
+		      g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"baseColumnIndex+1 <- col_index: %d <- %d",baseColumnIndex+1,col_index);
 		      //把目前处于col_index位置的列移动到baseColumnIndex后面,也就是baseColumnIndex+1的位置
 		      move_array_item_a_after_b(treeviewColumns, baseColumnIndex, col_index, sizeof(RFM_treeviewColumn), G_N_ELEMENTS(treeviewColumns));
 		    }
 		  
 		    if (j>=1) baseColumnIndex = baseColumnIndex + 1;
 		    else baseColumnIndex = col_index; 
-		    g_log("rfm-column",G_LOG_LEVEL_DEBUG,"baseColumnIndex:%d",baseColumnIndex);
+		    g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"baseColumnIndex:%d",baseColumnIndex);
                 } else if (order_seq_array[j+1]==NULL) { // (g_strcmp0(order_seq_array[j],"")==0) and the last elements in case 2,
                     for (guint i = baseColumnIndex + 1;
                          i < G_N_ELEMENTS(treeviewColumns); i++) {
 		      treeviewColumns[i].Show = FALSE;
 		      if (treeviewColumns[i].gtkCol!=NULL && icon_or_tree_view!=NULL && treeview) gtk_tree_view_column_set_visible(treeviewColumns[i].gtkCol, FALSE);
-		      g_log("rfm-column",G_LOG_LEVEL_DEBUG,"%d invisible after ending ','",treeviewColumns[i].enumCol);
+		      g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"%d invisible after ending ','",treeviewColumns[i].enumCol);
                     }
                 }
                 j++;
@@ -3415,7 +3415,7 @@ static void ProcessOnelineForSearchResult(gchar* oneline){
 	   //if (!ignored_filename(oneline)){ //TODO: shall we call ignored_filename here? we way remove it to align with the GetGlist implementation. User can filter those files with grep before rfm
 	       SearchResultFileNameList=g_list_prepend(SearchResultFileNameList, oneline);
 	       SearchResultFileNameListLength++;
-	       g_log("rfm-data",G_LOG_LEVEL_DEBUG,"appended into SearchResultFileNameList:%s", oneline);
+	       g_log(RFM_LOG_DATA,G_LOG_LEVEL_DEBUG,"appended into SearchResultFileNameList:%s", oneline);
 	   //}
 }
 
@@ -3445,7 +3445,7 @@ static void ReadFromPipeStdinIfAny(char * fd)
 	 FILE *pipeStream = stdin;
 	 if (atoi(fd) != 0) pipeStream = fdopen(atoi(fd),"r");
          while (fgets(oneline_stdin, PATH_MAX,pipeStream ) != NULL) {
-   	   g_log("rfm-data",G_LOG_LEVEL_DEBUG,"%s",oneline_stdin);
+   	   g_log(RFM_LOG_DATA,G_LOG_LEVEL_DEBUG,"%s",oneline_stdin);
            oneline_stdin[strcspn(oneline_stdin, "\n")] = 0; //manual set the last char to NULL to eliminate the trailing \n from fgets
 	   ProcessOnelineForSearchResult(oneline_stdin);
            oneline_stdin=calloc(1,PATH_MAX);

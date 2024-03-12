@@ -21,6 +21,9 @@ static gint RFM_THUMBNAIL_SIZE = 128; /* Maximum size for thumb dir normal is 12
 // "\e[A":history-search-backward
 // arrow down
 // "\e[B":history-search-forward
+#define RFM_LOG_DATA "rfm-data"
+#define RFM_LOG_GSPAWN "rfm-gspawn"
+#define RFM_LOG_COLUMN "rfm-column"
 
 
 static gboolean keep_selection_on_view_across_refresh = TRUE; 
