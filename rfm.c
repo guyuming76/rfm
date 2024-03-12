@@ -2811,7 +2811,8 @@ void move_array_item_a_after_b(void * array, int index_b, int index_a, uint32_t 
 }
 
 static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
-	      gchar** order_seq_array = g_strsplit_set(order_sequence, ",;", G_N_ELEMENTS(treeviewColumns));
+              g_log("rfm-column",G_LOG_LEVEL_DEBUG,"order sequence:%s",order_sequence);
+              gchar** order_seq_array = g_strsplit_set(order_sequence, ",;", G_N_ELEMENTS(treeviewColumns));
 	      guint j=0;
 	      int baseColumnIndex=-1;
 	      do {
@@ -2834,7 +2835,7 @@ static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
 			if (j>=1) gtk_tree_view_move_column_after(GTK_TREE_VIEW(icon_or_tree_view) , treeviewColumns[col_index].gtkCol, baseColumnIndex<0? NULL:treeviewColumns[baseColumnIndex].gtkCol);
 		      }
 		    }else if (treeviewColumns[col_index].Show && order_sequence!=treeviewcolumn_init_order_sequence)
-		      printf(VALUE_MAY_NOT_LOADED,col_enum,treeviewColumns[col_index].title);
+		      printf(VALUE_MAY_NOT_LOADED,col_enum,treeviewColumns[col_index].title);//TODO: shall we change this line into g_warning under subdomain rfm-column?
 
 		//reorganize the treeviewColumns array, otherwise, display order will restore to default after refresh
 		    
@@ -2850,6 +2851,7 @@ static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
 		/* 另外baseColumnIndex==col_index时,也就是类似第三种情况,我们无需调整位置,这轮do while 循环只需更新下baseColumnInex就可以了 */
 		    if (j>=1 && (baseColumnIndex+1!=col_index)){
 		      g_log("rfm-column",G_LOG_LEVEL_DEBUG,"baseColumnIndex+1 <- col_index: %d <- %d",baseColumnIndex+1,col_index);
+		      //把目前处于col_index位置的列移动到baseColumnIndex后面,也就是baseColumnIndex+1的位置
 		      move_array_item_a_after_b(treeviewColumns, baseColumnIndex, col_index, sizeof(RFM_treeviewColumn), G_N_ELEMENTS(treeviewColumns));
 		    }
 		  
