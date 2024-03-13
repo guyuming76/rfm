@@ -1740,7 +1740,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
 	 gchar* cmd=get_showcolumn_cmd_from_currently_displaying_columns();
 	 non_grepMatchTreeViewColumns=strdup(cmd + 11); //exclude leading "showcolumn "
 	 g_free(cmd);
-	 show_hide_treeview_columns_in_order(",4,19,");
+	 show_hide_treeview_columns_in_order(",   4,  19,");
        }
      }else{// in DirectoryView
        if (non_grepMatchTreeViewColumns!=NULL){
@@ -2812,15 +2812,19 @@ void move_array_item_a_after_b(void * array, int index_b, int index_a, uint32_t 
 }
 
 static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
-              g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"order sequence:%s",order_sequence);
+              gchar * cmd=get_showcolumn_cmd_from_currently_displaying_columns();
+	      g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"%s",cmd);//TODO: replace leading showcolumn in cmd with string such as "current columns". 
+	      g_free(cmd);
+              g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"showcolumn %s",order_sequence);
               gchar** order_seq_array = g_strsplit_set(order_sequence, ",;", G_N_ELEMENTS(treeviewColumns));
-	      guint j=0;
-	      int baseColumnIndex=-1;
+	      guint j=0; //用来索引 order_seq_array
+	      int baseColumnIndex=-1; //用来索引 treeviewColumns
 	      do {
+		//如果当前 order_seq_array 项不为空
 		if (g_strcmp0(order_seq_array[j], "")!=0){ //to deal with situation such as ,2 (or 2,)
 		    int col_enum_with_sign = atoi(order_seq_array[j]);
-		    guint col_enum = abs(col_enum_with_sign);
-		    int col_index = GetColumnIndexByEnun(col_enum);
+		    guint col_enum = abs(col_enum_with_sign);//col_enum 表示列常数,比如 COL_FILENAME
+		    int col_index = GetColumnIndexByEnun(col_enum);//col_index 表示col_enum 在treeviewColumns数组里当前的下标
 		    g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"col_index:%d  col_enum:%d",col_index,col_enum);
                     g_free(order_seq_array[j]);
 		    if (col_index<0) {
@@ -2873,11 +2877,13 @@ static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
 }
 
 static gchar* get_showcolumn_cmd_from_currently_displaying_columns(){
-            gchar* showColumnHistory=calloc(G_N_ELEMENTS(treeviewColumns)*5+11, sizeof(char)); // we suppose no more than 999 treeview_columns, and ",-999" takes 5 chars ; leading "showcolumn " take 11 char
+            gchar* showColumnHistory=calloc(G_N_ELEMENTS(treeviewColumns)*5+13, sizeof(char)); // we suppose no more than 999 treeview_columns, and ",-999" takes 5 chars ; leading "showcolumn ," take 13 char
 	    showColumnHistory = strcat(showColumnHistory, "showcolumn ,");
 	    for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++){
-	      showColumnHistory = strcat(showColumnHistory, treeviewColumns[i].Show? "%d,":"-%d,");
-	      sprintf(showColumnHistory, showColumnHistory, treeviewColumns[i].enumCol);
+	      //gchar* onecolumn=calloc(6, sizeof(char)); //5 chars for onecolumn + ending null
+	      char onecolumn[5];
+	      sprintf(onecolumn,"%4d,", treeviewColumns[i].enumCol * (treeviewColumns[i].Show?1:-1));
+	      showColumnHistory = strcat(showColumnHistory, onecolumn);
 	    }
 	    return showColumnHistory;
 }
