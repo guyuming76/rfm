@@ -375,7 +375,7 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
 // read input from parent process stdin , and handle input such as
 // cd .
 // cd /tmp
-static RFM_treeviewColumn* GetColumnByEnun(enum RFM_treeviewCol col);
+static RFM_treeviewColumn* get_treeviewColumnByEnum(enum RFM_treeviewCol col);
 static gchar* get_showcolumn_cmd_from_currently_displaying_columns();
 static void show_hide_treeview_columns_in_order(gchar *order_sequence);
 
@@ -1266,7 +1266,7 @@ static void iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_and_l
    while (valid) {
      load_thumbnail_or_enqueue_thumbQueue_for_store_row(&iter);
 #ifdef GitIntegration
-     if (GetColumnByEnun(COL_GIT_COMMIT_MSG)->Show) load_gitCommitMsg_for_store_row(&iter);
+     if (get_treeviewColumnByEnum(COL_GIT_COMMIT_MSG)->Show) load_gitCommitMsg_for_store_row(&iter);
 #endif
      valid=gtk_tree_model_iter_next(treemodel, &iter);
    }
@@ -1557,7 +1557,7 @@ static void Insert_fileAttributes_into_store_with_thumbnail_and_more(RFM_FileAtt
 	    if (rfm_do_thumbs==1 && g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR)){
 	      load_thumbnail_or_enqueue_thumbQueue_for_store_row(&iter);
 #ifdef GitIntegration
-              if (GetColumnByEnun(COL_GIT_COMMIT_MSG)->Show) load_gitCommitMsg_for_store_row(&iter);
+              if (get_treeviewColumnByEnum(COL_GIT_COMMIT_MSG)->Show) load_gitCommitMsg_for_store_row(&iter);
 #endif
 	    }  
 }
@@ -2756,15 +2756,15 @@ static void stdin_command_help() {
 }
 
 
-static int GetColumnIndexByEnun(enum RFM_treeviewCol col){
+static int get_treeviewColumnsIndexByEnum(enum RFM_treeviewCol col){
   for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++){
     if (treeviewColumns[i].enumCol==col) return i;
   }
   return -1;
 }
 
-static RFM_treeviewColumn* GetColumnByEnun(enum RFM_treeviewCol col){
-  int i = GetColumnIndexByEnun(col);
+static RFM_treeviewColumn* get_treeviewColumnByEnum(enum RFM_treeviewCol col){
+  int i = get_treeviewColumnsIndexByEnum(col);
   return i<0 ? NULL : &treeviewColumns[i];
 }
 
@@ -2813,9 +2813,9 @@ void move_array_item_a_after_b(void * array, int index_b, int index_a, uint32_t 
 
 static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
               gchar * cmd=get_showcolumn_cmd_from_currently_displaying_columns();
-	      g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"%s",cmd);//TODO: replace leading showcolumn in cmd with string such as "current columns". 
+	      g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"%s",cmd);//TODO: replace leading showcolumn in cmd with string such as "treeviewColumns". 
 	      g_free(cmd);
-              g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"showcolumn %s",order_sequence);
+              g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"order_seq  %s",order_sequence);
               gchar** order_seq_array = g_strsplit_set(order_sequence, ",;", G_N_ELEMENTS(treeviewColumns));
 	      guint j=0; //用来索引 order_seq_array
 	      int baseColumnIndex=-1; //用来索引 treeviewColumns
@@ -2823,25 +2823,25 @@ static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
 		//如果当前 order_seq_array 项不为空
 		if (g_strcmp0(order_seq_array[j], "")!=0){ //to deal with situation such as ,2 (or 2,)
 		    int col_enum_with_sign = atoi(order_seq_array[j]);
-		    guint col_enum = abs(col_enum_with_sign);//col_enum 表示列常数,比如 COL_FILENAME
-		    int col_index = GetColumnIndexByEnun(col_enum);//col_index 表示col_enum 在treeviewColumns数组里当前的下标
-		    g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"col_index:%d  col_enum:%d",col_index,col_enum);
+		    guint col_enum_at_order_sequence_item_j = abs(col_enum_with_sign);//col_enum 表示列常数,比如 COL_FILENAME
+		    int treeviewColumn_index_for_order_sequence_item_j = get_treeviewColumnsIndexByEnum(col_enum_at_order_sequence_item_j);//col_index 表示col_enum 在treeviewColumns数组里当前的下标
+		    g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"treeviewColumn_index_for_order_sequence_item_j:%d  col_enum_at_order_sequence_item_j:%d",treeviewColumn_index_for_order_sequence_item_j,col_enum_at_order_sequence_item_j);
                     g_free(order_seq_array[j]);
-		    if (col_index<0) {
-		      g_warning("cannot find column %d.",col_enum);
+		    if (treeviewColumn_index_for_order_sequence_item_j<0) {
+		      g_warning("cannot find column %d.",col_enum_at_order_sequence_item_j);
 		      for(int f=j+1; f<G_N_ELEMENTS(order_seq_array);f++) g_free(order_seq_array[f]);
 		      g_free(order_seq_array);
 		      return;
 		    }
 
-		    treeviewColumns[col_index].Show = (col_enum_with_sign>=0);
-		    if (treeviewColumns[col_index].gtkCol!=NULL){
+		    treeviewColumns[treeviewColumn_index_for_order_sequence_item_j].Show = (col_enum_with_sign>=0);
+		    if (treeviewColumns[treeviewColumn_index_for_order_sequence_item_j].gtkCol!=NULL){
 		      if (icon_or_tree_view!=NULL && treeview) {
-			gtk_tree_view_column_set_visible(treeviewColumns[col_index].gtkCol,treeviewColumns[col_index].Show);
-			if (j>=1) gtk_tree_view_move_column_after(GTK_TREE_VIEW(icon_or_tree_view) , treeviewColumns[col_index].gtkCol, baseColumnIndex<0? NULL:treeviewColumns[baseColumnIndex].gtkCol);
+			gtk_tree_view_column_set_visible(treeviewColumns[treeviewColumn_index_for_order_sequence_item_j].gtkCol,treeviewColumns[treeviewColumn_index_for_order_sequence_item_j].Show);
+			if (j>=1) gtk_tree_view_move_column_after(GTK_TREE_VIEW(icon_or_tree_view) , treeviewColumns[treeviewColumn_index_for_order_sequence_item_j].gtkCol, baseColumnIndex<0? NULL:treeviewColumns[baseColumnIndex].gtkCol);
 		      }
-		    }else if (treeviewColumns[col_index].Show && order_sequence!=treeviewcolumn_init_order_sequence)
-		      printf(VALUE_MAY_NOT_LOADED,col_enum,treeviewColumns[col_index].title);//TODO: shall we change this line into g_warning under subdomain rfm-column?
+		    }else if (treeviewColumns[treeviewColumn_index_for_order_sequence_item_j].Show && order_sequence!=treeviewcolumn_init_order_sequence)
+		      printf(VALUE_MAY_NOT_LOADED,col_enum_at_order_sequence_item_j,treeviewColumns[treeviewColumn_index_for_order_sequence_item_j].title);//TODO: shall we change this line into g_warning under subdomain rfm-column?
 
 		//reorganize the treeviewColumns array, otherwise, display order will restore to default after refresh
 		    
@@ -2855,14 +2855,14 @@ static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
 		/* 从k=0开始复制,首先j==0这个do while循环,只给baseColumnIndex赋值,除了第五种情况下,baseColumnindex保持-1, 注意不是因为前面g_warning里面没找到输入错误的enum, 而是因为 do 后面第一个 customReorderRelation[j]==""的判断,导致这一轮do循环直接空转*/
 		/* 当j>=1时,我们需要完成 basecolumnindex+1 <- col_index 的复制, 因此,在下标小于 min(basecolumnindex+1, col_index)时,直接 k<-k 复制就可以了  */
 		/* 另外baseColumnIndex==col_index时,也就是类似第三种情况,我们无需调整位置,这轮do while 循环只需更新下baseColumnInex就可以了 */
-		    if (j>=1 && (baseColumnIndex+1!=col_index)){
-		      g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"baseColumnIndex+1 <- col_index: %d <- %d",baseColumnIndex+1,col_index);
+		    if (j>=1 && (baseColumnIndex+1!=treeviewColumn_index_for_order_sequence_item_j)){
+		      g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"baseColumnIndex+1 <- treeviewColumn_index_for_order_sequence_item_j: %d <- %d",baseColumnIndex+1,treeviewColumn_index_for_order_sequence_item_j);
 		      //把目前处于col_index位置的列移动到baseColumnIndex后面,也就是baseColumnIndex+1的位置
-		      move_array_item_a_after_b(treeviewColumns, baseColumnIndex, col_index, sizeof(RFM_treeviewColumn), G_N_ELEMENTS(treeviewColumns));
+		      move_array_item_a_after_b(treeviewColumns, baseColumnIndex, treeviewColumn_index_for_order_sequence_item_j, sizeof(RFM_treeviewColumn), G_N_ELEMENTS(treeviewColumns));
 		    }
 		  
 		    if (j>=1) baseColumnIndex = baseColumnIndex + 1;
-		    else baseColumnIndex = col_index; 
+		    else baseColumnIndex = treeviewColumn_index_for_order_sequence_item_j; 
 		    g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"baseColumnIndex:%d",baseColumnIndex);
                 } else if (order_seq_array[j+1]==NULL) { // (g_strcmp0(order_seq_array[j],"")==0) and the last elements in case 2,
                     for (guint i = baseColumnIndex + 1;
