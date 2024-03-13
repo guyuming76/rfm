@@ -2817,11 +2817,11 @@ static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
 	      g_free(cmd);
               g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"order_seq  %s",order_sequence);
               gchar** order_seq_array = g_strsplit_set(order_sequence, ",;", G_N_ELEMENTS(treeviewColumns));
-	      guint j=0; //用来索引 order_seq_array
+	      guint j=0; //用来索引 order_seq_array,下面的do while循环,j从零开始循环一遍到order_seq_array最后一项
 	      int target_treeviewColumn_index_for_order_sequence_item_j_to_move_after=-1; //用来索引 treeviewColumns
 	      do {
 		//如果当前 order_seq_array 项不为空
-		if (g_strcmp0(order_seq_array[j], "")!=0){ //to deal with situation such as ,2 (or 2,)
+		if (g_strcmp0(order_seq_array[j], "")!=0){ //to deal with situation such as ,2 (这时,split后逗号前的项为"") or 2, (这时,splite后逗号后的项为"")
 		    int col_enum_with_sign = atoi(order_seq_array[j]);
 		    guint col_enum_at_order_sequence_item_j = abs(col_enum_with_sign);//col_enum 表示列常数,比如 COL_FILENAME
 		    int treeviewColumn_index_for_order_sequence_item_j = get_treeviewColumnsIndexByEnum(col_enum_at_order_sequence_item_j);//col_index 表示col_enum 在treeviewColumns数组里当前的下标
@@ -2868,6 +2868,7 @@ static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
 		    
 		// emacs 里用退格键删除下一行首的右括号,再加回去,就会在minibuffer里显示右括号匹配的左括号行		    
                 } else if (order_seq_array[j+1]==NULL) { // (g_strcmp0(order_seq_array[j],"")==0) and the last elements in case 2,
+		//根据匹配if条件推断当前 order_seq_array 项为"",且后一项为NULL,说明是数组最后一项,跟在分隔副逗号后面且没内容
                     for (guint i = target_treeviewColumn_index_for_order_sequence_item_j_to_move_after + 1;
                          i < G_N_ELEMENTS(treeviewColumns); i++) {
 		      treeviewColumns[i].Show = FALSE;
