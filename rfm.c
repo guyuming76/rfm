@@ -2828,7 +2828,8 @@ static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
 		    g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"col_index:%d  col_enum:%d",col_index,col_enum);
                     g_free(order_seq_array[j]);
 		    if (col_index<0) {
-		      g_warning("cannot find column %d. Memory after columnReorderRation[j] may not released, no big deal.",col_enum);
+		      g_warning("cannot find column %d.",col_enum);
+		      for(int f=j+1; f<G_N_ELEMENTS(order_seq_array);f++) g_free(order_seq_array[f]);
 		      g_free(order_seq_array);
 		      return;
 		    }
