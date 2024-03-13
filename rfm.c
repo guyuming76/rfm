@@ -2812,7 +2812,7 @@ void move_array_item_a_after_b(void * array, int index_b, int index_a, uint32_t 
 }
 
 static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
-              gchar * cmd=get_showcolumn_cmd_from_currently_displaying_columns();
+              gchar * cmd=get_showcolumn_cmd_from_currently_displaying_columns(); //TODO: cmd is only used in debug level log entry, is it possible to run this only when debug?
 	      g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"%s",cmd);//TODO: replace leading showcolumn in cmd with string such as "treeviewColumns". 
 	      g_free(cmd);
               g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"order_seq  %s",order_sequence);
@@ -2861,9 +2861,12 @@ static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
 		      move_array_item_a_after_b(treeviewColumns, target_treeviewColumn_index_for_order_sequence_item_j_to_move_after, treeviewColumn_index_for_order_sequence_item_j, sizeof(RFM_treeviewColumn), G_N_ELEMENTS(treeviewColumns));
 		    }
 		  
-		    if (j>=1) target_treeviewColumn_index_for_order_sequence_item_j_to_move_after = target_treeviewColumn_index_for_order_sequence_item_j_to_move_after + 1;
+		    if (j>=1) target_treeviewColumn_index_for_order_sequence_item_j_to_move_after++;
 		    else target_treeviewColumn_index_for_order_sequence_item_j_to_move_after = treeviewColumn_index_for_order_sequence_item_j; 
 		    g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"target_index_for_order_sequence_item_j_to_move_after:%d",target_treeviewColumn_index_for_order_sequence_item_j_to_move_after);
+
+		    
+		// emacs 里用退格键删除下一行首的右括号,再加回去,就会在minibuffer里显示右括号匹配的左括号行		    
                 } else if (order_seq_array[j+1]==NULL) { // (g_strcmp0(order_seq_array[j],"")==0) and the last elements in case 2,
                     for (guint i = target_treeviewColumn_index_for_order_sequence_item_j_to_move_after + 1;
                          i < G_N_ELEMENTS(treeviewColumns); i++) {
