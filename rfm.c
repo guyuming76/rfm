@@ -2818,7 +2818,7 @@ static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
               g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"order_seq  %s",order_sequence);
               gchar** order_seq_array = g_strsplit_set(order_sequence, ",;", G_N_ELEMENTS(treeviewColumns));
 	      guint j=0; //用来索引 order_seq_array
-	      int baseColumnIndex=-1; //用来索引 treeviewColumns
+	      int target_treeviewColumn_index_for_order_sequence_item_j_to_move_after=-1; //用来索引 treeviewColumns
 	      do {
 		//如果当前 order_seq_array 项不为空
 		if (g_strcmp0(order_seq_array[j], "")!=0){ //to deal with situation such as ,2 (or 2,)
@@ -2838,7 +2838,7 @@ static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
 		    if (treeviewColumns[treeviewColumn_index_for_order_sequence_item_j].gtkCol!=NULL){
 		      if (icon_or_tree_view!=NULL && treeview) {
 			gtk_tree_view_column_set_visible(treeviewColumns[treeviewColumn_index_for_order_sequence_item_j].gtkCol,treeviewColumns[treeviewColumn_index_for_order_sequence_item_j].Show);
-			if (j>=1) gtk_tree_view_move_column_after(GTK_TREE_VIEW(icon_or_tree_view) , treeviewColumns[treeviewColumn_index_for_order_sequence_item_j].gtkCol, baseColumnIndex<0? NULL:treeviewColumns[baseColumnIndex].gtkCol);
+			if (j>=1) gtk_tree_view_move_column_after(GTK_TREE_VIEW(icon_or_tree_view) , treeviewColumns[treeviewColumn_index_for_order_sequence_item_j].gtkCol, target_treeviewColumn_index_for_order_sequence_item_j_to_move_after<0? NULL:treeviewColumns[target_treeviewColumn_index_for_order_sequence_item_j_to_move_after].gtkCol);
 		      }
 		    }else if (treeviewColumns[treeviewColumn_index_for_order_sequence_item_j].Show && order_sequence!=treeviewcolumn_init_order_sequence)
 		      printf(VALUE_MAY_NOT_LOADED,col_enum_at_order_sequence_item_j,treeviewColumns[treeviewColumn_index_for_order_sequence_item_j].title);//TODO: shall we change this line into g_warning under subdomain rfm-column?
@@ -2855,17 +2855,17 @@ static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
 		/* 从k=0开始复制,首先j==0这个do while循环,只给baseColumnIndex赋值,除了第五种情况下,baseColumnindex保持-1, 注意不是因为前面g_warning里面没找到输入错误的enum, 而是因为 do 后面第一个 customReorderRelation[j]==""的判断,导致这一轮do循环直接空转*/
 		/* 当j>=1时,我们需要完成 basecolumnindex+1 <- col_index 的复制, 因此,在下标小于 min(basecolumnindex+1, col_index)时,直接 k<-k 复制就可以了  */
 		/* 另外baseColumnIndex==col_index时,也就是类似第三种情况,我们无需调整位置,这轮do while 循环只需更新下baseColumnInex就可以了 */
-		    if (j>=1 && (baseColumnIndex+1!=treeviewColumn_index_for_order_sequence_item_j)){
-		      g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"baseColumnIndex+1 <- treeviewColumn_index_for_order_sequence_item_j: %d <- %d",baseColumnIndex+1,treeviewColumn_index_for_order_sequence_item_j);
+		    if (j>=1 && (target_treeviewColumn_index_for_order_sequence_item_j_to_move_after+1!=treeviewColumn_index_for_order_sequence_item_j)){
+		      g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"target_index_for_order_sequence_item_j_to_move_after+1 <- treeviewColumn_index_for_order_sequence_item_j: %d <- %d",target_treeviewColumn_index_for_order_sequence_item_j_to_move_after+1,treeviewColumn_index_for_order_sequence_item_j);
 		      //把目前处于col_index位置的列移动到baseColumnIndex后面,也就是baseColumnIndex+1的位置
-		      move_array_item_a_after_b(treeviewColumns, baseColumnIndex, treeviewColumn_index_for_order_sequence_item_j, sizeof(RFM_treeviewColumn), G_N_ELEMENTS(treeviewColumns));
+		      move_array_item_a_after_b(treeviewColumns, target_treeviewColumn_index_for_order_sequence_item_j_to_move_after, treeviewColumn_index_for_order_sequence_item_j, sizeof(RFM_treeviewColumn), G_N_ELEMENTS(treeviewColumns));
 		    }
 		  
-		    if (j>=1) baseColumnIndex = baseColumnIndex + 1;
-		    else baseColumnIndex = treeviewColumn_index_for_order_sequence_item_j; 
-		    g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"baseColumnIndex:%d",baseColumnIndex);
+		    if (j>=1) target_treeviewColumn_index_for_order_sequence_item_j_to_move_after = target_treeviewColumn_index_for_order_sequence_item_j_to_move_after + 1;
+		    else target_treeviewColumn_index_for_order_sequence_item_j_to_move_after = treeviewColumn_index_for_order_sequence_item_j; 
+		    g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"target_index_for_order_sequence_item_j_to_move_after:%d",target_treeviewColumn_index_for_order_sequence_item_j_to_move_after);
                 } else if (order_seq_array[j+1]==NULL) { // (g_strcmp0(order_seq_array[j],"")==0) and the last elements in case 2,
-                    for (guint i = baseColumnIndex + 1;
+                    for (guint i = target_treeviewColumn_index_for_order_sequence_item_j_to_move_after + 1;
                          i < G_N_ELEMENTS(treeviewColumns); i++) {
 		      treeviewColumns[i].Show = FALSE;
 		      if (treeviewColumns[i].gtkCol!=NULL && icon_or_tree_view!=NULL && treeview) gtk_tree_view_column_set_visible(treeviewColumns[i].gtkCol, FALSE);
