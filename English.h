@@ -75,7 +75,8 @@
 "Usage example: showcolumn 10,9,-12   means to move column 9 right after 10, and hide 12 right after 9\n" \
 "               showcolumn 1,3 12     means to move column 3 right after 1, and set column 12 visible without changing its position\n" \
 "               showcolumn ,2         means show column 2 as the first column\n" \
-"               showcolumn 2,         means hide columns after 2\n"
+"               showcolumn 2,         means hide columns after 2\n" \
+"set env variable G_MESSAGES_DEBUG=rfm-column-verbose and view log to get insight into the algorithm\n"
 
 #define VALUE_MAY_NOT_LOADED \
 "Value for column %d(%s) may has not been loaded yet, refresh needed. Note that if you just switch list/icon view, the column will appear, but with empty value before data refreshed\n"
