@@ -1282,11 +1282,11 @@ static void load_thumbnail_or_enqueue_thumbQueue_for_store_row(GtkTreeIter *iter
          /* Try to load any existing thumbnail */
 	 int ld=load_thumbnail(thumbData->thumb_name);
 	 if ( ld == 0) { /* Success: thumbnail exists in cache and is valid */
-	   g_log(RFM_LOG_DATA,G_LOG_LEVEL_DEBUG,"thumbnail %s exists for %s",thumbData->thumb_name, thumbData->path);
+	   g_log(RFM_LOG_DATA_THUMBNAIL,G_LOG_LEVEL_DEBUG,"thumbnail %s exists for %s",thumbData->thumb_name, thumbData->path);
            free_thumbQueueData(thumbData);
          } else { /* Thumbnail doesn't exist or is out of date */
            rfm_thumbQueue = g_list_append(rfm_thumbQueue, thumbData);
-	   g_log(RFM_LOG_DATA,G_LOG_LEVEL_DEBUG,"thumbnail %s creation enqueued for %s; load_thumbnail failure code:%d.",thumbData->thumb_name,thumbData->path,ld);
+	   g_log(RFM_LOG_DATA_THUMBNAIL,G_LOG_LEVEL_DEBUG,"thumbnail %s creation enqueued for %s; load_thumbnail failure code:%d.",thumbData->thumb_name,thumbData->path,ld);
          }
       }
 }
@@ -1312,7 +1312,7 @@ static void load_gitCommitMsg_for_store_row(GtkTreeIter *iter){
 static void Update_Store_ExtColumns(RFM_ChildAttribs *childAttribs) {
    gchar * value=childAttribs->stdOut;
    value[strcspn(value, "\n")] = 0;
-   g_debug("ExtColumn Value:%s",value);
+   g_log(RFM_LOG_DATA_EXT,G_LOG_LEVEL_DEBUG,"ExtColumn Value:%s",value);//TODO: add store column name?
    RFM_store_cell* cell= *(RFM_store_cell**)(childAttribs->customCallbackUserData);
    if (cell->store_column>=0 && cell->store_column<NUM_COLS)  gtk_list_store_set(store,cell->iter, cell->store_column, value, -1);
    if (g_strcmp0(value,"")!=0){
@@ -1323,7 +1323,7 @@ static void Update_Store_ExtColumns(RFM_ChildAttribs *childAttribs) {
 }
 
 static void load_ExtColumns_and_iconview_markup_tooltip(RFM_FileAttributes* fileAttributes, GtkTreeIter *iter){
-      g_log(RFM_LOG_DATA,G_LOG_LEVEL_DEBUG,"load_ExtColumns for %s",fileAttributes->path);
+      g_log(RFM_LOG_DATA_EXT,G_LOG_LEVEL_DEBUG,"load_ExtColumns for %s",fileAttributes->path);
       for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++){
 	if ((treeviewColumns[i].Show || treeviewColumns[i].iconview_markup || treeviewColumns[i].iconview_tooltip)
 	    && (g_strcmp0(treeviewColumns[i].MIME_root, "*")==0 || g_strcmp0(fileAttributes->mime_root, treeviewColumns[i].MIME_root)==0)
@@ -1452,7 +1452,7 @@ static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,
 static void readGitCommitMsgFromGitLogCmdAndUpdateStore(RFM_ChildAttribs * childAttribs){
    gchar * commitMsg=childAttribs->stdOut;
    commitMsg[strcspn(commitMsg, "\n")] = 0;
-   g_log(RFM_LOG_DATA,G_LOG_LEVEL_DEBUG,"gitCommitMsg:%s",commitMsg);
+   g_log(RFM_LOG_DATA_GIT,G_LOG_LEVEL_DEBUG,"gitCommitMsg:%s",commitMsg);
    GtkTreeIter *iter= *(GtkTreeIter**)(childAttribs->customCallbackUserData);
    gtk_list_store_set(store,iter,COL_GIT_COMMIT_MSG, commitMsg, -1);
 }
@@ -1483,7 +1483,7 @@ static void load_GitTrackedFiles_into_HashTable()
     while (oneline!=NULL){
       gchar * fullpath=g_build_filename(git_root,oneline,NULL);         
       g_hash_table_insert(gitTrackedFiles,fullpath,g_strdup(""));
-      g_log(RFM_LOG_DATA,G_LOG_LEVEL_DEBUG,"gitTrackedFile:%s",fullpath);
+      g_log(RFM_LOG_DATA_GIT,G_LOG_LEVEL_DEBUG,"gitTrackedFile:%s",fullpath);
       oneline=strtok(NULL, "\n");
     }
   }
@@ -1511,7 +1511,7 @@ static void load_GitTrackedFiles_into_HashTable()
       //but the same file path in fileattributes does not have ending /, so , they won't match
       //BTW, git status --porcelain don't have something like ?? test/testfile.md, is it a git issue?
       gchar *fullpath=g_build_filename(git_root,filename,NULL);         
-      g_log(RFM_LOG_DATA,G_LOG_LEVEL_DEBUG,"gitTrackedFile Status:%s,%s",status,fullpath);
+      g_log(RFM_LOG_DATA_GIT,G_LOG_LEVEL_DEBUG,"gitTrackedFile Status:%s,%s",status,fullpath);
 
       g_hash_table_insert(gitTrackedFiles,g_strdup(fullpath),status);
       
@@ -1740,7 +1740,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
 	 gchar* cmd=get_showcolumn_cmd_from_currently_displaying_columns();
 	 non_grepMatchTreeViewColumns=strdup(cmd + 11); //exclude leading "showcolumn "
 	 g_free(cmd);
-	 show_hide_treeview_columns_in_order(",   4,  19,");
+	 show_hide_treeview_columns_in_order(",   4,  19,"); //the leading space just mean to make the log entry align and more readable
        }
      }else{// in DirectoryView
        if (non_grepMatchTreeViewColumns!=NULL){

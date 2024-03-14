@@ -69,7 +69,7 @@
 "-T       设置缩略图尺寸,同上述thumbnailsize命令.\n" \
 "-h       显示此帮助\n" \
 "-H       关闭自动刷新\n\n" \
-"通过设置环境变量显示调试信息:G_MESSAGES_DEBUG=rfm, 这里rfm定义为log_domain(参见项目Makefile);代码中还定义了subdomain如rfm-data, rfm-gspawn, rfm-column 等, 所以,也可以设置环境变量G_MESSAGES_DEBUG=rfm-data,rfm-gspawn\n"
+"通过设置环境变量显示调试信息:G_MESSAGES_DEBUG=rfm, 这里rfm定义为log_domain(参见项目Makefile);代码中还定义了subdomain如rfm-data, rfm-gspawn, rfm-column 等(在config.h里查找完整subdomain列表), 所以,也可以设置环境变量G_MESSAGES_DEBUG=rfm-data,rfm-gspawn\n"
 
 
 #define SHOWCOLUMN_USAGE \
