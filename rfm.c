@@ -2774,34 +2774,34 @@ void move_array_item_a_after_b(void * array, int index_b, int index_a, uint32_t 
                 if ((index_b+1)>index_a){ //第一,第二种情况  比如 2,1 满足 2+1>1
 			for(guint k=0;k<index_a;k++){   // 0 <- 0    
 			  memcpy(temp_array+k*array_item_size, array + k*array_item_size, array_item_size);
-			  g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"%d <- %d",k,k);
+			  g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"[%d] <- [%d]",k,k);
 			}
 			//k=1=col_index
 			for(guint k=index_a+1;k<index_b+1;k++){  // 1 <- 2
 			  memcpy(temp_array+(k-1)*array_item_size, array+k*array_item_size, array_item_size);
-			  g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"%d <- %d",k-1,k);
+			  g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"[%d] <- [%d]",k-1,k);
 			}
 			//上面最后一次memcpy,treeviewColumn[baseColumnIndex]也已经复制到了 temptreeviewcolumns[basecolumnindex-1]
 			memcpy(temp_array+index_b*array_item_size, array+index_a*array_item_size, array_item_size); // 2 <- 1
-			g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"%d <- %d",index_b,index_a);
+			g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"[%d] <- [%d]",index_b,index_a);
 			for(guint k=index_b+1; k<array_length;k++){
 			  memcpy(temp_array+k*array_item_size, array+k*array_item_size, array_item_size);
-			  g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"%d <- %d",k,k);
+			  g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"[%d] <- [%d]",k,k);
 			}
  		}else{//第四种情况, 比如 1,3 满足 1+1 < 3
 			for(guint k=0;k<index_b+1;k++){ // 0 <- 0   1 <- 1
 			  memcpy(temp_array+k*array_item_size, array+k*array_item_size, array_item_size);
-			  g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"%d <- %d",k,k);
+			  g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"[%d] <- [%d]",k,k);
 			}
 			memcpy(temp_array+(index_b+1)*array_item_size, array+index_a*array_item_size, array_item_size); // 2 <- 3
-			g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"%d <- %d",index_b+1,index_a);
+			g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"[%d] <- [%d]",index_b+1,index_a);
 			for(guint k=index_b+1;k<index_a;k++){
 			  memcpy(temp_array+(k+1)*array_item_size, array+k*array_item_size, array_item_size); // 3 <- 2
-			  g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"%d <- %d",k+1,k);
+			  g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"[%d] <- [%d]",k+1,k);
 			}
 			for(guint k=index_a+1;k<array_length;k++){
 			  memcpy(temp_array+k*array_item_size, array+k*array_item_size, array_item_size); // 4 <- 4
-			  g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"%d <- %d",k,k);
+			  g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"[%d] <- [%d]",k,k);
 			}
 		}
 		for(guint k=0;k<array_length;k++) //I think i cannot free treeviewcolumns because of the way it's defined in config.h, so i have to copy temptreeviewcolumns back. we may define treeviewcolumns[2,] and use treeviewcolumns[0,] treeviewcolumns[1,] in turn to eliminate this copy. But anyway, not big deal, current way is more readable.
@@ -2812,22 +2812,24 @@ void move_array_item_a_after_b(void * array, int index_b, int index_a, uint32_t 
 }
 
 static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
-              g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"order_seq  %s",order_sequence);
-
-              gchar * cmd=get_showcolumn_cmd_from_currently_displaying_columns(); //TODO: cmd is only used in debug level log entry, is it possible to run this only when debug?
-	      g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"%s",cmd);//TODO: replace leading showcolumn in cmd with string such as "treeviewColumns". 
-	      g_free(cmd);
+  	      g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"        order_seq  %s",order_sequence);
+              g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"in log subdomain %s, number in [] is the index for treeviewColumns array, otherwise, is column enum value.",RFM_LOG_COLUMN_VERBOSE);
 
               gchar** order_seq_array = g_strsplit_set(order_sequence, ",;", G_N_ELEMENTS(treeviewColumns));
 	      guint j=0; //用来索引 order_seq_array,下面的do while循环,j从零开始循环一遍到order_seq_array最后一项
 	      int target_treeviewColumn_index_for_order_sequence_item_j_to_move_after=-1; //用来索引 treeviewColumns,在下面的do while循环,第一轮,也就是j=0时,会赋值为treeviewColumn_index_for_order_sequence_item_j, 其他情况都通过 ++ 递增
 	      do {
-                //如果当前 order_seq_array 项不为空, 为空且order_seq_array[j+1]!=NULL(表示不是最后一个项,也就是说只能是第一项),则只会执行j++,
+		gchar * cmd=get_showcolumn_cmd_from_currently_displaying_columns(); //TODO: cmd is only used in debug level log entry, is it possible to run this only when debug?
+		g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"        %s",cmd);//TODO: replace leading showcolumn in cmd with string such as "treeviewColumns". 
+		g_free(cmd);
+		g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"order_seq  %s",order_sequence);//把目标行紧接当前状态行显示方便在log里观察		
+
+		//如果当前 order_seq_array 项不为空, 为空且order_seq_array[j+1]!=NULL(表示不是最后一个项,也就是说只能是第一项),则只会执行j++,
 		if (g_strcmp0(order_seq_array[j], "")!=0){ //to deal with situation such as ,2 (这时,split后逗号前的项为"") or 2, (这时,splite后逗号后的项为"")
 		    int col_enum_with_sign = atoi(order_seq_array[j]);
 		    guint col_enum_at_order_sequence_item_j = abs(col_enum_with_sign);//col_enum 表示列常数,比如 COL_FILENAME
 		    int treeviewColumn_index_for_order_sequence_item_j = get_treeviewColumnsIndexByEnum(col_enum_at_order_sequence_item_j);//col_index 表示col_enum 在treeviewColumns数组里当前的下标
-		    g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"treeviewColumn_index_for_order_sequence_item_j:%d  col_enum_at_order_sequence_item_j:%d",treeviewColumn_index_for_order_sequence_item_j,col_enum_at_order_sequence_item_j);
+		    g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"j:%d; col_enum_at_order_sequence_item_j:%d; treeviewColumn_index_for_order_sequence_item_j:[%d]; target_index_for_order_sequence_item_j_to_move_after:[%d] ",j,col_enum_at_order_sequence_item_j,treeviewColumn_index_for_order_sequence_item_j,target_treeviewColumn_index_for_order_sequence_item_j_to_move_after);
                     g_free(order_seq_array[j]);
 		    if (treeviewColumn_index_for_order_sequence_item_j<0) {
 		      g_warning("cannot find column %d.",col_enum_at_order_sequence_item_j);
@@ -2856,32 +2858,29 @@ static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
 		/* 当j>=1时,我们需要完成 basecolumnindex+1 <- col_index 的复制, 因此,在下标小于 min(basecolumnindex+1, col_index)时,直接 k<-k 复制就可以了  */
 		/* 另外baseColumnIndex==col_index时,也就是类似第三种情况,我们无需调整位置,这轮do while 循环只需更新下baseColumnInex就可以了 */
 		    if (j>=1 && (target_treeviewColumn_index_for_order_sequence_item_j_to_move_after+1!=treeviewColumn_index_for_order_sequence_item_j)){
-		      g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"target_index_for_order_sequence_item_j_to_move_after+1 <- treeviewColumn_index_for_order_sequence_item_j: %d <- %d",target_treeviewColumn_index_for_order_sequence_item_j_to_move_after+1,treeviewColumn_index_for_order_sequence_item_j);
+		      g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"target_index_for_order_sequence_item_j_to_move_after+1 <- treeviewColumn_index_for_order_sequence_item_j: [%d] <- [%d]",target_treeviewColumn_index_for_order_sequence_item_j_to_move_after+1,treeviewColumn_index_for_order_sequence_item_j);
 		      //把目前处于treeviewColumn_index_for_order_sequence_item_j位置的列移动到target_treeviewColumn_index_for_order_sequence_item_j_to_move_after后面,也就是target_treeviewColumn_index_for_order_sequence_item_j_to_move_after+1的位置
 		      move_array_item_a_after_b(treeviewColumns, target_treeviewColumn_index_for_order_sequence_item_j_to_move_after, treeviewColumn_index_for_order_sequence_item_j, sizeof(RFM_treeviewColumn), G_N_ELEMENTS(treeviewColumns));
 		    }
 		  
 		    if (j>=1) target_treeviewColumn_index_for_order_sequence_item_j_to_move_after++;
 		    else target_treeviewColumn_index_for_order_sequence_item_j_to_move_after = treeviewColumn_index_for_order_sequence_item_j;
-		    g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"target_index_for_order_sequence_item_j_to_move_after:%d",target_treeviewColumn_index_for_order_sequence_item_j_to_move_after);
 
 		    
 		// emacs 里用退格键删除下一行首的右括号,再加回去,就会在minibuffer里显示右括号匹配的左括号行		    
                 } else if (order_seq_array[j+1]==NULL) { // (g_strcmp0(order_seq_array[j],"")==0) and the last elements in case 2,
 		//根据匹配if条件推断当前 order_seq_array 项为"",且后一项为NULL,说明是数组最后一项,跟在分隔副逗号后面且没内容
+		    g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"j:%d; order_seq_array[j+1]==NULL",j);
                     for (guint i = target_treeviewColumn_index_for_order_sequence_item_j_to_move_after + 1;
                          i < G_N_ELEMENTS(treeviewColumns); i++) {
 		      treeviewColumns[i].Show = FALSE;
 		      if (treeviewColumns[i].gtkCol!=NULL && icon_or_tree_view!=NULL && treeview) gtk_tree_view_column_set_visible(treeviewColumns[i].gtkCol, FALSE);
 		      g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"%d invisible after ending ','",treeviewColumns[i].enumCol);
                     }
-                }
+
+                } else g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"j:%d; order_seq_array[j]:%s",j,order_seq_array[j]);
 		
                 j++;
-
-		gchar * cmd=get_showcolumn_cmd_from_currently_displaying_columns(); //TODO: cmd is only used in debug level log entry, is it possible to run this only when debug?
-		g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"%s",cmd);//TODO: replace leading showcolumn in cmd with string such as "treeviewColumns". 
-		g_free(cmd);
 	
               } while (order_seq_array[j]!=NULL);
 	      g_free(order_seq_array);
