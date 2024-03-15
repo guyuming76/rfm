@@ -254,6 +254,9 @@ static RFM_treeviewColumn treeviewColumns[] = {
   {"grepMatch",               COL_GREP_MATCH,             FALSE,  NULL, NULL,                 COL_GREP_MATCH,           NULL,   getGrepMatchFromHashTable, "*", "*",    FALSE,FALSE},
 };
 
+static RFM_SearchResultType searchresultTypes[] = {
+  {"default",                 ProcessOnelineForSearchResult }, //default searchresult, contain only filename list such as returned by locate, or filename followed by additional info such as returned by grep
+};
 
 /* Thumbnailers
  * There must be at least one entry in the thumbnailers array.

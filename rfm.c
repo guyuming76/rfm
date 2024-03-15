@@ -214,6 +214,10 @@ typedef struct {
   gboolean iconview_tooltip;
 } RFM_treeviewColumn;
 
+typedef struct {
+  gchar* name;
+  void* (*SearchResultLineProcessingFunc)(gchar* oneline);
+}RFM_SearchResultType;
 
 //TODO: keep GtkTreeIter somewhere such as in fileAttribute, so that we can try load gitmsg and extcolumns with spawn async instead of sync. However, that can be complicated, what if we have spawned so many processes and user clicked refresh? we have to build Stop mechanism into it. Simple strategy is not to load this slow columns unless user configures to show them.
 typedef struct {
@@ -372,6 +376,7 @@ static void set_rfm_curPath(gchar *path);
 static int setup(RFM_ctx *rfmCtx);
 static void ReadFromPipeStdinIfAny(char *fd);
 static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamelist);
+static void ProcessOnelineForSearchResult(gchar* oneline);
 // read input from parent process stdin , and handle input such as
 // cd .
 // cd /tmp
@@ -3027,6 +3032,16 @@ static gboolean parse_and_exec_stdin_command_builtin(wordexp_t * parsed_msg, GSt
 	return TRUE; //execution reaches here if parsed_msg->we_wordv[0] matchs any keyword, and have finished the corresponding logic
 }
 
+static gboolean findSearchType(gchar* readlineResult){
+            gint len = strlen(readlineResult);
+            if (len > 2 && readlineResult[len-2]=='>' && readlineResult[len-1]=='0'){ //TODO: better way to check ending with ">0"?
+		ToSearchResultFilenameList=TRUE;
+		readlineResult[len-1]='\0';readlineResult[len-2]='\0';
+		return TRUE;
+	    }
+	    return FALSE;
+}
+
 static void parse_and_exec_stdin_command (gchar * readlineResult)
 {
         gint len = strlen(readlineResult);
@@ -3050,10 +3065,8 @@ static void parse_and_exec_stdin_command (gchar * readlineResult)
 	    stdin_cmd_ending_space = (readlineResult[len-1]==' ');
 	    while (readlineResult[len-1]==' ') { readlineResult[len-1]='\0'; len--; } //remove ending space
 
-            if (len > 2 && readlineResult[len-2]=='>' && readlineResult[len-1]=='0'){ //TODO: better way to check ending with ">0"?
-		ToSearchResultFilenameList=TRUE;
-		readlineResult[len-1]='\0';readlineResult[len-2]='\0';
-	    }
+	    findSearchType(readlineResult);
+
             readlineResultString=g_string_new(strdup(readlineResult));
 	    if (stdin_cmd_ending_space){
 	      // combine runCmd with selected files to get gchar** v
