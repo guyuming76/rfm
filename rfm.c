@@ -2698,7 +2698,7 @@ static void free_default_pixbufs(RFM_defaultPixbufs *defaultPixbufs)
    g_free(defaultPixbufs);
 }
 
-static gboolean ToSearchResultFilenameList=FALSE; // we need to pass this status from exec_stdin_command to readlineInSeperatedThread, however, we can only pass one parameter in g_thread_new, so, i use a global variable here.
+static int SearchResultTypeIndex=-1; // we need to pass this status from exec_stdin_command to readlineInSeperatedThread, however, we can only pass one parameter in g_thread_new, so, i use a global variable here.
 
 static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution){
   if (auto_execution_command_after_rfm_start!=NULL){
@@ -2709,13 +2709,13 @@ static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlin
   if (readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution!=NULL){ //this means it's not initial run after rfm start, so i should first run cmd from previous readline here
 	  GError *err = NULL;
 	  gchar* cmd_stdout;
-	  if (ToSearchResultFilenameList && g_spawn_sync(rfm_curPath, 
+	  if (SearchResultTypeIndex>=0 && g_spawn_sync(rfm_curPath, 
 					      stdin_cmd_interpretors[current_stdin_cmd_interpretor].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str),
 					      NULL,
 					      G_SPAWN_SEARCH_PATH|G_SPAWN_CHILD_INHERITS_STDIN|G_SPAWN_CHILD_INHERITS_STDERR,
 					      NULL,NULL,&cmd_stdout,NULL,NULL,&err)){ //remove the ending ">0" in cmd with g_string_erase
 	      g_idle_add_once(update_SearchResultFileNameList_and_refresh_store, (gpointer)cmd_stdout);
-	  } else if (!ToSearchResultFilenameList && g_spawn_sync(rfm_curPath,
+	  } else if (SearchResultTypeIndex<0 && g_spawn_sync(rfm_curPath,
 			   stdin_cmd_interpretors[current_stdin_cmd_interpretor].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str), NULL,
                            G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN |
                                G_SPAWN_CHILD_INHERITS_STDOUT |
@@ -2741,7 +2741,7 @@ static void readlineInSeperateThread(GString * readlineResultStringFromPreviousR
   if(startWithVT() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)){
     gchar prompt[5]="";
     strcat(prompt, stdin_cmd_interpretors[current_stdin_cmd_interpretor].prompt);
-    ToSearchResultFilenameList=FALSE;
+    //SearchResultTypeIndex=-1; //这个branch之前,一直在这里设成FALSE,没注意到有啥问题,但它改成数组索引后测试发现有race condition
     if (keep_selection_on_view_across_refresh && In_refresh_store) strcat(prompt,exec_stdin_cmd_sync ? "?]":"?>");
     else if (ItemSelected==0) strcat(prompt,exec_stdin_cmd_sync ? "]":">");
     else strcat(prompt,exec_stdin_cmd_sync ? "*]":"*>");
@@ -3032,14 +3032,35 @@ static gboolean parse_and_exec_stdin_command_builtin(wordexp_t * parsed_msg, GSt
 	return TRUE; //execution reaches here if parsed_msg->we_wordv[0] matchs any keyword, and have finished the corresponding logic
 }
 
-static gboolean findSearchType(gchar* readlineResult){
+static void findSearchType(gchar* readlineResult){
+            SearchResultTypeIndex = -1; // This line is in readlineInSeperateThread before
+	    //TODO:上面一行还需进一步确认
             gint len = strlen(readlineResult);
-            if (len > 2 && readlineResult[len-2]=='>' && readlineResult[len-1]=='0'){ //TODO: better way to check ending with ">0"?
-		ToSearchResultFilenameList=TRUE;
-		readlineResult[len-1]='\0';readlineResult[len-2]='\0';
-		return TRUE;
+	    if (len<=2) return; // the shortest suffix is >0
+
+	    for(int i=0; i<G_N_ELEMENTS(searchresultTypes) && i<=999; i++){
+
+	      char* searchTypeNumberSuffix=calloc(6,sizeof(char));
+	      sprintf(searchTypeNumberSuffix,">%d",i);
+	      if (g_str_has_suffix(readlineResult, searchTypeNumberSuffix)){
+		SearchResultTypeIndex=i;
+		g_debug("SearchResultTypeIndex:%d; searchResultTypeName:%s",i,searchresultTypes[i]);
+		for(int j=1; j<=strlen(searchTypeNumberSuffix); j++) readlineResult[len-j]='\0'; //set suffix such as >0 in readlineResult to '\0'
+		g_free(searchTypeNumberSuffix);
+		return;
+	      }
+	      g_free(searchTypeNumberSuffix);
+	      
+      	      char* searchTypeNameSuffix=strcat(strdup(">"),searchresultTypes[i].name);
+	      if (g_str_has_suffix(readlineResult, searchTypeNameSuffix)){
+		SearchResultTypeIndex=i;
+		g_debug("SearchResultTypeIndex:%d; searchResultTypeName:%s",i,searchresultTypes[i]);
+		for(int j=1; j<=strlen(searchTypeNameSuffix); j++) readlineResult[len-j]='\0'; //set suffix such as >default in readlineResult to '\0'
+		g_free(searchTypeNameSuffix);
+		return;
+	      }
+	      g_free(searchTypeNameSuffix);
 	    }
-	    return FALSE;
 }
 
 static void parse_and_exec_stdin_command (gchar * readlineResult)
@@ -3506,6 +3527,11 @@ static void ReadFromPipeStdinIfAny(char * fd)
 }
 
 static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamelist){
+  if (SearchResultTypeIndex<0 || SearchResultTypeIndex>=G_N_ELEMENTS(searchresultTypes)){
+    g_warning("invalid SearchResultTypeIndex:%d",SearchResultTypeIndex);
+    return;
+  }
+  
   GList * old_filenamelist = SearchResultFileNameList;
   GHashTable* old_grepMatch_hash = grepMatch_hashtable;
   SearchResultFileNameList = NULL;
@@ -3515,7 +3541,7 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"update_SearchResultFileNameList, length: %d charactor(s)",strlen((gchar*)filenamelist));
   gchar * oneline=strtok((gchar*)filenamelist,"\n");
   while (oneline!=NULL){
-    ProcessOnelineForSearchResult(oneline);
+    searchresultTypes[SearchResultTypeIndex].SearchResultLineProcessingFunc(oneline);
     oneline=strtok(NULL, "\n");
   }
 
