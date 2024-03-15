@@ -3437,7 +3437,7 @@ static void ProcessOnelineForSearchResult(gchar* oneline){
 	   //if (!ignored_filename(oneline)){ //shall we call ignored_filename here? I prefer not, user can filter those files with grep before rfm
 	       SearchResultFileNameList=g_list_prepend(SearchResultFileNameList, oneline);
 	       SearchResultFileNameListLength++;
-	       g_log(RFM_LOG_DATA,G_LOG_LEVEL_DEBUG,"appended into SearchResultFileNameList:%s", oneline);
+	       g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"appended into SearchResultFileNameList:%s", oneline);
 	   //}
 }
 
@@ -3497,7 +3497,7 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
   grepMatch_hashtable = NULL;
   SearchResultFileNameListLength=0;
   fileAttributeID=1;
-  g_debug("update_SearchResultFileNameList length %d",strlen((gchar*)filenamelist));
+  g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"update_SearchResultFileNameList, length: %d charactor(s)",strlen((gchar*)filenamelist));
   gchar * oneline=strtok((gchar*)filenamelist,"\n");
   while (oneline!=NULL){
     ProcessOnelineForSearchResult(oneline);

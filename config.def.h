@@ -24,6 +24,7 @@ static gint RFM_THUMBNAIL_SIZE = 128; /* Maximum size for thumb dir normal is 12
 #define RFM_LOG_DATA "rfm-data"
 #define RFM_LOG_DATA_EXT "rfm-data-ext"
 #define RFM_LOG_DATA_THUMBNAIL "rfm-data-thumbnail"
+#define RFM_LOG_DATA_SEARCH "rfm-data-search"
 #ifdef GitIntegration
 #define RFM_LOG_DATA_GIT "rfm-data-git"
 #endif
