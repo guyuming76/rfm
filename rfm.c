@@ -3421,7 +3421,6 @@ int main(int argc, char *argv[])
 
    if (startWithVT()) system("reset -I");
    return 0;
-   //return (StartedAs_rfmFileChooser && rfmFileChooserResultNumber>0)?rfmFileChooserResultNumber:0;
 }
 
 static void ProcessOnelineForSearchResult(gchar* oneline){
@@ -3435,7 +3434,7 @@ static void ProcessOnelineForSearchResult(gchar* oneline){
 	       sprintf(key, "%d", fileAttributeID++);
 	       g_hash_table_insert(grepMatch_hashtable, key, strdup(grepMatch));
 	   }
-	   //if (!ignored_filename(oneline)){ //TODO: shall we call ignored_filename here? we way remove it to align with the GetGlist implementation. User can filter those files with grep before rfm
+	   //if (!ignored_filename(oneline)){ //shall we call ignored_filename here? I prefer not, user can filter those files with grep before rfm
 	       SearchResultFileNameList=g_list_prepend(SearchResultFileNameList, oneline);
 	       SearchResultFileNameListLength++;
 	       g_log(RFM_LOG_DATA,G_LOG_LEVEL_DEBUG,"appended into SearchResultFileNameList:%s", oneline);
