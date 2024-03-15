@@ -39,6 +39,7 @@
 "    //          在当前目录和搜索结果视图间切换,此操作包含数据刷新\n" \
 "    pwd         获取rfm进程 PWD 环境变量值\n" \
 "    setpwd      设置rfm PWD 为当前显示目录\n" \
+"    setenv      设置rfm进程环境变量值,输入setenv命令查看使用方法\n" \
 "    pagesize    设置文件搜素结果视图每葉文件数, 如 pagesize 100\n" \
 "    thumbnailsize  设置图标视图缩略图尺寸\n" \
 "    showcolumn  显示或隐藏列(若当前在列表视图), 并且当参数为空的时候,把当前列表视图列设置作为一条showcolumn命令加入命令历史,方便通过命令历史记录恢复当前列设置\n" \
@@ -81,4 +82,13 @@
 "设置环境变量G_MESSAGES_DEBUG=rfm-column-verbose 查看日志以便了解算法\n"
 
 #define VALUE_MAY_NOT_LOADED \
-"列号%d(%s)的值可能还没有加载,你可能需要刷新以便显示此列. 注意,如果切换列表/图标视图,此列可能出现在列表视图中,但如果不刷新,显示的可能是空数据\n" 
+"列号%d(%s)的值可能还没有加载,你可能需要刷新以便显示此列. 注意,如果切换列表/图标视图,此列可能出现在列表视图中,但如果不刷新,显示的可能是空数据\n"
+
+#define SETENV_USAGE \
+"用法:  setenv EnvVarName Value\n" \
+"例子:  setenv G_MESSAGES_DEBUG rfm\n" \
+"       setenv G_MESSAGES_DEBUG rfm,rfm-data\n" \
+"       setenv G_MESSAGES_DEBUG \"\"\n" \
+"获取当前值:\n" \
+"       env |grep G_MESSAGES_DEBUG\n" \
+"       注意,env命令实际是在子进程执行的,返回的实际上是子进程环境变量值.但每次命令执行都会创建子进程,并继承父进程的环境变量,因此可以通过子进程的环境变量值来推断父进程的值\n"

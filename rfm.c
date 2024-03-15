@@ -2975,6 +2975,12 @@ static gboolean parse_and_exec_stdin_command_builtin(wordexp_t * parsed_msg, GSt
 	  printf("%s\n",getenv("PWD"));
         }else if (g_strcmp0(parsed_msg->we_wordv[0],"pwd")==0) {
 	  printf("%s\n",getenv("PWD"));
+	}else if (g_strcmp0(parsed_msg->we_wordv[0],"setenv")==0) {
+	  if (parsed_msg->we_wordc==3){
+	    setenv(parsed_msg->we_wordv[1],parsed_msg->we_wordv[2],1);
+	    add_history(readline_result_string_after_file_name_substitution->str);
+	    history_entry_added++;	  
+	  }else printf(SETENV_USAGE);
         }else if (g_strcmp0(parsed_msg->we_wordv[0],"quit")==0) {
 	  cleanup(NULL,rfmCtx);
         }else if (g_strcmp0(parsed_msg->we_wordv[0],"help")==0) {

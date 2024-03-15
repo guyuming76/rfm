@@ -39,6 +39,7 @@
 "    //          to switch between current directory and search result view, with data refreshed\n" \
 "    pwd         get rfm env PWD\n" \
 "    setpwd      set rfm env PWD with current directory\n" \
+"    setenv      set environment varaiable for rfm, input setenv to see usage\n" \
 "    pagesize    set files shown per page in search result view. for example, pagesize 100\n" \
 "    thumbnailsize  set thumbnail size in icon view. \n" \
 "    showcolumn  show or hide column (if currently in listview); current treeview column layout will be added in to command history if no parameter follows showcolumn\n" \
@@ -47,9 +48,9 @@
 "Shell commands:\n" \
 "    non-builtin commands will be sent to shell to execute.\n" \
 "    if there is ending space in command entered, selected filename(s) will be appended at the end. for example, you can view currently selected maildir mail file with `mu view `, with ending space before return.\n" \
-"    continue with the example above, if you want to view with less, you can use `mu view %s|less `. although %s in the command is replaced with selected filename, you still have to end the whole command line with space to trigger the filename replacing. one %s for one selected filename, if you choose multiple filenames, you can add more %s."
+"    continue with the example above, if you want to view with less, you can use `mu view %s|less `. although %s in the command is replaced with selected filename, you still have to end the whole command line with space to trigger the filename replacing. one %s for one selected filename, if you choose multiple filenames, you can add more %s." \
 "    append >0 to commands that output filename list, for example: locate 202309|grep png >0 , it will be displayed in rfm, the same effect as starting rfm after pipeline: locate 202309|grep png|rfm\n" \
-"custom builtin commands in config.h:\n" 
+"custom builtin commands in config.h:\n"
 
 #define rfmLaunchHelp \
 "This is the help for command line argumants you can use to launch program with, there is another help in command window for commands you can use there.\n" \
@@ -80,3 +81,12 @@
 
 #define VALUE_MAY_NOT_LOADED \
 "Value for column %d(%s) may has not been loaded yet, refresh needed. Note that if you just switch list/icon view, the column will appear, but with empty value before data refreshed\n"
+
+#define SETENV_USAGE \
+"Usage:       setenv EnvVarName Value\n" \
+"For example: setenv G_MESSAGES_DEBUG rfm\n" \
+"             setenv G_MESSAGES_DEBUG rfm,rfm-data\n" \
+"             setenv G_MESSAGES_DEBUG \"\"\n" \
+"Get current value with:\n" \
+"             env |grep G_MESSAGES_DEBUG\n" \
+"             note that env command will be run in as subprocess, so it actually return the env value of subprocess. However, since a new subprocess is created for each command, inheriting the environment value of parent, we can know the value in parent process by checking value in subprocess\n"
