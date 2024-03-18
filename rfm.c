@@ -2146,8 +2146,15 @@ static void g_spawn_wrapper_for_selected_fileList_(RFM_ChildAttribs *childAttrib
          actionFileList=g_list_append(actionFileList, fileAttributes->path);
          listElement=g_list_next(listElement);
       }
-      //TODO: if selectionList length equals 1, we can pass env_for_g_spawn here, we cannot do this for multiple files selected
-      g_spawn_wrapper_(actionFileList,NULL,childAttribs);
+
+      if (ItemSelected==1){
+	if (env_for_g_spawn==NULL){
+	  env_for_g_spawn=g_get_environ();
+	  set_env_to_pass_into_child_process(&iter);
+	  g_spawn_wrapper_(actionFileList,NULL,childAttribs);
+	  g_strfreev(env_for_g_spawn); env_for_g_spawn=NULL;
+	}else g_warning("env_for_g_spawn not NULL, please wait a few seconds and try again, it can be that the realineThread has not finished using env_for_g_spawn");
+      }else g_spawn_wrapper_(actionFileList,NULL,childAttribs);
       g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
       g_list_free(actionFileList); /* Do not free list elements: owned by GList rfm_fileAttributeList */
    }
