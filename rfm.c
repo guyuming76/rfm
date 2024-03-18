@@ -1909,7 +1909,7 @@ static void selectionChanged(GtkWidget *view, gpointer user_data)
 {
   GList *newSelectionFilePathList=NULL;
   GList *selectionList=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
-  int count=0;
+  int count=0; //TODO: why not remove this and use ItemSelected directly?
   if (selectionList==NULL){
     ItemSelected=0;
   }else{
@@ -1927,7 +1927,7 @@ static void selectionChanged(GtkWidget *view, gpointer user_data)
     g_mutex_lock(&rfm_selection_completion_lock);
     free(rfm_selection_completion);
     rfm_selection_completion = g_strdup(newSelectionFilePathList->data);
-    ItemSelected=1;
+    ItemSelected=count;
     g_mutex_unlock(&rfm_selection_completion_lock);
   }
 
