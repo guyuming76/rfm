@@ -346,6 +346,7 @@ static gboolean exec_stdin_cmd_sync = FALSE;
 static gboolean stdin_cmd_ending_space=FALSE;
 static GList * stdin_cmd_selection_list=NULL; //selected files used in stdin cmd expansion(or we call it substitution) which replace ending space and %s with selected file names
 static RFM_FileAttributes *stdin_cmd_selection_fileAttributes;
+static gchar** env_for_g_spawn=NULL;
 static uint current_stdin_cmd_interpretor = 0;
 static enum rfmTerminal rfmStartWithVirtualTerminal = INHERIT_TERMINAL;
 static gboolean pauseInotifyHandler=FALSE;
@@ -795,7 +796,7 @@ static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *ch
    if (child_attribs!=NULL) {
       child_attribs->pid=-1;
       GError* err = NULL;
-      rv=g_spawn_async_with_pipes(rfm_curPath, v, NULL, G_SPAWN_DO_NOT_REAP_CHILD | child_attribs->runOpts,
+      rv=g_spawn_async_with_pipes(rfm_curPath, v, env_for_g_spawn, G_SPAWN_DO_NOT_REAP_CHILD | child_attribs->runOpts,
 				  GSpawnChildSetupFunc_setenv,child_attribs,
                                   &child_attribs->pid, NULL, ((child_attribs->runOpts==RFM_EXEC_FILE_CHOOSER)? NULL: &child_attribs->stdOut_fd),
                                   &child_attribs->stdErr_fd, &err);
@@ -892,7 +893,7 @@ static gboolean g_spawn_wrapper_(GList *file_list, char *dest_path, RFM_ChildAtt
 
 /* (rfm:11714): rfm-WARNING **: 14:05:51.441: g_spawn_wrapper_->g_spawn_sync /usr/bin/ffmpeg failed to execute. Check command in config.h! */	       
 	       g_log(RFM_LOG_GSPAWN,G_LOG_LEVEL_DEBUG,"g_spawn_wrapper_->g_spawn_sync, workingdir:%s, argv:%s ",rfm_curPath,v[0]);
-	       if (!g_spawn_sync(rfm_curPath, v, NULL,child_attribs->runOpts, GSpawnChildSetupFunc_setenv,child_attribs,(child_attribs->runOpts & G_SPAWN_STDOUT_TO_DEV_NULL)? NULL : &child_attribs->stdOut, &child_attribs->stdErr,&child_attribs->status,NULL)){
+	       if (!g_spawn_sync(rfm_curPath, v, env_for_g_spawn,child_attribs->runOpts, GSpawnChildSetupFunc_setenv,child_attribs,(child_attribs->runOpts & G_SPAWN_STDOUT_TO_DEV_NULL)? NULL : &child_attribs->stdOut, &child_attribs->stdErr,&child_attribs->status,NULL)){
 	            g_warning("g_spawn_wrapper_->g_spawn_sync %s failed to execute. Check command in config.h!", v[0]);
 	            free_child_attribs(child_attribs);
 	            ret = FALSE;
@@ -1938,6 +1939,9 @@ static void selectionChanged(GtkWidget *view, gpointer user_data)
   if (rfm_prePath!=NULL) { g_free(rfm_prePath); rfm_prePath=NULL; }
 }
 
+static void set_env_to_pass_into_child_process(){
+}
+
 static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointer user_data)
 {
    GtkTreeIter iter;
@@ -1963,9 +1967,13 @@ static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointe
          }
       }
 
-      if (r_idx != -1)
+      if (r_idx != -1){
+	 env_for_g_spawn = g_get_environ();
+	 set_env_to_pass_into_child_process();
          g_spawn_wrapper(run_actions[r_idx].runCmd, file_list, G_SPAWN_DEFAULT, NULL,TRUE,NULL,NULL);
-      else {
+	 g_strfreev(env_for_g_spawn);
+	 env_for_g_spawn = NULL;
+      }else {
          msg=g_strdup_printf("No run action defined for mime type:\n %s/%s\n", fileAttributes->mime_root, fileAttributes->mime_sub_type);
          show_msgbox(msg, "Run Action", GTK_MESSAGE_INFO);
          g_free(msg);
@@ -2130,6 +2138,7 @@ static void g_spawn_wrapper_for_selected_fileList_(RFM_ChildAttribs *childAttrib
          actionFileList=g_list_append(actionFileList, fileAttributes->path);
          listElement=g_list_next(listElement);
       }
+      //TODO: if selectionList length equals 1, we can pass env_for_g_spawn here, we cannot do this for multiple files selected
       g_spawn_wrapper_(actionFileList,NULL,childAttribs);
       g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
       g_list_free(actionFileList); /* Do not free list elements: owned by GList rfm_fileAttributeList */
