@@ -46,7 +46,7 @@ static const char *change_owner[] = { rfmBinPath "/rfmVTforCMD.sh", rfmBinPath "
 static const char *play_video[] = { "/usr/bin/mpv", NULL };
 static const char *play_audio[] = { "/usr/bin/mpv", "--player-operation-mode=pseudo-gui", "--", NULL };
 static const char *av_info[]    = { "/usr/bin/mediainfo", "-f", NULL };
-static const char *textEdit[]   = { "/usr/bin/emacs", "--no-splash", NULL };
+static const char *textEdit[]   = { rfmBinPath "/rfmTextEdit.sh", NULL };
 static const char *mupdf[]      = { "/usr/bin/evince", NULL };
 static const char *show_image[] = { rfmBinPath "/rfmRefreshImage.sh", NULL };
 static const char *soffice[]    = { "/usr/bin/soffice", NULL };

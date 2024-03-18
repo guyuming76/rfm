@@ -381,6 +381,7 @@ static void ProcessOnelineForSearchResult(gchar* oneline);
 // read input from parent process stdin , and handle input such as
 // cd .
 // cd /tmp
+static int get_treeviewColumnsIndexByEnum(enum RFM_treeviewCol col);
 static RFM_treeviewColumn* get_treeviewColumnByEnum(enum RFM_treeviewCol col);
 static gchar* get_showcolumn_cmd_from_currently_displaying_columns();
 static void show_hide_treeview_columns_in_order(gchar *order_sequence);
@@ -1939,7 +1940,13 @@ static void selectionChanged(GtkWidget *view, gpointer user_data)
   if (rfm_prePath!=NULL) { g_free(rfm_prePath); rfm_prePath=NULL; }
 }
 
-static void set_env_to_pass_into_child_process(){
+static void set_env_to_pass_into_child_process(GtkTreeIter *iter){
+  int i=get_treeviewColumnsIndexByEnum(COL_GREP_MATCH);
+  if (i>0 && treeviewColumns[i].Show){
+    gchar* grepmatch;
+    gtk_tree_model_get(GTK_TREE_MODEL(store), iter, COL_GREP_MATCH, &grepmatch, -1);
+    g_environ_setenv(env_for_g_spawn, strcat(strdup("RFM_"), treeviewColumns[i].title), grepmatch, 1);    
+  }
 }
 
 static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointer user_data)
@@ -1969,7 +1976,7 @@ static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointe
 
       if (r_idx != -1){
 	 env_for_g_spawn = g_get_environ();
-	 set_env_to_pass_into_child_process();
+	 set_env_to_pass_into_child_process(&iter);
          g_spawn_wrapper(run_actions[r_idx].runCmd, file_list, G_SPAWN_DEFAULT, NULL,TRUE,NULL,NULL);
 	 g_strfreev(env_for_g_spawn);
 	 env_for_g_spawn = NULL;
