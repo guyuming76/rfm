@@ -3428,7 +3428,7 @@ int main(int argc, char *argv[])
          //if (strstr(argv[c+1],"/.")!=NULL) die("ERROR: %s: Hidden files are not supported.\n", PROG_NAME);
          if (stat(argv[c+1],&statbuf)!=0) die("ERROR: %s: Can't stat %s\n", PROG_NAME, argv[c+1]);
 	 if (S_ISDIR(statbuf.st_mode)){
-	    if (access(argv[c+1], R_OK | X_OK)!=0) die("ERROR: %s: Can't enter %s\n", PROG_NAME, argv[c+1]);
+	    if (access(argv[c+1], R_OK)!=0) die("ERROR: %s: Can't enter %s\n", PROG_NAME, argv[c+1]);
 	    initDir=canonicalize_file_name(argv[c+1]);
 	 }else{
 	    initDir=g_path_get_dirname(argv[c+1]);
