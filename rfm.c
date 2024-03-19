@@ -1817,15 +1817,15 @@ static void set_curPath_is_git_repo(gpointer *child_attribs)
 
 static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpointer *child_attribs) {
   char *child_StdOut=((RFM_ChildAttribs *)child_attribs)->stdOut;
+  gchar* title;
   if(child_StdOut!=NULL) {
     child_StdOut[strcspn(child_StdOut, "\n")] = 0;
     g_debug("git current branch:%d",child_StdOut);
-    gchar * title=g_strdup_printf("%s [%s]",rfm_curPath,child_StdOut);
-    set_Titles(title);
+    title=g_strdup_printf("%s [%s]",rfm_curPath,child_StdOut);
   }else{
-    g_warning("failed to get git current branch!");
+    title=g_strdup_printf("%s [%s]",rfm_curPath,"detached HEAD");
   }
-
+  set_Titles(title);
   gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(store), COL_GIT_STATUS_STR, GTK_SORT_DESCENDING);
 }
 #endif
