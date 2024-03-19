@@ -2972,11 +2972,27 @@ static gboolean parse_and_exec_stdin_command_builtin(wordexp_t * parsed_msg, GSt
 
 	    }else if (g_strcmp0(addr, "-")==0){
 	      set_rfm_curPath(getenv("OLDPWD"));
-	    }else if (addr[0]=='/'){
-	      //TODO: what if in searchresult, select filename, and tabcomplete the filename here? Shall we enter directory and switch to directory view as only selected filename but not tabcomplete?
-	      set_rfm_curPath(addr);
 	    }else{
-	      set_rfm_curPath(g_build_filename(rfm_curPath, addr, NULL));
+	      gchar* full_addr = (addr[0]=='/') ? strdup(addr) : g_build_filename(rfm_curPath, strdup(addr), NULL);
+	      struct stat statbuf;
+              if (stat(full_addr,&statbuf)!=0){
+		g_warning("Can't stat %s\n", full_addr);
+	      }else{
+		if (S_ISDIR(statbuf.st_mode))
+		  addr = strdup(full_addr);
+		else{
+		  addr = g_path_get_dirname(full_addr);
+		  g_list_free_full(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView],(GDestroyNotify)g_free);
+		  filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView] = NULL;
+		  filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView] = g_list_prepend(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView], strdup(full_addr));
+		  //note that if user type "cd " with no parameter in searchresultview, we will switch to dir view as code serveral lines bellow. But we won't switch to dir view here.
+		}
+		set_rfm_curPath(addr);
+		g_free(addr);
+		add_history(readline_result_string_after_file_name_substitution->str);
+		history_entry_added++;
+	      }
+	      g_free(full_addr);
 	    }
 	  }else if (parsed_msg->we_wordc==1){ // cd without parameter
 	      if (stdin_cmd_ending_space){

@@ -27,7 +27,7 @@
 "    prompt won't update when selection changes in rfm view, press Enter to refresh\n" \
 "    prompt b*],b>,b?] differ with explanation above only in that commands inputted in stdin is started in gtk thread instead of readline thread. When ] is displayed instead of >, gtk window will not refresh and file selection cannot be changed when command is executing(such as when selected file is being editted).\n" \
 "builtin commands for current window:\n" \
-"    cd address  go to address, note that PWD is not changed, just open address in rfm.\n" \
+"    cd address  go to address, note that PWD is not changed, just open address in rfm. can also be used to select file in rfm window.\n" \
 "    cd ..       go up to parent directory.\n" \
 "    cd -        go to directory in OLDPWD environment variable, that is, previously opened directory.\n" \
 "    cd          cd followed by space key with directory selected will enter that directory, and will enter parent directory of a file if file selected.\n" \
