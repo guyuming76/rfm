@@ -2305,8 +2305,10 @@ static gboolean view_key_press(GtkWidget *widget, GdkEvent *event,RFM_ctx *rfmCt
     else
       gtk_icon_view_unselect_all(GTK_ICON_VIEW(icon_or_tree_view));
     return TRUE;
-  }  else
-    return FALSE;
+  } else if (ek->keyval == GDK_KEY_Tab){
+    g_message("This is the command window");
+  }
+  return FALSE;
 }
 
 
