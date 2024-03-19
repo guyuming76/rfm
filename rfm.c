@@ -347,6 +347,7 @@ static gboolean stdin_cmd_ending_space=FALSE;
 static GList * stdin_cmd_selection_list=NULL; //selected files used in stdin cmd expansion(or we call it substitution) which replace ending space and %s with selected file names
 static RFM_FileAttributes *stdin_cmd_selection_fileAttributes;
 static gchar** env_for_g_spawn=NULL;
+static gchar** env_for_g_spawn_readlineThread=NULL;
 static uint current_stdin_cmd_interpretor = 0;
 static enum rfmTerminal rfmStartWithVirtualTerminal = INHERIT_TERMINAL;
 static gboolean pauseInotifyHandler=FALSE;
@@ -1940,7 +1941,7 @@ static void selectionChanged(GtkWidget *view, gpointer user_data)
   if (rfm_prePath!=NULL) { g_free(rfm_prePath); rfm_prePath=NULL; }
 }
 
-static void set_env_to_pass_into_child_process(GtkTreeIter *iter){
+static void set_env_to_pass_into_child_process(GtkTreeIter *iter, gchar** env_for_g_spawn){
   int i=get_treeviewColumnsIndexByEnum(COL_GREP_MATCH);
   if (i>0 && treeviewColumns[i].Show){
     gchar* grepmatch;
@@ -1975,12 +1976,11 @@ static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointe
       }
 
       if (r_idx != -1){
-	 if (env_for_g_spawn==NULL){
-	   env_for_g_spawn = g_get_environ();
-	   set_env_to_pass_into_child_process(&iter);
-	   g_spawn_wrapper(run_actions[r_idx].runCmd, file_list, G_SPAWN_DEFAULT, NULL,TRUE,NULL,NULL);
-	   g_strfreev(env_for_g_spawn); env_for_g_spawn = NULL;
-	 }else g_warning("env_for_g_spawn not NULL, please wait a few seconds and try again, it can be that the realineThread has not finished using env_for_g_spawn");
+	g_assert_null(env_for_g_spawn);
+	env_for_g_spawn = g_get_environ();
+	set_env_to_pass_into_child_process(&iter,env_for_g_spawn);
+	g_spawn_wrapper(run_actions[r_idx].runCmd, file_list, G_SPAWN_DEFAULT, NULL,TRUE,NULL,NULL);
+	g_strfreev(env_for_g_spawn); env_for_g_spawn = NULL;
       }else {
          msg=g_strdup_printf("No run action defined for mime type:\n %s/%s\n", fileAttributes->mime_root, fileAttributes->mime_sub_type);
          show_msgbox(msg, "Run Action", GTK_MESSAGE_INFO);
@@ -2148,12 +2148,11 @@ static void g_spawn_wrapper_for_selected_fileList_(RFM_ChildAttribs *childAttrib
       }
 
       if (ItemSelected==1){
-	if (env_for_g_spawn==NULL){
-	  env_for_g_spawn=g_get_environ();
-	  set_env_to_pass_into_child_process(&iter);
-	  g_spawn_wrapper_(actionFileList,NULL,childAttribs);
-	  g_strfreev(env_for_g_spawn); env_for_g_spawn=NULL;
-	}else g_warning("env_for_g_spawn not NULL, please wait a few seconds and try again, it can be that the realineThread has not finished using env_for_g_spawn");
+	g_assert_null(env_for_g_spawn);
+	env_for_g_spawn=g_get_environ();
+	set_env_to_pass_into_child_process(&iter,env_for_g_spawn);
+	g_spawn_wrapper_(actionFileList,NULL,childAttribs);
+	g_strfreev(env_for_g_spawn); env_for_g_spawn=NULL;
       }else g_spawn_wrapper_(actionFileList,NULL,childAttribs);
       g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
       g_list_free(actionFileList); /* Do not free list elements: owned by GList rfm_fileAttributeList */
@@ -2737,12 +2736,12 @@ static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlin
 	  gchar* cmd_stdout;
 	  if (SearchResultTypeIndex>=0 && g_spawn_sync(rfm_curPath, 
 					      stdin_cmd_interpretors[current_stdin_cmd_interpretor].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str),
-					      env_for_g_spawn,
+					      env_for_g_spawn_readlineThread,
 					      G_SPAWN_SEARCH_PATH|G_SPAWN_CHILD_INHERITS_STDIN|G_SPAWN_CHILD_INHERITS_STDERR,
 					      NULL,NULL,&cmd_stdout,NULL,NULL,&err)){ //remove the ending ">0" in cmd with g_string_erase
 	      g_idle_add_once(update_SearchResultFileNameList_and_refresh_store, (gpointer)cmd_stdout);
 	  } else if (SearchResultTypeIndex<0 && g_spawn_sync(rfm_curPath,
-			   stdin_cmd_interpretors[current_stdin_cmd_interpretor].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str), env_for_g_spawn,
+			   stdin_cmd_interpretors[current_stdin_cmd_interpretor].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str), env_for_g_spawn_readlineThread,
                            G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN |
                                G_SPAWN_CHILD_INHERITS_STDOUT |
                                G_SPAWN_CHILD_INHERITS_STDERR,
@@ -2751,7 +2750,7 @@ static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlin
               g_warning("%d;%s", err->code, err->message);
 	      g_error_free(err);
 	  }
-	  g_strfreev(env_for_g_spawn);env_for_g_spawn=NULL;
+	  g_strfreev(env_for_g_spawn_readlineThread);env_for_g_spawn_readlineThread=NULL;
 	  add_history(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str);
 	  history_entry_added++;
 	  if (OriginalReadlineResult!=NULL){ //with rfm -x , Originalreadlineresult can be null here
@@ -3155,9 +3154,9 @@ static void parse_and_exec_stdin_command (gchar * readlineResult)
 		  listElement=g_list_next(listElement);
 		}
 		if (ItemSelected==1){
-		  g_assert_null(env_for_g_spawn);
-		  env_for_g_spawn=g_get_environ();
-		  set_env_to_pass_into_child_process(&iter);
+		  g_assert_null(env_for_g_spawn_readlineThread);
+		  env_for_g_spawn_readlineThread = g_get_environ();
+		  set_env_to_pass_into_child_process(&iter, env_for_g_spawn_readlineThread);
 		}
 	      }
 	    } //end if (endingspace)
