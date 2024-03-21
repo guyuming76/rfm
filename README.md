@@ -119,6 +119,12 @@ git 仓库目录中,若包含子目录, 可以用下面命令查看目录内容:
 git ls-files | rfm -l -p100
 ```
 
+在git仓库目录,比如我自己用来保存矿物晶体标本图片的目录,要想看某个commit添加的图片,除了在列表视图按gitCommitMsg排序外,也可以在git log 获取到commitid 后,用下面命令来把文件列表输出到查询结果界面.注意当前目录需是git仓库根目录,因为结果文件路径是相对于git仓库根目录的:
+```
+git show --name-only --oneline 69e7addecc44ef518a84ce3b6684c03cc2cc081d>0
+```
+
+
 如果在多个tty分别启动了wayland和xorg显示服务，可以用如下命令决定rfm这样的gtk应用窗口显示在那里：
 
 ```
