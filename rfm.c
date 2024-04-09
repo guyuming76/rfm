@@ -1941,12 +1941,15 @@ static void selectionChanged(GtkWidget *view, gpointer user_data)
   if (rfm_prePath!=NULL) { g_free(rfm_prePath); rfm_prePath=NULL; }
 }
 
-static void set_env_to_pass_into_child_process(GtkTreeIter *iter, gchar** env_for_g_spawn){
+static void set_env_to_pass_into_child_process(GtkTreeIter *iter, gchar*** env_for_g_spawn){
   int i=get_treeviewColumnsIndexByEnum(COL_GREP_MATCH);
   if (i>0 && treeviewColumns[i].Show){
-    gchar* grepmatch;
-    gtk_tree_model_get(GTK_TREE_MODEL(store), iter, COL_GREP_MATCH, &grepmatch, -1);
-    g_environ_setenv(env_for_g_spawn, strcat(strdup("RFM_"), treeviewColumns[i].title), grepmatch, 1);    
+    gchar* env_var_name = strcat(strdup("RFM_"), treeviewColumns[i].title);
+    gchar* env_var_value;
+    gtk_tree_model_get(GTK_TREE_MODEL(store), iter, COL_GREP_MATCH, &env_var_value, -1);
+    gchar ** updated_env_for_g_spawn = g_environ_setenv(*env_for_g_spawn, env_var_name, env_var_value, 1);
+    *env_for_g_spawn = updated_env_for_g_spawn;
+    g_free(env_var_name);g_free(env_var_value);
   }
 }
 
@@ -1978,7 +1981,7 @@ static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointe
       if (r_idx != -1){
 	g_assert_null(env_for_g_spawn);
 	env_for_g_spawn = g_get_environ();
-	set_env_to_pass_into_child_process(&iter,env_for_g_spawn);
+	set_env_to_pass_into_child_process(&iter,&env_for_g_spawn);
 	g_spawn_wrapper(run_actions[r_idx].runCmd, file_list, G_SPAWN_DEFAULT, NULL,TRUE,NULL,NULL);
 	g_strfreev(env_for_g_spawn); env_for_g_spawn = NULL;
       }else {
@@ -2150,7 +2153,7 @@ static void g_spawn_wrapper_for_selected_fileList_(RFM_ChildAttribs *childAttrib
       if (ItemSelected==1){
 	g_assert_null(env_for_g_spawn);
 	env_for_g_spawn=g_get_environ();
-	set_env_to_pass_into_child_process(&iter,env_for_g_spawn);
+	set_env_to_pass_into_child_process(&iter,&env_for_g_spawn);
 	g_spawn_wrapper_(actionFileList,NULL,childAttribs);
 	g_strfreev(env_for_g_spawn); env_for_g_spawn=NULL;
       }else g_spawn_wrapper_(actionFileList,NULL,childAttribs);
@@ -3156,7 +3159,7 @@ static void parse_and_exec_stdin_command (gchar * readlineResult)
 		if (ItemSelected==1){
 		  g_assert_null(env_for_g_spawn_readlineThread);
 		  env_for_g_spawn_readlineThread = g_get_environ();
-		  set_env_to_pass_into_child_process(&iter, env_for_g_spawn_readlineThread);
+		  set_env_to_pass_into_child_process(&iter, &env_for_g_spawn_readlineThread);
 		}
 	      }
 	    } //end if (endingspace)
