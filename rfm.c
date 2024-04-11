@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <gtk/gtk.h>
 #include <gdk/gdkwayland.h>
+#include <gdk/gdkx.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/stat.h>
@@ -3226,9 +3227,12 @@ static int setup(RFM_ctx *rfmCtx)
    gtk_window_set_default_size(GTK_WINDOW(window), 640, 400);
 
    GdkDisplay *display = gtk_widget_get_display(window);
-   if (GDK_IS_WAYLAND_DISPLAY (display)){
-     gchar* theme_name = getenv("XCURSOR_THEME");
-     if (theme_name!=NULL) gdk_wayland_display_set_cursor_theme(display, theme_name, 24);
+   gchar* theme_name = getenv("XCURSOR_THEME");
+   if (theme_name!=NULL){
+     if (GDK_IS_WAYLAND_DISPLAY (display))
+       gdk_wayland_display_set_cursor_theme(display, theme_name, 24);
+     else if (GDK_IS_X11_DISPLAY (display))
+       gdk_x11_display_set_cursor_theme (display, theme_name, 24);
    }
 
    rfm_main_box=gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
