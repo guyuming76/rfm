@@ -147,6 +147,7 @@ typedef struct {  /* Update free_fileAttributes() and malloc_fileAttributes() if
    gchar * file_mode_str;
    guint64 file_size;
    gchar * mime_sort;
+   gchar * link_target_filename;
 
    gchar * mtime;
    gchar * atime;
@@ -171,6 +172,7 @@ enum RFM_treeviewCol{
    COL_MODE_STR,
    //COL_DISPLAY_NAME,
    COL_FILENAME,
+   COL_LINK_TARGET,
    COL_FULL_PATH,
    COL_MTIME,
    COL_MTIME_STR,
@@ -1114,6 +1116,7 @@ static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter)
 static void free_fileAttributes(RFM_FileAttributes *fileAttributes) {
    g_free(fileAttributes->path);
    g_free(fileAttributes->file_name);
+   g_free(fileAttributes->link_target_filename);
    //g_free(fileAttributes->display_name);
    g_clear_object(&(fileAttributes->pixbuf));
    g_free(fileAttributes->mime_root);
@@ -1212,6 +1215,11 @@ static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guin
    fileAttributes->file_name=g_strdup(name);
 
    fileAttributes->is_symlink=g_file_info_get_is_symlink(info); // if the strmode function return l correctly for symlink instead of d as currently, does it mean that we don't need to call this function anymore, we can use fileAttributes->file_mode_str[0] directly?
+   if (fileAttributes->is_symlink){
+     fileAttributes->file_mode_str[0]='l';
+     fileAttributes->link_target_filename = g_strdup(g_file_info_get_symlink_target(info));
+   }
+   
    fileType=g_file_info_get_file_type(info);
 
    switch (fileType) {
@@ -1428,6 +1436,7 @@ static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,
 			  COL_GROUP,fileAttributes->group,
                           COL_MIME_ROOT,fileAttributes->mime_root,
 			  COL_MIME_SUB,fileAttributes->mime_sub_type,
+			  COL_LINK_TARGET,fileAttributes->link_target_filename,
 			  COL_ATIME_STR,fileAttributes->atime,
                           COL_CTIME_STR,fileAttributes->ctime,
 #ifdef GitIntegration
@@ -3272,6 +3281,7 @@ static int setup(RFM_ctx *rfmCtx)
    g_object_set_data(G_OBJECT(window),"rfm_file_menu",fileMenu);
    g_object_set_data_full(G_OBJECT(window),"rfm_default_pixbufs",defaultPixbufs,(GDestroyNotify)free_default_pixbufs);
    //TODO: why list_store_new api cannot take a dynamic array of columns, correspoin?
+   //Note that it is very important that the following G_TYPE_*s are in the same order of enum definition (RFM_treeviewCOL such as COL_FILENAME)
    store=gtk_list_store_new(NUM_COLS,
 			      G_TYPE_STRING,    //iconview_markup
 			      G_TYPE_STRING,    //iconview_tooltip
@@ -3279,6 +3289,7 @@ static int setup(RFM_ctx *rfmCtx)
 			      G_TYPE_STRING,     //MODE_STR
 			    //G_TYPE_STRING,    /* Displayed name */
 			      G_TYPE_STRING,    //filename
+			      G_TYPE_STRING,  //link_target
 			      G_TYPE_STRING,    //fullpath 
                               G_TYPE_UINT64,    /* File mtime: time_t is currently 32 bit signed */
 			      G_TYPE_STRING, //MTIME_STR
@@ -3288,7 +3299,7 @@ static int setup(RFM_ctx *rfmCtx)
 			      G_TYPE_STRING,   //GROUP
 			      G_TYPE_STRING,  //mime_root
 			      G_TYPE_STRING,  //mime_sub
-   			      G_TYPE_STRING, //ATIME_STR
+			      G_TYPE_STRING, //ATIME_STR
 			      G_TYPE_STRING, //CTIME_STR
 #ifdef GitIntegration
 			      G_TYPE_STRING, //GIT_STATUS_STR
