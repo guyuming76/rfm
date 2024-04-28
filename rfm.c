@@ -510,8 +510,8 @@ char * strmode(mode_t st_mode){
     char * ret=calloc(11,sizeof(char));
     //文件类型
     if(S_ISDIR(st_mode))//目录文件
-      ret[0]='d';
-    else if(S_ISREG(st_mode))//普通文件  
+      ret[0]='d'; // ls -l /sys/dev/char 会显示类型为l, 为啥这里 S_ISDIR 会返回true? 还是说我应该把后面的S_ISLNK 判断放在前面? anyway,这里没研究清楚前暂时不动, 放在获取文件信息里判断 is_symlink 后再修正这个值. strmode是我当时想显示mode字符串时百度来的, fileAttributes->is_symlink=g_file_info_get_is_symlink(info) 这一句是从Rodney继承的
+    else if(S_ISREG(st_mode))//普通文件
       ret[0]='-';
     else if(S_ISCHR(st_mode))//字符文件
       ret[0]='c';
@@ -1211,7 +1211,7 @@ static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guin
    fileAttributes->file_mode_str=strmode(fileAttributes->file_mode);
    fileAttributes->file_name=g_strdup(name);
 
-   fileAttributes->is_symlink=g_file_info_get_is_symlink(info);
+   fileAttributes->is_symlink=g_file_info_get_is_symlink(info); // if the strmode function return l correctly for symlink instead of d as currently, does it mean that we don't need to call this function anymore, we can use fileAttributes->file_mode_str[0] directly?
    fileType=g_file_info_get_file_type(info);
 
    switch (fileType) {
