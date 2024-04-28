@@ -1216,7 +1216,7 @@ static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guin
 
    fileAttributes->is_symlink=g_file_info_get_is_symlink(info); // if the strmode function return l correctly for symlink instead of d as currently, does it mean that we don't need to call this function anymore, we can use fileAttributes->file_mode_str[0] directly?
    if (fileAttributes->is_symlink){
-     fileAttributes->file_mode_str[0]='l';
+     //fileAttributes->file_mode_str[0]='l';
      fileAttributes->link_target_filename = g_strdup(g_file_info_get_symlink_target(info));
    }
    
