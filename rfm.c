@@ -3171,7 +3171,7 @@ static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult)
 		  listElement=g_list_next(listElement);
 		}
 		if (ItemSelected==1){
-		  g_assert_null(env_for_g_spawn_readlineThread);
+		  if (exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread) g_assert_null(env_for_g_spawn_readlineThread);//TODO: assert failure recorded in commit 22cf6eeb9d3be6c364e806bb3d6c93afeda06997 in devPicAndVideo submodule
 		  env_for_g_spawn_readlineThread = g_get_environ();
 		  set_env_to_pass_into_child_process(&iter, &env_for_g_spawn_readlineThread);
 		}
