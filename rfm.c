@@ -437,9 +437,6 @@ static void set_view_selection(GtkWidget* view, gboolean treeview, GtkTreePath* 
 static void set_view_selection_list(GtkWidget *view, gboolean treeview,GList *selectionList);
 static gboolean path_is_selected(GtkWidget *widget, gboolean treeview, GtkTreePath *path);
 
-/* callback function for tool_buttons. Its possible to make function such as home_clicked as callback directly, instead of use exec_user_tool as a wrapper. However,i would add GtkToolItems as first parameter for so many different callback functions then. */
-/* since g_spawn_wrapper will free child_attribs, and we don't want the childAttribs object associated with UI interface item to be freed, we duplicate childAttribs here. */
-static void exec_user_tool(GtkToolItem *item, RFM_ChildAttribs *childAttribs);
 static void up_clicked(gpointer user_data);
 static void home_clicked(gpointer user_data);
 static void PreviousPage(RFM_ctx *rfmCtx);
@@ -447,7 +444,11 @@ static void NextPage(RFM_ctx *rfmCtx);
 static void info_clicked(gpointer user_data);
 static void switch_iconview_treeview(RFM_ctx *rfmCtx);
 static void Switch_SearchResultView_DirectoryView(GtkToolItem *item,RFM_ctx *rfmCtx);
-/* callback function for file menu */
+/* callback function for toolbar buttons. Its possible to make function such as home_clicked as callback directly, instead of use toolbar_button_exec as a wrapper. However,i would add GtkToolItems as first parameter for so many different callback functions then. */
+/* since g_spawn_wrapper will free child_attribs, and we don't want the childAttribs object associated with UI interface item to be freed, we duplicate childAttribs here. */
+/* tool_buttons actions are basically defined at current directory level, or current view level, for example: to go to parent directory, or to switch between icon or tree view */
+static void toolbar_button_exec(GtkToolItem *item, RFM_ChildAttribs *childAttribs);
+/* callback function for contextual file menu, which appear after mouse right click on selected file, or the after the menu key on keyboard pressed */
 /* since g_spawn_wrapper will free child_attribs, and we don't want the childAttribs object associated with UI interface item to be freed, we duplicate childAttribs here. */
 static void file_menu_exec(GtkMenuItem *menuitem, RFM_ChildAttribs *childAttribs);
 static RFM_fileMenu *setup_file_menu(RFM_ctx * rfmCtx);
@@ -1964,6 +1965,7 @@ static void set_env_to_pass_into_child_process(GtkTreeIter *iter, gchar*** env_f
   }
 }
 
+//called for example when user press enter on selected file or double click on it.
 static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointer user_data)
 {
    GtkTreeIter iter;
@@ -2085,7 +2087,7 @@ static void info_clicked(gpointer user_data)
 }
 
 
-static void exec_user_tool(GtkToolItem *item, RFM_ChildAttribs *childAttribs)
+static void toolbar_button_exec(GtkToolItem *item, RFM_ChildAttribs *childAttribs)
 {
    if (childAttribs->RunCmd==NULL) /* Argument is an internal function */
      childAttribs->customCallBackFunc(childAttribs->customCallbackUserData);
@@ -2433,7 +2435,7 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
       child_attribs->customCallBackFunc = tool_buttons[i].func;
       child_attribs->customCallbackUserData = rfmCtx;
 
-      g_signal_connect(tool_bar->buttons[i], "clicked", G_CALLBACK(exec_user_tool),child_attribs);
+      g_signal_connect(tool_bar->buttons[i], "clicked", G_CALLBACK(toolbar_button_exec),child_attribs);
 
       //}
    }
