@@ -392,7 +392,7 @@ static gchar* get_showcolumn_cmd_from_currently_displaying_columns();
 static void show_hide_treeview_columns_in_order(gchar *order_sequence);
 
 static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
-static void parse_and_exec_stdin_command(gchar *msg);
+static void parse_and_exec_stdin_command_in_gtk_thread(gchar *msg);
 static gboolean parse_and_exec_stdin_command_builtin(wordexp_t * parsed_msg, GString* readline_result_string);
 static void stdin_command_help();
 static void readlineInSeperateThread();
@@ -2790,7 +2790,7 @@ static void readlineInSeperateThread(GString * readlineResultStringFromPreviousR
     g_free(OriginalReadlineResult);
     while ((OriginalReadlineResult = readline(prompt))==NULL);
 
-    stdin_command_Scheduler = g_idle_add_once(parse_and_exec_stdin_command, strdup(OriginalReadlineResult));
+    stdin_command_Scheduler = g_idle_add_once(parse_and_exec_stdin_command_in_gtk_thread, strdup(OriginalReadlineResult));
   }
 }
 
@@ -3122,7 +3122,7 @@ static void findSearchType(gchar* readlineResult){
 }
 
 //this runs in gtk thread
-static void parse_and_exec_stdin_command (gchar * readlineResult)
+static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult)
 {
         gint len = strlen(readlineResult);
 	g_debug ("readline return length %u: %s", len, readlineResult);
@@ -3352,7 +3352,7 @@ static int setup(RFM_ctx *rfmCtx)
      if(startWithVT() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)){
        readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);
      }
-   }else stdin_command_Scheduler = g_idle_add_once(parse_and_exec_stdin_command, auto_execution_command_after_rfm_start);
+   }else stdin_command_Scheduler = g_idle_add_once(parse_and_exec_stdin_command_in_gtk_thread, auto_execution_command_after_rfm_start);
    
    //block Ctrl+C. Without this, Ctrl+C in readline will terminate rfm. Now, if you run htop with readline, Ctrl+C only terminate htop. BTW, it's strange that i had tried sigprocmask, pthread_sigmask, and rl_clear_signals, and they didn't work.
    struct sigaction newaction;
