@@ -345,7 +345,7 @@ static char** (*OLD_rl_attempted_completion_function)(const char *text, int star
 static char **rfm_filename_completion(const char *text, int start, int end);
 static char *rfm_selection_completion = NULL;
 static GMutex rfm_selection_completion_lock;
-static gboolean exec_stdin_cmd_sync = FALSE;
+static gboolean exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread = FALSE;
 //used by exec_stdin_command and exec_stdin_command_builtin to share status
 static gboolean stdin_cmd_ending_space=FALSE;
 static GList * stdin_cmd_selection_list=NULL; //selected files used in stdin cmd expansion(or we call it substitution) which replace ending space and %s with selected file names
@@ -1965,7 +1965,7 @@ static void set_env_to_pass_into_child_process(GtkTreeIter *iter, gchar*** env_f
   }
 }
 
-//called for example when user press enter on selected file or double click on it.
+//called for example when user press Enter on selected file or double click on it.
 static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointer user_data)
 {
    GtkTreeIter iter;
@@ -2778,15 +2778,15 @@ static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlin
 }
 
 static void readlineInSeperateThread(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution) {
-  if (!exec_stdin_cmd_sync) exec_stdin_command(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
+  if (!exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread) exec_stdin_command(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
   
   if(startWithVT() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)){
     gchar prompt[5]="";
     strcat(prompt, stdin_cmd_interpretors[current_stdin_cmd_interpretor].prompt);
     //SearchResultTypeIndex=-1; //这个branch之前,一直在这里设成FALSE,没注意到有啥问题,但它改成数组索引后测试发现有race condition
-    if (keep_selection_on_view_across_refresh && In_refresh_store) strcat(prompt,exec_stdin_cmd_sync ? "?]":"?>");
-    else if (ItemSelected==0) strcat(prompt,exec_stdin_cmd_sync ? "]":">");
-    else strcat(prompt,exec_stdin_cmd_sync ? "*]":"*>");
+    if (keep_selection_on_view_across_refresh && In_refresh_store) strcat(prompt,exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread ? "?]":"?>");
+    else if (ItemSelected==0) strcat(prompt,exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread ? "]":">");
+    else strcat(prompt,exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread ? "*]":"*>");
     g_free(OriginalReadlineResult);
     while ((OriginalReadlineResult = readline(prompt))==NULL);
 
@@ -3082,7 +3082,7 @@ static gboolean parse_and_exec_stdin_command_builtin(wordexp_t * parsed_msg, GSt
 	  }else
 	    printf("Usage: glog off|on\n");
 	}else if (g_strcmp0(parsed_msg->we_wordv[0], "toggleExecSync")==0){
-	  exec_stdin_cmd_sync = !exec_stdin_cmd_sync;
+	  exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread = !exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread;
 	  add_history(readline_result_string_after_file_name_substitution->str);
 	  history_entry_added++;	  
         }else return FALSE; // parsed_msg->we_wordv[0] does not match any build command
@@ -3121,6 +3121,7 @@ static void findSearchType(gchar* readlineResult){
 	    }
 }
 
+//this runs in gtk thread
 static void parse_and_exec_stdin_command (gchar * readlineResult)
 {
         gint len = strlen(readlineResult);
@@ -3208,7 +3209,7 @@ static void parse_and_exec_stdin_command (gchar * readlineResult)
         g_free (readlineResult);
 
 	if(startWithVT() || auto_execution_command_after_rfm_start!=NULL){
-	  if (exec_stdin_cmd_sync) exec_stdin_command(readlineResultString);
+	  if (exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread) exec_stdin_command(readlineResultString);
 	  if (auto_execution_command_after_rfm_start==NULL) g_thread_join(readlineThread);//we won't have more than one readlineThread running at the same time since we join before new thread here
 	  readlineThread=g_thread_new("readline", readlineInSeperateThread, readlineResultString);
 	}
@@ -3485,7 +3486,7 @@ int main(int argc, char *argv[])
 	 show_hide_treeview_columns_in_order(treeviewcolumn_init_order_sequence);
 	 break;
       case 'S':
-	 exec_stdin_cmd_sync = TRUE;
+	 exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread = TRUE;
 	 break;
       case 'h':
 	printf(rfmLaunchHelp, PROG_NAME);
