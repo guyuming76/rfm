@@ -1970,35 +1970,35 @@ static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointe
 {
    GtkTreeIter iter;
    long int i;
-   long int r_idx=-1;
+   long int index_of_default_file_activation_action_based_on_mime=-1;
    gchar *msg;
-   GList *file_list=NULL;
+   GList *activated_single_file_list=NULL;//although there is only one file, we need a list here to meet the requirement of g_spawn_wrapper parameter.
    RFM_FileAttributes *fileAttributes;
 
    gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, tree_path);
    gtk_tree_model_get(GTK_TREE_MODEL(store), &iter, COL_ATTR, &fileAttributes, -1);
 
-   file_list=g_list_append(file_list, g_strdup(fileAttributes->path));
+   activated_single_file_list=g_list_append(activated_single_file_list, g_strdup(fileAttributes->path));
 
    if (!fileAttributes->is_dir) {
 
       for(i=0; i<G_N_ELEMENTS(run_actions); i++) {
          if (strcmp(fileAttributes->mime_root, run_actions[i].runRoot)==0) {
             if (strcmp(fileAttributes->mime_sub_type, run_actions[i].runSub)==0 || strncmp("*", run_actions[i].runSub, 1)==0) { /* Exact match */
-               r_idx=i;
+               index_of_default_file_activation_action_based_on_mime=i;
                break;
             }
          }
       }
 
-      if (r_idx != -1){
+      if (index_of_default_file_activation_action_based_on_mime != -1){
 	g_assert_null(env_for_g_spawn);
 	env_for_g_spawn = g_get_environ();
 	set_env_to_pass_into_child_process(&iter,&env_for_g_spawn);
-	g_spawn_wrapper(run_actions[r_idx].runCmd, file_list, G_SPAWN_DEFAULT, NULL,TRUE,NULL,NULL);
+	g_spawn_wrapper(run_actions[index_of_default_file_activation_action_based_on_mime].runCmd, activated_single_file_list, G_SPAWN_DEFAULT, NULL,TRUE,NULL,NULL);
 	g_strfreev(env_for_g_spawn); env_for_g_spawn = NULL;
       }else {
-         msg=g_strdup_printf("No run action defined for mime type:\n %s/%s\n", fileAttributes->mime_root, fileAttributes->mime_sub_type);
+         msg=g_strdup_printf("No default file activation action defined for mime type:\n %s/%s\n", fileAttributes->mime_root, fileAttributes->mime_sub_type);
          show_msgbox(msg, "Run Action", GTK_MESSAGE_INFO);
          g_free(msg);
       }
@@ -2006,8 +2006,8 @@ static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointe
    else /* If dir, reset rfm_curPath and fill the model */
       set_rfm_curPath(fileAttributes->path);
 
-   g_list_foreach(file_list, (GFunc)g_free, NULL);
-   g_list_free(file_list);
+   g_list_foreach(activated_single_file_list, (GFunc)g_free, NULL);
+   g_list_free(activated_single_file_list);
 }
 
 static void row_activated(GtkTreeView *tree_view, GtkTreePath *tree_path,GtkTreeViewColumn *col, gpointer user_data)
