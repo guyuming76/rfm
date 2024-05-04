@@ -1762,7 +1762,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
 	 gchar* cmd=get_showcolumn_cmd_from_currently_displaying_columns();
 	 non_grepMatchTreeViewColumns=strdup(cmd + 11); //exclude leading "showcolumn "
 	 g_free(cmd);
-	 show_hide_treeview_columns_in_order(",   4,  19,"); //the leading space just mean to make the log entry align and more readable
+	 show_hide_treeview_columns_in_order(",   4,  20,"); //the leading space just mean to make the log entry align and more readable
        }
      }else{// in DirectoryView
        if (non_grepMatchTreeViewColumns!=NULL){
