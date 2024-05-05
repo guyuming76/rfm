@@ -393,7 +393,7 @@ static void show_hide_treeview_columns_in_order(gchar *order_sequence);
 
 static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
 static void parse_and_exec_stdin_command_in_gtk_thread(gchar *msg);
-static gboolean parse_and_exec_stdin_command_builtin(wordexp_t * parsed_msg, GString* readline_result_string);
+static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * parsed_msg, GString* readline_result_string);
 static void stdin_command_help();
 static void readlineInSeperateThread();
 static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer rfmCtx);
@@ -2968,7 +2968,7 @@ static void show_hide_treeview_columns(wordexp_t * parsed_msg){
 static void null_log_handler(const gchar *log_domain,GLogLevelFlags log_level,const gchar *message,gpointer user_data){
 }
 
-static gboolean parse_and_exec_stdin_command_builtin(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution){
+static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution){
 
         for(int i=0;i<G_N_ELEMENTS(builtinCMD);i++){
 	  if (g_strcmp0(parsed_msg->we_wordv[0], builtinCMD[i].cmd)==0) {
@@ -3181,7 +3181,7 @@ static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult)
 	    
 	    wordexp_t parsed_msg;
 	    int wordexp_retval = wordexp(readlineResult,&parsed_msg,0);
-	    if (wordexp_retval==0 && parse_and_exec_stdin_command_builtin(&parsed_msg, readlineResultString)){
+	    if (wordexp_retval==0 && parse_and_exec_stdin_builtin_command_in_gtk_thread(&parsed_msg, readlineResultString)){
 	      g_string_free(readlineResultString,TRUE);
 	      readlineResultString=NULL; //since readlineInseperatethread function will check this, we must clear it here after cmd already been executed.
 	    }
