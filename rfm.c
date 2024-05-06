@@ -3092,35 +3092,32 @@ static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * p
 
 // searchresulttype can be matched with index number or name
 // you can use >0  or >default or >your_custom_searchtype_name_or_index as suffix of your command
-static void MatchSearchResultType(gchar* readlineResult){
-            SearchResultTypeIndex = -1; // This line is in readlineInSeperateThread before
-	    //TODO:上面一行还需进一步确认
+static int MatchSearchResultType(gchar* readlineResult){
             gint len = strlen(readlineResult);
-	    if (len<=2) return; // the shortest suffix is >0
+	    if (len<=2) return -1; // the shortest suffix is >0 or >1 ...
 
 	    for(int i=0; i<G_N_ELEMENTS(searchresultTypes) && i<=999; i++){
 
 	      char* searchTypeNumberSuffix=calloc(6,sizeof(char));
 	      sprintf(searchTypeNumberSuffix,">%d",i);
 	      if (g_str_has_suffix(readlineResult, searchTypeNumberSuffix)){
-		SearchResultTypeIndex=i;
 		g_debug("SearchResultTypeIndex:%d; searchResultTypeName:%s",i,searchresultTypes[i]);
 		for(int j=1; j<=strlen(searchTypeNumberSuffix); j++) readlineResult[len-j]='\0'; //set suffix such as >0 in readlineResult to '\0'
 		g_free(searchTypeNumberSuffix);
-		return;
+		return i;
 	      }
 	      g_free(searchTypeNumberSuffix);
 	      
       	      char* searchTypeNameSuffix=strcat(strdup(">"),searchresultTypes[i].name);
 	      if (g_str_has_suffix(readlineResult, searchTypeNameSuffix)){
-		SearchResultTypeIndex=i;
 		g_debug("SearchResultTypeIndex:%d; searchResultTypeName:%s",i,searchresultTypes[i]);
 		for(int j=1; j<=strlen(searchTypeNameSuffix); j++) readlineResult[len-j]='\0'; //set suffix such as >default in readlineResult to '\0'
 		g_free(searchTypeNameSuffix);
-		return;
+		return i;
 	      }
 	      g_free(searchTypeNameSuffix);
 	    }
+	    return -1;
 }
 
 //this runs in gtk thread
@@ -3147,7 +3144,7 @@ static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult)
 	    stdin_cmd_ending_space = (readlineResult[len-1]==' ');
 	    while (readlineResult[len-1]==' ') { readlineResult[len-1]='\0'; len--; } //remove ending space
 
-	    MatchSearchResultType(readlineResult);
+	    SearchResultTypeIndex = MatchSearchResultType(readlineResult);
 
             readlineResultString=g_string_new(strdup(readlineResult));
 	    if (stdin_cmd_ending_space){
