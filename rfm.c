@@ -3137,7 +3137,7 @@ static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult)
             for(int i=0;i<G_N_ELEMENTS(stdin_cmd_interpretors);i++){
 	      if (g_strcmp0(readlineResult, stdin_cmd_interpretors[i].activationKey)==0){
 		current_stdin_cmd_interpretor = i;
-		goto switchToReadlineThread;
+		goto switchToReadlineThread;//如果当前输入命令是选择命令解释器,选择完后就直接进入一轮命令读取,无需再对当前输入命令进一步处理
 	      }
 	    }
 
