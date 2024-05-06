@@ -235,7 +235,7 @@ typedef struct {
   gchar* name;
   gchar* activationKey;
   gchar* prompt;
-  gchar** (*cmdTransformer)(gchar *);
+  gchar** (*cmdTransformer)(gchar *, gboolean inNewVT);
 } stdin_cmd_interpretor;
 
 enum rfmTerminal{
@@ -2745,7 +2745,7 @@ static int SearchResultTypeIndex=-1; // we need to pass this status from exec_st
 static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution){
     	      RFM_ChildAttribs *child_attribs = calloc(1,sizeof(RFM_ChildAttribs));
 	      // this child_attribs will be freed by g_spawn_wrapper call tree
-	      child_attribs->RunCmd = stdin_command_in_new_VT(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str);
+	      child_attribs->RunCmd = stdin_cmd_interpretors[current_stdin_cmd_interpretor].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str, TRUE);
 	      //child_attribs->runOpts = RFM_EXEC_NONE;
 	      child_attribs->spawn_async = TRUE;
 	      g_spawn_async_with_pipes_wrapper(child_attribs->RunCmd, child_attribs);
@@ -2761,13 +2761,13 @@ static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlin
 	  GError *err = NULL;
 	  gchar* cmd_stdout;
 	  if (SearchResultTypeIndex>=0 && g_spawn_sync(rfm_curPath, 
-					      stdin_cmd_interpretors[current_stdin_cmd_interpretor].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str),
+						       stdin_cmd_interpretors[current_stdin_cmd_interpretor].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE),
 					      env_for_g_spawn_readlineThread,
 					      G_SPAWN_SEARCH_PATH|G_SPAWN_CHILD_INHERITS_STDIN|G_SPAWN_CHILD_INHERITS_STDERR,
 					      NULL,NULL,&cmd_stdout,NULL,NULL,&err)){ //remove the ending ">0" in cmd with g_string_erase
 	      g_idle_add_once(update_SearchResultFileNameList_and_refresh_store, (gpointer)cmd_stdout);
 	  } else if (SearchResultTypeIndex<0 && g_spawn_sync(rfm_curPath,
-			   stdin_cmd_interpretors[current_stdin_cmd_interpretor].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str), env_for_g_spawn_readlineThread,
+							     stdin_cmd_interpretors[current_stdin_cmd_interpretor].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE), env_for_g_spawn_readlineThread,
                            G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN |
                                G_SPAWN_CHILD_INHERITS_STDOUT |
                                G_SPAWN_CHILD_INHERITS_STDERR,
