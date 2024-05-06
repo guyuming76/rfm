@@ -346,6 +346,7 @@ static char **rfm_filename_completion(const char *text, int start, int end);
 static char *rfm_selection_completion = NULL;
 static GMutex rfm_selection_completion_lock;
 static gboolean exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread = FALSE;
+static gboolean execStdinCmdInNewVT = FALSE;
 //used by exec_stdin_command and exec_stdin_command_builtin to share status
 static gboolean stdin_cmd_ending_space=FALSE;
 static GList * stdin_cmd_selection_list=NULL; //selected files used in stdin cmd expansion(or we call it substitution) which replace ending space and %s with selected file names
@@ -390,7 +391,7 @@ static int get_treeviewColumnsIndexByEnum(enum RFM_treeviewCol col);
 static RFM_treeviewColumn* get_treeviewColumnByEnum(enum RFM_treeviewCol col);
 static gchar* get_showcolumn_cmd_from_currently_displaying_columns();
 static void show_hide_treeview_columns_in_order(gchar *order_sequence);
-
+static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
 static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
 static void parse_and_exec_stdin_command_in_gtk_thread(gchar *msg);
 static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * parsed_msg, GString* readline_result_string);
@@ -2741,6 +2742,15 @@ static void free_default_pixbufs(RFM_defaultPixbufs *defaultPixbufs)
 
 static int SearchResultTypeIndex=-1; // we need to pass this status from exec_stdin_command to readlineInSeperatedThread, however, we can only pass one parameter in g_thread_new, so, i use a global variable here.
 
+static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution){
+    	      RFM_ChildAttribs *child_attribs = calloc(1,sizeof(RFM_ChildAttribs));
+	      // this child_attribs will be freed by g_spawn_wrapper call tree
+	      child_attribs->RunCmd = stdin_command_in_new_VT(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str);
+	      //child_attribs->runOpts = RFM_EXEC_NONE;
+	      child_attribs->spawn_async = TRUE;
+	      g_spawn_async_with_pipes_wrapper(child_attribs->RunCmd, child_attribs);
+}
+
 static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution){
   if (auto_execution_command_after_rfm_start!=NULL){
     //auto_execution_command_after_rfm_start was freed in exec_stdin_command as readlineresult
@@ -2778,7 +2788,9 @@ static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlin
 }
 
 static void readlineInSeperateThread(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution) {
-  if (!exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread) exec_stdin_command(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
+  if (!exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread && !execStdinCmdInNewVT) exec_stdin_command(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
+
+  execStdinCmdInNewVT = FALSE;
   
   if(startWithVT() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)){
     gchar prompt[5]="";
@@ -3141,9 +3153,14 @@ static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult)
 	      }
 	    }
 
+            if (g_str_has_suffix(readlineResult, "&")){
+	      execStdinCmdInNewVT = TRUE;
+	      readlineResult[len-1] = '\0'; //remove ending '&'
+      	      len = strlen(readlineResult);
+	    }
+	    
 	    stdin_cmd_ending_space = (readlineResult[len-1]==' ');
 	    while (readlineResult[len-1]==' ') { readlineResult[len-1]='\0'; len--; } //remove ending space
-
 	    SearchResultTypeIndex = MatchSearchResultType(readlineResult);
 
             readlineResultString=g_string_new(strdup(readlineResult));
@@ -3177,27 +3194,29 @@ static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult)
 	      }
 	    } //end if (endingspace)
 
-	    
-	    wordexp_t parsed_msg;
-	    int wordexp_retval = wordexp(readlineResult,&parsed_msg,0);
-	    if (wordexp_retval==0 && parse_and_exec_stdin_builtin_command_in_gtk_thread(&parsed_msg, readlineResultString)){
-	      g_string_free(readlineResultString,TRUE);
-	      readlineResultString=NULL; //since readlineInseperatethread function will check this, we must clear it here after cmd already been executed.
-	    }
-	    if (wordexp_retval == 0) wordfree(&parsed_msg);
+	    if (!execStdinCmdInNewVT){
+	      wordexp_t parsed_msg;
+	      int wordexp_retval = wordexp(readlineResult,&parsed_msg,0);
+	      if (wordexp_retval==0 && parse_and_exec_stdin_builtin_command_in_gtk_thread(&parsed_msg, readlineResultString)){
+		g_string_free(readlineResultString,TRUE);
+		readlineResultString=NULL; //since readlineInseperatethread function will check this, we must clear it here after cmd already been executed.
+	      }
+	      if (wordexp_retval == 0) wordfree(&parsed_msg);
+
 #ifdef PythonEmbedded
-	    if (readlineResultString!=NULL && pyProgramName!=NULL && g_strcmp0(stdin_cmd_interpretors[current_stdin_cmd_interpretor].name,"PythonEmbedded")==0){
-	      add_history(readlineResultString->str);
-	      history_entry_added++;
-	      add_history(OriginalReadlineResult);
-	      history_entry_added++;
-	      //TODO: investigation add_history, what if Originalreadlineresult equals readlineresultstring?
-              readlineResultString = g_string_append(readlineResultString, "\n");
-	      PyRun_SimpleString(readlineResultString->str);
-	      g_string_free(readlineResultString, TRUE);
-	      readlineResultString=NULL;
-	    }
+	      if (readlineResultString!=NULL && pyProgramName!=NULL && g_strcmp0(stdin_cmd_interpretors[current_stdin_cmd_interpretor].name,"PythonEmbedded")==0){
+		add_history(readlineResultString->str);
+		history_entry_added++;
+		add_history(OriginalReadlineResult);
+		history_entry_added++;
+		//TODO: investigation add_history, what if Originalreadlineresult equals readlineresultstring?
+		readlineResultString = g_string_append(readlineResultString, "\n");
+		PyRun_SimpleString(readlineResultString->str);//TODO: 这里要检查一下, 和exec_stdin_command 类似,都是执行用户输入命令,但这里似乎不受exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread控制
+		g_string_free(readlineResultString, TRUE);
+		readlineResultString=NULL;
+	      }
 #endif
+	    }
 	    if (stdin_cmd_selection_list!=NULL){
 	      g_list_free_full(stdin_cmd_selection_list, (GDestroyNotify)gtk_tree_path_free);
 	      stdin_cmd_selection_list=NULL;
@@ -3208,8 +3227,9 @@ static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult)
         g_free (readlineResult);
 
 	if(startWithVT() || auto_execution_command_after_rfm_start!=NULL){
-	  if (exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread) exec_stdin_command(readlineResultString);
+	  if (exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread && !execStdinCmdInNewVT) exec_stdin_command(readlineResultString);
 	  if (auto_execution_command_after_rfm_start==NULL) g_thread_join(readlineThread);//we won't have more than one readlineThread running at the same time since we join before new thread here
+	  if (execStdinCmdInNewVT) exec_stdin_command_in_new_VT(readlineResultString);
 	  readlineThread=g_thread_new("readline", readlineInSeperateThread, readlineResultString);
 	}
 }
