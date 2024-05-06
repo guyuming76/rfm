@@ -65,7 +65,7 @@ static const char *open_with[]  = { rfmBinPath "/open_with_dmenu.sh", NULL };
 static const char *gnumeric[]   = { "/usr/bin/gnumeric", NULL };
 static const char *ftview[] = { "/usr/bin/ftview", "14", NULL }; /* pacman -S freetype2-demos */
 static const char *ffmpegThumb[] =  { "/usr/bin/ffmpeg", "-i","", "-frames", "1", "-s", "256x256",NULL  };
-static const char *term_cmd[]  = { "/usr/bin/foot", NULL };
+static const char *term_cmd[]  = { rfmBinPath "/rfmVTforCMD.sh", NULL };
 static const char *new_rfm[]  = { rfmBinPath "/rfmVTforCMD.sh", rfmBinPath "/rfm", NULL };
 static const char *share_dir[] = { rfmBinPath "/rfmVTforCMD.sh", rfmBinPath "/rfmShareDir.sh", NULL };
 #ifdef GitIntegration
