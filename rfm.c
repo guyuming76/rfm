@@ -3090,7 +3090,9 @@ static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * p
 	return TRUE; //execution reaches here if parsed_msg->we_wordv[0] matchs any keyword, and have finished the corresponding logic
 }
 
-static void findSearchType(gchar* readlineResult){
+// searchresulttype can be matched with index number or name
+// you can use >0  or >default or >your_custom_searchtype_name_or_index as suffix of your command
+static void MatchSearchResultType(gchar* readlineResult){
             SearchResultTypeIndex = -1; // This line is in readlineInSeperateThread before
 	    //TODO:上面一行还需进一步确认
             gint len = strlen(readlineResult);
@@ -3145,7 +3147,7 @@ static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult)
 	    stdin_cmd_ending_space = (readlineResult[len-1]==' ');
 	    while (readlineResult[len-1]==' ') { readlineResult[len-1]='\0'; len--; } //remove ending space
 
-	    findSearchType(readlineResult);
+	    MatchSearchResultType(readlineResult);
 
             readlineResultString=g_string_new(strdup(readlineResult));
 	    if (stdin_cmd_ending_space){
