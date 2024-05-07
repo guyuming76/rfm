@@ -2742,6 +2742,16 @@ static void free_default_pixbufs(RFM_defaultPixbufs *defaultPixbufs)
 
 static int SearchResultTypeIndex=-1; // we need to pass this status from exec_stdin_command to readlineInSeperatedThread, however, we can only pass one parameter in g_thread_new, so, i use a global variable here.
 
+static void add_history_after_stdin_command_execution(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution){
+	  add_history(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str);
+	  history_entry_added++;
+	  if (OriginalReadlineResult!=NULL){ //with rfm -x , Originalreadlineresult can be null here
+	    add_history(OriginalReadlineResult);
+	    history_entry_added++;
+	  }
+          g_string_free(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution,TRUE);  
+}
+
 static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution){
     	      RFM_ChildAttribs *child_attribs = calloc(1,sizeof(RFM_ChildAttribs));
 	      // this child_attribs will be freed by g_spawn_wrapper call tree
@@ -2750,6 +2760,7 @@ static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPrevi
 	      child_attribs->spawn_async = TRUE;
 	      g_spawn_async_with_pipes_wrapper(child_attribs->RunCmd, child_attribs);
 	      g_strfreev(env_for_g_spawn);env_for_g_spawn=NULL;
+	      add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
 }
 
 static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution){
@@ -2778,13 +2789,7 @@ static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlin
 	      g_error_free(err);
 	  }
 	  g_strfreev(env_for_g_spawn_used_by_exec_stdin_command);env_for_g_spawn_used_by_exec_stdin_command=NULL;
-	  add_history(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str);
-	  history_entry_added++;
-	  if (OriginalReadlineResult!=NULL){ //with rfm -x , Originalreadlineresult can be null here
-	    add_history(OriginalReadlineResult);
-	    history_entry_added++;
-	  }
-          g_string_free(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution,TRUE);
+	  add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
   }
 }
 
