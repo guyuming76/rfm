@@ -2749,6 +2749,7 @@ static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPrevi
 	      //child_attribs->runOpts = RFM_EXEC_NONE;
 	      child_attribs->spawn_async = TRUE;
 	      g_spawn_async_with_pipes_wrapper(child_attribs->RunCmd, child_attribs);
+	      g_strfreev(env_for_g_spawn);env_for_g_spawn=NULL;
 }
 
 static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution){
@@ -3186,10 +3187,16 @@ static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult)
 	      
 		  listElement=g_list_next(listElement);
 		}
-		if (ItemSelected==1 && !execStdinCmdInNewVT){
-		  if (exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread) g_assert_null(env_for_g_spawn_used_by_exec_stdin_command);//TODO: assert failure recorded in commit 22cf6eeb9d3be6c364e806bb3d6c93afeda06997 in devPicAndVideo submodule
-		  env_for_g_spawn_used_by_exec_stdin_command = g_get_environ();
-		  set_env_to_pass_into_child_process(&iter, &env_for_g_spawn_used_by_exec_stdin_command);
+		if (ItemSelected==1){ //通过环境变量把当前选中的文件的数据(比如grepMatch列)传递给子进程,目前人为限制只有单选文件时起作用,因为多选文件时不同文件的同一列值可能不同
+		  if (execStdinCmdInNewVT){
+		    g_assert_null(env_for_g_spawn);
+		    env_for_g_spawn = g_get_environ();
+		    set_env_to_pass_into_child_process(&iter, &env_for_g_spawn);
+		  }else{
+		    if (exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread) g_assert_null(env_for_g_spawn_used_by_exec_stdin_command);//TODO: assert failure recorded in commit 22cf6eeb9d3be6c364e806bb3d6c93afeda06997 in devPicAndVideo submodule
+		    env_for_g_spawn_used_by_exec_stdin_command = g_get_environ();
+		    set_env_to_pass_into_child_process(&iter, &env_for_g_spawn_used_by_exec_stdin_command);
+		  }
 		}
 	      }
 	    } //end if (endingspace)
