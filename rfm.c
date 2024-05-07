@@ -680,7 +680,7 @@ static void show_child_output(RFM_ChildAttribs *child_attribs)
    /* Show any output we have regardless of error status */
    if (child_attribs->stdOut!=NULL && child_attribs->stdOut[0]!=0) {
      if (child_attribs->runOpts==RFM_EXEC_STDOUT || strlen(child_attribs->stdOut) > RFM_MX_MSGBOX_CHARS)
-       printf("PID %s:%s",child_attribs->pid,child_attribs->stdOut);
+       printf("PID %i:%s",child_attribs->pid,child_attribs->stdOut);
      else
          show_msgbox(child_attribs->stdOut, child_attribs->name, GTK_MESSAGE_INFO);
      child_attribs->stdOut[0]=0;
