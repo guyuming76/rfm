@@ -1,9 +1,19 @@
+//by guyuming with GPL license
+//This demos how to dynamically load librfm.so and call the rfmFileChooser function
+//This is not included in the Makefile,
+//so, compile this file with something like what follows:
+//gcc -g test_rfmFileChooser.c
+//and run the output in VT(without or with arguments)
+//rfm window will open search result view for the 'locate rfm.c' command
+//select a file in the rfm search result view and press q to quit
+//the selected filename will be printed in VT
+
 #include <dlfcn.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include<string.h>
+#include <string.h>
 
 void* handle = NULL;
 
