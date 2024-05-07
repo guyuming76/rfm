@@ -352,7 +352,7 @@ static gboolean stdin_cmd_ending_space=FALSE;
 static GList * stdin_cmd_selection_list=NULL; //selected files used in stdin cmd expansion(or we call it substitution) which replace ending space and %s with selected file names
 static RFM_FileAttributes *stdin_cmd_selection_fileAttributes;
 static gchar** env_for_g_spawn=NULL;
-static gchar** env_for_g_spawn_readlineThread=NULL;
+static gchar** env_for_g_spawn_used_by_exec_stdin_command=NULL;
 static uint current_stdin_cmd_interpretor = 0;
 static enum rfmTerminal rfmStartWithVirtualTerminal = INHERIT_TERMINAL;
 static gboolean pauseInotifyHandler=FALSE;
@@ -2762,12 +2762,12 @@ static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlin
 	  gchar* cmd_stdout;
 	  if (SearchResultTypeIndex>=0 && g_spawn_sync(rfm_curPath, 
 						       stdin_cmd_interpretors[current_stdin_cmd_interpretor].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE),
-					      env_for_g_spawn_readlineThread,
+					      env_for_g_spawn_used_by_exec_stdin_command,
 					      G_SPAWN_SEARCH_PATH|G_SPAWN_CHILD_INHERITS_STDIN|G_SPAWN_CHILD_INHERITS_STDERR,
 					      NULL,NULL,&cmd_stdout,NULL,NULL,&err)){ //remove the ending ">0" in cmd with g_string_erase
 	      g_idle_add_once(update_SearchResultFileNameList_and_refresh_store, (gpointer)cmd_stdout);
 	  } else if (SearchResultTypeIndex<0 && g_spawn_sync(rfm_curPath,
-							     stdin_cmd_interpretors[current_stdin_cmd_interpretor].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE), env_for_g_spawn_readlineThread,
+							     stdin_cmd_interpretors[current_stdin_cmd_interpretor].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE), env_for_g_spawn_used_by_exec_stdin_command,
                            G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN |
                                G_SPAWN_CHILD_INHERITS_STDOUT |
                                G_SPAWN_CHILD_INHERITS_STDERR,
@@ -2776,7 +2776,7 @@ static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlin
               g_warning("%d;%s", err->code, err->message);
 	      g_error_free(err);
 	  }
-	  g_strfreev(env_for_g_spawn_readlineThread);env_for_g_spawn_readlineThread=NULL;
+	  g_strfreev(env_for_g_spawn_used_by_exec_stdin_command);env_for_g_spawn_used_by_exec_stdin_command=NULL;
 	  add_history(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str);
 	  history_entry_added++;
 	  if (OriginalReadlineResult!=NULL){ //with rfm -x , Originalreadlineresult can be null here
@@ -3187,9 +3187,9 @@ static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult)
 		  listElement=g_list_next(listElement);
 		}
 		if (ItemSelected==1){
-		  if (exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread) g_assert_null(env_for_g_spawn_readlineThread);//TODO: assert failure recorded in commit 22cf6eeb9d3be6c364e806bb3d6c93afeda06997 in devPicAndVideo submodule
-		  env_for_g_spawn_readlineThread = g_get_environ();
-		  set_env_to_pass_into_child_process(&iter, &env_for_g_spawn_readlineThread);
+		  if (exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread) g_assert_null(env_for_g_spawn_used_by_exec_stdin_command);//TODO: assert failure recorded in commit 22cf6eeb9d3be6c364e806bb3d6c93afeda06997 in devPicAndVideo submodule
+		  env_for_g_spawn_used_by_exec_stdin_command = g_get_environ();
+		  set_env_to_pass_into_child_process(&iter, &env_for_g_spawn_used_by_exec_stdin_command);
 		}
 	      }
 	    } //end if (endingspace)
