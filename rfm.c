@@ -1,4 +1,4 @@
-/* RFM - Rod's File Manager
+/* RFM - Rod's File Manager,  enhancements made by guyuming
  *
  * See LICENSE file for copyright and license details.
  *
