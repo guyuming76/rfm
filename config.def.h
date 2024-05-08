@@ -287,6 +287,7 @@ static gchar shell_cmd_buffer[ARG_MAX]; //TODO: notice that this is shared singl
 static gchar* stdin_cmd_template_bash[]={"/bin/bash","-i","-c", shell_cmd_buffer, NULL};
 static gchar* stdin_cmd_template_nu[]={"nu","-c", shell_cmd_buffer, NULL};
 static gchar* stdin_cmd_template_bash_inNewVT[]  = { rfmBinPath "/rfmVTforCMD_hold.sh", "/bin/bash","-i","-c",shell_cmd_buffer, NULL };
+static gchar* stdin_cmd_template_bash_newVT_nonHold[] = { rfmBinPath "/rfmVTforCMD.sh", "/bin/bash", "-i", "-c", shell_cmd_buffer, NULL };
 static gchar* stdin_cmd_template_nu_inNewVT[] = { rfmBinPath "/rfmVTforCMD_hold.sh", "nu", "-c", shell_cmd_buffer, NULL };
 static gchar** stdin_command_bash(gchar* user_input_cmd, gboolean inNewVT) {
   sprintf(shell_cmd_buffer,"set -o history; %s; exit 2>/dev/null",g_strdup(user_input_cmd));
@@ -310,7 +311,7 @@ static stdin_cmd_interpretor stdin_cmd_interpretors[] = {
 #endif
 };
 
-static gchar* rfmFileChooser_newVT[] = { "/usr/bin/foot", "/bin/bash", "-i", "-c", shell_cmd_buffer, NULL };
+
 static gchar** rfmFileChooser_CMD(enum rfmTerminal startWithVT, gchar* search_cmd, gchar** defaultFileSelection, gchar* rfmFileChooserReturnSelectionIntoFilename){
     if (search_cmd == NULL || g_strcmp0(search_cmd,"")==0)
     	sprintf(shell_cmd_buffer, "rfm -r %s", g_strdup(rfmFileChooserReturnSelectionIntoFilename));
@@ -327,7 +328,7 @@ static gchar** rfmFileChooser_CMD(enum rfmTerminal startWithVT, gchar* search_cm
     };
 
     if (startWithVT == NEW_TERMINAL){
-	return rfmFileChooser_newVT;
+	return stdin_cmd_template_bash_newVT_nonHold;
     }else if (startWithVT == NO_TERMINAL){
 	strcat(shell_cmd_buffer, strdup(" -t"));
         return stdin_cmd_template_bash;
