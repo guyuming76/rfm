@@ -287,7 +287,7 @@ static guint stdin_command_Scheduler=0;
 static GThread * readlineThread=NULL;
 
 static int rfm_inotify_fd;
-static int rfm_curPath_wd;    /* Current path (rfm_curPath) watch */
+static int rfm_curPath_wd = -1;    /* Current path (rfm_curPath) watch */
 static int rfm_thumbnail_wd;  /* Thumbnail watch */
 static gulong viewSelectionChangedSignalConnection=0;
 
