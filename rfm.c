@@ -1880,11 +1880,6 @@ static void set_rfm_curPath(gchar* path)
    //TODO: in future if we need some directory specific history file, we may check that if the directory contains .rfm_history file, it will use this local history, otherwise, use the default global history file.
    /* if (rfm_curPath!=NULL && (e=append_history(history_entry_added, g_build_filename(rfm_curPath,".rfm_history", NULL)))) */
    /*     g_warning("failed to append_history(%d,%s) error code:%d",history_entry_added,g_build_filename(rfm_curPath,".rfm_history", NULL),e); */
-   if (SearchResultViewInsteadOfDirectoryView) {
-     set_rfm_curPath_internal(path);
-       //inotify_rm_watch(rfm_inotify_fd, rfm_curPath_wd);
-   }else{
-
      rfm_new_wd=inotify_add_watch(rfm_inotify_fd, path, INOTIFY_MASK);
      if (rfm_new_wd < 0) {
        g_warning("set_rfm_curPath(): inotify_add_watch() failed for %s",path);
@@ -1899,7 +1894,6 @@ static void set_rfm_curPath(gchar* path)
        inotify_rm_watch(rfm_inotify_fd, rfm_curPath_wd);
        rfm_curPath_wd = rfm_new_wd;
      }
-   }
 
    /* clear_history(); */
    /* if (e=read_history(g_build_filename(rfm_curPath,".rfm_history", NULL))) */
