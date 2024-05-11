@@ -4,6 +4,9 @@ https://www.bilibili.com/video/BV1vM411d7pu/?share_source=copy_web&vd_source=69a
 
 # 一些截屏 #
 
+## 更新20240512 ##
+![添加了&命令行后缀功能:新开虚拟终端运行命令,如图左上角命令窗口内 emacs -nw --no-splash rfm.c&](https://pic2.zhimg.com/v2-9bcc9ca400664725745af66fd9207b6d_r.jpg)
+
 ## 更新20231023 ##
 ![使用rfm阅读Maildir邮件列表,使用mu view读邮件](20231013_20h47m57s_grim.png)
 命令行:
