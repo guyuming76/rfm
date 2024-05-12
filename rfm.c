@@ -422,7 +422,7 @@ static void iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_and_l
 static void load_thumbnail_or_enqueue_thumbQueue_for_store_row(GtkTreeIter *iter);
 static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter);
 static gint find_thumbnailer(gchar *mime_root, gchar *mime_sub_type);
-static int load_thumbnail(gchar *key);
+static int load_thumbnail(gchar *key, gboolean show_Thumbnail_Itself_InsteadOf_As_Thumbnail_For_Original_Picture);
 static void rfm_saveThumbnail(GdkPixbuf *thumb, RFM_ThumbQueueData *thumbData);
 static gboolean mkThumb();
 static void selectionChanged(GtkWidget *view, gpointer user_data);
@@ -934,7 +934,7 @@ static gboolean g_spawn_wrapper(const char **action, GList *file_list, int run_o
 }
 
 /* Load and update a thumbnail from disk cache: key is the md5 hash of the required thumbnail */
-static int load_thumbnail(gchar *key)
+static int load_thumbnail(gchar *key, gboolean show_Thumbnail_Itself_InsteadOf_As_Thumbnail_For_Original_Picture)
 {
    GtkTreeIter iter;
    GdkPixbuf *pixbuf=NULL;
@@ -960,18 +960,20 @@ static int load_thumbnail(gchar *key)
    if (pixbuf==NULL)
       return 2;   /* Can't load thumbnail */
 
-   gtk_tree_model_get(GTK_TREE_MODEL(store), &iter, COL_MTIME, &mtime_file, -1);
-   tmp=gdk_pixbuf_get_option(pixbuf, "tEXt::Thumb::MTime");
-   if (tmp!=NULL) mtime_thumb=g_ascii_strtoll(tmp, NULL, 10); /* Convert to gint64 */
-   if (mtime_file!=mtime_thumb) {
+   if (!show_Thumbnail_Itself_InsteadOf_As_Thumbnail_For_Original_Picture){ //显示thumbnail本身,就不要考虑过期问题了,否则为thumbnail再生成thumbnail有些奇怪
+     gtk_tree_model_get(GTK_TREE_MODEL(store), &iter, COL_MTIME, &mtime_file, -1);
+     tmp=gdk_pixbuf_get_option(pixbuf, "tEXt::Thumb::MTime");
+     if (tmp!=NULL) mtime_thumb=g_ascii_strtoll(tmp, NULL, 10); /* Convert to gint64 */
+     if (mtime_file!=mtime_thumb) {
 #ifdef Allow_Thumbnail_Without_tExtThumbMTime
-     if (tmp != NULL) {
+       if (tmp != NULL) {
 #endif
-       g_object_unref(pixbuf);
-       return 3; /* Thumbnail out of date */
+	 g_object_unref(pixbuf);
+	 return 3; /* Thumbnail out of date */
 #ifdef Allow_Thumbnail_Without_tExtThumbMTime
+       }
+#endif
      }
-#endif
    }
    
    gtk_list_store_set (store, &iter, COL_PIXBUF, pixbuf, -1);
@@ -1300,7 +1302,7 @@ static void load_thumbnail_or_enqueue_thumbQueue_for_store_row(GtkTreeIter *iter
       thumbData=get_thumbData(iter); /* Returns NULL if thumbnail not handled */
       if (thumbData!=NULL) {
          /* Try to load any existing thumbnail */
-	 int ld=load_thumbnail(thumbData->thumb_name);
+	 int ld=load_thumbnail(thumbData->thumb_name, (strncmp(rfm_thumbDir, thumbData->path, strlen(rfm_thumbDir))==0)); //如同get_thumbData函数里面同样的逻辑, thumbData->path 在 rfm_thumbDir, 就视为显示thumbnail本身,而不是将其视作其他图片的thumbnail
 	 if ( ld == 0) { /* Success: thumbnail exists in cache and is valid */
 	   g_log(RFM_LOG_DATA_THUMBNAIL,G_LOG_LEVEL_DEBUG,"thumbnail %s exists for %s",thumbData->thumb_name, thumbData->path);
            free_thumbQueueData(thumbData);
@@ -2608,7 +2610,7 @@ static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer user_d
          if (event->wd==rfm_thumbnail_wd) {
             /* Update thumbnails in the current view */
             if (event->mask & IN_MOVED_TO || event->mask & IN_CREATE) { /* Only update thumbnail move - not interested in temporary files */
-              load_thumbnail(event->name);
+              load_thumbnail(event->name, FALSE); //我们假设thumbnail只会被mkthumb更新,show_Thumbnail_Itself_InsteadOf_As_Thumbnail_For_Original_Picture 时,不会触发enque mkthumb, 也就不会触发这里在Inotify_handler里load_thumbnail. 也就是说这里load_thumbnail, 不是为show_Thumbnail_Itself_InsteadOf_As_Thumbnail_For_Original_Picture,所以这里参数为FALSE
 
 	      g_debug("thumbnail %s loaded in inotify_handler",event->name);
 
