@@ -1893,6 +1893,7 @@ static void set_rfm_curPath(gchar* path)
        // and it will destory and recreate view base on conditions such as whether curPath_is_git_repo
        inotify_rm_watch(rfm_inotify_fd, rfm_curPath_wd);
        rfm_curPath_wd = rfm_new_wd;
+       if (pauseInotifyHandler) refresh_store(rfmCtx);
      }
 
    /* clear_history(); */

@@ -43,7 +43,7 @@
 "    pagesize    set files shown per page in search result view. for example, pagesize 100\n" \
 "    thumbnailsize  set thumbnail size in icon view. \n" \
 "    showcolumn  show or hide column (if currently in listview); current treeview column layout will be added in to command history if no parameter follows showcolumn\n" \
-"    toggleInotifyHandler  stop/start auto refresh\n" \
+"    toggleInotifyHandler  stop/start auto refresh, when you are view /dev directory for example\n" \
 "    toggleExecSync  switch between gtk window thread and readline thread, from which to start inputted command. Command prompt will switch between > and ]\n" \
 "Shell commands:\n" \
 "    non-builtin commands will be sent to shell to execute.\n" \
