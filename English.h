@@ -51,7 +51,7 @@
 "    continue with the example above, if you want to view with less, you can use `mu view %s|less `. although %s in the command is replaced with selected filename, you still have to end the whole command line with space to trigger the filename replacing. one %s for one selected filename, if you choose multiple filenames, you can add more %s." \
 "    append >0 to commands that output filename list, for example: locate 202309|grep png >0 , it will be displayed in rfm, the same effect as starting rfm after pipeline: locate 202309|grep png|rfm\n" \
 "Shell commands run in new virtual terminal:\n" \
-"    add & suffix at the end of non-builtin commands discussed above, a new VT will be opened to run this command. Note that this is rfm custom behavior. The linux default behavior for & suffix in command line means running command in background.\n" \
+"    add & suffix at the end of non-builtin commands discussed above, a new VT will be opened to run this command. Note that this is rfm custom behavior. The linux default behavior for & suffix in command line means running command in background. For commands such as ls&, the new VT will close immediately after open, you can run ls;read& instead, to wait for additional Enter key press.\n" \
 "custom builtin commands in config.h:\n"
 
 #define rfmLaunchHelp \
