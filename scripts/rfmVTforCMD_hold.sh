@@ -2,4 +2,4 @@
 
 #LIBGL_ALWAYS_SOFTWARE=1 /usr/bin/alacritty --hold -e "$@"
 
-/usr/bin/foot --hold --log-level=warning "$@"
+foot -t xterm-256color  --hold --log-level=warning "$@"
