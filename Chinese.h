@@ -15,6 +15,8 @@
 
 #define PipeTitle "当前:%d/总数:%d, 每葉:%d"
 
+#define PRESS_ENTER_TO_CLOSE_WINDOW "按回车键关闭当前窗口"
+
 #define builtinCMD_Help \
 "系统视图:\n" \
 "    按照数据源分两种: 一种是当前目录文件视图,此时,工具栏左边第一按钮显示目录路径(和git分支). 另一种是文件搜索结果视图,此时工具栏左边提示当前条/结果总数,每页条数, 点击此按钮在两种视图间切换.\n" \

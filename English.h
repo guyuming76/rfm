@@ -15,6 +15,8 @@
 
 #define PipeTitle "Current:%d/Total:%d, PageSize:%d"
 
+#define PRESS_ENTER_TO_CLOSE_WINDOW   "Press Enter to close current window"
+
 #define builtinCMD_Help \
 "system views:\n" \
 "    with difference in data source, two types of view can be shown, one is current directory view, with the left-most toolbar button showing its path(and git branch). The other is search result view. You can switch between these two views with the left-most toolbar button.\n" \
