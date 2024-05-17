@@ -117,6 +117,8 @@ endif
 #	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmGitShowPictures.sh
 #	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmNewFile.sh
 #	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmNewDir.sh
+	@echo
+	@echo "***please copy the .inputrc file into your home directory (~/your_username) manually."
 
 uninstall:
 	@echo removing files from ${DESTDIR}${PREFIX}/{bin,lib}
