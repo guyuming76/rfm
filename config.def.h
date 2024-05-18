@@ -292,7 +292,7 @@ static gchar* stdin_cmd_template_nu_inNewVT[] = { rfmBinPath "/rfmVTforCMD_hold.
 static gchar* stdin_cmd_template_nu_inNewVT_nonHold[] = { rfmBinPath "/rfmVTforCMD.sh", "nu", "-c", shell_cmd_buffer, NULL };
 static gchar** stdin_command_bash(gchar* user_input_cmd, gboolean inNewVT) {
   if (inNewVT){
-    sprintf(shell_cmd_buffer,"set -o history; %s;read -p \"%s\"; exit 2>/dev/null", strdup(user_input_cmd), strdup(PRESS_ENTER_TO_CLOSE_WINDOW));
+    sprintf(shell_cmd_buffer,"\"set -o history; %s;read -p '%s'; exit 2>/dev/null\"", strdup(user_input_cmd), strdup(PRESS_ENTER_TO_CLOSE_WINDOW));
     //without set -o history and "bash -i", bash builtin history command will not show results.
     //Seems to be by design, but why? for the nu shell, nu -c "history" just works
     //without exit, rfm will quit after commands such as ls, nano, but commands such as echo 1 will work. if you change exit to sleep 20, even echo 1 will make rfm terminate. Are there any race condition here?
