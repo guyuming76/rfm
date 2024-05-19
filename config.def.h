@@ -48,7 +48,7 @@ static const char *textEdit[]   = { rfmBinPath "/rfmVTforCMD.sh", rfmBinPath "/r
 static const char *pdf[]        = { "/usr/bin/xdg-open", NULL };
 static const char *mupdf[]      = { "/usr/bin/evince", NULL };
 static const char *show_image[] = { rfmBinPath "/rfmRefreshImage.sh", NULL };
-static const char *soffice[]    = { "/usr/bin/soffice", NULL };
+static const char *soffice[]    = { "/usr/bin/xdg-open", NULL };
 static const char *extract_archive[] = { rfmBinPath "/extractArchive.sh", NULL };
 static const char *create_archive[]  = { rfmBinPath "/createArchive.sh", NULL };
 static const char *metaflac[] = { "/usr/bin/metaflac", "--list", "--block-type=VORBIS_COMMENT", NULL };
