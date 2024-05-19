@@ -4,12 +4,12 @@
 target=$(pwd)
 
 if [[ -z "$target" ]]; then
-	echo "pwd return empty" > 2
+	echo "pwd return empty" >2
 	exit 2
 fi
 
 if [[ "$1" != "cp" && "$1" != "mv" ]]; then
-	echo "parameter 1 should be either cp or mv" > 2
+	echo "parameter 1 should be either cp or mv" >2
 	exit 5
 fi
 
@@ -52,7 +52,7 @@ if [[ ! -z "$source" ]];then
 			wait
 			rm -f $namedpipe
 		else
-			echo "$namedpipe already exists" > 2
+			echo "$namedpipe already exists" >2
 			exit 4
 		fi
 	elif [[ -f $source || "$new_rfm" == "n" ]];then
@@ -62,7 +62,7 @@ if [[ ! -z "$source" ]];then
 			mv -i -v $source $target
 		fi
 	else
-		echo "$source not directory or file" > 2
+		echo "$source not directory or file" >2
 		exit 3
 	fi
 else
