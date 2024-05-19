@@ -13,8 +13,7 @@ if [[ "$1" != "cp" && "$1" != "mv" ]]; then
 	exit 5
 fi
 
-sourcefiles=$(wl-paste)
-# TODO: wl-paste is for wayland, what if x11?
+sourcefiles=$(rfmFromClipboard.sh)
 
 clipboardContent=0
 for src in $sourcefiles;do
