@@ -41,10 +41,11 @@ static const char *f_mv[]   = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmCop
 static const char *cp_clipboard_to_curPath[] = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmCopyMoveToCurPath.sh","cp",NULL };
 static const char *mv_clipboard_to_curPath[] = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmCopyMoveToCurPath.sh","mv",NULL };
 static const char *change_owner[] = { rfmBinPath "/rfmVTforCMD.sh", rfmBinPath "/rfmChangeOwner.sh",NULL };
-static const char *play_video[] = { "/usr/bin/mpv", NULL };
-static const char *play_audio[] = { "/usr/bin/mpv", "--player-operation-mode=pseudo-gui", "--", NULL };
+static const char *play_video[] = { "/usr/bin/xdg-open", NULL };
+static const char *play_audio[] = { "/usr/bin/xdg-open", NULL };
 static const char *av_info[]    = { "/usr/bin/mediainfo", "-f", NULL };
 static const char *textEdit[]   = { rfmBinPath "/rfmTextEdit.sh", NULL };
+static const char *pdf[]        = { "/usr/bin/xdg-open", NULL };
 static const char *mupdf[]      = { "/usr/bin/evince", NULL };
 static const char *show_image[] = { rfmBinPath "/rfmRefreshImage.sh", NULL };
 static const char *soffice[]    = { "/usr/bin/soffice", NULL };
@@ -136,7 +137,7 @@ static RFM_MenuItem run_actions[] = {
    { "extract",      "application",    "x-zstd-compressed-tar", extract_archive, 		NULL },
    { "extract",      "application",    "zip",                  extract_archive,  		NULL },
    { "extract",      "application",    "x-rpm",                extract_archive,  		NULL },
-   { "View",         "application",    "pdf",                  mupdf,            		NULL },
+   { "View",         "application",    "pdf",                  pdf,             		NULL },
    { "View",         "application",    "epub+zip",             mupdf,            		NULL },
    { "View",         "application",    "x-troff-man",          man,              		NULL },
    { "Run",          "application",    "x-java-archive",       java,             		NULL },
