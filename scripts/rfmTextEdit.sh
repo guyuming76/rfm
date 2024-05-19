@@ -1,4 +1,10 @@
 #!/bin/bash
+
+if [[ ! -e "$(which emacs)" ]];then
+       	xdg-open "$@"
+       	exit
+fi
+
 #你可以在rfm命令输入窗口运行 rfmTextEdit.sh &
 #以便在新的虚拟终端用 emacs -nw 打开当前选中文件
 
