@@ -7,5 +7,5 @@ if [ "$WAYLAND_DISPLAY" ] || [ "$(echo '$DISPLAY'|grep -qw 'wayland')" ]; then
 	echo "$@" | wl-copy
 else
     # "当前是X环境"
-	echo "$@" | xclip
+	echo "$@" | xsel -i -b
 fi
