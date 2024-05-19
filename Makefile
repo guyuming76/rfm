@@ -83,6 +83,8 @@ endif
 	@cp -f scripts/rfmCopyMove_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmCopyMove.sh
 	@cp -f scripts/rfmRemove_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmRemove.sh
 	@cp -f scripts/rfmProperties.sh ${DESTDIR}${PREFIX}/bin
+	@cp -f scripts/rfmToClipboard.sh ${DESTDIR}${PREFIX}/bin
+	@cp -f scripts/rfmFromClipboard.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmOpenWith_.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmTextEdit.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmShareDir.sh ${DESTDIR}${PREFIX}/bin
@@ -108,6 +110,8 @@ endif
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmCopyMove.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmRemove.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmProperties.sh
+	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmToClipboard.sh
+	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmFromClipboard.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmOpenWith_.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmTextEdit.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmShareDir.sh
@@ -133,6 +137,8 @@ endif
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmCopyMove.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmRemove.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmProperties.sh
+	@rm -f ${DESTDIR}${PREFIX}/bin/rfmToClipboard.sh
+	@rm -f ${DESTDIR}${PREFIX}/bin/rfmFromClipboard.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmOpenWith_.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmTextEdit.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmShareDir.sh

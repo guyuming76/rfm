@@ -9,8 +9,8 @@ echo "or input the destination(fullpath or relative to current $(pwd)), up and d
 input_destination="$(rfmReadlineWithSpecificHistoryFile.sh ~/.rfm_history_directory)"
 
 if [[ -z "$input_destination" ]]; then
-	echo "${@:2}" | wl-copy
-	# TODO: wl-copy is for wayland, what if x11?
+        echo "${@:2}" >/tmp/test_rfmToClipboard.sh.txt
+        echo "${@:2}" | xargs rfmToClipboard.sh
 else
 	destination="$(realpath -s $input_destination)"
 

@@ -11,8 +11,8 @@ input_destination="$(rfmReadlineWithSpecificHistoryFile.sh ~/.rfm_history_direct
 # 用户很有可能是在查询结果视图里面选中文件,然后复制到当前目录的,所以目的地默认为当前目录还是很有必要,虽然会遇到来源文件也是当前目录的情况, 我测试的结果是cp -i 会直接忽略这个文件,并不提示
 
 if [[ -z "$input_destination" ]]; then
-	echo "${@:2}" | wl-copy
-	# TODO: wl-copy is for wayland, what if x11?
+	echo "${@:2}" >/tmp/test_rfmToClipboard.sh.txt
+	echo "${@:2}" | xargs rfmToClipboard.sh
 else
 	destination="$(realpath -s $input_destination)";
 
