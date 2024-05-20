@@ -13,6 +13,6 @@ if [[ -n "$RFM_TERM" ]];then
 	echo $cmd >> /tmp/test_rfmVTforCMD.sh.txt
 	eval $cmd
 else
-	echo "environmental variable RFM_TERM is empty, please set it with terminial emulator name and parameters" >&2
+	echo "environmental variable RFM_TERM is empty, please set it with terminial emulator name and parameters. You can set it automatically by launching rfm with rfm.sh" >&2
 	exit 1
 fi

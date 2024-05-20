@@ -324,10 +324,9 @@ static stdin_cmd_interpretor stdin_cmd_interpretors[] = {
 
 static gchar** rfmFileChooser_CMD(enum rfmTerminal startWithVT, gchar* search_cmd, gchar** defaultFileSelection, gchar* rfmFileChooserReturnSelectionIntoFilename){
     if (search_cmd == NULL || g_strcmp0(search_cmd,"")==0)
-    	sprintf(shell_cmd_buffer, "rfm -r %s", g_strdup(rfmFileChooserReturnSelectionIntoFilename));
+    	sprintf(shell_cmd_buffer, "rfm.sh -r %s", g_strdup(rfmFileChooserReturnSelectionIntoFilename));
     else
-	sprintf(shell_cmd_buffer, "exec %s | rfm -r %s -p", g_strdup(search_cmd), g_strdup(rfmFileChooserReturnSelectionIntoFilename));
-    //上面字符以空格开头很重要,以便后面替换成\"
+	sprintf(shell_cmd_buffer, "exec %s | rfm.sh -r %s -p", g_strdup(search_cmd), g_strdup(rfmFileChooserReturnSelectionIntoFilename));
 
     if (defaultFileSelection != NULL){
       strcat(shell_cmd_buffer, strdup(" -d"));
