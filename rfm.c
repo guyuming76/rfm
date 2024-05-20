@@ -2958,7 +2958,7 @@ static gchar* get_showcolumn_cmd_from_currently_displaying_columns(){
 	    showColumnHistory = strcat(showColumnHistory, "showcolumn ,");
 	    for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++){
 	      //gchar* onecolumn=calloc(6, sizeof(char)); //5 chars for onecolumn + ending null
-	      char onecolumn[5];
+	      char onecolumn[6];
 	      sprintf(onecolumn,"%4d,", treeviewColumns[i].enumCol * (treeviewColumns[i].Show?1:-1));
 	      showColumnHistory = strcat(showColumnHistory, onecolumn);
 	    }
@@ -2997,7 +2997,7 @@ static void show_hide_treeview_columns_enum(int count, ...){
     va_start(valist, count);
     for (int i = 0; i < count; i++) {
         int arg_i = va_arg(valist, int);
-	char* onecolumn[5];
+	char* onecolumn[6];
 	if (i==0 && arg_i==INT_MAX){ //for first argument, it means leading ',' if it is INT_MAX
 	  order_seq=strcat(order_seq, strdup(","));
 	}else if (i==(count-1) && arg_i!=INT_MAX){ //for last argument, if it is not INT_MAX, remove the ending ','
