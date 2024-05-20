@@ -30,6 +30,7 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 #include <wordexp.h>
+#include <stdarg.h>
 
 #ifdef PythonEmbedded
 #define PY_SSIZE_T_CLEAN
@@ -391,6 +392,8 @@ static int get_treeviewColumnsIndexByEnum(enum RFM_treeviewCol col);
 static RFM_treeviewColumn* get_treeviewColumnByEnum(enum RFM_treeviewCol col);
 static gchar* get_showcolumn_cmd_from_currently_displaying_columns();
 static void show_hide_treeview_columns_in_order(gchar *order_sequence);
+static void show_hide_treeview_columns_enum(int count, ...);
+
 static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
 static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
 static void parse_and_exec_stdin_command_in_gtk_thread(gchar *msg);
@@ -1765,7 +1768,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
 	 gchar* cmd=get_showcolumn_cmd_from_currently_displaying_columns();
 	 non_grepMatchTreeViewColumns=strdup(cmd + 11); //exclude leading "showcolumn "
 	 g_free(cmd);
-	 show_hide_treeview_columns_in_order(",   4,  20,"); //the leading space just mean to make the log entry align and more readable
+	 show_hide_treeview_columns_enum(4, INT_MAX, COL_FILENAME,COL_GREP_MATCH, INT_MAX);
        }
      }else{// in DirectoryView
        if (non_grepMatchTreeViewColumns!=NULL){
@@ -2979,6 +2982,36 @@ static void show_hide_treeview_columns(wordexp_t * parsed_msg){
          return TRUE;
 }
 
+// Use enum int instead of char* if we need to hardcode some column displaying
+// sequence in code, so that it will not cause bug when we adjust column enum
+// definition
+// Use leading and ending INT_MAX to represent leading and ending ',' used in
+// char* order_sequence
+//
+// 看上去似乎内部用本函数, 外部用show_hide_treeview_columns_in_order
+// 来调用本函数比较合理,但是,show_hide_treeview_columns_in_order能工作蛮久了,又比较复杂,不想动;
+// 更重要的是,它可以不依赖stdarg.h,而本函数需要用到变长参数列表,所以把本函数放到外层也合理
+static void show_hide_treeview_columns_enum(int count, ...){
+    gchar* order_seq=calloc(G_N_ELEMENTS(treeviewColumns)*5+13, sizeof(char));
+    va_list valist;
+    va_start(valist, count);
+    for (int i = 0; i < count; i++) {
+        int arg_i = va_arg(valist, int);
+	char* onecolumn[5];
+	if (i==0 && arg_i==INT_MAX){ //for first argument, it means leading ',' if it is INT_MAX
+	  order_seq=strcat(order_seq, strdup(","));
+	}else if (i==(count-1) && arg_i!=INT_MAX){ //for last argument, if it is not INT_MAX, remove the ending ','
+	  int len=strlen(order_seq);
+	  order_seq[len-1]=0;
+	}else if (arg_i!=INT_MAX){
+	  sprintf(onecolumn, "%4d,", arg_i); //the leading space just mean to make the log entry align and more readable
+	  order_seq=strcat(order_seq, onecolumn);
+	}
+    }
+    va_end(valist);
+    show_hide_treeview_columns_in_order(order_seq);
+    g_free(order_seq);
+}
 
 static void null_log_handler(const gchar *log_domain,GLogLevelFlags log_level,const gchar *message,gpointer user_data){
 }
