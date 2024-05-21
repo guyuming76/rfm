@@ -8,6 +8,12 @@
 //select a file in the rfm search result view and press q to quit
 //the selected filename will be printed in VT
 
+//run test with something like:
+// ./a.out  //this passed at this commit
+// ./a.out 0 "locate *.png" 0    //no newVT, sync   //this passed at this commit
+// ./a.out 0 "locate *.png" 1    //no newVT, async   //failed
+// ./a.out 1 "locate *.png" 0    //newVT, sync       //failed
+
 #include <dlfcn.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -30,10 +36,14 @@ int main(int argc, char *argv[]){
 		for(int i=4; i<argc; i++)
 			selectionList[i-4]=strdup(argv[i]);
 		selectionList[argc]=NULL;
-		fileChooserResultPrint(fileChooser(atoi(argv[1]), argv[2] , atoi(argv[3]), selectionList, NULL));
-	}else if (argc>3)
-		fileChooserResultPrint(fileChooser(atoi(argv[1]), argv[2] , atoi(argv[3]), selectionList, NULL));
-	else if (argc>2)
+	}
+
+        if (argc>3){
+		if (atoi(argv[3])==0) //async==0
+			fileChooserResultPrint(fileChooser(atoi(argv[1]), argv[2] , 0, selectionList, NULL)); // sync
+		else
+			fileChooser(atoi(argv[1]), argv[2] , 1, selectionList, fileChooserResultPrint); //async
+	}else if (argc>2)
 		fileChooserResultPrint(fileChooser(atoi(argv[1]), argv[2] , 0, selectionList, NULL));
 	else if (argc>1)
 		fileChooserResultPrint(fileChooser(atoi(argv[1]), "" , 0, selectionList, NULL));
