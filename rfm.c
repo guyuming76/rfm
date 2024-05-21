@@ -3436,6 +3436,7 @@ static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx)
       if (rfmFileChooserReturnSelectionIntoFilename!=NULL && (returnToFile_fd=open(rfmFileChooserReturnSelectionIntoFilename,O_WRONLY|O_NONBLOCK))<0)
 	g_warning("failed to open rfmFileChooserReturnSelectionIntoFilename:%s",rfmFileChooserReturnSelectionIntoFilename);
       else if(returnToFile_fd>=0 || rfmFileChooserReturnSelectionIntoFilename==NULL ){
+	  g_debug("fd for rfmFileChooserReturnSelectionIntoFilename in child process:%d",returnToFile_fd);
 	  GList *selectionList = get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
 	  selectionList=g_list_first(selectionList);
 	  while(selectionList!=NULL){
@@ -3560,6 +3561,7 @@ int main(int argc, char *argv[])
 	  c++;
 	}
 	if (rfmFileChooserReturnSelectionIntoFilename==NULL) rfmFileChooserReturnSelectionIntoFilename = getenv("rfmFileChooserReturnSelectionIntoFilename");
+	g_debug("rfmFileChooserReturnSelectionIntoFilename:%s",rfmFileChooserReturnSelectionIntoFilename);
 	break;
       case 'x': //auto execute after start. for example, start with locate rfm.c >0, to avoid locate rfm.c|rfm. We can use rfm -x "locate rfm.c>0"
 	if (argc<=(c+1)) die("ERROR: %s: A command string which can be executed by rfm is required for the option. for example: rfm -x \"locate rfm.c>0\"\n", PROG_NAME);
@@ -3765,6 +3767,7 @@ GList* rfmFileChooser_glist(enum rfmTerminal startWithVirtualTerminal, char* sea
   if (mkfifo(named_pipe_name, 0700)==0){ //0700 is  rwx------ https://jameshfisher.com/2017/02/24/what-is-mode_t/
     int named_pipe_fd = open(named_pipe_name, O_RDONLY|O_NONBLOCK);
     if (named_pipe_fd>0){
+      g_debug("named_pipe_fd in calling process:%d",named_pipe_fd);
       RFM_ChildAttribs *child_attribs=calloc(1,sizeof(RFM_ChildAttribs));
       child_attribs->customCallBackFunc = rfmFileChooserResultReader;
       child_attribs->customCallbackUserData = fileChooserSelectionListAddress;
