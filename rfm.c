@@ -636,6 +636,7 @@ static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_
    read_char_pipe(child_attribs->stdErr_fd, PIPE_SZ, &child_attribs->stdErr);
    
    if (child_attribs->runOpts!=RFM_EXEC_OUPUT_READ_BY_PROGRAM && child_attribs->runOpts!=RFM_EXEC_NONE) show_child_output(child_attribs);
+   //TODO: devPicAndVideo submodule commit f746eaf096827adda06cb2a085787027f1dca027 的错误起源于上面一行代码和RFM_EXEC_FILECHOOSER 的引入。
    if (child_attribs->status==-1)
        return TRUE;
    
@@ -3764,6 +3765,7 @@ GList* rfmFileChooser_glist(enum rfmTerminal startWithVirtualTerminal, char* sea
   sprintf(named_pipe_name, "%s%d", RFM_FILE_CHOOSER_NAMED_PIPE_PREFIX,getpid());
   if (async && fileChooserClientCallback==NULL) { g_warning("to call rfmFileChooser async, fileChooserClientCallback function pointer must be provided."); return NULL; }
   FileChooserClientCallback = fileChooserClientCallback;
+  // 同步spawn的时候,我们依然使用namedpipe,而不是stdout来传递返回的选中文件,主要是因为stdout里面有可能会混入rfm的其他输出内容,专门的namedpipe就没这个问题
   if (mkfifo(named_pipe_name, 0700)==0){ //0700 is  rwx------ https://jameshfisher.com/2017/02/24/what-is-mode_t/
     int named_pipe_fd = open(named_pipe_name, O_RDONLY|O_NONBLOCK);
     if (named_pipe_fd>0){
@@ -3776,6 +3778,7 @@ GList* rfmFileChooser_glist(enum rfmTerminal startWithVirtualTerminal, char* sea
       child_attribs->stdErr = NULL;
       child_attribs->spawn_async = async;
       child_attribs->runOpts=RFM_EXEC_FILE_CHOOSER;
+      //TODO: commit 3d53359fdb97498a895a0cec97e3076558908a02 修改的原因是SIGTTIN后rfm stop了,当时不知怎么处理,作了上一行的改动;今天知道只要 fg 命令把 rfm 切换回前台就可以了.所以  3d53359fdb97498a895a0cec97e3076558908a02 的改动要改回去
       child_attribs->name=g_strdup("rfmFileChooser");
       child_attribs->RunCmd = rfmFileChooser_CMD(startWithVirtualTerminal, search_cmd, GList_to_str_array(*fileChooserSelectionListAddress, g_list_length(*fileChooserSelectionListAddress)), named_pipe_name);
 
