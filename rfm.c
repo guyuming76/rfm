@@ -43,7 +43,6 @@
 #define   RFM_EXEC_NONE     G_SPAWN_STDOUT_TO_DEV_NULL
 #define   RFM_EXEC_STDOUT   G_SPAWN_CHILD_INHERITS_STDIN | G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR
 #define   RFM_EXEC_OUPUT_READ_BY_PROGRAM G_SPAWN_DEFAULT
-#define   RFM_EXEC_FILE_CHOOSER G_SPAWN_STDIN_FROM_DEV_NULL
 #define   RFM_EXEC_MOUNT   G_SPAWN_CHILD_INHERITS_STDIN | G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR  //TODO: i don't know what this mean yet.
 
 typedef struct {
@@ -610,7 +609,7 @@ static void rfm_stop_all(RFM_ctx *rfmCtx) {
 
 static gboolean ExecCallback_freeChildAttribs(RFM_ChildAttribs * child_attribs){
    if(child_attribs->exitcode==0 && (child_attribs->customCallBackFunc)!=NULL){
-     if (child_attribs->runOpts!=RFM_EXEC_OUPUT_READ_BY_PROGRAM && child_attribs->runOpts!=RFM_EXEC_FILE_CHOOSER){
+     if (child_attribs->runOpts!=RFM_EXEC_OUPUT_READ_BY_PROGRAM){
        //for old callback such as refresh_store, there is no need for child_attribs->stdout, so pass in customcallbackuserdata as parameter to remain compatible.
 
        (child_attribs->customCallBackFunc)(child_attribs->customCallbackUserData);
@@ -808,9 +807,12 @@ static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *ch
    if (child_attribs!=NULL) {
       child_attribs->pid=-1;
       GError* err = NULL;
+
       rv=g_spawn_async_with_pipes(rfm_curPath, v, env_for_g_spawn, G_SPAWN_DO_NOT_REAP_CHILD | child_attribs->runOpts,
+				  //本commit 是revert 3d53359fdb97498a895a0cec97e3076558908a02 消除冲突后的结果，注意上一行|child_attribs->runOpts 是保留3d53359fdb97498a895a0cec97e3076558908a02改动的
+
 				  GSpawnChildSetupFunc_setenv,child_attribs,
-                                  &child_attribs->pid, NULL, ((child_attribs->runOpts==RFM_EXEC_FILE_CHOOSER)? NULL: &child_attribs->stdOut_fd),
+                                  &child_attribs->pid, NULL, ((child_attribs->stdOut_fd<=0)? &child_attribs->stdOut_fd: NULL), // stdOut_fd>0, means we use existing fd to read result from, so we pass in NULL, otherwise stdout_fd will be overwriten. For example, we use existing fd in rfmFileChooser
                                   &child_attribs->stdErr_fd, &err);
       
       g_log(RFM_LOG_GSPAWN,G_LOG_LEVEL_DEBUG,"g_spawn_async_with_pipes_wrapper:  workingdir:%s, argv:%s, G_SPAWN_DO_NOT_REAP_CHILD",rfm_curPath,v[0]);
@@ -3777,8 +3779,8 @@ GList* rfmFileChooser_glist(enum rfmTerminal startWithVirtualTerminal, char* sea
       child_attribs->stdOut = NULL;
       child_attribs->stdErr = NULL;
       child_attribs->spawn_async = async;
-      child_attribs->runOpts=RFM_EXEC_FILE_CHOOSER;
-      //TODO: commit 3d53359fdb97498a895a0cec97e3076558908a02 修改的原因是SIGTTIN后rfm stop了,当时不知怎么处理,作了上一行的改动;今天知道只要 fg 命令把 rfm 切换回前台就可以了.所以  3d53359fdb97498a895a0cec97e3076558908a02 的改动要改回去
+      child_attribs->runOpts=RFM_EXEC_OUPUT_READ_BY_PROGRAM;
+      //commit 3d53359fdb97498a895a0cec97e3076558908a02 修改的原因是SIGTTIN后rfm stop了,当时不知怎么处理,作了上一行的改动;今天知道只要 fg 命令把 rfm 切换回前台就可以了.所以  3d53359fdb97498a895a0cec97e3076558908a02 的改动要改回去
       child_attribs->name=g_strdup("rfmFileChooser");
       child_attribs->RunCmd = rfmFileChooser_CMD(startWithVirtualTerminal, search_cmd, GList_to_str_array(*fileChooserSelectionListAddress, g_list_length(*fileChooserSelectionListAddress)), named_pipe_name);
 
