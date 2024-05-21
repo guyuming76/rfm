@@ -190,6 +190,10 @@ https://blog.gtk.org/2017/05/04/logging-and-more/
 
 ## [在deepinV23RC上编译安装需要的依赖](在deepinV23RC上编译安装.md)  ##
 
+## 有时候，rfm会进入后台运行，可以用fg命令切换回前台正常运行 ##
+
+![fg jobNO](截图_选择区域_20240521113640.png)
+
 # 计划更改备忘 #
 
 是否有必要处理 grep -r xxx /dir|rfm 这样的结果,也就是说 search 结果里面不仅包含文件名,还有摘要信息.这个改动会比较大
