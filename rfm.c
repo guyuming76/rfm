@@ -2496,11 +2496,11 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
    gtk_widget_grab_focus(_view);
 
    if (!treeview) {
-     g_debug("gtk_icon_view_get_column_spacing:%d",gtk_icon_view_get_column_spacing((GtkIconView *)_view));
-     g_debug("gtk_icon_view_get_item_padding:%d", gtk_icon_view_get_item_padding((GtkIconView *)_view));
-     g_debug("gtk_icon_view_get_spacing:%d", gtk_icon_view_get_spacing((GtkIconView *)_view));
-     g_debug("gtk_icon_view_get_item_width:%d", gtk_icon_view_get_item_width((GtkIconView *)_view));
-     g_debug("gtk_icon_view_get_margin:%d", gtk_icon_view_get_margin((GtkIconView *)_view));
+     g_log(RFM_LOG_GTK, G_LOG_LEVEL_DEBUG, "gtk_icon_view_get_column_spacing:%d",gtk_icon_view_get_column_spacing((GtkIconView *)_view));
+     g_log(RFM_LOG_GTK, G_LOG_LEVEL_DEBUG,"gtk_icon_view_get_item_padding:%d", gtk_icon_view_get_item_padding((GtkIconView *)_view));
+     g_log(RFM_LOG_GTK, G_LOG_LEVEL_DEBUG,"gtk_icon_view_get_spacing:%d", gtk_icon_view_get_spacing((GtkIconView *)_view));
+     g_log(RFM_LOG_GTK, G_LOG_LEVEL_DEBUG,"gtk_icon_view_get_item_width:%d", gtk_icon_view_get_item_width((GtkIconView *)_view));
+     g_log(RFM_LOG_GTK, G_LOG_LEVEL_DEBUG,"gtk_icon_view_get_margin:%d", gtk_icon_view_get_margin((GtkIconView *)_view));
    }
    
    return _view;

@@ -31,6 +31,7 @@ static gint RFM_THUMBNAIL_SIZE = 128; /* Maximum size for thumb dir normal is 12
 #define RFM_LOG_GSPAWN "rfm-gspawn"
 #define RFM_LOG_COLUMN "rfm-column"
 #define RFM_LOG_COLUMN_VERBOSE "rfm-column-verbose"
+#define RFM_LOG_GTK "rfm-gtk"
 
 static gboolean keep_selection_on_view_across_refresh = TRUE; 
 
