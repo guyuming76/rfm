@@ -855,6 +855,15 @@ static gchar **build_cmd_vector(const char **cmd, GList *file_list, char *dest_p
        // before this commit, file_list and dest_path are all appended after cmd, but commands like ffmpeg to create thumbnail need to have file name in the middle of the argv, appended at the end won't work. So i modify the rule here so that if we have empty string in cmd, we replace it with item in file_list. So, file_list can work as generic argument list later, not necessarily the filename. And replacing empty string place holders in cmd with items in file_list can be something like printf.
        v[j]=listElement->data; //this data is owned by rfm_FileAttributes and was not freed before, but now, v and file_list share the reference.  g_list_free_full never called on file_list, and filename char* is not freed when free(v),  but freed with rfm_FileAttributes.
        listElement=g_list_next(listElement);
+     }else if (cmd[j][0]=='$' && strlen(cmd[j])>1){
+       const char* envName = cmd[j] + sizeof(char); //remove leading $ in cmd[j] to get envName
+       char* envValue = getenv(envName);
+       if (envValue==NULL){
+	 g_warning("environment variable name %s is used, but NULL returned for value.",envName);
+	 return NULL;
+       }else{
+	 v[j]=strdup(envValue);
+       }
      }else if (strcmp(cmd[j],"")!=0){
        v[j]=(gchar*)cmd[j]; /* FIXME: gtk spawn functions require gchar*, but we have const gchar*; should probably g_strdup() and create a free_cmd_vector() function */
      }
