@@ -851,15 +851,14 @@ static gchar **build_cmd_vector(const char **cmd, GList *file_list, char *dest_p
       return NULL;
 
    while (cmd[j]!=NULL && j<RFM_MX_ARGS) {
-     if (strcmp(cmd[j],"")!=0)
-       v[j]=(gchar*)cmd[j]; /* FIXME: gtk spawn functions require gchar*, but we have const gchar*; should probably g_strdup() and create a free_cmd_vector() function */
-     else if (listElement != NULL) {
+     if (strcmp(cmd[j],"")==0 && listElement!=NULL){
        // before this commit, file_list and dest_path are all appended after cmd, but commands like ffmpeg to create thumbnail need to have file name in the middle of the argv, appended at the end won't work. So i modify the rule here so that if we have empty string in cmd, we replace it with item in file_list. So, file_list can work as generic argument list later, not necessarily the filename. And replacing empty string place holders in cmd with items in file_list can be something like printf.
        v[j]=listElement->data; //this data is owned by rfm_FileAttributes and was not freed before, but now, v and file_list share the reference.  g_list_free_full never called on file_list, and filename char* is not freed when free(v),  but freed with rfm_FileAttributes.
        listElement=g_list_next(listElement);
+     }else if (strcmp(cmd[j],"")!=0){
+       v[j]=(gchar*)cmd[j]; /* FIXME: gtk spawn functions require gchar*, but we have const gchar*; should probably g_strdup() and create a free_cmd_vector() function */
      }
-
-      j++;
+     j++;
    }
    if (j==RFM_MX_ARGS) {
       g_warning("build_cmd_vector: %s: RFM_MX_ARGS exceeded. Check config.h!",v[0]);
