@@ -291,11 +291,11 @@ static gboolean ignored_filename(gchar *name){
 static gchar shell_cmd_buffer[ARG_MAX]; //TODO: notice that this is shared single instance. But we only run shell command in sync mode now. so, no more than one thread will use this
 static gchar* stdin_cmd_template_bash[]={"/bin/bash","-i","-c", shell_cmd_buffer, NULL};
 static gchar* stdin_cmd_template_nu[]={"nu","-c", shell_cmd_buffer, NULL};
-static gchar* stdin_cmd_template_bash_newVT_nonHold[] = { rfmBinPath "/rfmVTforCMD.sh", "/bin/bash", "-i", "-c", shell_cmd_buffer, NULL };
-static gchar* stdin_cmd_template_nu_inNewVT_nonHold[] = { rfmBinPath "/rfmVTforCMD.sh", "nu", "-c", shell_cmd_buffer, NULL };
+static gchar* stdin_cmd_template_bash_newVT_nonHold[] = { "$RFM_TERM", "/bin/bash", "-i", "-c", shell_cmd_buffer, NULL };
+static gchar* stdin_cmd_template_nu_inNewVT_nonHold[] = { "$RFM_TERM", "nu", "-c", shell_cmd_buffer, NULL };
 static gchar** stdin_command_bash(gchar* user_input_cmd, gboolean inNewVT) {
   if (inNewVT){
-    sprintf(shell_cmd_buffer,"\"set -o history; %s;read -p '%s'; exit 2>/dev/null\"", strdup(user_input_cmd), strdup(PRESS_ENTER_TO_CLOSE_WINDOW));
+    sprintf(shell_cmd_buffer,"set -o history; %s;read -p '%s'; exit 2>/dev/null", strdup(user_input_cmd), strdup(PRESS_ENTER_TO_CLOSE_WINDOW));
     //without set -o history and "bash -i", bash builtin history command will not show results.
     //Seems to be by design, but why? for the nu shell, nu -c "history" just works
     //without exit, rfm will quit after commands such as ls, nano, but commands such as echo 1 will work. if you change exit to sleep 20, even echo 1 will make rfm terminate. Are there any race condition here?
@@ -324,9 +324,9 @@ static stdin_cmd_interpretor stdin_cmd_interpretors[] = {
 
 static gchar** rfmFileChooser_CMD(enum rfmTerminal startWithVT, gchar* search_cmd, gchar** defaultFileSelection, gchar* rfmFileChooserReturnSelectionIntoFilename){
     if (search_cmd == NULL || g_strcmp0(search_cmd,"")==0)
-    	sprintf(shell_cmd_buffer, " rfm -r %s", g_strdup(rfmFileChooserReturnSelectionIntoFilename));
+    	sprintf(shell_cmd_buffer, "rfm -r %s", g_strdup(rfmFileChooserReturnSelectionIntoFilename));
     else
-	sprintf(shell_cmd_buffer, " exec %s | rfm -r %s -p", g_strdup(search_cmd), g_strdup(rfmFileChooserReturnSelectionIntoFilename));
+	sprintf(shell_cmd_buffer, "exec %s | rfm -r %s -p", g_strdup(search_cmd), g_strdup(rfmFileChooserReturnSelectionIntoFilename));
     //上面字符以空格开头很重要,以便后面替换成\"
 
     if (defaultFileSelection != NULL){
@@ -339,13 +339,6 @@ static gchar** rfmFileChooser_CMD(enum rfmTerminal startWithVT, gchar* search_cm
     };
 
     if (startWithVT == NEW_TERMINAL){
-	shell_cmd_buffer[0]='\"';
-	strcat(shell_cmd_buffer,strdup("\""));
-    //和commit b4be3c47808aef49e8f80590a1b3d6ae71ba4292 类似, 需要在上一行加上\", 根本原因是因为 rfmVTforCMD.sh 里面要由$@拼接成字符串,
-    //事实上,上面一行内容是作为字符串数组的一个项存在的,但不知道为啥,在rfmVTforCMD.sh 我就没法使用"$@"这种机制自动做到这里加\"的效果
-    //最初使用rfmVTforCMD.sh 的动机是方便用户改动脚本文件更换终端模拟器,而不用改config.h还要重新编译.但现在增加了$RFM_TERM环境变量后,用户就不太需要定制rfmVTforCMD.sh了
-    //这样,省掉rfmVTforCMD.sh这一层也许更简单,但考虑到文件上下文菜单都是使用静态字符串数组命令的,没办法去做$RFM_TERM这样的变量替换.如果坚持要省去rfmVTforCMD.sh 这一层,也许
-    //将来可以考虑怎加一些 build_cmd_vector 可以识别的Token,用来替换$RFM_TERM的值.但目前看来,改动意义不大
 	return stdin_cmd_template_bash_newVT_nonHold;
     }else if (startWithVT == NO_TERMINAL){
 	strcat(shell_cmd_buffer, strdup(" -t"));
