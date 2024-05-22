@@ -36,16 +36,16 @@ static gint RFM_THUMBNAIL_SIZE = 128; /* Maximum size for thumb dir normal is 12
 static gboolean keep_selection_on_view_across_refresh = TRUE; 
 
 /* rfmBinPath is passed in by compiler via Makefile*/
-static const char *f_rm[]   = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmRemove.sh",NULL };
-static const char *f_cp[]   = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmCopyMove.sh","cp", NULL };
-static const char *f_mv[]   = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmCopyMove.sh", "mv",NULL };
-static const char *cp_clipboard_to_curPath[] = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmCopyMoveToCurPath.sh","cp",NULL };
-static const char *mv_clipboard_to_curPath[] = { rfmBinPath "/rfmVTforCMD.sh",rfmBinPath "/rfmCopyMoveToCurPath.sh","mv",NULL };
-static const char *change_owner[] = { rfmBinPath "/rfmVTforCMD.sh", rfmBinPath "/rfmChangeOwner.sh",NULL };
+static const char *f_rm[]   = { "$RFM_TERM",rfmBinPath "/rfmRemove.sh",NULL };
+static const char *f_cp[]   = { "$RFM_TERM",rfmBinPath "/rfmCopyMove.sh","cp", NULL };
+static const char *f_mv[]   = { "$RFM_TERM",rfmBinPath "/rfmCopyMove.sh", "mv",NULL };
+static const char *cp_clipboard_to_curPath[] = { "$RFM_TERM",rfmBinPath "/rfmCopyMoveToCurPath.sh","cp",NULL };
+static const char *mv_clipboard_to_curPath[] = { "$RFM_TERM",rfmBinPath "/rfmCopyMoveToCurPath.sh","mv",NULL };
+static const char *change_owner[] = { "$RFM_TERM", rfmBinPath "/rfmChangeOwner.sh",NULL };
 static const char *play_video[] = { "/usr/bin/xdg-open", NULL };
 static const char *play_audio[] = { "/usr/bin/xdg-open", NULL };
 static const char *av_info[]    = { "/usr/bin/mediainfo", "-f", NULL };
-static const char *textEdit[]   = { rfmBinPath "/rfmVTforCMD.sh", rfmBinPath "/rfmTextEdit.sh", NULL };
+static const char *textEdit[]   = { "$RFM_TERM", rfmBinPath "/rfmTextEdit.sh", NULL };
 static const char *pdf[]        = { "/usr/bin/xdg-open", NULL };
 static const char *mupdf[]      = { "/usr/bin/evince", NULL };
 static const char *show_image[] = { rfmBinPath "/rfmRefreshImage.sh", NULL };
@@ -58,7 +58,7 @@ static const char *mount[]    = { rfmBinPath "/suMount.sh", NULL };
 static const char *umount[]   = { rfmBinPath "/suMount.sh", "-u", NULL };
 /* static const char *udisks_mount[]   = { "/usr/bin/udisksctl", "mount", "--no-user-interaction", "-b", NULL }; */
 /* static const char *udisks_unmount[] = { "/usr/bin/udisksctl", "unmount", "--no-user-interaction", "-b", NULL }; */
-static const char *properties[]     = { rfmBinPath "/rfmVTforCMD.sh", rfmBinPath "/rfmProperties.sh", NULL };
+static const char *properties[]     = { "$RFM_TERM", rfmBinPath "/rfmProperties.sh", NULL };
 static const char *www[]        = { "/usr/bin/xdg-open", NULL };
 static const char *man[]        = { "/usr/bin/groff", "-man", "-Tutf8", NULL };
 static const char *java[]       = { "/usr/bin/java", "-jar", NULL };
@@ -68,8 +68,8 @@ static const char *gnumeric[]   = { "/usr/bin/gnumeric", NULL };
 static const char *ftview[] = { "/usr/bin/ftview", "14", NULL }; /* pacman -S freetype2-demos */
 static const char *ffmpegThumb[] =  { "/usr/bin/ffmpeg", "-i","", "-frames", "1", "-s", "256x256",NULL  };
 static const char *term_cmd[]  = { "$RFM_TERM", NULL };
-static const char *new_rfm[]  = { rfmBinPath "/rfmVTforCMD.sh", rfmBinPath "/rfm", NULL };
-static const char *share_dir[] = { rfmBinPath "/rfmVTforCMD.sh", rfmBinPath "/rfmShareDir.sh", NULL };
+static const char *new_rfm[]  = { "$RFM_TERM", rfmBinPath "/rfm", NULL };
+static const char *share_dir[] = { "$RFM_TERM", rfmBinPath "/rfmShareDir.sh", NULL };
 #ifdef GitIntegration
 static const char *git_inside_work_tree_cmd[] = {"/usr/bin/git", "rev-parse","--is-inside-work-tree", NULL};
 static const char *git_ls_files_cmd[] = {"/usr/bin/git", "ls-files", "--full-name",NULL};
@@ -81,9 +81,9 @@ static const char *git_log_cmd[] = { rfmBinPath "/rfmVTforCMD_hold.sh","/usr/bin
 //现在只有很少的像上面这行的情况需要rfmVTforCMD_hold.sh脚本，如果想去掉它，统一用rfmVTforCMD.sh,就得想办法把类似read -p 这种代码插到上面的数组里，如果直接把 read 命令放在git log后面，NULL的前面，目前就会牺牲可以在末尾追加任意个选中文件的功能，我记得加一个“”数组项可以表示替换一个文件
 //若利用stdin_command_bash 这样的返回数组的函数，就意味着要增强文件上下文菜单的配置功能，让其能够接受函数，但这样会增加代码的复杂性，我认为上下文菜单应该保持只接受静态数组这么一种相对简单的配置方式
 //TODO：所以，现在要么保持有些冗余的rfmVTforCMD_hold.sh脚本，要么增强把静态数组和当前选中文件列表合并的方式，增加一个在中间合并进全部文件的符号，这个可以和命令行中间使用%s符号替换文件名一起考虑
-static const char *tig_cmd[] = { rfmBinPath "/rfmVTforCMD.sh","/usr/bin/tig",NULL};
-static const char *git_show_pics_cmd[] = { rfmBinPath "/rfmVTforCMD.sh", rfmBinPath "/rfmGitShowPictures.sh",NULL};
-static const char *git_commit[] = { rfmBinPath "/rfmVTforCMD.sh", rfmBinPath "/rfmGitCommit.sh",NULL};
+static const char *tig_cmd[] = { "$RFM_TERM","/usr/bin/tig",NULL};
+static const char *git_show_pics_cmd[] = { "$RFM_TERM", rfmBinPath "/rfmGitShowPictures.sh",NULL};
+static const char *git_commit[] = { "$RFM_TERM", rfmBinPath "/rfmGitCommit.sh",NULL};
 static const char *git_current_branch_cmd[] =  { "/usr/bin/git","branch","--show-current",NULL };
 #endif
 
