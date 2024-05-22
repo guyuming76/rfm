@@ -815,7 +815,6 @@ static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *ch
                                   &child_attribs->pid, NULL, ((child_attribs->stdOut_fd<=0)? &child_attribs->stdOut_fd: NULL), // stdOut_fd>0, means we use existing fd to read result from, so we pass in NULL, otherwise stdout_fd will be overwriten. For example, we use existing fd in rfmFileChooser
                                   &child_attribs->stdErr_fd, &err);
       
-      g_log(RFM_LOG_GSPAWN,G_LOG_LEVEL_DEBUG,"g_spawn_async_with_pipes_wrapper:  workingdir:%s, argv:%s, G_SPAWN_DO_NOT_REAP_CHILD",rfm_curPath,v[0]);
       if (rv==TRUE) {
          /* Don't block on read if nothing in pipe */
          if (! g_unix_set_fd_nonblocking(child_attribs->stdOut_fd, TRUE, NULL))
@@ -876,7 +875,6 @@ static gchar **build_cmd_vector(const char **cmd, GList *file_list, char *dest_p
    v[j]=dest_path; /* This may be NULL anyway */
    v[++j]=NULL;
 
-   g_log(RFM_LOG_GSPAWN,G_LOG_LEVEL_DEBUG,"%s",g_strjoinv(" ", v));
    return v;
 }
 
@@ -894,9 +892,11 @@ static gboolean g_spawn_wrapper_(GList *file_list, char *dest_path, RFM_ChildAtt
 
    v=build_cmd_vector(child_attribs->RunCmd, file_list, dest_path);
    if (v != NULL) {
+      gchar * argv=g_strjoinv(" ", v);
       if (child_attribs->spawn_async){
+	       g_log(RFM_LOG_GSPAWN,G_LOG_LEVEL_DEBUG,"g_spawn_async_with_pipes_wrapper, workingdir:%s, argv:%s",rfm_curPath, argv);
 	       if (!g_spawn_async_with_pipes_wrapper(v, child_attribs)) {
-                   g_warning("g_spawn_wrapper_->g_spawn_async_with_pipes_wrapper: %s failed to execute. Check command in config.h!",v[0]);
+                   g_warning("g_spawn_async_with_pipes_wrapper: %s failed to execute. Check command in config.h!", argv);
                    free_child_attribs(child_attribs); //这里是失败的异步，成功的异步会在  child_supervisor_to_ReadStdout_ShowOutput_ExecCallback 里面 free
 	           ret = FALSE;
                };
@@ -906,15 +906,15 @@ static gboolean g_spawn_wrapper_(GList *file_list, char *dest_path, RFM_ChildAtt
 /* (rfm:11714): GLib-CRITICAL **: 14:05:51.441: g_spawn_sync: assertion 'standard_output == NULL || !(flags & G_SPAWN_STDOUT_TO_DEV_NULL)' failed */
 
 /* (rfm:11714): rfm-WARNING **: 14:05:51.441: g_spawn_wrapper_->g_spawn_sync /usr/bin/ffmpeg failed to execute. Check command in config.h! */	       
-	       g_log(RFM_LOG_GSPAWN,G_LOG_LEVEL_DEBUG,"g_spawn_wrapper_->g_spawn_sync, workingdir:%s, argv:%s ",rfm_curPath,v[0]);
+	       g_log(RFM_LOG_GSPAWN,G_LOG_LEVEL_DEBUG,"g_spawn_sync, workingdir:%s, argv:%s",rfm_curPath, argv);
 	       if (!g_spawn_sync(rfm_curPath, v, env_for_g_spawn,child_attribs->runOpts, GSpawnChildSetupFunc_setenv,child_attribs,(child_attribs->runOpts & G_SPAWN_STDOUT_TO_DEV_NULL)? NULL : &child_attribs->stdOut, &child_attribs->stdErr,&child_attribs->status,NULL)){
-	            g_warning("g_spawn_wrapper_->g_spawn_sync %s failed to execute. Check command in config.h!", v[0]);
+	            g_warning("g_spawn_sync %s failed to execute. Check command in config.h!", argv);
 	            free_child_attribs(child_attribs);
 	            ret = FALSE;
 	       }else
 	            ExecCallback_freeChildAttribs(child_attribs);
       }
-      
+      g_free(argv);
       free(v); //only free v, but char* data such as filename in command not freed here.
    }
    else{
@@ -2761,7 +2761,7 @@ static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPrevi
 	      child_attribs->RunCmd = stdin_cmd_interpretors[current_stdin_cmd_interpretor].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str, TRUE);
 	      //child_attribs->runOpts = RFM_EXEC_NONE;
 	      child_attribs->spawn_async = TRUE;
-	      g_spawn_async_with_pipes_wrapper(child_attribs->RunCmd, child_attribs);
+	      g_spawn_wrapper_(NULL, NULL, child_attribs);
 	      g_strfreev(env_for_g_spawn);env_for_g_spawn=NULL;
 	      add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
 }
