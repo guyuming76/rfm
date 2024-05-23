@@ -684,6 +684,7 @@ static void show_child_output(RFM_ChildAttribs *child_attribs)
    if (child_attribs->stdOut!=NULL && child_attribs->stdOut[0]!=0) {
      if (child_attribs->runOpts==RFM_EXEC_STDOUT || strlen(child_attribs->stdOut) > RFM_MX_MSGBOX_CHARS)
        printf("PID %i:%s",child_attribs->pid,child_attribs->stdOut);
+       //TODO: if not startwithVT(), user won't see printf, but user also will not see all those g_warnings. maybe we can add some indicator on UI and guide user to some log file. When not startwithVT, redirect stdout and stderr to some log file
      else
          show_msgbox(child_attribs->stdOut, child_attribs->name, GTK_MESSAGE_INFO);
      child_attribs->stdOut[0]=0;
