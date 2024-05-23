@@ -81,9 +81,9 @@ static const char *git_log_cmd[] = { rfmBinPath "/rfmVTforCMD_hold.sh","/usr/bin
 //现在只有很少的像上面这行的情况需要rfmVTforCMD_hold.sh脚本，如果想去掉它，统一用rfmVTforCMD.sh,就得想办法把类似read -p 这种代码插到上面的数组里，如果直接把 read 命令放在git log后面，NULL的前面，目前就会牺牲可以在末尾追加任意个选中文件的功能，我记得加一个“”数组项可以表示替换一个文件
 //若利用stdin_command_bash 这样的返回数组的函数，就意味着要增强文件上下文菜单的配置功能，让其能够接受函数，但这样会增加代码的复杂性，我认为上下文菜单应该保持只接受静态数组这么一种相对简单的配置方式
 //TODO：所以，现在要么保持有些冗余的rfmVTforCMD_hold.sh脚本，要么增强把静态数组和当前选中文件列表合并的方式，增加一个在中间合并进全部文件的符号，这个可以和命令行中间使用%s符号替换文件名一起考虑
-static const char *tig_cmd[] = { "$RFM_TERM","/usr/bin/tig",NULL};
+//static const char *tig_cmd[] = { "$RFM_TERM","/usr/bin/tig",NULL};
 static const char *git_show_pics_cmd[] = { "$RFM_TERM", rfmBinPath "/rfmGitShowPictures.sh",NULL};
-static const char *git_commit[] = { "$RFM_TERM", rfmBinPath "/rfmGitCommit.sh",NULL};
+//static const char *git_commit[] = { "$RFM_TERM", rfmBinPath "/rfmGitCommit.sh",NULL};
 static const char *git_current_branch_cmd[] =  { "/usr/bin/git","branch","--show-current",NULL };
 #endif
 
@@ -118,7 +118,7 @@ static RFM_MenuItem run_actions[] = {
 #ifdef GitIntegration
    { RunActionGitStage,  "*",          "*",                    git_stage_cmd,    		cur_path_is_git_repo },
    { "git log",      "*",              "*",                    git_log_cmd,      		cur_path_is_git_repo },
-   { "tig",          "*",              "*",                    tig_cmd,          		cur_path_is_git_repo },
+// { "tig",          "*",              "*",                    tig_cmd,          		cur_path_is_git_repo },
 #endif
    { "Properties",   "*",              "*",                    properties,       		NULL },
    { "Open with...", "*",              "*",                    open_with,        		NULL },
@@ -192,9 +192,9 @@ static RFM_ToolButton tool_buttons[] = {
    { "Stop",         "process-stop",            rfm_stop_all,           NULL,              TRUE,           TRUE,      0,                      NULL,                   NULL},
    { "Info",         "dialog-information",      info_clicked,           NULL,              TRUE,           TRUE,      0,                      NULL,                   NULL},
 // { "Home",         "go-home",                 home_clicked,           NULL,              FALSE,          TRUE,      0,                      NULL,                   NULL},
-#ifdef GitIntegration
-   { "gitCommit",    NULL,                      refresh_store,          git_commit,        FALSE,          TRUE,      0,                      NULL,                   cur_path_is_git_repo  },
-#endif
+//#ifdef GitIntegration
+// { "gitCommit",    NULL,                      refresh_store,          git_commit,        FALSE,          TRUE,      0,                      NULL,                   cur_path_is_git_repo  },
+//#endif
    { cpPath,         NULL,                      copy_curPath_to_clipboard, NULL,           TRUE,           TRUE,      0,                      "copy current path to clipboard", NULL},
 // { "mounts",       "drive-harddisk",          show_disk_devices,      dev_disk_path },
 };
