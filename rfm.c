@@ -861,6 +861,7 @@ static gchar **build_cmd_vector(const char **cmd, GList *file_list, char *dest_p
        char* envValue = getenv(envName);
        if (envValue==NULL){
 	 g_warning("environment variable name %s is used, but NULL returned for value.",envName);
+	 free(v);
 	 return NULL;
        }else{
 	 v[j]=strdup(envValue);
