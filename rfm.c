@@ -3511,8 +3511,6 @@ int main(int argc, char *argv[])
    if (rfmCtx==NULL) return 1;
    rfmCtx->rfm_sortColumn=GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID;
    rfmCtx->rfm_mountMonitor=g_unix_mount_monitor_get();
-   rfmCtx->showMimeType=0;
-   rfmCtx->delayedRefresh_GSourceID=0;
 
    if (thumbnailers[0].thumbRoot==NULL)
       rfm_do_thumbs=0;
