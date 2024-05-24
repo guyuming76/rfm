@@ -1082,14 +1082,14 @@ static gboolean mkThumb()
    if (rfm_thumbQueue->next!=NULL) {   /* More items in queue */
       rfm_thumbQueue=g_list_next(rfm_thumbQueue);
       g_debug("mkThumb return TRUE after:%s",thumbData->thumb_name);
-      return TRUE;
+      return G_SOURCE_CONTINUE;
    }
    
    g_list_free_full(rfm_thumbQueue, (GDestroyNotify)free_thumbQueueData);
    rfm_thumbQueue=NULL;
    rfm_thumbScheduler=0;
    g_debug("mkThumb return FALSE,which means mkThumb finished");
-   return FALSE;  /* Finished thumb queue */
+   return G_SOURCE_REMOVE;  /* Finished thumb queue */
 }
 
 static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter)
@@ -1618,7 +1618,7 @@ static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store(GD
 	 }
       }
       g_hash_table_destroy(mount_hash);
-      return TRUE;   /* Return TRUE if more items */
+      return G_SOURCE_CONTINUE;   /* Return TRUE if more items */
    }
    else {
      if (!insert_fileAttributes_into_store_one_by_one){
@@ -1640,7 +1640,7 @@ static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store(GD
 
    In_refresh_store = FALSE;
    gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
-   return FALSE;
+   return G_SOURCE_REMOVE;
 }
 
 static void TurnPage(RFM_ctx *rfmCtx, gboolean next) {
@@ -2591,7 +2591,8 @@ static void inotify_insert_item(gchar *name, gboolean is_dir)
 static gboolean delayed_refreshAll(gpointer user_data)
 {
   refresh_store((RFM_ctx *)user_data);
-   return FALSE;
+  ((RFM_ctx*)user_data)->delayedRefresh_GSourceID=0;
+  return G_SOURCE_REMOVE;
 }
 
 static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer user_data)
@@ -2659,7 +2660,8 @@ static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer user_d
    if (refreshDelayed){  /* Delayed refresh: rate-limiter */
          if (rfmCtx->delayedRefresh_GSourceID>0)
             g_source_remove(rfmCtx->delayedRefresh_GSourceID);
-         rfmCtx->delayedRefresh_GSourceID=g_timeout_add(RFM_INOTIFY_TIMEOUT, delayed_refreshAll, user_data);
+	 //TODO: Why shall we remove the existing timer here? support there are regular inotify event at a constant interval less then the RFM_INOTIFY_TIMOUT, the timer will always be removed before actual call the refresh function. Is it by design? why?
+	 rfmCtx->delayedRefresh_GSourceID=g_timeout_add(RFM_INOTIFY_TIMEOUT, delayed_refreshAll, user_data);
    };
    //if both refreshdelayed and refreshimediately, i guess refreshdelayed will be removed imediately in rfm_stop_all by the refreshimediately below.
    if (refreshImediately){ /* Refresh imediately: refresh_store() will remove delayedRefresh_GSourceID if required */
