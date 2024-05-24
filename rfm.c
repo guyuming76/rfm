@@ -360,7 +360,7 @@ static gboolean pauseInotifyHandler=FALSE;
 static char cmd_to_set_terminal_title[PATH_MAX];
 static gchar* non_grepMatchTreeViewColumns=NULL;
 static gboolean insert_fileAttributes_into_store_one_by_one=TRUE;
-
+static struct sigaction newaction;
 #ifdef GitIntegration
 // value " M " for modified
 // value "M " for staged
@@ -3431,7 +3431,6 @@ static int setup(RFM_ctx *rfmCtx)
    }else stdin_command_Scheduler = g_idle_add_once(parse_and_exec_stdin_command_in_gtk_thread, auto_execution_command_after_rfm_start);
    
    //block Ctrl+C. Without this, Ctrl+C in readline will terminate rfm. Now, if you run htop with readline, Ctrl+C only terminate htop. BTW, it's strange that i had tried sigprocmask, pthread_sigmask, and rl_clear_signals, and they didn't work.
-   struct sigaction newaction;
    newaction.sa_handler = SIG_IGN;
    newaction.sa_flags = 0;
    sigaction(SIGINT, &newaction,NULL);
