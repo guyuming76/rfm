@@ -2994,7 +2994,6 @@ static void show_hide_treeview_columns(wordexp_t * parsed_msg){
 	      show_hide_treeview_columns_in_order(parsed_msg->we_wordv[i]);
 	    }
 	 }
-         return TRUE;
 }
 
 // Use enum int instead of char* if we need to hardcode some column displaying
@@ -3504,7 +3503,7 @@ static void die(const char *errstr, ...) {
 int main(int argc, char *argv[])
 {
    struct stat statbuf;
-
+   gchar *thumbnailsize;
    g_log_set_handler (G_LOG_DOMAIN, G_LOG_LEVEL_MASK | G_LOG_FLAG_FATAL| G_LOG_FLAG_RECURSION, g_log_default_handler, NULL);
    
    rfmCtx=calloc(1,sizeof(RFM_ctx));
@@ -3586,7 +3585,7 @@ int main(int argc, char *argv[])
 	rfmStartWithVirtualTerminal=FALSE;
 	break;
       case 'T':
-	gchar *thumbnailsize =argv[c] + 2 * sizeof(gchar); // remove the '-T' prefix in argv[c]
+	thumbnailsize =argv[c] + 2 * sizeof(gchar); // remove the '-T' prefix in argv[c]
 	int ts=atoi(thumbnailsize);
 	if (ts!=0) RFM_THUMBNAIL_SIZE=ts;
 	else die("-T should be followd with custom RFM_THUMBNAIL_SIZE, for example: -T256");
