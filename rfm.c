@@ -40,9 +40,7 @@
 #define INOTIFY_MASK IN_MOVE|IN_CREATE|IN_CLOSE_WRITE|IN_DELETE|IN_DELETE_SELF|IN_MOVE_SELF
 #define PIPE_SZ 65535      /* Kernel pipe size */
 
-#define   RFM_EXEC_NONE     G_SPAWN_STDOUT_TO_DEV_NULL
 #define   RFM_EXEC_STDOUT   G_SPAWN_CHILD_INHERITS_STDIN | G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR
-#define   RFM_EXEC_OUPUT_READ_BY_PROGRAM G_SPAWN_DEFAULT
 #define   RFM_EXEC_MOUNT   G_SPAWN_CHILD_INHERITS_STDIN | G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR  //TODO: i don't know what this mean yet.
 
 typedef struct {
@@ -99,6 +97,7 @@ typedef struct RFM_ChildAttributes{
    gpointer customCallbackUserData; //this is not freed in free_child_attribs, user should free it.
    gboolean spawn_async;
    gint exitcode;
+   gboolean output_read_by_program;
 } RFM_ChildAttribs;
 
 typedef struct {
@@ -463,7 +462,7 @@ static void copy_curPath_to_clipboard(GtkWidget *menuitem, gpointer user_data);
 static void g_spawn_wrapper_for_selected_fileList_(RFM_ChildAttribs *childAttribs);
 /* instantiate childAttribs and call g_spawn_wrapper_ */
 /* caller should g_list_free(file_list), but usually not g_list_free_full, since the file char* is usually owned by rfm_fileattributes */
-static gboolean g_spawn_wrapper(const char **action, GList *file_list, int run_opts, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData);
+static gboolean g_spawn_wrapper(const char **action, GList *file_list, int run_opts, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData,gboolean output_read_by_program);
 /* call build_cmd_vector to create the argv parameter for g_spawn_* */
 /* call different g_spawn_* functions based on child_attribs->spawn_async and child_attribs->runOpts */
 /* free child_attribs */
@@ -626,10 +625,10 @@ static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_
 {
    RFM_ChildAttribs *child_attribs=(RFM_ChildAttribs*)user_data;
 
-   if (child_attribs->runOpts!=RFM_EXEC_NONE) read_char_pipe(child_attribs->stdOut_fd, PIPE_SZ, &child_attribs->stdOut);
+   if ((child_attribs->runOpts & G_SPAWN_STDOUT_TO_DEV_NULL)!=G_SPAWN_STDOUT_TO_DEV_NULL) read_char_pipe(child_attribs->stdOut_fd, PIPE_SZ, &child_attribs->stdOut);
    read_char_pipe(child_attribs->stdErr_fd, PIPE_SZ, &child_attribs->stdErr);
    
-   if (child_attribs->runOpts!=RFM_EXEC_OUPUT_READ_BY_PROGRAM && child_attribs->runOpts!=RFM_EXEC_NONE) show_child_output(child_attribs);
+   if (!child_attribs->output_read_by_program && (child_attribs->runOpts & G_SPAWN_STDOUT_TO_DEV_NULL)!=G_SPAWN_STDOUT_TO_DEV_NULL) show_child_output(child_attribs);
    //TODO: devPicAndVideo submodule commit f746eaf096827adda06cb2a085787027f1dca027 的错误起源于上面一行代码和RFM_EXEC_FILECHOOSER 的引入。
    if (child_attribs->status==-1)
        return TRUE;
@@ -930,7 +929,7 @@ static gboolean g_spawn_wrapper_(GList *file_list, char *dest_path, RFM_ChildAtt
    return ret;
 }
 
-static gboolean g_spawn_wrapper(const char **action, GList *file_list, int run_opts, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData){
+static gboolean g_spawn_wrapper(const char **action, GList *file_list, int run_opts, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData, gboolean output_read_by_program){
   RFM_ChildAttribs *child_attribs=calloc(1,sizeof(RFM_ChildAttribs));
   child_attribs->customCallBackFunc=callbackfunc;
   child_attribs->customCallbackUserData=callbackfuncUserData;
@@ -940,6 +939,7 @@ static gboolean g_spawn_wrapper(const char **action, GList *file_list, int run_o
   child_attribs->stdErr = NULL;
   child_attribs->spawn_async = async;
   child_attribs->name=g_strdup(action[0]);
+  child_attribs->output_read_by_program=output_read_by_program;
 	
   return g_spawn_wrapper_(file_list,dest_path,child_attribs);
 }
@@ -1071,7 +1071,7 @@ static gboolean mkThumb()
       gchar *thumb_path=g_build_filename(rfm_thumbDir, thumbData->thumb_name, NULL);
       GList * input_files=NULL;
       input_files=g_list_prepend(input_files, g_strdup(thumbData->path));
-      g_spawn_wrapper(thumbnailers[thumbData->t_idx].thumbCmd, input_files, RFM_EXEC_NONE, thumb_path, FALSE, NULL, NULL);
+      g_spawn_wrapper(thumbnailers[thumbData->t_idx].thumbCmd, input_files, G_SPAWN_STDOUT_TO_DEV_NULL, thumb_path, FALSE, NULL, NULL,FALSE);
       g_list_free(input_files);
    }
    
@@ -1334,7 +1334,7 @@ static void load_gitCommitMsg_for_store_row(GtkTreeIter *iter){
 	file_list = g_list_append(file_list,g_value_get_string(&full_path));
 	GtkTreeIter **iterPointerPointer=calloc(1, sizeof(GtkTreeIter**));//This will be passed into childAttribs, which will be freed in g_spawn_wrapper. but we shall not free iter, so i use pointer to pointer here.
 	*iterPointerPointer=iter;
-	if(!g_spawn_wrapper(git_commit_message_cmd, file_list, RFM_EXEC_OUPUT_READ_BY_PROGRAM ,NULL, FALSE, readGitCommitMsgFromGitLogCmdAndUpdateStore, iterPointerPointer)){
+	if(!g_spawn_wrapper(git_commit_message_cmd, file_list, G_SPAWN_DEFAULT ,NULL, FALSE, readGitCommitMsgFromGitLogCmdAndUpdateStore, iterPointerPointer,TRUE)){
 	}
 	g_list_free(file_list);
       }
@@ -1372,7 +1372,7 @@ static void load_ExtColumns_and_iconview_markup_tooltip(RFM_FileAttributes* file
 	    if (treeviewColumns[i].ValueCmd!=NULL){
               gchar* ExtColumn_cmd = g_strdup_printf(treeviewColumns[i].ValueCmd, fileAttributes->path);
 	      gchar* ExtColumn_cmd_template[] = {"/bin/bash", "-c", ExtColumn_cmd, NULL};
-	      g_spawn_wrapper(ExtColumn_cmd_template, NULL, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, FALSE, Update_Store_ExtColumns, &cell);
+	      g_spawn_wrapper(ExtColumn_cmd_template, NULL, G_SPAWN_DEFAULT, NULL, FALSE, Update_Store_ExtColumns, &cell, TRUE);
 	    }else if (treeviewColumns[i].ValueFunc!=NULL){
 	      gtk_list_store_set(store,cell->iter, cell->store_column, treeviewColumns[i].ValueFunc(fileAttributes->id), -1);
 	      //for grepMatch column, fileAttributes->file_name is added as key into grepMatch_hash, however, we suppose grep output absoluteaddr, so filenamne equals fileattributes->path here
@@ -1805,7 +1805,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
   }
 #ifdef GitIntegration
    if ((SearchResultViewInsteadOfDirectoryView^1) && curPath_is_git_repo)
-      g_spawn_wrapper(git_current_branch_cmd, NULL, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, TRUE, set_window_title_with_git_branch_and_sort_view_with_git_status, NULL);
+     g_spawn_wrapper(git_current_branch_cmd, NULL, G_SPAWN_DEFAULT, NULL, TRUE, set_window_title_with_git_branch_and_sort_view_with_git_status, NULL, TRUE);
    else set_Titles(title);
 #else
    set_Titles(title);
@@ -1917,10 +1917,10 @@ static void set_rfm_curPath(gchar* path)
    /* history_entry_added=0; */
 
 #ifdef GitIntegration
-   g_spawn_wrapper(git_inside_work_tree_cmd, NULL, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, FALSE, set_curPath_is_git_repo, NULL);
+     g_spawn_wrapper(git_inside_work_tree_cmd, NULL, G_SPAWN_DEFAULT, NULL, FALSE, set_curPath_is_git_repo, NULL,TRUE);
    if (SearchResultViewInsteadOfDirectoryView){
      if (curPath_is_git_repo)
-       g_spawn_wrapper(git_current_branch_cmd, NULL, RFM_EXEC_OUPUT_READ_BY_PROGRAM, NULL, TRUE, set_window_title_with_git_branch_and_sort_view_with_git_status, NULL);
+       g_spawn_wrapper(git_current_branch_cmd, NULL, G_SPAWN_DEFAULT, NULL, TRUE, set_window_title_with_git_branch_and_sort_view_with_git_status, NULL,TRUE);
      else set_Titles(g_strdup(rfm_curPath));
    }
 #else
@@ -2008,7 +2008,7 @@ static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointe
 	g_assert_null(env_for_g_spawn);
 	env_for_g_spawn = g_get_environ();
 	set_env_to_pass_into_child_process(&iter,&env_for_g_spawn);
-	g_spawn_wrapper(run_actions[index_of_default_file_activation_action_based_on_mime].runCmd, activated_single_file_list, G_SPAWN_DEFAULT, NULL,TRUE,NULL,NULL);
+	g_spawn_wrapper(run_actions[index_of_default_file_activation_action_based_on_mime].runCmd, activated_single_file_list, G_SPAWN_DEFAULT, NULL,TRUE,NULL,NULL,FALSE);
 	g_strfreev(env_for_g_spawn); env_for_g_spawn = NULL;
       }else {
          msg=g_strdup_printf("No default file activation action defined for mime type:\n %s/%s\n", fileAttributes->mime_root, fileAttributes->mime_sub_type);
@@ -3788,8 +3788,7 @@ GList* rfmFileChooser_glist(enum rfmTerminal startWithVirtualTerminal, char* sea
       child_attribs->stdOut = NULL;
       child_attribs->stdErr = NULL;
       child_attribs->spawn_async = async;
-      child_attribs->runOpts=RFM_EXEC_OUPUT_READ_BY_PROGRAM;
-      //commit 3d53359fdb97498a895a0cec97e3076558908a02 修改的原因是SIGTTIN后rfm stop了,当时不知怎么处理,作了上一行的改动;今天知道只要 fg 命令把 rfm 切换回前台就可以了.所以  3d53359fdb97498a895a0cec97e3076558908a02 的改动要改回去
+      child_attribs->output_read_by_program=TRUE;
       child_attribs->name=g_strdup("rfmFileChooser");
       child_attribs->RunCmd = rfmFileChooser_CMD(startWithVirtualTerminal, search_cmd, GList_to_str_array(*fileChooserSelectionListAddress, g_list_length(*fileChooserSelectionListAddress)), named_pipe_name);
 
