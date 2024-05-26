@@ -85,7 +85,7 @@ typedef struct {
    gboolean (*showCondition)();
 } RFM_ToolButton;
 
-typedef struct {
+typedef struct RFM_ChildAttributes{
    gchar *name;
    const gchar **RunCmd;
    GSpawnFlags  runOpts;
@@ -95,7 +95,7 @@ typedef struct {
    char *stdOut;
    char *stdErr;
    int   status;
-   void (*customCallBackFunc)(gpointer); //In Searchresultviewinsteadofdirectoryview situation, after runAction such as Move, i need to fill_store to reflect remove of files, so, i need a callback function. Rodney's original code only deals with working directory, and use INotify to reflect the change.
+   void (*customCallBackFunc)(struct RFM_ChildAttributes*); //In Searchresultviewinsteadofdirectoryview situation, after runAction such as Move, i need to fill_store to reflect remove of files, so, i need a callback function. Rodney's original code only deals with working directory, and use INotify to reflect the change.
    gpointer customCallbackUserData; //this is not freed in free_child_attribs, user should free it.
    gboolean spawn_async;
    gint exitcode;
@@ -403,6 +403,7 @@ static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer rfmCtx
 static void inotify_insert_item(gchar *name, gboolean is_dir);
 static gboolean delayed_refreshAll(gpointer user_data);
 static void refresh_store(RFM_ctx *rfmCtx);
+static void refresh_store_in_g_spawn_wrapper_callback(RFM_ChildAttribs*);
 static void clear_store(void);
 static void rfm_stop_all(RFM_ctx *rfmCtx);
 static gboolean fill_fileAttributeList_with_filenames_from_search_result_and_then_insert_into_store();
@@ -609,13 +610,7 @@ static void rfm_stop_all(RFM_ctx *rfmCtx) {
 
 static gboolean ExecCallback_freeChildAttribs(RFM_ChildAttribs * child_attribs){
    if(child_attribs->exitcode==0 && (child_attribs->customCallBackFunc)!=NULL){
-     if (child_attribs->runOpts!=RFM_EXEC_OUPUT_READ_BY_PROGRAM){
-       //for old callback such as refresh_store, there is no need for child_attribs->stdout, so pass in customcallbackuserdata as parameter to remain compatible.
-
-       (child_attribs->customCallBackFunc)(child_attribs->customCallbackUserData);
-     }else{
        (child_attribs->customCallBackFunc)(child_attribs);
-     }
    }
 
    free_child_attribs(child_attribs);
@@ -1820,6 +1815,10 @@ static void refresh_store(RFM_ctx *rfmCtx)
    refresh_toolbar();
 }
 
+static void refresh_store_in_g_spawn_wrapper_callback(RFM_ChildAttribs* child_attribs){
+  refresh_store((RFM_ctx*)child_attribs->customCallbackUserData);
+}
+
 
 //echo -en "\033]0;title\a"
 static void set_terminal_window_title(char * title)
@@ -2241,7 +2240,7 @@ static RFM_fileMenu *setup_file_menu(RFM_ctx * rfmCtx){
 	       ((g_strcmp0(child_attribs->name, RunActionMove)==0
 	       ||g_strcmp0(child_attribs->name, RunActionDelete)==0)))){
 
-	 child_attribs->customCallBackFunc = refresh_store;
+	 child_attribs->customCallBackFunc = refresh_store_in_g_spawn_wrapper_callback;
          child_attribs->customCallbackUserData = rfmCtx;
       } else {
          child_attribs->customCallBackFunc = NULL;
