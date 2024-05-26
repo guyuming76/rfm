@@ -2236,7 +2236,7 @@ static RFM_fileMenu *setup_file_menu(RFM_ctx * rfmCtx){
       child_attribs->spawn_async = TRUE;
       child_attribs->name = g_strdup(run_actions[i].runName);
       if ((g_strcmp0(child_attribs->name, RunActionGitStage)==0) ||
-	  (SearchResultViewInsteadOfDirectoryView &&
+	  (SearchResultViewInsteadOfDirectoryView && //TODO:setup_file_menu 目前只在setup里运行一次,而这个变量是会变的,显然是个bug,考虑把setup_file_menu 放进refresh_store 试试
 	       ((g_strcmp0(child_attribs->name, RunActionMove)==0
 	       ||g_strcmp0(child_attribs->name, RunActionDelete)==0)))){
 
