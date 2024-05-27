@@ -101,11 +101,6 @@ typedef struct RFM_ChildAttributes{
 } RFM_ChildAttribs;
 
 typedef struct {
-   GtkWidget *menu;
-   GtkWidget **action;
-} RFM_fileMenu;
-
-typedef struct {
   GtkWidget *toolbar;
   GtkWidget **buttons;
 } RFM_toolbar;
@@ -454,7 +449,7 @@ static void toolbar_button_exec(GtkToolItem *item, RFM_ChildAttribs *childAttrib
 /* callback function for contextual file menu, which appear after mouse right click on selected file, or the after the menu key on keyboard pressed */
 /* since g_spawn_wrapper will free child_attribs, and we don't want the childAttribs object associated with UI interface item to be freed, we duplicate childAttribs here. */
 static void file_menu_exec(GtkMenuItem *menuitem, RFM_ChildAttribs *childAttribs);
-static RFM_fileMenu *setup_file_menu(RFM_ctx * rfmCtx);
+static void setup_file_menu(RFM_ctx * rfmCtx);
 static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx);
 
 static void copy_curPath_to_clipboard(GtkWidget *menuitem, gpointer user_data);
@@ -511,6 +506,15 @@ static void endPythonEmbedding(){
 #include "rfmFileChooser.h"
 #endif
 #include "config.h"
+
+typedef struct {
+   GtkWidget* menu;
+   GtkWidget* menuItem[G_N_ELEMENTS(run_actions)];
+   RFM_ChildAttribs* childattribs_for_menuItem[G_N_ELEMENTS(run_actions)];
+   gulong menuItemSignalHandlers[G_N_ELEMENTS(run_actions)];
+} RFM_fileMenu;
+
+RFM_fileMenu fileMenu;
 
 char * strmode(mode_t st_mode){
     char * ret=calloc(11,sizeof(char));
@@ -1813,6 +1817,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
 
    gtk_widget_show_all(window);
    refresh_toolbar();
+   setup_file_menu(rfmCtx);
 }
 
 static void refresh_store_in_g_spawn_wrapper_callback(RFM_ChildAttribs* child_attribs){
@@ -2208,27 +2213,28 @@ static void file_menu_exec(GtkMenuItem *menuitem, RFM_ChildAttribs *childAttribs
  * the corresponding index in the run_actions_array.
  * Items are shown or hidden in popup_file_menu() depending on the selected files mime types.
  */
-static RFM_fileMenu *setup_file_menu(RFM_ctx * rfmCtx){
+static void setup_file_menu(RFM_ctx * rfmCtx){
    gint i;
-   RFM_fileMenu *fileMenu=NULL;
-
-   if(!(fileMenu = calloc(1, sizeof(RFM_fileMenu))))
-      return NULL;
-   if(!(fileMenu->action = calloc(G_N_ELEMENTS(run_actions), sizeof(fileMenu->action)))) {
-      free(fileMenu);
-      return NULL;
+   RFM_ChildAttribs *child_attribs;
+   
+   if (fileMenu.menu==NULL) {
+     fileMenu.menu=gtk_menu_new();
+     for(i=0; i<G_N_ELEMENTS(run_actions); i++) {
+       fileMenu.menuItem[i]=gtk_menu_item_new_with_label(run_actions[i].runName);
+       gtk_menu_shell_append(GTK_MENU_SHELL(fileMenu.menu), fileMenu.menuItem[i]);
+       fileMenu.childattribs_for_menuItem[i]=NULL;
+     }
    }
-   fileMenu->menu=gtk_menu_new();
 
    for(i=0; i<G_N_ELEMENTS(run_actions); i++) {
-      fileMenu->action[i]=gtk_menu_item_new_with_label(run_actions[i].runName);
-      //gtk_widget_show(fileMenu->action[i]);
-      gtk_menu_shell_append(GTK_MENU_SHELL(fileMenu->menu), fileMenu->action[i]);
-
-      RFM_ChildAttribs *child_attribs = calloc(1,sizeof(RFM_ChildAttribs));
-      // this child_attribs will be freed by g_spawn_wrapper call tree if menuitem clicked,
-      // and it will be copied to a new instance in file_menu_exec.
-      // but if menuitem not clicked? currently, setup_file_menu won't be called many times, so, it will be freed after application quit, no need to free manually.
+      child_attribs=fileMenu.childattribs_for_menuItem[i];
+      if (child_attribs!=NULL) {
+        g_signal_handler_disconnect(fileMenu.menuItem[i], fileMenu.menuItemSignalHandlers[i]);
+	free_child_attribs(child_attribs);
+      }
+      child_attribs = calloc(1,sizeof(RFM_ChildAttribs));
+      fileMenu.childattribs_for_menuItem[i]=child_attribs;
+      // child_attribs will be copied to a new instance in file_menu_exec.
       child_attribs->RunCmd = run_actions[i].runCmd;      
       child_attribs->runOpts = G_SPAWN_DEFAULT;
       child_attribs->stdOut = NULL;
@@ -2236,10 +2242,9 @@ static RFM_fileMenu *setup_file_menu(RFM_ctx * rfmCtx){
       child_attribs->spawn_async = TRUE;
       child_attribs->name = g_strdup(run_actions[i].runName);
       if ((g_strcmp0(child_attribs->name, RunActionGitStage)==0) ||
-	  (SearchResultViewInsteadOfDirectoryView && //TODO:setup_file_menu 目前只在setup里运行一次,而这个变量是会变的,显然是个bug,考虑把setup_file_menu 放进refresh_store 试试
+	  (SearchResultViewInsteadOfDirectoryView &&
 	       ((g_strcmp0(child_attribs->name, RunActionMove)==0
 	       ||g_strcmp0(child_attribs->name, RunActionDelete)==0)))){
-
 	 child_attribs->customCallBackFunc = refresh_store_in_g_spawn_wrapper_callback;
          child_attribs->customCallbackUserData = rfmCtx;
       } else {
@@ -2247,9 +2252,8 @@ static RFM_fileMenu *setup_file_menu(RFM_ctx * rfmCtx){
 	 child_attribs->customCallbackUserData = NULL;
       }
 
-      g_signal_connect(fileMenu->action[i], "activate", G_CALLBACK(file_menu_exec), child_attribs);
+      fileMenu.menuItemSignalHandlers[i] = g_signal_connect(fileMenu.menuItem[i], "activate", G_CALLBACK(file_menu_exec), child_attribs);
    }
-   return fileMenu;
 }
 
 /* Generate a filemenu based on mime type of the files selected and show
@@ -2264,7 +2268,7 @@ static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx)
    GList *selectionList;
    GList *listElement;
    int i;
-   RFM_fileMenu *fileMenu=g_object_get_data(G_OBJECT(window),"rfm_file_menu");
+   
    RFM_FileAttributes *selection_fileAttributes, *fileAttributes;
    gboolean match_mimeRoot=TRUE, match_mimeSub=TRUE;
 
@@ -2309,12 +2313,12 @@ static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx)
 
    for(i=0; i<G_N_ELEMENTS(run_actions); i++) {
       if (showMenuItem[i]>0 && (run_actions[i].showCondition == NULL || run_actions[i].showCondition()))
-         gtk_widget_show(fileMenu->action[i]);
+         gtk_widget_show(fileMenu.menuItem[i]);
       else
-         gtk_widget_hide(fileMenu->action[i]);
+         gtk_widget_hide(fileMenu.menuItem[i]);
    }
 
-   gtk_menu_popup_at_pointer(GTK_MENU(fileMenu->menu), event);
+   gtk_menu_popup_at_pointer(GTK_MENU(fileMenu.menu), event);
    g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
    return TRUE;
 }
@@ -3353,9 +3357,7 @@ static int setup(RFM_ctx *rfmCtx)
       icon_theme=gtk_icon_theme_get_default();
    #endif
 
-   fileMenu=setup_file_menu(rfmCtx); /* TODO: WARNING: This can return NULL! */
    defaultPixbufs=load_default_pixbufs(); /* TODO: WARNING: This can return NULL! */
-   g_object_set_data(G_OBJECT(window),"rfm_file_menu",fileMenu);
    g_object_set_data_full(G_OBJECT(window),"rfm_default_pixbufs",defaultPixbufs,(GDestroyNotify)free_default_pixbufs);
    //TODO: why list_store_new api cannot take a dynamic array of columns, correspoin?
    //Note that it is very important that the following G_TYPE_*s are in the same order of enum definition (RFM_treeviewCOL such as COL_FILENAME)
