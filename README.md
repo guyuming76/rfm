@@ -1,3 +1,5 @@
+## 更新20240524 ##
+除了使用执行文件rfm启动外,推荐使用脚本rfm.sh启动,脚本会识别当前终端模拟器,并设置环境变量$RFM_TERM, 在需要启动新终端模拟器实例时使这个变量. 也可以在系统环境设置默认环境变量值.
 
 # 视频链接 #
 https://www.bilibili.com/video/BV1vM411d7pu/?share_source=copy_web&vd_source=69ac2f08a55f7029fc7026bcf6b55e11
