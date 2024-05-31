@@ -88,7 +88,8 @@ static const char *git_current_branch_cmd[] =  { "/usr/bin/git","branch","--show
 #endif
 
 static RFM_builtinCMD builtinCMD[] = {
-//	{"q",      gtk_main_quit,         "alias for quit"},  //quit call cleanup now, not the same as q. we will solve this after we can pass parameters in function here
+  //	{"q",      gtk_main_quit,         "alias for quit"},  //quit call cleanup now, not the same as q. we will solve this after we can pass parameters in function here
+        {"exit",   gtk_main_quit,         "alias for quit"},
 #ifdef PythonEmbedded
         {"py",     startPythonEmbedding,    "Embedding Python" },
         {"pyq",    endPythonEmbedding,      "quit Python Embedding" },
