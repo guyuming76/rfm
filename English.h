@@ -89,7 +89,7 @@
 #define SETENV_USAGE \
 "Usage:       setenv EnvVarName Value\n" \
 "For example: setenv G_MESSAGES_DEBUG rfm\n" \
-"             setenv G_MESSAGES_DEBUG rfm,rfm-data\n" \
+"             setenv G_MESSAGES_DEBUG rfm,rfm-data,rfm-data-ext,rfm-data-thumbnail,rfm-data-search,rfm-data-git,rfm-gspawn,rfm-column,rfm-column-verbose,rfm-gtk\n" \
 "             setenv G_MESSAGES_DEBUG \"\"\n" \
 "Get current value with:\n" \
 "             env |grep G_MESSAGES_DEBUG\n" \

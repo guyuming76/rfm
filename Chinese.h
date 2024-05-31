@@ -91,7 +91,7 @@
 #define SETENV_USAGE \
 "用法:  setenv EnvVarName Value\n" \
 "例子:  setenv G_MESSAGES_DEBUG rfm\n" \
-"       setenv G_MESSAGES_DEBUG rfm,rfm-data\n" \
+"       setenv G_MESSAGES_DEBUG rfm,rfm-data,rfm-data-ext,rfm-data-thumbnail,rfm-data-search,rfm-data-git,rfm-gspawn,rfm-column,rfm-column-verbose,rfm-gtk\n" \
 "       setenv G_MESSAGES_DEBUG \"\"\n" \
 "获取当前值:\n" \
 "       env |grep G_MESSAGES_DEBUG\n" \

@@ -16,9 +16,12 @@ if [[ -z "$RFM_TERM" ]];then
     		done
     		if [[ $found==0 ]];then
 			export RFM_TERM=$(basename $(ps -p $item_in_ppid_array -o cmd --no-header))
+			echo "env RFM_TERM set to current terminal emulator:" $RFM_TERM
 			break
     		fi
 	done
+else
+	echo "env RFM_TERM is: " $RFM_TERM
 fi
 
 rfm "$@"
