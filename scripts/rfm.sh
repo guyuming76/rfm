@@ -7,14 +7,14 @@ if [[ -z "$RFM_TERM" ]];then
 	readarray -t pid_array < <(ps -o pid --no-header)
 
 	for item_in_ppid_array in "${ppid_array[@]}"; do
-    		found=0
+    		pid_found_in_ppids=0
     		for item_in_pid_array in "${pid_array[@]}"; do
 			if [[ $item_in_ppid_array==$item_in_pid_array ]];then
-				found=1
+				pid_found_in_ppids=1
 				break
 			fi
     		done
-    		if [[ $found==0 ]];then
+    		if [[ $pid_found_in_ppids==0 ]];then
 			export RFM_TERM=$(basename $(ps -p $item_in_ppid_array -o cmd --no-header))
 			echo "env RFM_TERM set to current terminal emulator:" $RFM_TERM
 			break
