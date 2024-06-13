@@ -73,7 +73,7 @@ install: all
 	@echo installing files to ${DESTDIR}${PREFIX}/{bin,lib}
 	@mkdir -p ${DESTDIR}${PREFIX}/bin
 ifneq ($(RFM_FILE_CHOOSER),)
-	@cp -f librfm.so ${DESTDIR}${PREFIX}/lib
+	@cp -f librfm.so ${DESTDIR}${PREFIX}/lib/librfm.so
 endif
 	@cp -f rfm ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfm.sh ${DESTDIR}${PREFIX}/bin
