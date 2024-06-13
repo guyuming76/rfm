@@ -94,9 +94,9 @@ endif
 	@cp -f scripts/rfmChangeOwner_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmChangeOwner.sh
 #	@cp -f scripts/rfmNewFile.sh ${DESTDIR}${PREFIX}/bin
 #	@cp -f scripts/rfmNewDir.sh ${DESTDIR}${PREFIX}/bin
-	xdg-desktop-menu install --novendor rfm.desktop
-	xdg-mime default rfm.desktop inode/directory
-	update-desktop-database
+	-xdg-desktop-menu install --novendor rfm.desktop
+	-xdg-mime default rfm.desktop inode/directory
+	-update-desktop-database
 	ldconfig
 
 ifneq ($(RFM_FILE_CHOOSER),)
@@ -148,8 +148,8 @@ endif
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmChangeOwner.sh
 #	@rm -f ${DESTDIR}${PREFIX}/bin/rfmNewFile.sh
 #	@rm -f ${DESTDIR}${PREFIX}/bin/rfmNewDir.sh
-	xdg-desktop-menu uninstall rfm.desktop
-	update-desktop-database
+	-xdg-desktop-menu uninstall rfm.desktop
+	-update-desktop-database
 	ldconfig
 
 .PHONY: all options clean install uninstall
