@@ -94,7 +94,7 @@ endif
 	@cp -f scripts/rfmChangeOwner_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmChangeOwner.sh
 #	@cp -f scripts/rfmNewFile.sh ${DESTDIR}${PREFIX}/bin
 #	@cp -f scripts/rfmNewDir.sh ${DESTDIR}${PREFIX}/bin
-	@cp -f rfm.desktop /usr/share/applications/rfm.desktop
+	xdg-desktop-menu install --novendor rfm.desktop
 	xdg-mime default rfm.desktop inode/directory
 	update-desktop-database
 	ldconfig
@@ -148,7 +148,7 @@ endif
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmChangeOwner.sh
 #	@rm -f ${DESTDIR}${PREFIX}/bin/rfmNewFile.sh
 #	@rm -f ${DESTDIR}${PREFIX}/bin/rfmNewDir.sh
-	@rm -f /usr/share/applications/rfm.desktop
+	xdg-desktop-menu uninstall rfm.desktop
 	update-desktop-database
 	ldconfig
 
