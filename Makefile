@@ -57,7 +57,7 @@ rfm: ${OBJ}
 ifneq ($(RFM_FILE_CHOOSER),)
 librfm.so: ${OBJ}
 	@echo CC -o $@
-	@${CC} -o $@ ${OBJ} ${LDFLAGS} -shared -Wl,-E
+	@${CC} -o $@ ${OBJ} ${LDFLAGS} -shared -Wl,-soname=librfm.so.1,-E
 #	@${CC} -o $@ ${OBJ} ${LDFLAGS} -shared -Wl,-E,-e,main
 # i tried to use librfm.so as both lib and exec and set entry point for librfm.so, however, i got segfault after launching librfm.so
 # https://unix.stackexchange.com/questions/223385/why-and-how-are-some-shared-libraries-runnable-as-though-they-are-executables
