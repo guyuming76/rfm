@@ -3,6 +3,12 @@
 include config.mk
 
 VERSION = 1.9.4
+ifneq ($(RFM_FILE_CHOOSER),)
+LINKERNAME = librfm.so
+SONAME = librfm.so.1
+LIBNAME = ${LINKERNAME}
+LIBNAME := ${LIBNAME}.${VERSION}
+endif
 
 # Edit below for extra libs (e.g. for thumbnailers etc.)
 #LIBS = -L./libdcmthumb -lm -ldcmthumb
@@ -29,7 +35,7 @@ endif
 # compiler and linker
 CC = gcc
 ifneq ($(RFM_FILE_CHOOSER),)
-all: options rfm librfm.so
+all: options rfm ${LIBNAME}
 else
 all: options rfm
 endif
@@ -55,9 +61,9 @@ rfm: ${OBJ}
 	@echo CC -o $@
 	@${CC} -o $@ ${OBJ} ${LDFLAGS}
 ifneq ($(RFM_FILE_CHOOSER),)
-librfm.so: ${OBJ}
+${LIBNAME}: ${OBJ}
 	@echo CC -o $@
-	@${CC} -o $@ ${OBJ} ${LDFLAGS} -shared -Wl,-soname=librfm.so.1,-E
+	@${CC} -o $@ ${OBJ} ${LDFLAGS} -shared -Wl,-soname=${SONAME},-E
 #	@${CC} -o $@ ${OBJ} ${LDFLAGS} -shared -Wl,-E,-e,main
 # i tried to use librfm.so as both lib and exec and set entry point for librfm.so, however, i got segfault after launching librfm.so
 # https://unix.stackexchange.com/questions/223385/why-and-how-are-some-shared-libraries-runnable-as-though-they-are-executables
@@ -65,7 +71,7 @@ endif
 clean:
 	@echo cleaning
 ifneq ($(RFM_FILE_CHOOSER),)
-	@rm -f rfm librfm.so ${OBJ}
+	@rm -f rfm ${LIBNAME} ${OBJ}
 else
 	@rm -f rfm ${OBJ}
 endif
@@ -74,7 +80,9 @@ install: all
 	@mkdir -p ${DESTDIR}${PREFIX}/bin
 ifneq ($(RFM_FILE_CHOOSER),)
 	@mkdir -p ${DESTDIR}${PREFIX}/lib64
-	@cp -f librfm.so ${DESTDIR}${PREFIX}/lib64/librfm.so
+	@cp -f ${LIBNAME} ${DESTDIR}${PREFIX}/lib64/${LIBNAME}
+	@ln -sf ./${LIBNAME} ${DESTDIR}${PREFIX}/lib64/${SONAME}
+	@ln -sf ./${LIBNAME} ${DESTDIR}${PREFIX}/lib64/${LINKERNAME}
 endif
 	@cp -f rfm ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfm.sh ${DESTDIR}${PREFIX}/bin
@@ -103,7 +111,7 @@ ifneq ($(CalledByEbuild),YES)
 	ldconfig
 
 ifneq ($(RFM_FILE_CHOOSER),)
-	@chmod 755 ${DESTDIR}${PREFIX}/lib64/librfm.so
+	@chmod 755 ${DESTDIR}${PREFIX}/lib64/${LIBNAME}
 endif
 	@chmod 755 ${DESTDIR}${PREFIX}/bin/rfm
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfm.sh
@@ -131,7 +139,7 @@ endif
 uninstall:
 	@echo removing files from ${DESTDIR}${PREFIX}/{bin,lib}
 ifneq ($(RFM_FILE_CHOOSER),)
-	@rm -f ${DESTDIR}${PREFIX}/lib64/librfm.so
+	@rm -f ${DESTDIR}${PREFIX}/lib64/${LIBNAME}
 endif
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfm
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfm.sh
