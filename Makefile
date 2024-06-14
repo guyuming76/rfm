@@ -73,8 +73,8 @@ install: all
 	@echo installing files to ${DESTDIR}${PREFIX}/{bin,lib}
 	@mkdir -p ${DESTDIR}${PREFIX}/bin
 ifneq ($(RFM_FILE_CHOOSER),)
-	@mkdir -p ${DESTDIR}${PREFIX}/lib
-	@cp -f librfm.so ${DESTDIR}${PREFIX}/lib/librfm.so
+	@mkdir -p ${DESTDIR}${PREFIX}/lib64
+	@cp -f librfm.so ${DESTDIR}${PREFIX}/lib64/librfm.so
 endif
 	@cp -f rfm ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfm.sh ${DESTDIR}${PREFIX}/bin
@@ -103,7 +103,7 @@ ifneq ($(CalledByEbuild),YES)
 	ldconfig
 
 ifneq ($(RFM_FILE_CHOOSER),)
-	@chmod 755 ${DESTDIR}${PREFIX}/lib/librfm.so
+	@chmod 755 ${DESTDIR}${PREFIX}/lib64/librfm.so
 endif
 	@chmod 755 ${DESTDIR}${PREFIX}/bin/rfm
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfm.sh
@@ -131,7 +131,7 @@ endif
 uninstall:
 	@echo removing files from ${DESTDIR}${PREFIX}/{bin,lib}
 ifneq ($(RFM_FILE_CHOOSER),)
-	@rm -f ${DESTDIR}${PREFIX}/lib/librfm.so
+	@rm -f ${DESTDIR}${PREFIX}/lib64/librfm.so
 endif
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfm
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfm.sh
