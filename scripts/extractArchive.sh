@@ -1,4 +1,4 @@
-#! /bin/dash
+#! /bin/bash
 # extractArchive V2.0
 #  Script to extract the supplied archive to /tmp, then display
 #  a file manager.
@@ -13,7 +13,7 @@
 # 16-07-2020: Add zstandard (zstd) decompression.
 
 # Set filemanager command to display archive contents
-filemanager_cmd="/usr/local/bin/rfm -d"
+filemanager_cmd="rfm -d"
 
 # Set how messages are shown
 show_msg() {

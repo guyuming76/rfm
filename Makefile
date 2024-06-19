@@ -103,6 +103,7 @@ endif
 	@cp -f scripts/rfmChangeOwner_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmChangeOwner.sh
 #	@cp -f scripts/rfmNewFile.sh ${DESTDIR}${PREFIX}/bin
 #	@cp -f scripts/rfmNewDir.sh ${DESTDIR}${PREFIX}/bin
+	@cp -f scripts/extractArchive.sh ${DESTDIR}${PREFIX}/bin
 ifneq ($(CalledByEbuild),YES)
 # the CalledByEbuild variable is exported in rfm ebuild
 	xdg-desktop-menu install --novendor rfm.desktop
@@ -132,6 +133,7 @@ endif
 #	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmGitShowPictures.sh
 #	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmNewFile.sh
 #	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmNewDir.sh
+	@chmod +x ${DESTDIR}${PREFIX}/bin/extractArchive.sh
 endif
 	@echo
 	@echo "***please copy the .inputrc file into your home directory (~/your_username) manually."
@@ -160,6 +162,7 @@ endif
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmChangeOwner.sh
 #	@rm -f ${DESTDIR}${PREFIX}/bin/rfmNewFile.sh
 #	@rm -f ${DESTDIR}${PREFIX}/bin/rfmNewDir.sh
+	@rm -f ${DESTDIR}${PREFIX}/bin/extractArchive.sh
 ifneq ($(CalledByEbuild),YES)
 	xdg-desktop-menu uninstall rfm.desktop
 	update-desktop-database
