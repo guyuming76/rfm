@@ -87,7 +87,7 @@ endif
 	@cp -f rfm ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfm.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmRefreshImage.sh ${DESTDIR}${PREFIX}/bin
-	@cp -f scripts/rfmVTforCMD_hold.sh ${DESTDIR}${PREFIX}/bin
+	@cp -f scripts/rfmVTforCMD.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmReadlineWithSpecificHistoryFile.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmCopyMove_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmCopyMove.sh
 	@cp -f scripts/rfmRemove_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmRemove.sh
@@ -102,7 +102,7 @@ endif
 	@cp -f scripts/rfmGitCommit_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmGitCommit.sh
 	@cp -f scripts/rfmChangeOwner_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmChangeOwner.sh
 #	@cp -f scripts/rfmNewFile.sh ${DESTDIR}${PREFIX}/bin
-#	@cp -f scripts/rfmNewDir.sh ${DESTDIR}${PREFIX}/bin
+	@cp -f scripts/rfmPressEnterToCloseWindowAfterCMD.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/extractArchive.sh ${DESTDIR}${PREFIX}/bin
 ifneq ($(CalledByEbuild),YES)
 # the CalledByEbuild variable is exported in rfm ebuild
@@ -117,7 +117,7 @@ endif
 	@chmod 755 ${DESTDIR}${PREFIX}/bin/rfm
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfm.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmRefreshImage.sh
-	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmVTforCMD_hold.sh
+	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmVTforCMD.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmReadlineWithSpecificHistoryFile.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmCopyMove.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmRemove.sh
@@ -132,7 +132,7 @@ endif
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmChangeOwner.sh
 #	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmGitShowPictures.sh
 #	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmNewFile.sh
-#	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmNewDir.sh
+	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmPressEnterToCloseWindowAfterCMD.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/extractArchive.sh
 endif
 	@echo
@@ -146,7 +146,7 @@ endif
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfm
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfm.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmRefreshImage.sh
-	@rm -f ${DESTDIR}${PREFIX}/bin/rfmVTforCMD_hold.sh
+	@rm -f ${DESTDIR}${PREFIX}/bin/rfmVTforCMD.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmReadlineWithSpecificHistoryFile.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmCopyMove.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmRemove.sh
@@ -161,7 +161,7 @@ endif
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmGitCommit.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmChangeOwner.sh
 #	@rm -f ${DESTDIR}${PREFIX}/bin/rfmNewFile.sh
-#	@rm -f ${DESTDIR}${PREFIX}/bin/rfmNewDir.sh
+	@rm -f ${DESTDIR}${PREFIX}/bin/rfmPressEnterToCloseWindowAfterCMD.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/extractArchive.sh
 ifneq ($(CalledByEbuild),YES)
 	xdg-desktop-menu uninstall rfm.desktop

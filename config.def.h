@@ -52,6 +52,7 @@ static const char *show_image[] = { rfmBinPath "/rfmRefreshImage.sh", NULL };
 static const char *soffice[]    = { "/usr/bin/xdg-open", NULL };
 static const char *extract_archive[] = { rfmBinPath "/extractArchive.sh", NULL };
 static const char *create_archive[]  = { rfmBinPath "/createArchive.sh", NULL };
+static const char *list_archive[] = { rfmBinPath "/rfmVTforCMD.sh", "tar","--list","--file", NULL};
 static const char *metaflac[] = { "/usr/bin/metaflac", "--list", "--block-type=VORBIS_COMMENT", NULL };
 static const char *du[]       = { "/usr/bin/du", "-s", "-h", NULL };
 static const char *mount[]    = { rfmBinPath "/suMount.sh", NULL };
@@ -77,7 +78,7 @@ static const char *git_modified_staged_info_cmd[] = {"/usr/bin/git","status","--
 static const char *git_stage_cmd[] = {"/usr/bin/git","stage",NULL};
 static const char *git_root_cmd[] = {"/usr/bin/git","rev-parse", "--show-toplevel",NULL};
 static const char *git_commit_message_cmd[] = {"/usr/bin/git","log","-1","--oneline",NULL};
-static const char *git_log_cmd[] = { rfmBinPath "/rfmVTforCMD_hold.sh","/usr/bin/git","log",NULL};
+static const char *git_log_cmd[] = { rfmBinPath "/rfmVTforCMD.sh","/usr/bin/git","log",NULL};
 //现在只有很少的像上面这行的情况需要rfmVTforCMD_hold.sh脚本，如果想去掉它，统一用rfmVTforCMD.sh,就得想办法把类似read -p 这种代码插到上面的数组里，如果直接把 read 命令放在git log后面，NULL的前面，目前就会牺牲可以在末尾追加任意个选中文件的功能，我记得加一个“”数组项可以表示替换一个文件
 //若利用stdin_command_bash 这样的返回数组的函数，就意味着要增强文件上下文菜单的配置功能，让其能够接受函数，但这样会增加代码的复杂性，我认为上下文菜单应该保持只接受静态数组这么一种相对简单的配置方式
 //TODO：所以，现在要么保持有些冗余的rfmVTforCMD_hold.sh脚本，要么增强把静态数组和当前选中文件列表合并的方式，增加一个在中间合并进全部文件的符号，这个可以和命令行中间使用%s符号替换文件名一起考虑
@@ -133,6 +134,12 @@ static RFM_MenuItem run_actions[] = {
    { "Open",         "application",    "x-gnumeric",           gnumeric,         		NULL },
    { "Open",         "application",    "vnd.ms-excel",         gnumeric,         		NULL },
    { "Open",         "application",    "vnd.ms-excel",         soffice,          		NULL },
+   { "view archive", "application",    "x-compressed-tar",     list_archive,                    NULL },
+   { "view archive", "application",    "x-bzip-compressed-tar",list_archive,                    NULL },
+   { "view archive", "application",    "x-xz-compressed-tar",  list_archive,                    NULL },
+   { "view archive", "application",    "x-zstd-compressed-tar", list_archive,                   NULL },
+   { "view archive", "application",    "zip",                  list_archive,                    NULL },
+   { "view archive", "application",    "x-rpm",                list_archive,                    NULL },
    { "extract",      "application",    "x-compressed-tar",     extract_archive,  		NULL },
    { "extract",      "application",    "x-bzip-compressed-tar",extract_archive,  		NULL },
    { "extract",      "application",    "x-xz-compressed-tar",  extract_archive,  		NULL },
