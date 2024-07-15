@@ -350,7 +350,7 @@ static gchar** env_for_g_spawn_used_by_exec_stdin_command=NULL;
 static uint current_stdin_cmd_interpretor = 0;
 static enum rfmTerminal rfmStartWithVirtualTerminal = INHERIT_TERMINAL;
 static gboolean pauseInotifyHandler=FALSE;
-
+static int read_one_file_couter = 0;
 static char cmd_to_set_terminal_title[PATH_MAX];
 static gchar* non_grepMatchTreeViewColumns=NULL;
 static gboolean insert_fileAttributes_into_store_one_by_one=TRUE;
@@ -1322,7 +1322,9 @@ static void load_thumbnail_or_enqueue_thumbQueue_for_store_row(GtkTreeIter *iter
 	   g_log(RFM_LOG_DATA_THUMBNAIL,G_LOG_LEVEL_DEBUG,"thumbnail %s exists for %s",thumbData->thumb_name, thumbData->path);
            free_thumbQueueData(thumbData);
          } else { /* Thumbnail doesn't exist or is out of date */
-           rfm_thumbQueue = g_list_append(rfm_thumbQueue, thumbData);
+           //rfm_thumbQueue = g_list_prepend(rfm_thumbQueue, thumbData);
+	   //my test is that prepend and append does not make much difference in performance here
+	   rfm_thumbQueue = g_list_append(rfm_thumbQueue, thumbData);
 	   g_log(RFM_LOG_DATA_THUMBNAIL,G_LOG_LEVEL_DEBUG,"thumbnail %s creation enqueued for %s; load_thumbnail failure code:%d.",thumbData->thumb_name,thumbData->path,ld);
          }
       }
@@ -1610,6 +1612,7 @@ static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store(GD
 
    name=g_dir_read_name(dir);
    if (name!=NULL) {
+     g_log(RFM_LOG_DATA, G_LOG_LEVEL_DEBUG, "read_one_file_in_g_idle_start, counter:%d", read_one_file_couter);
      if (!ignored_filename(name)) {
          fileAttributes=get_fileAttributes_for_a_file(name, mtimeThreshold, mount_hash);
          if (fileAttributes!=NULL){
@@ -1618,6 +1621,8 @@ static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store(GD
 	 }
       }
       g_hash_table_destroy(mount_hash);
+      g_log(RFM_LOG_DATA, G_LOG_LEVEL_DEBUG, "read_one_file_in_g_idle_end, counter:%d", read_one_file_couter);
+      read_one_file_couter++;
       return G_SOURCE_CONTINUE;   /* Return TRUE if more items */
    }
    else {
@@ -1745,7 +1750,6 @@ static void set_Titles(gchar * title){
    g_free(title);
 }
 
-
 static void refresh_store(RFM_ctx *rfmCtx)
 {
    In_refresh_store = TRUE;
@@ -1805,6 +1809,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
      dir=g_dir_open(rfm_curPath, 0, NULL);
      if (!dir) return;
      title=g_strdup(rfm_curPath);
+     read_one_file_couter = 0;
      rfm_readDirSheduler=g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, (GSourceFunc)read_one_DirItem_into_fileAttributeList_and_insert_into_store, dir, (GDestroyNotify)g_dir_close);
   }
 #ifdef GitIntegration
