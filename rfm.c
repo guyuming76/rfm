@@ -339,6 +339,7 @@ static char** (*OLD_rl_attempted_completion_function)(const char *text, int star
 static char **rfm_filename_completion(const char *text, int start, int end);
 static char *rfm_selection_completion = NULL;
 static GMutex rfm_selection_completion_lock;
+static gboolean showHelpOnStart = TRUE;
 static gboolean exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread = FALSE;
 static gboolean execStdinCmdInNewVT = FALSE;
 //used by exec_stdin_command and exec_stdin_command_builtin to share status
@@ -3427,7 +3428,7 @@ static int setup(RFM_ctx *rfmCtx)
    OLD_rl_attempted_completion_function = rl_attempted_completion_function;
    rl_attempted_completion_function = rfm_filename_completion;
 
-   if (startWithVT() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)) stdin_command_help();
+   if (showHelpOnStart && startWithVT() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)) stdin_command_help();
    if (auto_execution_command_after_rfm_start==NULL){
      refresh_store(rfmCtx);
      if(startWithVT() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)){
@@ -3572,6 +3573,9 @@ int main(int argc, char *argv[])
       case 'h':
 	printf(rfmLaunchHelp, PROG_NAME);
 	return 0;
+      case 'n':
+	showHelpOnStart = FALSE;
+	break;
       case 'H': pauseInotifyHandler=TRUE; break;
       case 'r':
 	StartedAs_rfmFileChooser=TRUE;
