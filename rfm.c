@@ -2867,13 +2867,22 @@ static int get_treeviewColumnsIndexByEnum(enum RFM_treeviewCol col){
 }
 
 static enum RFM_treeviewCol get_available_ExtColumn(enum RFM_treeviewCol col){
-  while (col < NUM_COLS && get_treeviewColumnsIndexByEnum(col)<0) col++;
+  enum RFM_treeviewCol start = col;
+  while (col < NUM_COLS && get_treeviewColumnsIndexByEnum(col)>=0) col++;
+  if(col == NUM_COLS) g_warning("no available extended column since column enum %d", start);
   return col;
 }
 
 static RFM_treeviewColumn* get_treeviewColumnByEnum(enum RFM_treeviewCol col){
   int i = get_treeviewColumnsIndexByEnum(col);
   return i<0 ? NULL : &treeviewColumns[i];
+}
+
+static RFM_treeviewColumn* get_treeviewColumnByTitle(char* title){
+  for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++){
+    if (g_strcmp0(treeviewColumns[i].title, title)==0) return &treeviewColumns[i];
+  }
+  return NULL;
 }
 
 void move_array_item_a_after_b(void * array, int index_b, int index_a, uint32_t array_item_size, uint32_t array_length){
@@ -2935,6 +2944,27 @@ static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
 		//如果当前 order_seq_array 项不为空, 为空且order_seq_array[j+1]!=NULL(表示不是最后一个项,也就是说只能是第一项),则只会执行j++,
 		if (g_strcmp0(order_seq_array[j], "")!=0){ //to deal with situation such as ,2 (这时,split后逗号前的项为"") or 2, (这时,splite后逗号后的项为"")
 		    int col_enum_with_sign = atoi(order_seq_array[j]);
+		    //atoi 失败时返回 0,也就是说这时 order_seq_array[j] 不是数字, 是扩展列显示名比如ImageSize,MailTo等
+		    if (col_enum_with_sign==0){
+		      RFM_treeviewColumn* col = get_treeviewColumnByTitle(order_seq_array[j]);
+		      if (col==NULL) {
+			g_warning("failed to find column %s",order_seq_array[j]);
+			g_array_free(order_seq_array, TRUE);
+			return;
+		      }
+		      if (col->enumCol==NUM_COLS){
+			col_enum_with_sign = get_available_ExtColumn(COL_Ext1);
+			if (col_enum_with_sign==NUM_COLS) {
+			  g_warning("no available extended columns for %s", order_seq_array[j]);
+			  g_array_free(order_seq_array, TRUE);
+			  return;
+			}
+			col->enumCol=col_enum_with_sign;
+			
+		      }
+		    }
+
+		    
 		    guint col_enum_at_order_sequence_item_j = abs(col_enum_with_sign);//col_enum 表示列常数,比如 COL_FILENAME
 		    int treeviewColumn_index_for_order_sequence_item_j = get_treeviewColumnsIndexByEnum(col_enum_at_order_sequence_item_j);//col_index 表示col_enum 在treeviewColumns数组里当前的下标
 		    g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"j:%d; col_enum_at_order_sequence_item_j:%d; treeviewColumn_index_for_order_sequence_item_j:[%d]; target_index_for_order_sequence_item_j_to_move_after:[%d] ",j,col_enum_at_order_sequence_item_j,treeviewColumn_index_for_order_sequence_item_j,target_treeviewColumn_index_for_order_sequence_item_j_to_move_after);
