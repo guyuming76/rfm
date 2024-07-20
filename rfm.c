@@ -197,6 +197,8 @@ enum RFM_treeviewCol{
    NUM_COLS
 };
 
+#define NUM_Ext_Columns (NUM_COLS - COL_Ext1)
+
 typedef struct {
   gchar* title;
   enum RFM_treeviewCol enumCol;
@@ -300,7 +302,7 @@ static GtkIconTheme *icon_theme;
 static GHashTable *thumb_hash=NULL; /* Thumbnails in the current view */
 //hash table to store matched string show in grep result, with fileAttributeid as key
 static GHashTable *grepMatch_hashtable = NULL;
-
+static GHashTable* ExtColumnHashTable[NUM_Ext_Columns + 1];
 static GtkListStore *store=NULL;
 static GtkTreeModel *treemodel=NULL;
 
@@ -1779,13 +1781,21 @@ static void refresh_store(RFM_ctx *rfmCtx)
 #ifdef GitIntegration
    if (curPath_is_git_repo) load_GitTrackedFiles_into_HashTable();
 #endif
-   if(grepMatch_hashtable!=NULL){
+   if(ExtColumnHashTable[0]!=NULL){
      if (SearchResultViewInsteadOfDirectoryView){
        if (non_grepMatchTreeViewColumns==NULL){//newly in searchresultview with grepMatch, keep old treeview columns
 	 gchar* cmd=get_showcolumn_cmd_from_currently_displaying_columns();
 	 non_grepMatchTreeViewColumns=strdup(cmd + 11); //exclude leading "showcolumn "
 	 g_free(cmd);
-	 show_hide_treeview_columns_enum(4, INT_MAX, COL_FILENAME,COL_GREP_MATCH, INT_MAX);
+	 //show_hide_treeview_columns_enum(4, INT_MAX, COL_FILENAME,COL_GREP_MATCH, INT_MAX);
+	 show_hide_treeview_columns_enum(3, INT_MAX,COL_FILENAME,INT_MAX);
+	 enum RFM_treeviewCol previousColumn = COL_FILENAME;
+	 for(int i=COL_Ext1; i<NUM_COLS;i++){
+	   if (ExtColumnHashTable[i-COL_Ext1]!=NULL){
+	     show_hide_treeview_columns_enum(3, previousColumn,i,INT_MAX);
+	     previousColumn = i;
+	   }
+	 }
        }
      }else{// in DirectoryView
        if (non_grepMatchTreeViewColumns!=NULL){
@@ -3620,22 +3630,32 @@ int main(int argc, char *argv[])
    return 0;
 }
 
-static void ProcessOnelineForSearchResult(gchar* oneline){
-	   //if there is : in oneline_stdin, copy str after : into description str, and remove str after : from oneline_stdin
-	   uint seperatorPositionForGrepMatch=0;
-	   if ((seperatorPositionForGrepMatch = strcspn(oneline, ":"))<strlen(oneline)){ // : found in oneline_stdin
-	       gchar* grepMatch = oneline + seperatorPositionForGrepMatch + 1;
-	       oneline[seperatorPositionForGrepMatch] = 0;
-	       if (grepMatch_hashtable==NULL) grepMatch_hashtable = g_hash_table_new_full(g_str_hash, g_str_equal,g_free, g_free);
-	       gchar* key=calloc(10, sizeof(char));
+static void ProcessOnelineForSearchResult(char* oneline){
+           if (oneline == NULL) return;
+	   char* key=calloc(10, sizeof(char));
+	   uint seperatorPositionAfterCurrentExtColumnValue = strcspn(oneline, ":");
+	   if (seperatorPositionAfterCurrentExtColumnValue < strlen(oneline)) { //found ":" in oneline
 	       sprintf(key, "%d", fileAttributeID++);
-	       g_hash_table_insert(grepMatch_hashtable, key, strdup(grepMatch));
+	       oneline[seperatorPositionAfterCurrentExtColumnValue] = 0; //ending NULL for filename
+               char* currentExtColumnValue = oneline + seperatorPositionAfterCurrentExtColumnValue + 1; //moving char pointer
+	       uint currentExtColumnValueLength;
+	       enum RFM_treeviewCol current_Ext_Column = COL_Ext1;
+	       do {
+		    currentExtColumnValueLength = strlen(currentExtColumnValue);
+	            uint currentExtColumnHashTableIndex = current_Ext_Column - COL_Ext1;
+	            if (ExtColumnHashTable[currentExtColumnHashTableIndex]==NULL) ExtColumnHashTable[currentExtColumnHashTableIndex] = g_hash_table_new_full(g_str_hash, g_str_equal,g_free, g_free);
+		    seperatorPositionAfterCurrentExtColumnValue = strcspn(currentExtColumnValue, ":");
+		    currentExtColumnValue[seperatorPositionAfterCurrentExtColumnValue] = 0; //ending NULL for currentExtColumnValue
+		    g_hash_table_insert(ExtColumnHashTable[currentExtColumnHashTableIndex], strdup(key), strdup(currentExtColumnValue));
+		    free(currentExtColumnValue);
+		    currentExtColumnValue = currentExtColumnValue + seperatorPositionAfterCurrentExtColumnValue + 1; //moving char pointer
+		    current_Ext_Column++;
+	       } while(current_Ext_Column<NUM_COLS && seperatorPositionAfterCurrentExtColumnValue < currentExtColumnValueLength);
 	   }
-	   //if (!ignored_filename(oneline)){ //shall we call ignored_filename here? I prefer not, user can filter those files with grep before rfm
-	       SearchResultFileNameList=g_list_prepend(SearchResultFileNameList, oneline);
-	       SearchResultFileNameListLength++;
-	       g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"appended into SearchResultFileNameList:%s", oneline);
-	   //}
+	   free(key);
+	   SearchResultFileNameList=g_list_prepend(SearchResultFileNameList, oneline);
+	   SearchResultFileNameListLength++;
+	   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"appended into SearchResultFileNameList:%s", oneline);
 }
 
 static gchar *getGrepMatchFromHashTable(guint fileAttributeId) {
