@@ -255,13 +255,13 @@ static RFM_treeviewColumn treeviewColumns[] = {
   // COL_MIME_SORT, //mime root + sub for listview sort
   {"ATime",                   COL_ATIME_STR,              FALSE,  NULL, NULL,                 COL_ATIME_STR,            NULL,            NULL,     "*",         "*",    FALSE,FALSE},
   {"CTime",                   COL_CTIME_STR,              FALSE,  NULL, NULL,                 COL_CTIME_STR,            NULL,            NULL,     "*",         "*",    FALSE,FALSE},
-  {"ImageSize",               COL_Ext1,                   FALSE,  NULL, NULL,                 COL_Ext1,                 getImageSize,    NULL,     "image",     "*",    FALSE,FALSE},
-  {"Comment",                 COL_Ext2,                   FALSE,  NULL, NULL,                 COL_Ext2,                 getComment,      NULL,     "image",     "*",    FALSE,FALSE},
-  {"MailDate",                COL_Ext3,                   FALSE,  NULL, path_in_maildir,      COL_Ext3,                 getMailDate,     NULL,     "*",         "*",    FALSE,FALSE},
-  {"MailFrom",                COL_Ext4,                   FALSE,  NULL, path_in_maildir,      COL_Ext4,                 getMailFrom,     NULL,     "*",         "*",    FALSE,FALSE},
-  {"MailSubject",             COL_Ext5,                   FALSE,  NULL, path_in_maildir,      COL_Ext5,                 getMailSubject,  NULL,     "*",         "*",    FALSE,FALSE},
-  {"MailAttachments",         COL_Ext6,                   FALSE,  NULL, path_in_maildir,      COL_Ext6,                 getMailAttachments,NULL,   "*",         "*",    FALSE,FALSE},
-  {"MailTo",                  COL_Ext7,                   FALSE,  NULL, path_in_maildir,      COL_Ext7,                 getMailTo,       NULL,     "*",         "*",    FALSE,FALSE},
+  {"ImageSize",               NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 getImageSize,    NULL,     "image",     "*",    FALSE,FALSE},
+  {"Comment",                 NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 getComment,      NULL,     "image",     "*",    FALSE,FALSE},
+  {"MailDate",                NUM_COLS,                   FALSE,  NULL, path_in_maildir,      NUM_COLS,                 getMailDate,     NULL,     "*",         "*",    FALSE,FALSE},
+  {"MailFrom",                NUM_COLS,                   FALSE,  NULL, path_in_maildir,      NUM_COLS,                 getMailFrom,     NULL,     "*",         "*",    FALSE,FALSE},
+  {"MailSubject",             NUM_COLS,                   FALSE,  NULL, path_in_maildir,      NUM_COLS,                 getMailSubject,  NULL,     "*",         "*",    FALSE,FALSE},
+  {"MailAttachments",         NUM_COLS,                   FALSE,  NULL, path_in_maildir,      NUM_COLS,                 getMailAttachments,NULL,   "*",         "*",    FALSE,FALSE},
+  {"MailTo",                  NUM_COLS,                   FALSE,  NULL, path_in_maildir,      NUM_COLS,                 getMailTo,       NULL,     "*",         "*",    FALSE,FALSE},
   {"grepMatch",               COL_GREP_MATCH,             FALSE,  NULL, NULL,                 COL_GREP_MATCH,           NULL,   getGrepMatchFromHashTable, "*", "*",    FALSE,FALSE},
 };
 

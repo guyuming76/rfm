@@ -1372,6 +1372,7 @@ static void load_ExtColumns_and_iconview_markup_tooltip(RFM_FileAttributes* file
 	    && (treeviewColumns[i].showCondition==NULL || treeviewColumns[i].showCondition(fileAttributes) )){
 	  //下面的if语句为啥不合并到上面的if,用&&连起来?
 	  if (g_strcmp0(treeviewColumns[i].MIME_sub, "*") || g_strcmp0(treeviewColumns[i].MIME_sub, fileAttributes->mime_sub_type)){ //treeviewColumns[i].MIME_sub 为*, 或者和当前文件相同
+	    g_assert(treeviewColumns[i].enumCol!=NUM_COLS);
 	    RFM_store_cell* cell=malloc(sizeof(RFM_store_cell));
 	    cell->iter = iter;
 	    cell->store_column = treeviewColumns[i].enumCol;
@@ -2491,11 +2492,12 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
 
      for(guint i=0; i<G_N_ELEMENTS(treeviewColumns); i++){
        if (!treeviewColumns[i].Show) continue;
+       g_assert(treeviewColumns[i].enumCol!=NUM_COLS);
        treeviewColumns[i].gtkCol = gtk_tree_view_column_new_with_attributes(treeviewColumns[i].title , renderer,"text" ,  treeviewColumns[i].enumCol , NULL);
        gtk_tree_view_column_set_resizable(treeviewColumns[i].gtkCol,TRUE);
        gtk_tree_view_append_column(GTK_TREE_VIEW(_view),treeviewColumns[i].gtkCol);
        gtk_tree_view_column_set_visible(treeviewColumns[i].gtkCol, treeviewColumns[i].Show && ((treeviewColumns[i].showCondition==NULL) ? TRUE: treeviewColumns[i].showCondition(NULL)));
-       gtk_tree_view_column_set_sort_column_id(treeviewColumns[i].gtkCol, treeviewColumns[i].enumSortCol==NULL? treeviewColumns[i].enumCol: treeviewColumns[i].enumSortCol);
+       gtk_tree_view_column_set_sort_column_id(treeviewColumns[i].gtkCol, treeviewColumns[i].enumSortCol==NUM_COLS? treeviewColumns[i].enumCol: treeviewColumns[i].enumSortCol);
      }
 
    } else {
@@ -2864,6 +2866,11 @@ static int get_treeviewColumnsIndexByEnum(enum RFM_treeviewCol col){
   return -1;
 }
 
+static enum RFM_treeviewCol get_available_ExtColumn(enum RFM_treeviewCol col){
+  while (col < NUM_COLS && get_treeviewColumnsIndexByEnum(col)<0) col++;
+  return col;
+}
+
 static RFM_treeviewColumn* get_treeviewColumnByEnum(enum RFM_treeviewCol col){
   int i = get_treeviewColumnsIndexByEnum(col);
   return i<0 ? NULL : &treeviewColumns[i];
@@ -2992,6 +2999,7 @@ static gchar* get_showcolumn_cmd_from_currently_displaying_columns(){
 	    showColumnHistory = strcat(showColumnHistory, "showcolumn ,");
 	    for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++){
 	      //gchar* onecolumn=calloc(6, sizeof(char)); //5 chars for onecolumn + ending null
+	      if (treeviewColumns[i].enumCol==NUM_COLS) continue;
 	      char onecolumn[6];
 	      sprintf(onecolumn,"%4d,", treeviewColumns[i].enumCol * (treeviewColumns[i].Show?1:-1));
 	      showColumnHistory = strcat(showColumnHistory, onecolumn);
@@ -3003,7 +3011,12 @@ static void show_hide_treeview_columns(wordexp_t * parsed_msg){
 	  if (parsed_msg->we_wordc==1){
 	    printf("current column status(negative means invisible):\n");
 	    for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++)
-	      printf("    %d: %s\n",treeviewColumns[i].Show? treeviewColumns[i].enumCol:(-1)*treeviewColumns[i].enumCol,treeviewColumns[i].title);
+	      if (treeviewColumns[i].enumCol<NUM_COLS)
+		printf("%4d: %s\n", treeviewColumns[i].Show? treeviewColumns[i].enumCol : (-1)*treeviewColumns[i].enumCol,treeviewColumns[i].title);
+	      else{
+	        g_assert(!treeviewColumns[i].Show);
+		printf("    : %s\n",treeviewColumns[i].title);
+	      }
 	    printf(SHOWCOLUMN_USAGE);
 	    gchar* cmd=get_showcolumn_cmd_from_currently_displaying_columns();
 	    add_history(cmd);
@@ -3639,7 +3652,7 @@ static void ProcessOnelineForSearchResult(char* oneline){
 	       oneline[seperatorPositionAfterCurrentExtColumnValue] = 0; //ending NULL for filename
                char* currentExtColumnValue = oneline + seperatorPositionAfterCurrentExtColumnValue + 1; //moving char pointer
 	       uint currentExtColumnValueLength;
-	       enum RFM_treeviewCol current_Ext_Column = COL_Ext1;
+	       enum RFM_treeviewCol current_Ext_Column = get_available_ExtColumn(COL_Ext1);
 	       do {
 		    currentExtColumnValueLength = strlen(currentExtColumnValue);
 	            uint currentExtColumnHashTableIndex = current_Ext_Column - COL_Ext1;
@@ -3649,7 +3662,7 @@ static void ProcessOnelineForSearchResult(char* oneline){
 		    g_hash_table_insert(ExtColumnHashTable[currentExtColumnHashTableIndex], strdup(key), strdup(currentExtColumnValue));
 		    free(currentExtColumnValue);
 		    currentExtColumnValue = currentExtColumnValue + seperatorPositionAfterCurrentExtColumnValue + 1; //moving char pointer
-		    current_Ext_Column++;
+		    current_Ext_Column=get_available_ExtColumn(current_Ext_Column++);
 	       } while(current_Ext_Column<NUM_COLS && seperatorPositionAfterCurrentExtColumnValue < currentExtColumnValueLength);
 	   }
 	   free(key);
