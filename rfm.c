@@ -207,7 +207,7 @@ typedef struct {
   gboolean (*showCondition)(RFM_FileAttributes * fileAttributes);
   enum RFM_treeviewCol enumSortCol;
   gchar* ValueCmd;
-  gchar* (*ValueFunc)(guint);
+  gchar* (*ValueFunc)(guint,...);
   gchar* MIME_root;
   gchar* MIME_sub;
   gboolean iconview_markup;
@@ -370,7 +370,8 @@ static gboolean cur_path_is_git_repo(RFM_FileAttributes * fileAttributes) { retu
 static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpointer *child_attribs);
 #endif
 static void set_terminal_window_title(char* title);
-static gchar *getGrepMatchFromHashTable(guint fileAttributeId);
+//static gchar *getGrepMatchFromHashTable(guint fileAttributeId);
+static gchar* getExtColumnValueFromHashTable(guint fileAttributeId, guint ExtColumnHashTableIndex);
 void move_array_item_a_after_b(void * array, int index_b, int index_a, uint32_t array_item_size, uint32_t array_length);
 static gboolean startWithVT();
 static void show_msgbox(gchar *msg, gchar *title, gint type);
@@ -1383,6 +1384,8 @@ static void load_ExtColumns_and_iconview_markup_tooltip(RFM_FileAttributes* file
               gchar* ExtColumn_cmd = g_strdup_printf(treeviewColumns[i].ValueCmd, fileAttributes->path);
 	      gchar* ExtColumn_cmd_template[] = {"/bin/bash", "-c", ExtColumn_cmd, NULL};
 	      g_spawn_wrapper(ExtColumn_cmd_template, NULL, G_SPAWN_DEFAULT, NULL, FALSE, Update_Store_ExtColumns, &cell, TRUE);
+	    }else if (treeviewColumns[i].ValueFunc==getExtColumnValueFromHashTable){
+	      gtk_list_store_set(store,cell->iter, cell->store_column, treeviewColumns[i].ValueFunc(fileAttributes->id,treeviewColumns[i].enumCol-COL_Ext1), -1);
 	    }else if (treeviewColumns[i].ValueFunc!=NULL){
 	      gtk_list_store_set(store,cell->iter, cell->store_column, treeviewColumns[i].ValueFunc(fileAttributes->id), -1);
 	      //for grepMatch column, fileAttributes->file_name is added as key into grepMatch_hash, however, we suppose grep output absoluteaddr, so filenamne equals fileattributes->path here
@@ -2867,6 +2870,7 @@ static int get_treeviewColumnsIndexByEnum(enum RFM_treeviewCol col){
 }
 
 static enum RFM_treeviewCol get_available_ExtColumn(enum RFM_treeviewCol col){
+  g_assert(col>=COL_Ext1 && col<NUM_COLS);
   enum RFM_treeviewCol start = col;
   while (col < NUM_COLS && get_treeviewColumnsIndexByEnum(col)>=0) col++;
   if(col == NUM_COLS) g_warning("no available extended column since column enum %d", start);
@@ -3678,35 +3682,71 @@ static void ProcessOnelineForSearchResult(char* oneline){
 	   char* key=calloc(10, sizeof(char));
 	   uint seperatorPositionAfterCurrentExtColumnValue = strcspn(oneline, ":");
 	   if (seperatorPositionAfterCurrentExtColumnValue < strlen(oneline)) { //found ":" in oneline
-	       sprintf(key, "%d", fileAttributeID++);
+	       sprintf(key, "%d", fileAttributeID);
 	       oneline[seperatorPositionAfterCurrentExtColumnValue] = 0; //ending NULL for filename
                char* currentExtColumnValue = oneline + seperatorPositionAfterCurrentExtColumnValue + 1; //moving char pointer
 	       uint currentExtColumnValueLength;
-	       enum RFM_treeviewCol current_Ext_Column = get_available_ExtColumn(COL_Ext1);
+	       enum RFM_treeviewCol current_Ext_Column=COL_Ext1;
+	       uint currentColumnTitleIndex=1;
+	       char currentColumnTitle[10];
+	       sprintf(currentColumnTitle,"C%d", currentColumnTitleIndex);
+	       RFM_treeviewColumn* col = get_treeviewColumnByTitle(currentColumnTitle);
+	       // Column Titles will always be C1, C2, C3, ..., that is, continuous with no gap, and start from C1
+	       // but current_Ext_Column and currentExtColumnHashTable Ext can have gap: it can be COL_Ext2, COL_Ext4,...,
+	       // current_Ext_Column 对应的COL_ExtX,中X下标总是等于 currentExtColumnHashTableIndex-1
+
+	       if (fileAttributeID==1){ //bind to available extended column for the first line.
+		    g_assert(col->enumCol==NUM_COLS);
+		    current_Ext_Column = get_available_ExtColumn(current_Ext_Column); //This function is called for new search result, COL_Ext1 will be available, so i don't check current_Ext_column < NUM_COLS here
+	       } else {
+		    current_Ext_Column = col->enumCol;
+	       }
+		 
 	       do {
 		    currentExtColumnValueLength = strlen(currentExtColumnValue);
-	            uint currentExtColumnHashTableIndex = current_Ext_Column - COL_Ext1;
+
+		    uint currentExtColumnHashTableIndex = current_Ext_Column - COL_Ext1;
 	            if (ExtColumnHashTable[currentExtColumnHashTableIndex]==NULL) ExtColumnHashTable[currentExtColumnHashTableIndex] = g_hash_table_new_full(g_str_hash, g_str_equal,g_free, g_free);
+		    
 		    seperatorPositionAfterCurrentExtColumnValue = strcspn(currentExtColumnValue, ":");
 		    currentExtColumnValue[seperatorPositionAfterCurrentExtColumnValue] = 0; //ending NULL for currentExtColumnValue
+		    g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"Insert column %s into ExtColumnHashTable[%d]: key %s,value %s", currentColumnTitle, currentExtColumnHashTableIndex,key,currentExtColumnValue);
 		    g_hash_table_insert(ExtColumnHashTable[currentExtColumnHashTableIndex], strdup(key), strdup(currentExtColumnValue));
-		    free(currentExtColumnValue);
+		    //free(currentExtColumnValue);// the will cause exception
 		    currentExtColumnValue = currentExtColumnValue + seperatorPositionAfterCurrentExtColumnValue + 1; //moving char pointer
-		    current_Ext_Column=get_available_ExtColumn(current_Ext_Column++);
+
+      		    currentColumnTitleIndex++;
+		    sprintf(currentColumnTitle,"C%d", currentColumnTitleIndex);
+
+		    if (fileAttributeID==1){
+		         g_assert(col->enumCol==NUM_COLS);
+			 g_assert(col->ValueFunc==getExtColumnValueFromHashTable);
+		         col->enumCol = current_Ext_Column;
+
+                         col = get_treeviewColumnByTitle(currentColumnTitle);
+			 
+			 current_Ext_Column++;
+			 current_Ext_Column=get_available_ExtColumn(current_Ext_Column);
+		    }else {
+		      	 col = get_treeviewColumnByTitle(currentColumnTitle);
+			 current_Ext_Column = col->enumCol;
+		    }
+
 	       } while(current_Ext_Column<NUM_COLS && seperatorPositionAfterCurrentExtColumnValue < currentExtColumnValueLength);
 	   }
 	   free(key);
 	   SearchResultFileNameList=g_list_prepend(SearchResultFileNameList, oneline);
 	   SearchResultFileNameListLength++;
 	   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"appended into SearchResultFileNameList:%s", oneline);
+	   fileAttributeID++;
 }
 
-static gchar *getGrepMatchFromHashTable(guint fileAttributeId) {
-   if (grepMatch_hashtable==NULL) return NULL;
-   gchar* key = calloc(10, sizeof(char));
+static gchar* getExtColumnValueFromHashTable(guint fileAttributeId, guint ExtColumnHashTableIndex){
+   if (ExtColumnHashTable[ExtColumnHashTableIndex]==NULL) return NULL;
+   gchar key[10];
    sprintf(key, "%d", fileAttributeId);
-   gchar* ret = g_hash_table_lookup(grepMatch_hashtable, key);
-   g_free(key);
+   gchar *ret=g_hash_table_lookup(ExtColumnHashTable[ExtColumnHashTableIndex], key);
+   g_log(RFM_LOG_DATA_EXT, G_LOG_LEVEL_DEBUG, "getExtColumnValueFromHashTable(fileAttributeId %d, ExtColumnHashTableIndex %d) return %s",fileAttributeId,ExtColumnHashTableIndex,ret);
    return ret;
 }
 

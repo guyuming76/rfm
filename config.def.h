@@ -255,6 +255,16 @@ static RFM_treeviewColumn treeviewColumns[] = {
   // COL_MIME_SORT, //mime root + sub for listview sort
   {"ATime",                   COL_ATIME_STR,              FALSE,  NULL, NULL,                 COL_ATIME_STR,            NULL,            NULL,     "*",         "*",    FALSE,FALSE},
   {"CTime",                   COL_CTIME_STR,              FALSE,  NULL, NULL,                 COL_CTIME_STR,            NULL,            NULL,     "*",         "*",    FALSE,FALSE},
+  {"C1",                      NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 NULL,getExtColumnValueFromHashTable,"*","*",    FALSE,FALSE},
+  {"C2",                      NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 NULL,getExtColumnValueFromHashTable,"*","*",    FALSE,FALSE},
+  {"C3",                      NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 NULL,getExtColumnValueFromHashTable,"*","*",    FALSE,FALSE},
+  {"C4",                      NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 NULL,getExtColumnValueFromHashTable,"*","*",    FALSE,FALSE},
+  {"C5",                      NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 NULL,getExtColumnValueFromHashTable,"*","*",    FALSE,FALSE},
+  {"C6",                      NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 NULL,getExtColumnValueFromHashTable,"*","*",    FALSE,FALSE},
+  {"C7",                      NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 NULL,getExtColumnValueFromHashTable,"*","*",    FALSE,FALSE},
+  {"C8",                      NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 NULL,getExtColumnValueFromHashTable,"*","*",    FALSE,FALSE},
+  {"C9",                      NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 NULL,getExtColumnValueFromHashTable,"*","*",    FALSE,FALSE},
+  {"C10",                     NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 NULL,getExtColumnValueFromHashTable,"*","*",    FALSE,FALSE},
   {"ImageSize",               NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 getImageSize,    NULL,     "image",     "*",    FALSE,FALSE},
   {"Comment",                 NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 getComment,      NULL,     "image",     "*",    FALSE,FALSE},
   {"MailDate",                NUM_COLS,                   FALSE,  NULL, path_in_maildir,      NUM_COLS,                 getMailDate,     NULL,     "*",         "*",    FALSE,FALSE},
@@ -262,7 +272,6 @@ static RFM_treeviewColumn treeviewColumns[] = {
   {"MailSubject",             NUM_COLS,                   FALSE,  NULL, path_in_maildir,      NUM_COLS,                 getMailSubject,  NULL,     "*",         "*",    FALSE,FALSE},
   {"MailAttachments",         NUM_COLS,                   FALSE,  NULL, path_in_maildir,      NUM_COLS,                 getMailAttachments,NULL,   "*",         "*",    FALSE,FALSE},
   {"MailTo",                  NUM_COLS,                   FALSE,  NULL, path_in_maildir,      NUM_COLS,                 getMailTo,       NULL,     "*",         "*",    FALSE,FALSE},
-  {"grepMatch",               COL_GREP_MATCH,             FALSE,  NULL, NULL,                 COL_GREP_MATCH,           NULL,   getGrepMatchFromHashTable, "*", "*",    FALSE,FALSE},
 };
 
 static RFM_SearchResultType searchresultTypes[] = {
