@@ -300,8 +300,7 @@ static RFM_defaultPixbufs *defaultPixbufs=NULL;
 static GtkIconTheme *icon_theme;
 
 static GHashTable *thumb_hash=NULL; /* Thumbnails in the current view */
-//hash table to store matched string show in grep result, with fileAttributeid as key
-static GHashTable *grepMatch_hashtable = NULL;
+//hash table to store string shown in search result, with fileAttributeid as key
 static GHashTable* ExtColumnHashTable[NUM_Ext_Columns + 1];
 static GtkListStore *store=NULL;
 static GtkTreeModel *treemodel=NULL;
@@ -1373,7 +1372,7 @@ static void load_ExtColumns_and_iconview_markup_tooltip(RFM_FileAttributes* file
 	    && (treeviewColumns[i].showCondition==NULL || treeviewColumns[i].showCondition(fileAttributes) )){
 	  //下面的if语句为啥不合并到上面的if,用&&连起来?
 	  if (g_strcmp0(treeviewColumns[i].MIME_sub, "*") || g_strcmp0(treeviewColumns[i].MIME_sub, fileAttributes->mime_sub_type)){ //treeviewColumns[i].MIME_sub 为*, 或者和当前文件相同
-	    g_assert(treeviewColumns[i].enumCol!=NUM_COLS);
+	    //g_assert(treeviewColumns[i].enumCol!=NUM_COLS);
 	    RFM_store_cell* cell=malloc(sizeof(RFM_store_cell));
 	    cell->iter = iter;
 	    cell->store_column = treeviewColumns[i].enumCol;
@@ -2495,7 +2494,7 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
 
      for(guint i=0; i<G_N_ELEMENTS(treeviewColumns); i++){
        if (!treeviewColumns[i].Show) continue;
-       g_assert(treeviewColumns[i].enumCol!=NUM_COLS);
+       //g_assert(treeviewColumns[i].enumCol!=NUM_COLS);
        treeviewColumns[i].gtkCol = gtk_tree_view_column_new_with_attributes(treeviewColumns[i].title , renderer,"text" ,  treeviewColumns[i].enumCol , NULL);
        gtk_tree_view_column_set_resizable(treeviewColumns[i].gtkCol,TRUE);
        gtk_tree_view_append_column(GTK_TREE_VIEW(_view),treeviewColumns[i].gtkCol);
@@ -3797,9 +3796,18 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
   }
   
   GList * old_filenamelist = SearchResultFileNameList;
-  GHashTable* old_grepMatch_hash = grepMatch_hashtable;
+  static GHashTable* old_ExtColumnHashTable[NUM_Ext_Columns + 1];
   SearchResultFileNameList = NULL;
-  grepMatch_hashtable = NULL;
+  for(int i=0;i<=NUM_Ext_Columns;i++) {
+    old_ExtColumnHashTable[i]=ExtColumnHashTable[i];
+    ExtColumnHashTable[i]=NULL;
+    RFM_treeviewColumn* col = get_treeviewColumnByEnum(COL_Ext1 + i);
+    if (col){
+      //col->Show=FALSE;
+      col->enumCol=NUM_COLS;
+    }
+  }
+  
   SearchResultFileNameListLength=0;
   fileAttributeID=1;
   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"update_SearchResultFileNameList, length: %d charactor(s)",strlen((gchar*)filenamelist));
@@ -3815,7 +3823,7 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
   rfm_SearchResultPath=strdup(rfm_curPath);
   FirstPage(rfmCtx);
   if (old_filenamelist!=NULL) g_list_free(old_filenamelist);
-  if (old_grepMatch_hash!=NULL) g_hash_table_destroy(old_grepMatch_hash);
+  for(int i=0;i<=NUM_Ext_Columns;i++) if (old_ExtColumnHashTable[i]!=NULL) g_hash_table_destroy(old_ExtColumnHashTable[i]);
 }
 
 
