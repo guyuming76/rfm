@@ -3283,7 +3283,7 @@ static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult)
 	    SearchResultTypeIndex = MatchSearchResultType(readlineResult);
 
             readlineResultString=g_string_new(strdup(readlineResult));
-	    if (stdin_cmd_ending_space){
+	  //if (stdin_cmd_ending_space){
 	      // combine runCmd with selected files to get gchar** v
 	      // TODO: the following code share the same pattern as g_spawn_wrapper_for_selected_fileList_ , anyway to remove the duplicate code?
 	      GtkTreeIter iter;
@@ -3298,10 +3298,12 @@ static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult)
 
 		  //if there is %s in msg, replace it with selected filename one by one, otherwise, append filenames to the end.
 		  //TODO: what if userinput need %s literally? how to escape?
-		  if (strstr(readlineResultString->str, "%s") == NULL) g_string_append(readlineResultString, " %s ");
-		  //if file path contains space, wrap path inside ''
-                  if (strstr(stdin_cmd_selection_fileAttributes->path," ") != NULL) g_string_replace(readlineResultString, "%s", "'%s'", 1);
-		  g_string_replace(readlineResultString, "%s",stdin_cmd_selection_fileAttributes->path, 1);
+		  if (stdin_cmd_ending_space){
+		    if (strstr(readlineResultString->str, "%s") == NULL) g_string_append(readlineResultString, " %s ");
+		    //if file path contains space, wrap path inside ''
+		    if (strstr(stdin_cmd_selection_fileAttributes->path," ") != NULL) g_string_replace(readlineResultString, "%s", "'%s'", 1);
+		    g_string_replace(readlineResultString, "%s",stdin_cmd_selection_fileAttributes->path, 1);
+		  }
 	      
 		  listElement=g_list_next(listElement);
 		}
@@ -3317,7 +3319,7 @@ static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult)
 		  }
 		}
 	      }
-	    } //end if (endingspace)
+	  //} //end if (endingspace)
 
 	    if (!execStdinCmdInNewVT){
 	      wordexp_t parsed_msg;
