@@ -183,7 +183,6 @@ enum RFM_treeviewCol{
    COL_GIT_STATUS_STR,
    COL_GIT_COMMIT_MSG,
 #endif
-   COL_GREP_MATCH,
    COL_Ext1,
    COL_Ext2,
    COL_Ext3,
@@ -1990,15 +1989,20 @@ static void selectionChanged(GtkWidget *view, gpointer user_data)
   if (rfm_prePath!=NULL) { g_free(rfm_prePath); rfm_prePath=NULL; }
 }
 
+//establish environmental varables for columns since COL_Ext1
 static void set_env_to_pass_into_child_process(GtkTreeIter *iter, gchar*** env_for_g_spawn){
-  int i=get_treeviewColumnsIndexByEnum(COL_GREP_MATCH);
-  if (i>0 && treeviewColumns[i].Show){
-    gchar* env_var_name = strcat(strdup("RFM_"), treeviewColumns[i].title);
-    gchar* env_var_value;
-    gtk_tree_model_get(GTK_TREE_MODEL(store), iter, COL_GREP_MATCH, &env_var_value, -1);
-    gchar ** updated_env_for_g_spawn = g_environ_setenv(*env_for_g_spawn, env_var_name, env_var_value, 1);
-    *env_for_g_spawn = updated_env_for_g_spawn;
-    g_free(env_var_name);g_free(env_var_value);
+  g_log(RFM_LOG_GSPAWN,G_LOG_LEVEL_DEBUG,"set_env_to_pass_into_child_process");
+  for (enum RFM_treeviewCol c=COL_Ext1;c<NUM_COLS;c++){
+    int i=get_treeviewColumnsIndexByEnum(c);
+    if (i>0 && treeviewColumns[i].Show){
+      gchar* env_var_name = strcat(strdup(RFM_ENV_VAR_NAME_PREFIX), treeviewColumns[i].title);
+      gchar* env_var_value;
+      gtk_tree_model_get(GTK_TREE_MODEL(store), iter, c, &env_var_value, -1);
+      gchar ** updated_env_for_g_spawn = g_environ_setenv(*env_for_g_spawn, env_var_name, env_var_value, 1);
+      g_log(RFM_LOG_GSPAWN,G_LOG_LEVEL_DEBUG,"g_environ_setenv %s %s",env_var_name,env_var_value);
+      *env_for_g_spawn = updated_env_for_g_spawn;
+      g_free(env_var_name);g_free(env_var_value);
+    }
   }
 }
 
