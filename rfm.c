@@ -354,7 +354,7 @@ static enum rfmTerminal rfmStartWithVirtualTerminal = INHERIT_TERMINAL;
 static gboolean pauseInotifyHandler=FALSE;
 static int read_one_file_couter = 0;
 static char cmd_to_set_terminal_title[PATH_MAX];
-static gchar* non_grepMatchTreeViewColumns=NULL;
+static gchar* saved_searchResultViewColumnLayout=NULL;
 static gboolean insert_fileAttributes_into_store_one_by_one=TRUE;
 static struct sigaction newaction;
 #ifdef GitIntegration
@@ -1786,9 +1786,9 @@ static void refresh_store(RFM_ctx *rfmCtx)
 #endif
    if(ExtColumnHashTable[0]!=NULL){
      if (SearchResultViewInsteadOfDirectoryView){
-       if (non_grepMatchTreeViewColumns==NULL){//newly in searchresultview with grepMatch, keep old treeview columns
+       if (saved_searchResultViewColumnLayout==NULL){//newly in searchresultview with grepMatch, keep old treeview columns
 	 gchar* cmd=get_showcolumn_cmd_from_currently_displaying_columns();
-	 non_grepMatchTreeViewColumns=strdup(cmd + 11); //exclude leading "showcolumn "
+	 saved_searchResultViewColumnLayout=strdup(cmd + 11); //exclude leading "showcolumn "
 	 g_free(cmd);
 	 //show_hide_treeview_columns_enum(4, INT_MAX, COL_FILENAME,COL_GREP_MATCH, INT_MAX);
 	 show_hide_treeview_columns_enum(3, INT_MAX,COL_FILENAME,INT_MAX);
@@ -1801,9 +1801,9 @@ static void refresh_store(RFM_ctx *rfmCtx)
 	 }
        }
      }else{// in DirectoryView
-       if (non_grepMatchTreeViewColumns!=NULL){
-	 show_hide_treeview_columns_in_order(non_grepMatchTreeViewColumns);
-	 g_free(non_grepMatchTreeViewColumns); non_grepMatchTreeViewColumns=NULL;
+       if (saved_searchResultViewColumnLayout!=NULL){
+	 show_hide_treeview_columns_in_order(saved_searchResultViewColumnLayout);
+	 g_free(saved_searchResultViewColumnLayout); saved_searchResultViewColumnLayout=NULL;
        }
      }
    }
