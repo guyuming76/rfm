@@ -10,14 +10,12 @@ fi
 
 #TODO:emacs 加了-nw 参数后,目前通过用文件上下文edit菜单调用本脚本,会提示不是terminal环境,报错.如何在这个脚本里面识别是否是Terminal环境并且选择是否为emacs加-nw参数呢?
 
-if [ -n "$RFM_grepMatch" ]; then
-	# 使用:分割,输出第一个字串
-	LineNumber=$(echo $RFM_grepMatch | cut -d ":" -f 1)
+#这里假设 grep -nH 返回结果文件名排第一列,对应rfm搜索结果视图FileName列,第二列行号,搜索结果C1
+if [ -n "$C1" ]; then
 	# 正则表达式判读是否是数字
-	if [[ $LineNumber =~ ^[0-9]+$ ]]; then
-		emacs -nw --no-splash +$LineNumber "$@" 
-		exit
+	if [[ $C1 =~ ^[0-9]+$ ]]; then
+		emacs -nw --no-splash +$C1 "$@"
+	else
+		emacs -nw --no-splash "$@"
 	fi
 fi
-
-emacs -nw --no-splash "$@"
