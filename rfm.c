@@ -1368,10 +1368,11 @@ static void load_ExtColumns_and_iconview_markup_tooltip(RFM_FileAttributes* file
       for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++){
 	if ((treeviewColumns[i].Show || treeviewColumns[i].iconview_markup || treeviewColumns[i].iconview_tooltip)
 	    && (g_strcmp0(treeviewColumns[i].MIME_root, "*")==0 || g_strcmp0(fileAttributes->mime_root, treeviewColumns[i].MIME_root)==0) //treeviewColumns[i].MIME_root 为*, 或者和当前文件相同
-	    && (treeviewColumns[i].showCondition==NULL || treeviewColumns[i].showCondition(fileAttributes) )){
+	    && (treeviewColumns[i].showCondition==NULL || treeviewColumns[i].showCondition(fileAttributes))
+	    && treeviewColumns[i].enumCol!=NUM_COLS
+	    ){
 	  //下面的if语句为啥不合并到上面的if,用&&连起来?
 	  if (g_strcmp0(treeviewColumns[i].MIME_sub, "*") || g_strcmp0(treeviewColumns[i].MIME_sub, fileAttributes->mime_sub_type)){ //treeviewColumns[i].MIME_sub 为*, 或者和当前文件相同
-	    //g_assert(treeviewColumns[i].enumCol!=NUM_COLS);
 	    RFM_store_cell* cell=malloc(sizeof(RFM_store_cell));
 	    cell->iter = iter;
 	    cell->store_column = treeviewColumns[i].enumCol;
@@ -3690,7 +3691,7 @@ int main(int argc, char *argv[])
 static void ProcessOnelineForSearchResult(char* oneline){
            if (oneline == NULL) return;
 	   char* key=calloc(10, sizeof(char));
-	   uint seperatorPositionAfterCurrentExtColumnValue = strcspn(oneline, ":");
+	   uint seperatorPositionAfterCurrentExtColumnValue = strcspn(oneline, RFM_SearchResultLineSeperator);
 	   if (seperatorPositionAfterCurrentExtColumnValue < strlen(oneline)) { //found ":" in oneline
 	       sprintf(key, "%d", fileAttributeID);
 	       oneline[seperatorPositionAfterCurrentExtColumnValue] = 0; //ending NULL for filename
@@ -3718,7 +3719,7 @@ static void ProcessOnelineForSearchResult(char* oneline){
 		    uint currentExtColumnHashTableIndex = current_Ext_Column - COL_Ext1;
 	            if (ExtColumnHashTable[currentExtColumnHashTableIndex]==NULL) ExtColumnHashTable[currentExtColumnHashTableIndex] = g_hash_table_new_full(g_str_hash, g_str_equal,g_free, g_free);
 		    
-		    seperatorPositionAfterCurrentExtColumnValue = strcspn(currentExtColumnValue, ":");
+		    seperatorPositionAfterCurrentExtColumnValue = strcspn(currentExtColumnValue, RFM_SearchResultLineSeperator);
 		    currentExtColumnValue[seperatorPositionAfterCurrentExtColumnValue] = 0; //ending NULL for currentExtColumnValue
 		    g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"Insert column %s into ExtColumnHashTable[%d]: key %s,value %s", currentColumnTitle, currentExtColumnHashTableIndex,key,currentExtColumnValue);
 		    g_hash_table_insert(ExtColumnHashTable[currentExtColumnHashTableIndex], strdup(key), strdup(currentExtColumnValue));
