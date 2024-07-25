@@ -1719,6 +1719,11 @@ static gboolean fill_fileAttributeList_with_filenames_from_search_result_and_the
 static void clear_store(void)
 {
    g_hash_table_remove_all(thumb_hash);
+   for (int i=0; i<NUM_Ext_Columns;i++)
+     if (ExtColumnHashTable[i]) {
+       g_hash_table_remove_all(ExtColumnHashTable[i]);
+       ExtColumnHashTable[i]=NULL;
+     }
    gtk_list_store_clear(store); /* This will g_free and g_object_unref */
    ItemSelected=0;
 #ifdef GitIntegration
@@ -2504,7 +2509,7 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
 
      for(guint i=0; i<G_N_ELEMENTS(treeviewColumns); i++){
        if (!treeviewColumns[i].Show) continue;
-       //g_assert(treeviewColumns[i].enumCol!=NUM_COLS);
+       g_assert(treeviewColumns[i].enumCol!=NUM_COLS);
        treeviewColumns[i].gtkCol = gtk_tree_view_column_new_with_attributes(treeviewColumns[i].title , renderer,"text" ,  treeviewColumns[i].enumCol , NULL);
        gtk_tree_view_column_set_resizable(treeviewColumns[i].gtkCol,TRUE);
        gtk_tree_view_append_column(GTK_TREE_VIEW(_view),treeviewColumns[i].gtkCol);
@@ -3459,7 +3464,6 @@ static int setup(RFM_ctx *rfmCtx)
 			      G_TYPE_STRING,     //git commit message
 #endif
 			      G_TYPE_STRING, //mime_sort
-			      G_TYPE_STRING, //grepMatch
 			    G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING, //COL_Ext1..5
                             G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING); //COL_Ext6..10
    treemodel=GTK_TREE_MODEL(store);
