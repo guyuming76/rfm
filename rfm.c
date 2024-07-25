@@ -3728,6 +3728,7 @@ static void ProcessOnelineForSearchResult(char* oneline){
 		    g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"Insert column %s into ExtColumnHashTable[%d]: key %s,value %s", currentColumnTitle, currentExtColumnHashTableIndex,key,currentExtColumnValue);
 		    g_hash_table_insert(ExtColumnHashTable[currentExtColumnHashTableIndex], strdup(key), strdup(currentExtColumnValue));
 		    //free(currentExtColumnValue);// the will cause exception
+		    //TODO:这个currentExtColumnValue源自oneline,然后用0切成一段一段的,如何free?
 		    currentExtColumnValue = currentExtColumnValue + seperatorPositionAfterCurrentExtColumnValue + 1; //moving char pointer
 
       		    currentColumnTitleIndex++;
