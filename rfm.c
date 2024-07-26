@@ -384,6 +384,7 @@ static void ProcessOnelineForSearchResult(gchar* oneline);
 // cd .
 // cd /tmp
 static int get_treeviewColumnsIndexByEnum(enum RFM_treeviewCol col);
+static RFM_treeviewColumn* get_treeviewcolumnByGtkTreeviewcolumn(GtkTreeViewColumn *gtkCol);
 static RFM_treeviewColumn* get_treeviewColumnByEnum(enum RFM_treeviewCol col);
 static gchar* get_showcolumn_cmd_from_currently_displaying_columns();
 static void show_hide_treeview_columns_in_order(gchar *order_sequence);
@@ -1743,6 +1744,7 @@ static gint sort_func(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, gpoin
    else if (fileAttributesA->is_dir && !fileAttributesB->is_dir) rv=-1;
    else  rv=strcmp(fileAttributesA->file_name, fileAttributesB->file_name);
 
+   g_log(RFM_LOG_DATA_SORT, G_LOG_LEVEL_DEBUG, (rv>0? "%s > %s": (rv==0? "%s == %s" : "%s < %s")), fileAttributesA->file_name, fileAttributesB->file_name);
    return rv;
 }
 
@@ -2358,6 +2360,15 @@ static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx)
    return TRUE;
 }
 
+/* static void view_column_header_clicked(GtkTreeViewColumn* tree_column, gpointer user_data){ */
+/*   //there seems to be gtk_tree_view_column_get_title, but we can also get the data through treeviewColumns array to be more independent and easy to get other RFM_treeviewColumn member */
+/*   RFM_treeviewColumn* rfmCol=get_treeviewcolumnByGtkTreeviewcolumn(tree_column); */
+/*   if (rfmCol && rfmCol->enumCol==COL_FILENAME){ */
+     
+/*   } */
+/*   GtkSortType st; */
+/*   gtk_tree_sortable_get_sort_column_id(${1:GtkTreeSortable *sortable}, ${2:gint *sort_column_id}, ${3:GtkSortType *order}) */
+/*   gtk_tree_sortable_set_sort_column_id(${1:GtkTreeSortable *sortable}, ${2:gint sort_column_id}, ${3:GtkSortType order}); */
 
 static gboolean view_key_press(GtkWidget *widget, GdkEvent *event,RFM_ctx *rfmCtx) {
   GdkEventKey *ek=(GdkEventKey *)event;
@@ -2535,6 +2546,8 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
    if (treeview){
      g_signal_connect(_view, "row-activated", G_CALLBACK(row_activated), NULL);
      viewSelectionChangedSignalConnection = g_signal_connect(gtk_tree_view_get_selection(GTK_TREE_VIEW(_view)), "changed", G_CALLBACK(selectionChanged), NULL);
+     gtk_tree_view_set_headers_clickable(_view, TRUE);
+     //g_signal_connect(_view, "clicked", G_CALLBACK(view_column_header_clicked), NULL);
    }
    else{
      g_signal_connect(_view, "item-activated", G_CALLBACK(item_activated), NULL);
@@ -2882,6 +2895,13 @@ static int get_treeviewColumnsIndexByEnum(enum RFM_treeviewCol col){
     if (treeviewColumns[i].enumCol==col) return i;
   }
   return -1;
+}
+
+static RFM_treeviewColumn* get_treeviewcolumnByGtkTreeviewcolumn(GtkTreeViewColumn *gtkCol){
+  for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++){
+    if (treeviewColumns[i].gtkCol==gtkCol) return i;
+  }
+  return NULL;
 }
 
 static enum RFM_treeviewCol get_available_ExtColumn(enum RFM_treeviewCol col){
