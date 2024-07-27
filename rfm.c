@@ -1719,11 +1719,6 @@ static gboolean fill_fileAttributeList_with_filenames_from_search_result_and_the
 static void clear_store(void)
 {
    g_hash_table_remove_all(thumb_hash);
-   for (int i=0; i<NUM_Ext_Columns;i++)
-     if (ExtColumnHashTable[i]) {
-       g_hash_table_remove_all(ExtColumnHashTable[i]);
-       ExtColumnHashTable[i]=NULL;
-     }
    gtk_list_store_clear(store); /* This will g_free and g_object_unref */
    ItemSelected=0;
 #ifdef GitIntegration
@@ -1789,7 +1784,13 @@ static void refresh_store(RFM_ctx *rfmCtx)
 #ifdef GitIntegration
    if (curPath_is_git_repo) load_GitTrackedFiles_into_HashTable();
 #endif
-   if(ExtColumnHashTable[0]!=NULL){
+   gboolean ExtColumnHashTablesHaveData=FALSE;
+   for(int i=0;i<NUM_Ext_Columns;i++) if (ExtColumnHashTable[i]!=NULL) {
+       ExtColumnHashTablesHaveData=TRUE;
+       g_debug("ExtColumnHashTablesHaveData");
+       break;
+     }
+   if(ExtColumnHashTablesHaveData){
      if (SearchResultViewInsteadOfDirectoryView){
        if (saved_searchResultViewColumnLayout==NULL){//newly in searchresultview with grepMatch, keep old treeview columns
 	 gchar* cmd=get_showcolumn_cmd_from_currently_displaying_columns();
