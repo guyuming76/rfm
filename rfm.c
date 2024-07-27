@@ -304,8 +304,8 @@ static GHashTable* ExtColumnHashTable[NUM_Ext_Columns + 1];
 static GtkListStore *store=NULL;
 static GtkTreeModel *treemodel=NULL;
 
-static  GtkSortType current_sorttype=-1;
-static  gint current_sort_column_id=-1;
+static  GtkSortType current_sorttype=GTK_SORT_ASCENDING;
+static  gint current_sort_column_id=GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID;
 
 static gboolean treeview=FALSE;
 static gchar* treeviewcolumn_init_order_sequence = NULL;
@@ -1819,6 +1819,9 @@ static void refresh_store(RFM_ctx *rfmCtx)
      }
    }
    icon_or_tree_view = add_view(rfmCtx);
+
+   gtk_tree_sortable_set_default_sort_func(GTK_TREE_SORTABLE(store), sort_func, NULL, NULL);
+   gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(store), current_sort_column_id, current_sorttype);
    gchar * title;
    if (SearchResultViewInsteadOfDirectoryView) {
      fileAttributeID=currentFileNum;
@@ -1828,10 +1831,6 @@ static void refresh_store(RFM_ctx *rfmCtx)
      gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
    } else {
      fileAttributeID=1;
-     gtk_tree_sortable_set_default_sort_func(GTK_TREE_SORTABLE(store), sort_func, NULL, NULL);
-     gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(store), rfmCtx->rfm_sortColumn, GTK_SORT_ASCENDING);
-     current_sort_column_id=rfmCtx->rfm_sortColumn;
-     current_sorttype=GTK_SORT_ASCENDING;
      GDir *dir=NULL;
      dir=g_dir_open(rfm_curPath, 0, NULL);
      if (!dir) return;
@@ -1894,9 +1893,10 @@ static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpoin
     title=g_strdup_printf("%s [%s]",rfm_curPath,"detached HEAD");
   }
   set_Titles(title);
-  gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(store), COL_GIT_STATUS_STR, GTK_SORT_DESCENDING);
   current_sort_column_id=COL_GIT_STATUS_STR;
   current_sorttype=GTK_SORT_DESCENDING;
+  gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(store), current_sort_column_id, current_sorttype);
+
 }
 #endif
 
@@ -3628,7 +3628,7 @@ int main(int argc, char *argv[])
    
    rfmCtx=calloc(1,sizeof(RFM_ctx));
    if (rfmCtx==NULL) return 1;
-   rfmCtx->rfm_sortColumn=GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID;
+   //rfmCtx->rfm_sortColumn=GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID;
    rfmCtx->rfm_mountMonitor=g_unix_mount_monitor_get();
    rfmCtx->showMimeType=0;
    rfmCtx->delayedRefresh_GSourceID=0;
