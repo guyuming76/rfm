@@ -304,6 +304,9 @@ static GHashTable* ExtColumnHashTable[NUM_Ext_Columns + 1];
 static GtkListStore *store=NULL;
 static GtkTreeModel *treemodel=NULL;
 
+static  GtkSortType current_sorttype=-1;
+static  gint current_sort_column_id=-1;
+
 static gboolean treeview=FALSE;
 static gchar* treeviewcolumn_init_order_sequence = NULL;
 static gchar* auto_execution_command_after_rfm_start = NULL;
@@ -1827,6 +1830,8 @@ static void refresh_store(RFM_ctx *rfmCtx)
      fileAttributeID=1;
      gtk_tree_sortable_set_default_sort_func(GTK_TREE_SORTABLE(store), sort_func, NULL, NULL);
      gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(store), rfmCtx->rfm_sortColumn, GTK_SORT_ASCENDING);
+     current_sort_column_id=rfmCtx->rfm_sortColumn;
+     current_sorttype=GTK_SORT_ASCENDING;
      GDir *dir=NULL;
      dir=g_dir_open(rfm_curPath, 0, NULL);
      if (!dir) return;
@@ -1890,6 +1895,8 @@ static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpoin
   }
   set_Titles(title);
   gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(store), COL_GIT_STATUS_STR, GTK_SORT_DESCENDING);
+  current_sort_column_id=COL_GIT_STATUS_STR;
+  current_sorttype=GTK_SORT_DESCENDING;
 }
 #endif
 
@@ -2360,24 +2367,26 @@ static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx)
    return TRUE;
 }
 
+
 static void view_column_header_clicked(GtkTreeViewColumn* tree_column, gpointer user_data){
   //there seems to be gtk_tree_view_column_get_title, but we can also get the data through treeviewColumns array to be more independent and easy to get other RFM_treeviewColumn member
   RFM_treeviewColumn* rfmCol=get_treeviewcolumnByGtkTreeviewcolumn(tree_column);
   if (rfmCol==NULL) return;
   gint sort_column_id_for_clicked_column_id=rfmCol->enumSortCol==NUM_COLS? rfmCol->enumCol:rfmCol->enumSortCol;
-  
-  GtkSortType current_sorttype=-1;
-  gint current_sort_column_id=-1;
-  gtk_tree_sortable_get_sort_column_id(GTK_TREE_SORTABLE(treemodel), &current_sort_column_id, &current_sorttype);
+  if (sort_column_id_for_clicked_column_id==COL_FILENAME) sort_column_id_for_clicked_column_id=GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID;
+  //gtk_tree_sortable_get_sort_column_id(GTK_TREE_SORTABLE(treemodel), &current_sort_column_id, &current_sorttype);
       
   if (current_sort_column_id==sort_column_id_for_clicked_column_id){
-    gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(treemodel), sort_column_id_for_clicked_column_id, current_sorttype==GTK_SORT_ASCENDING? GTK_SORT_DESCENDING : GTK_SORT_ASCENDING);
-    g_log(G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG,"clicked column %d, sort column for clicked %d == current sort column %d, current order %d, order %d",rfmCol->enumCol,rfmCol->enumSortCol,current_sort_column_id,current_sorttype,current_sorttype==GTK_SORT_ASCENDING? GTK_SORT_DESCENDING : GTK_SORT_ASCENDING);
+    gint new_sorttype=current_sorttype==GTK_SORT_ASCENDING? GTK_SORT_DESCENDING : GTK_SORT_ASCENDING;
+    gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(treemodel), sort_column_id_for_clicked_column_id, new_sorttype);
+    g_log(G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG,"clicked column %d, sort column for clicked %d == current sort column %d, current order %d, new order %d",rfmCol->enumCol,rfmCol->enumSortCol,current_sort_column_id,current_sorttype,new_sorttype);
+    current_sorttype = new_sorttype;
   }else{
-    gint new_sort_column_id = sort_column_id_for_clicked_column_id==COL_FILENAME ? GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID : sort_column_id_for_clicked_column_id;
-    gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(treemodel), new_sort_column_id, GTK_SORT_ASCENDING);
-    g_log(G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG,"clicked column %d, sort column for clicked %d <> current sort column %d, new sort column %d, current order %d, order %d",rfmCol->enumCol,rfmCol->enumSortCol,current_sort_column_id,new_sort_column_id, current_sorttype,GTK_SORT_ASCENDING);
+    gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(treemodel), sort_column_id_for_clicked_column_id, GTK_SORT_ASCENDING);
+    g_log(G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG,"clicked column %d, sort column for clicked %d <> current sort column %d, new sort column %d, current order %d, order %d",rfmCol->enumCol,rfmCol->enumSortCol,current_sort_column_id,sort_column_id_for_clicked_column_id, current_sorttype,GTK_SORT_ASCENDING);
+    current_sorttype = GTK_SORT_ASCENDING;
   }
+  current_sort_column_id = sort_column_id_for_clicked_column_id;
 }
 
 
