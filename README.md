@@ -197,7 +197,3 @@ https://blog.gtk.org/2017/05/04/logging-and-more/
 ![fg jobNO](截图_选择区域_20240521113640.png)
 
 # 计划更改备忘 #
-
-是否有必要处理 grep -r xxx /dir|rfm 这样的结果,也就是说 search 结果里面不仅包含文件名,还有摘要信息.这个改动会比较大
-
-\
