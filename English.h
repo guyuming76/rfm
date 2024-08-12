@@ -9,6 +9,7 @@
 #define RunActionGitStage "git stage"
 #define Paste "Paste"
 #define MoveTo "MoveToHere"
+#define LinkTo "SoftLink"
 #define RunActionChangeOwner "ChangeOwner"
 #define SwitchPipeDir  "Pipe/Dir"
 #define cpPath "copy directory name to clipboard"

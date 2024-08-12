@@ -1108,7 +1108,7 @@ static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter)
 
    gtk_tree_model_get(GTK_TREE_MODEL(store), iter, COL_ATTR, &fileAttributes, -1);
 
-   if (fileAttributes->is_dir || fileAttributes->is_symlink) return NULL;
+   if (fileAttributes->is_dir) return NULL;
    
    thumbData=calloc(1, sizeof(RFM_ThumbQueueData));
    if (thumbData==NULL) return NULL;
@@ -1120,7 +1120,9 @@ static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter)
    }
 
    thumbData->thumb_size = RFM_THUMBNAIL_SIZE;
-   thumbData->path=g_strdup(fileAttributes->path);
+   thumbData->path=(fileAttributes->is_symlink && fileAttributes->link_target_filename)?
+     g_strdup(fileAttributes->link_target_filename)
+     :g_strdup(fileAttributes->path);
    thumbData->mtime_file = fileAttributes->file_mtime==NULL? 0 : g_date_time_to_unix(fileAttributes->file_mtime);
    thumbData->uri=g_filename_to_uri(thumbData->path, NULL, NULL);
    //don't generate thumbnail for thumbnail, show itself for picture in rfm_thumbDir

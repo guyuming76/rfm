@@ -44,6 +44,7 @@ static const char *f_cp[]   = { "$RFM_TERM",rfmBinPath "/rfmCopyMove.sh","cp", N
 static const char *f_mv[]   = { "$RFM_TERM",rfmBinPath "/rfmCopyMove.sh", "mv",NULL };
 static const char *cp_clipboard_to_curPath[] = { "$RFM_TERM",rfmBinPath "/rfmCopyMoveToCurPath.sh","cp",NULL };
 static const char *mv_clipboard_to_curPath[] = { "$RFM_TERM",rfmBinPath "/rfmCopyMoveToCurPath.sh","mv",NULL };
+static const char *ln_clipboard_to_curPath[] = { "$RFM_TERM",rfmBinPath "/rfmCopyMoveToCurPath.sh","sl",NULL };
 static const char *change_owner[] = { "$RFM_TERM", rfmBinPath "/rfmChangeOwner.sh",NULL };
 static const char *play_video[] = { "/usr/bin/xdg-open", NULL };
 static const char *play_audio[] = { "/usr/bin/xdg-open", NULL };
@@ -192,6 +193,7 @@ static RFM_ToolButton tool_buttons[] = {
    /* name           icon                       function    		RunCmd      SearchResultView   DirectoryView   Accel                 tooltip                showCondition*/
    { Paste,          NULL,                      NULL,                   cp_clipboard_to_curPath, FALSE,    TRUE,      GDK_KEY_V,             "MOD+v",                 NULL},
    { MoveTo,         NULL,                      NULL,                   mv_clipboard_to_curPath, FALSE,    TRUE,      GDK_KEY_X,             "MOD+x",                 NULL},
+   { LinkTo,         NULL,                      NULL,                   ln_clipboard_to_curPath, FALSE,    TRUE,      0,                     NULL,                    NULL},
    { PageUp,         NULL,                      PreviousPage,           NULL,              TRUE,           FALSE,     GDK_KEY_Page_Up,       "MOD+PgUp",              NULL},
    { PageDown,       NULL,                      NextPage,               NULL,              TRUE,           FALSE,     GDK_KEY_Page_Down,     "MOD+PgDn",              NULL},
    { SwitchView,     NULL,                     switch_iconview_treeview, NULL,             TRUE,           TRUE,      GDK_KEY_slash,         "MOD+/",                 NULL},

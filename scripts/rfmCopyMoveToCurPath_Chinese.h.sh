@@ -8,8 +8,8 @@ if [[ -z "$target" ]]; then
 	exit 2
 fi
 
-if [[ "$1" != "cp" && "$1" != "mv" ]]; then
-	echo "parameter 1 should be either cp or mv" >2
+if [[ "$1" != "cp" && "$1" != "mv" && "$1" != "sl" ]]; then
+	echo "parameter 1 should be either cp or mv or sl(soft link)" >2
 	exit 5
 fi
 
@@ -44,8 +44,10 @@ if [[ ! -z "$source" ]];then
 			while read line ;do \
 				if [[ "$1" == "cp" ]];then \
 					cp -v -r $line $target; \
-				else \
+				elif [[ "$1" == "mv" ]];then \
 					mv -v $line $target; \
+				else \
+					ln -s $line $(echo $target/$(basename $line)); \
 				fi \
 			done <$namedpipe &
 			rfm -d $source -r $namedpipe
@@ -58,8 +60,10 @@ if [[ ! -z "$source" ]];then
 	elif [[ -f $source || "$new_rfm" == "n" ]];then
 		if [[ "$1" == "cp" ]];then
 			cp -i -v -r $source $target
-		else
+		elif [[ "$1" == "mv" ]];then
 			mv -i -v $source $target
+		else
+			ln -s $source $(echo $target/$(basename $source))
 		fi
 	else
 		echo "$source not directory or file" >2
@@ -69,8 +73,10 @@ else
 	for sourcefile in $sourcefiles;do
 		if [[ "$1" == "cp" ]];then
 			cp -i -v -r $sourcefile $target
-		else
+		elif [[ "$1" == "mv" ]];then
 			mv -i -v $sourcefile $target
+		else
+			ln -s $sourcefile $(echo $target/$(basename $sourcefile))
 		fi
 	done
 fi

@@ -9,6 +9,7 @@
 #define RunActionGitStage "git 暂存"
 #define Paste "粘帖"
 #define MoveTo "移至此"
+#define LinkTo "软链接"
 #define RunActionChangeOwner "更改所有者"
 #define SwitchPipeDir  "管道/目录"
 #define cpPath "复制目录路径至剪贴板"
