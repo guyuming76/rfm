@@ -106,9 +106,9 @@ endif
 	@cp -f scripts/extractArchive.sh ${DESTDIR}${PREFIX}/bin
 ifneq ($(CalledByEbuild),YES)
 # the CalledByEbuild variable is exported in rfm ebuild
-	xdg-desktop-menu install --novendor rfm.desktop
-	xdg-mime default rfm.desktop inode/directory
-	update-desktop-database
+	-xdg-desktop-menu install --novendor rfm.desktop
+	-xdg-mime default rfm.desktop inode/directory
+	-update-desktop-database
 	ldconfig
 
 ifneq ($(RFM_FILE_CHOOSER),)
@@ -164,8 +164,8 @@ endif
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmPressEnterToCloseWindowAfterCMD.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/extractArchive.sh
 ifneq ($(CalledByEbuild),YES)
-	xdg-desktop-menu uninstall rfm.desktop
-	update-desktop-database
+	-xdg-desktop-menu uninstall rfm.desktop
+	-update-desktop-database
 	ldconfig
 endif
 
