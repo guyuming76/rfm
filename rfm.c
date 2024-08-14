@@ -3096,8 +3096,11 @@ static gchar* get_showcolumn_cmd_from_currently_displaying_columns(){
 	    return showColumnHistory;
 }
 
-static void show_hide_treeview_columns(wordexp_t * parsed_msg){
-	  if (parsed_msg->we_wordc==1){
+static void sort_on_column(wordexp_t * parsed_msg){
+  
+}
+
+static void print_columns_status(wordexp_t * parsed_msg){
 	    printf(CURRENT_COLUMN_STATUS);
 	    for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++)
 	      if (treeviewColumns[i].enumCol<NUM_COLS)
@@ -3110,13 +3113,9 @@ static void show_hide_treeview_columns(wordexp_t * parsed_msg){
 	    printf(SHOWCOLUMN_USAGE);
 	    gchar* cmd=get_showcolumn_cmd_from_currently_displaying_columns();
 	    add_history(cmd);
-	    g_free(cmd);
-	  }else{
-            for(guint i=1;i<parsed_msg->we_wordc;i++){
-	      show_hide_treeview_columns_in_order(parsed_msg->we_wordv[i]);
-	    }
-	 }
+	    g_free(cmd);  
 }
+
 
 // Use enum int instead of char* if we need to hardcode some column displaying
 // sequence in code, so that it will not cause bug when we adjust column enum
@@ -3253,7 +3252,20 @@ static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * p
 	    else g_warning("invalid thumbnailsize");
 	  }else printf("%d\n",RFM_THUMBNAIL_SIZE);
 	}else if (g_strcmp0(parsed_msg->we_wordv[0], "showcolumn")==0 || g_strcmp0(parsed_msg->we_wordv[0], "showcolumns")==0 ){
-	  show_hide_treeview_columns(parsed_msg);
+	  if (parsed_msg->we_wordc==1){
+	    print_columns_status(parsed_msg);
+	  }else{
+            for(guint i=1;i<parsed_msg->we_wordc;i++){
+	      show_hide_treeview_columns_in_order(parsed_msg->we_wordv[i]);
+	    }
+	  }
+	  add_history(readline_result_string_after_file_name_substitution->str);
+	  history_entry_added++;
+	}else if (g_strcmp0(parsed_msg->we_wordv[0], "sort")==0){
+	  if (parsed_msg->we_wordc==1)
+	    print_columns_status(parsed_msg);
+	  else
+	    sort_on_column(parsed_msg);
 	  add_history(readline_result_string_after_file_name_substitution->str);
 	  history_entry_added++;
 	}else if (g_strcmp0(parsed_msg->we_wordv[0], "glog")==0){
