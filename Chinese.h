@@ -45,6 +45,7 @@
 "    pagesize    设置文件搜素结果视图每葉文件数, 如 pagesize 100\n" \
 "    thumbnailsize  设置图标视图缩略图尺寸\n" \
 "    showcolumn  显示或隐藏列(若当前在列表视图), 并且当参数为空的时候,把当前列表视图列设置作为一条showcolumn命令加入命令历史,方便通过命令历史记录恢复当前列设置\n" \
+"    sort        设置排序列,效果等同点击列标题\n" \
 "    toggleInotifyHandler 关/开自动刷新,比如当你浏览/dev目录时\n" \
 "    toggleExecSync  在gtk窗口线程和readline线程间切换输入命令启动线程,命令提示符会在 > 和 ] 间变化\n" \
 "创建Shell子进程执行的命令:\n" \
@@ -84,6 +85,7 @@
 "         showcolumn 1,3 12     表示把3号列移到1号列后面显示, 同时显示12号列,不移动12号列位置\n" \
 "         showcolumn ,2         表示把2号列移到首位显示\n" \
 "         showcolumn 2,         表示2号列后面的列都不显示\n" \
+"除了点击列标题栏,还可以使用sort命令设置排序列, sort 后可以跟列号或列名;当sort后列号和当前排序列相同,则改变当前排序方向.\n" \
 "设置环境变量G_MESSAGES_DEBUG=rfm-column-verbose 查看日志以便了解算法\n"
 
 #define VALUE_MAY_NOT_LOADED \

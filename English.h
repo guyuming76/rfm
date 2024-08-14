@@ -45,6 +45,7 @@
 "    pagesize    set files shown per page in search result view. for example, pagesize 100\n" \
 "    thumbnailsize  set thumbnail size in icon view. \n" \
 "    showcolumn  show or hide column (if currently in listview); current treeview column layout will be added in to command history if no parameter follows showcolumn\n" \
+"    sort        show or set sorting column\n" \
 "    toggleInotifyHandler  stop/start auto refresh, when you are view /dev directory for example\n" \
 "    toggleExecSync  switch between gtk window thread and readline thread, from which to start inputted command. Command prompt will switch between > and ]\n" \
 "Shell commands:\n" \
@@ -83,6 +84,7 @@
 "               showcolumn 1,3 12     means to move column 3 right after 1, and set column 12 visible without changing its position\n" \
 "               showcolumn ,2         means show column 2 as the first column\n" \
 "               showcolumn 2,         means hide columns after 2\n" \
+"besides clicking column header, sort column can be set with sort command, followed by column number or column name.\n" \
 "set env variable G_MESSAGES_DEBUG=rfm-column-verbose and view log to get insight into the algorithm\n"
 
 #define VALUE_MAY_NOT_LOADED \

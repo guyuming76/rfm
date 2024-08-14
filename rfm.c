@@ -2367,10 +2367,7 @@ static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx)
    return TRUE;
 }
 
-
-static void view_column_header_clicked(GtkTreeViewColumn* tree_column, gpointer user_data){
-  //there seems to be gtk_tree_view_column_get_title, but we can also get the data through treeviewColumns array to be more independent and easy to get other RFM_treeviewColumn member
-  RFM_treeviewColumn* rfmCol=get_treeviewcolumnByGtkTreeviewcolumn(tree_column);
+static void sort_on_column_header(RFM_treeviewColumn* rfmCol){
   if (rfmCol==NULL) return;
   gint sort_column_id_for_clicked_column_id=rfmCol->enumSortCol==NUM_COLS? rfmCol->enumCol:rfmCol->enumSortCol;
   if (sort_column_id_for_clicked_column_id==COL_FILENAME) sort_column_id_for_clicked_column_id=GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID;
@@ -2387,6 +2384,12 @@ static void view_column_header_clicked(GtkTreeViewColumn* tree_column, gpointer 
     current_sorttype = GTK_SORT_ASCENDING;
   }
   current_sort_column_id = sort_column_id_for_clicked_column_id;
+}
+
+static void view_column_header_clicked(GtkTreeViewColumn* tree_column, gpointer user_data){
+  //there seems to be gtk_tree_view_column_get_title, but we can also get the data through treeviewColumns array to be more independent and easy to get other RFM_treeviewColumn member
+  RFM_treeviewColumn* rfmCol=get_treeviewcolumnByGtkTreeviewcolumn(tree_column);
+  sort_on_column_header(rfmCol);
 }
 
 
@@ -3096,8 +3099,23 @@ static gchar* get_showcolumn_cmd_from_currently_displaying_columns(){
 	    return showColumnHistory;
 }
 
+
 static void sort_on_column(wordexp_t * parsed_msg){
-  
+  RFM_treeviewColumn* col;
+  int col_enum = atoi(parsed_msg->we_wordv[1]);
+
+  if (col_enum==0){ //atoi failed, so column name instead of column enum used in command
+    col = get_treeviewColumnByTitle(parsed_msg->we_wordv[1]);
+  }else {
+    col = get_treeviewColumnByEnum(col_enum);
+  }
+
+  if (col==NULL)
+    g_warning("invalid column:%s",parsed_msg->we_wordv[1]);
+  else if (col->enumCol==NUM_COLS)
+    g_warning("column %s don't have associated storage column");
+
+  sort_on_column_header(col);
 }
 
 static void print_columns_status(wordexp_t * parsed_msg){
