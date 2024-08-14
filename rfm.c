@@ -3098,14 +3098,15 @@ static gchar* get_showcolumn_cmd_from_currently_displaying_columns(){
 
 static void show_hide_treeview_columns(wordexp_t * parsed_msg){
 	  if (parsed_msg->we_wordc==1){
-	    printf("current column status(negative means invisible):\n");
+	    printf(CURRENT_COLUMN_STATUS);
 	    for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++)
 	      if (treeviewColumns[i].enumCol<NUM_COLS)
-		printf("%4d: %s\n", treeviewColumns[i].Show? treeviewColumns[i].enumCol : (-1)*treeviewColumns[i].enumCol,treeviewColumns[i].title);
+		printf("%4d: %s%s\n", treeviewColumns[i].Show? treeviewColumns[i].enumCol : (-1)*treeviewColumns[i].enumCol,treeviewColumns[i].title, (current_sort_column_id==treeviewColumns[i].enumCol?(current_sorttype==GTK_SORT_ASCENDING?"{v}":"{^}"):""));
 	      else{
 	        g_assert(!treeviewColumns[i].Show);
-		printf("    : %s\n",treeviewColumns[i].title);
+		printf("    : %s%s\n",treeviewColumns[i].title,(current_sort_column_id==treeviewColumns[i].enumCol?(current_sorttype==GTK_SORT_ASCENDING?"{v}":"{^}"):""));
 	      }
+
 	    printf(SHOWCOLUMN_USAGE);
 	    gchar* cmd=get_showcolumn_cmd_from_currently_displaying_columns();
 	    add_history(cmd);
