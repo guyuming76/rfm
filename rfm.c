@@ -3252,7 +3252,7 @@ static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * p
 	    if (ts>0) RFM_THUMBNAIL_SIZE=ts;
 	    else g_warning("invalid thumbnailsize");
 	  }else printf("%d\n",RFM_THUMBNAIL_SIZE);
-	}else if (g_strcmp0(parsed_msg->we_wordv[0], "showcolumn")==0){
+	}else if (g_strcmp0(parsed_msg->we_wordv[0], "showcolumn")==0 || g_strcmp0(parsed_msg->we_wordv[0], "showcolumns")==0 ){
 	  show_hide_treeview_columns(parsed_msg);
 	  add_history(readline_result_string_after_file_name_substitution->str);
 	  history_entry_added++;
