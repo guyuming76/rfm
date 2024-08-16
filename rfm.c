@@ -513,6 +513,8 @@ static void endPythonEmbedding(){
 #endif
 #include "config.h"
 
+static gboolean auto_sort_entering_view = RFM_AUTO_SORT_ENTER_VIEW;
+
 typedef struct {
    GtkWidget* menu;
    GtkWidget* menuItem[G_N_ELEMENTS(run_actions)];
@@ -1893,8 +1895,11 @@ static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpoin
     title=g_strdup_printf("%s [%s]",rfm_curPath,"detached HEAD");
   }
   set_Titles(title);
-  current_sort_column_id=COL_GIT_STATUS_STR;
-  current_sorttype=GTK_SORT_DESCENDING;
+  if (auto_sort_entering_view){
+    current_sort_column_id=COL_GIT_STATUS_STR;
+    current_sorttype=GTK_SORT_DESCENDING;
+    g_log(RFM_LOG_DATA_SORT, G_LOG_LEVEL_DEBUG, "set auto_sort_entering_view to false if you don't want to change the current view sorting");
+  }
   gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(store), current_sort_column_id, current_sorttype);
 
 }
