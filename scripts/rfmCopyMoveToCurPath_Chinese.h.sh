@@ -30,6 +30,10 @@ fi
 
 source="$(rfmReadlineWithSpecificHistoryFile.sh ~/.rfm_history_directory)"
 
+if [[ "$1" == "sl" ]];then
+	read -p "是否(y/n)使用相对路径创建软链接?默认是(y)" -r useRelativeInSL
+fi
+
 if [[ ! -z "$source" ]];then
 
 	if [[ -d $source ]];then
@@ -46,6 +50,8 @@ if [[ ! -z "$source" ]];then
 					cp -v -r $line $target; \
 				elif [[ "$1" == "mv" ]];then \
 					mv -v $line $target; \
+				elif [[ -z "$useRelativeInSL" || "$useRelativeInSL" == "y" || "$useRelativeInSL" == "Y" ]];then \
+					ln -sr $line $(echo $target/$(basename $line)); \
 				else \
 					ln -s $line $(echo $target/$(basename $line)); \
 				fi \
@@ -62,6 +68,8 @@ if [[ ! -z "$source" ]];then
 			cp -i -v -r $source $target
 		elif [[ "$1" == "mv" ]];then
 			mv -i -v $source $target
+		elif [[ -z "$useRelativeInSL" || "$useRelativeInSL" == "y" || "$useRelativeInSL" == "Y" ]];then
+			ln -sr $source $(echo $target/$(basename $source))
 		else
 			ln -s $source $(echo $target/$(basename $source))
 		fi
@@ -75,6 +83,8 @@ else
 			cp -i -v -r $sourcefile $target
 		elif [[ "$1" == "mv" ]];then
 			mv -i -v $sourcefile $target
+		elif [[ -z "$useRelativeInSL" || "$useRelativeInSL" == "y" || "$useRelativeInSL" == "Y" ]];then
+			ln -sr $sourcefile $(echo $target/$(basename $sourcefile))
 		else
 			ln -s $sourcefile $(echo $target/$(basename $sourcefile))
 		fi
