@@ -1120,9 +1120,7 @@ static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter)
    }
 
    thumbData->thumb_size = RFM_THUMBNAIL_SIZE;
-   thumbData->path=(fileAttributes->is_symlink && fileAttributes->link_target_filename)?
-     g_strdup(fileAttributes->link_target_filename)
-     :g_strdup(fileAttributes->path);
+   thumbData->path=canonicalize_file_name(fileAttributes->path);
    thumbData->mtime_file = fileAttributes->file_mtime==NULL? 0 : g_date_time_to_unix(fileAttributes->file_mtime);
    thumbData->uri=g_filename_to_uri(thumbData->path, NULL, NULL);
    //don't generate thumbnail for thumbnail, show itself for picture in rfm_thumbDir
@@ -1931,6 +1929,7 @@ static void set_rfm_curPath_internal(gchar* path){
 static void set_rfm_curPath(gchar* path)
 {
    char *msg;
+   gchar * realpath=path;
    int rfm_new_wd;
    //int e;
 
@@ -1941,14 +1940,17 @@ static void set_rfm_curPath(gchar* path)
    //TODO: in future if we need some directory specific history file, we may check that if the directory contains .rfm_history file, it will use this local history, otherwise, use the default global history file.
    /* if (rfm_curPath!=NULL && (e=append_history(history_entry_added, g_build_filename(rfm_curPath,".rfm_history", NULL)))) */
    /*     g_warning("failed to append_history(%d,%s) error code:%d",history_entry_added,g_build_filename(rfm_curPath,".rfm_history", NULL),e); */
-     rfm_new_wd=inotify_add_watch(rfm_inotify_fd, path, INOTIFY_MASK);
+
+     if (UseTargetAddressWhenEnterSymbloicLinkForDir) realpath=canonicalize_file_name(path);
+   
+     rfm_new_wd=inotify_add_watch(rfm_inotify_fd, realpath, INOTIFY_MASK);
      if (rfm_new_wd < 0) {
-       g_warning("set_rfm_curPath(): inotify_add_watch() failed for %s",path);
-       msg=g_strdup_printf("%s:\n\nCan't enter directory!", path);
+       g_warning("set_rfm_curPath(): inotify_add_watch() failed for %s",realpath);
+       msg=g_strdup_printf("%s:\n\nCan't enter directory!", realpath);
        show_msgbox(msg, "Warning", GTK_MESSAGE_WARNING);
        g_free(msg);
      } else {
-       set_rfm_curPath_internal(path);
+       set_rfm_curPath_internal(realpath);
        
        // inotify_rm_watch will trigger refresh_store in inotify_handler
        // and it will destory and recreate view base on conditions such as whether curPath_is_git_repo
@@ -1957,6 +1959,7 @@ static void set_rfm_curPath(gchar* path)
        if (pauseInotifyHandler) refresh_store(rfmCtx);
      }
 
+     if (UseTargetAddressWhenEnterSymbloicLinkForDir) free(realpath);
    /* clear_history(); */
    /* if (e=read_history(g_build_filename(rfm_curPath,".rfm_history", NULL))) */
    /*     g_warning("failed to read_history(%s) error code:%d. it's normal if you enter this directory for the first time with rfm.",g_build_filename(rfm_curPath,".rfm_history", NULL),e); */

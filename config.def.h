@@ -15,6 +15,7 @@ static gint RFM_THUMBNAIL_SIZE = 128; /* Maximum size for thumb dir normal is 12
 #define RFM_HISTORY_SIZE 10000
 #define RFM_AUTOSELECT_OLDPWD_IN_VIEW TRUE
 #define RFM_AUTO_SORT_ENTER_VIEW TRUE
+static gboolean UseTargetAddressWhenEnterSymbloicLinkForDir=TRUE;
 #define RFM_FILE_CHOOSER_NAMED_PIPE_PREFIX "/tmp/rfmFileChooser_"
 #define RFM_ENV_VAR_NAME_PREFIX ""  //change this if your extented column name conflicts with existing ENV Variable name
 
