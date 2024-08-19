@@ -113,6 +113,9 @@ ls *20230410*|xargs git stage
 
 但现在可以在rfm里多选多个文件，然后通过鼠标右键菜单选择Stage操作。
 
+[也可按此方法对多个选中文件运行命令](https://gitee.com/guyuming76/mineral#%E5%9C%A8%E9%80%89%E4%B8%AD%E7%9A%84%E6%96%87%E4%BB%B6%E5%88%97%E8%A1%A8%E4%B8%8A%E8%BF%90%E8%A1%8C%E5%91%BD%E4%BB%A4)
+
+
 rfm 原来只实现了用icon_view显示内容，这里增加了-l 参数，使用列表视图显示内容，类似 ls -l 的显示内容。也可以在rfm界面里面使用 MOD+l 组合键切换icon或list视图。MOD键默认定义为Win键，可以在config.h里重新定义为Alt或别的键
 
 ![rfm -l](20230410_12h55m39s_grim.png)
