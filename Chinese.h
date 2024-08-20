@@ -6,6 +6,7 @@
 #define RunActionCopy "复制文件至目标路径或复制文件名至剪贴板"
 #define RunActionMove "移动(改名)文件至目标路径或复制文件名至剪贴板"
 #define RunActionDelete "删除"
+#define RunActionSL "创建指向选中文件的软链接"
 #define RunActionGitStage "git 暂存"
 #define Paste "粘帖"
 #define MoveTo "移至此"
