@@ -7,6 +7,7 @@
 #define RunActionMove "Move(rename) files to destination, or copy filenames to clipboard"
 #define RunActionDelete "Delete"
 #define RunActionSL "Create SoftLink to selected files"
+#define RunActionFindSL "Find all links to the same file"
 #define RunActionGitStage "git stage"
 #define Paste "Paste"
 #define MoveTo "MoveToHere"

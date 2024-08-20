@@ -99,6 +99,7 @@ endif
 	@cp -f scripts/rfmShareDir.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmCopyMoveToCurPath_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmCopyMoveToCurPath.sh
 	@cp -f scripts/rfmCreateSoftLink_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmCreateSoftLink.sh
+	@cp -f scripts/rfmFindLinksToTheSameFile_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmFindLinksToTheSameFile.sh
 #	@cp -f scripts/rfmGitShowPictures_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmGitShowPictures.sh
 	@cp -f scripts/rfmGitCommit_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmGitCommit.sh
 	@cp -f scripts/rfmChangeOwner_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmChangeOwner.sh
@@ -130,6 +131,7 @@ endif
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmShareDir.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmCopyMoveToCurPath.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmCreateSoftLink.sh
+	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmFindLinksToTheSameFile.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmGitCommit.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmChangeOwner.sh
 #	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmGitShowPictures.sh
@@ -160,6 +162,7 @@ endif
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmShareDir.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmCopyMoveToCurPath.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmCreateSoftLink.sh
+	@rm -f ${DESTDIR}${PREFIX}/bin/rfmFindLinksToTheSameFile.sh
 #	@rm -f ${DESTDIR}${PREFIX}/bin/rfmGitShowPictures.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmGitCommit.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmChangeOwner.sh

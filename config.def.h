@@ -47,6 +47,7 @@ static const char *cp_clipboard_to_curPath[] = { "$RFM_TERM",rfmBinPath "/rfmCop
 static const char *mv_clipboard_to_curPath[] = { "$RFM_TERM",rfmBinPath "/rfmCopyMoveToCurPath.sh","mv",NULL };
 static const char *ln_clipboard_to_curPath[] = { "$RFM_TERM",rfmBinPath "/rfmCopyMoveToCurPath.sh","sl",NULL };
 static const char *create_softlink[] = { "$RFM_TERM",rfmBinPath "/rfmCreateSoftLink.sh",NULL };
+static const char *find_softlink[] = { "$RFM_TERM",rfmBinPath "/rfmFindLinksToTheSameFile.sh",NULL };
 static const char *change_owner[] = { "$RFM_TERM", rfmBinPath "/rfmChangeOwner.sh",NULL };
 static const char *play_video[] = { "/usr/bin/xdg-open", NULL };
 static const char *play_audio[] = { "/usr/bin/xdg-open", NULL };
@@ -124,6 +125,7 @@ static RFM_MenuItem run_actions[] = {
    { RunActionMove,  "*",              "*",                    f_mv,             		NULL },
    { RunActionDelete, "*",             "*",                    f_rm,             		NULL },
    { RunActionSL,    "*",              "*",                    create_softlink,                 NULL },
+   { RunActionFindSL,"*",              "*",                    find_softlink,                   NULL },
 #ifdef GitIntegration
    { RunActionGitStage,  "*",          "*",                    git_stage_cmd,    		cur_path_is_git_repo },
    { "git log",      "*",              "*",                    git_log_cmd,      		cur_path_is_git_repo },
