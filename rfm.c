@@ -1657,26 +1657,14 @@ static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store(GD
       read_one_file_couter++;
       return G_SOURCE_CONTINUE;   /* Return TRUE if more items */
    }
-   else {
-     if (!insert_fileAttributes_into_store_one_by_one){
-       Iterate_through_fileAttribute_list_to_insert_into_store();
-       if (rfm_do_thumbs == 1 && g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR))
-	 iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_and_load_gitCommitMsg_ifdef_GitIntegration();
-     }else if (rfm_thumbQueue!=NULL)
-       rfm_thumbScheduler=g_idle_add((GSourceFunc)mkThumb, NULL);
+   else if (insert_fileAttributes_into_store_one_by_one) {
+       if (rfm_thumbQueue!=NULL) rfm_thumbScheduler=g_idle_add((GSourceFunc)mkThumb, NULL);
+       In_refresh_store = FALSE;
+       gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
    }
+
    rfm_readDirSheduler=0;
    g_hash_table_destroy(mount_hash);
-
-   /* if (treeview){ */
-   /*   viewSelectionChangedSignalConnection = g_signal_connect(gtk_tree_view_get_selection(GTK_TREE_VIEW(icon_or_tree_view)), "changed", G_CALLBACK(selectionChanged), NULL); */
-   /* } */
-   /* else{ */
-   /*   viewSelectionChangedSignalConnection = g_signal_connect(icon_or_tree_view, "selection-changed", G_CALLBACK(selectionChanged), NULL); */
-   /* } */
-
-   In_refresh_store = FALSE;
-   gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
    return G_SOURCE_REMOVE;
 }
 
@@ -1858,7 +1846,19 @@ static void refresh_store(RFM_ctx *rfmCtx)
      if (!dir) return;
      title=g_strdup(rfm_curPath);
      read_one_file_couter = 0;
-     rfm_readDirSheduler=g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, (GSourceFunc)read_one_DirItem_into_fileAttributeList_and_insert_into_store, dir, (GDestroyNotify)g_dir_close);
+     if (insert_fileAttributes_into_store_one_by_one)
+       rfm_readDirSheduler=g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, (GSourceFunc)read_one_DirItem_into_fileAttributeList_and_insert_into_store, dir, (GDestroyNotify)g_dir_close);
+     else{
+       while (read_one_DirItem_into_fileAttributeList_and_insert_into_store(dir)!=G_SOURCE_REMOVE){};
+       g_dir_close(dir);
+
+       Iterate_through_fileAttribute_list_to_insert_into_store();
+       if (rfm_do_thumbs == 1 && g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR))
+	 iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_and_load_gitCommitMsg_ifdef_GitIntegration();
+
+       In_refresh_store = FALSE;
+       gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
+     }
   }
 #ifdef GitIntegration
    if ((SearchResultViewInsteadOfDirectoryView^1) && curPath_is_git_repo)
