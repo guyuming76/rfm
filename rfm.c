@@ -513,6 +513,10 @@ static void endPythonEmbedding(){
 #endif
 #include "config.h"
 
+#ifdef RFM_CACHE_THUMBNAIL_IN_MEM
+static GHashTable *pixbuf_hash = NULL;
+#endif
+
 static gboolean auto_sort_entering_view = RFM_AUTO_SORT_ENTER_VIEW;
 
 typedef struct {
@@ -978,10 +982,20 @@ static int load_thumbnail(gchar *key, gboolean show_Thumbnail_Itself_InsteadOf_A
    gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, treePath);
    gtk_tree_path_free(treePath);
    thumb_path=g_build_filename(rfm_thumbDir, key, NULL);
-   pixbuf=gdk_pixbuf_new_from_file(thumb_path, NULL);
+#ifdef RFM_CACHE_THUMBNAIL_IN_MEM
+   pixbuf=g_hash_table_lookup(pixbuf_hash, key);
+#endif
+   if (pixbuf==NULL){
+      pixbuf=gdk_pixbuf_new_from_file(thumb_path, NULL);
+      if (pixbuf==NULL){
+	g_free(thumb_path);
+	return 2;   /* Can't load thumbnail */
+      }
+#ifdef RFM_CACHE_THUMBNAIL_IN_MEM
+      g_hash_table_insert(pixbuf_hash, key, pixbuf);
+#endif
+   }
    g_free(thumb_path);
-   if (pixbuf==NULL)
-      return 2;   /* Can't load thumbnail */
 
    if (!show_Thumbnail_Itself_InsteadOf_As_Thumbnail_For_Original_Picture){ //显示thumbnail本身,就不要考虑过期问题了,否则为thumbnail再生成thumbnail有些奇怪
      gtk_tree_model_get(GTK_TREE_MODEL(store), &iter, COL_MTIME, &mtime_file, -1);
@@ -990,6 +1004,10 @@ static int load_thumbnail(gchar *key, gboolean show_Thumbnail_Itself_InsteadOf_A
      if (mtime_file!=mtime_thumb) {
 #ifdef Allow_Thumbnail_Without_tExtThumbMTime
        if (tmp != NULL) {
+#endif
+
+#ifdef RFM_CACHE_THUMBNAIL_IN_MEM
+	 g_hash_table_remove(pixbuf_hash, key);
 #endif
 	 g_object_unref(pixbuf);
 	 return 3; /* Thumbnail out of date */
@@ -1000,7 +1018,9 @@ static int load_thumbnail(gchar *key, gboolean show_Thumbnail_Itself_InsteadOf_A
    }
    
    gtk_list_store_set (store, &iter, COL_PIXBUF, pixbuf, -1);
+#ifndef RFM_CACHE_THUMBNAIL_IN_MEM
    g_object_unref(pixbuf);
+#endif
    return 0;
 }
 
@@ -3494,6 +3514,9 @@ static int setup(RFM_ctx *rfmCtx)
    rfm_thumbDir=g_build_filename(g_get_user_cache_dir(), "thumbnails", "normal", NULL);
 
    thumb_hash=g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)gtk_tree_row_reference_free);
+#ifdef RFM_CACHE_THUMBNAIL_IN_MEM
+   pixbuf_hash=g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_object_unref);
+#endif
 #ifdef GitIntegration
    gitTrackedFiles=g_hash_table_new_full(g_str_hash, g_str_equal,g_free, g_free);
    //gitCommitMsg=g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
