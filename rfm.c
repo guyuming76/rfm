@@ -271,7 +271,11 @@ static GList *rfm_thumbQueue=NULL;
 static GList *rfm_childList=NULL;
 
 static guint rfm_readDirSheduler=0;
-static guint rfm_thumbScheduler = 0;
+static guint rfm_thumbScheduler = 0; // this is for mkthumb
+static guint rfm_thumbLoadScheduler = 0; //
+static GtkTreeIter thumbnail_load_iter;
+static GtkTreeIter gitMsg_load_iter;
+
 //TODO: i added the following two schedulers so that i can put off the loading of these slow columns after file list appears in the view first. But have not implemented them yet. Anyway, if user choose to show this slow columns, they have to wait to the end, show files slowly one by one may be better.
 static guint rfm_extColumnScheduler = 0;
 #ifdef GitIntegration
@@ -605,6 +609,9 @@ static void rfm_stop_all(RFM_ctx *rfmCtx) {
    if (rfm_thumbScheduler>0)
       g_source_remove(rfm_thumbScheduler);
 
+   if (rfm_thumbLoadScheduler>0)
+     g_source_remove(rfm_thumbLoadScheduler);
+
    if (rfm_extColumnScheduler>0) g_source_remove(rfm_extColumnScheduler);
 #ifdef GitIntegration
    if (rfm_gitCommitMsgScheduler>0) g_source_remove(rfm_gitCommitMsgScheduler);
@@ -613,6 +620,7 @@ static void rfm_stop_all(RFM_ctx *rfmCtx) {
    rfmCtx->delayedRefresh_GSourceID=0;
    rfm_readDirSheduler=0;
    rfm_thumbScheduler=0;
+   rfm_thumbLoadScheduler=0;
    rfm_extColumnScheduler=0;
 #ifdef GitIntegration
    rfm_gitCommitMsgScheduler=0;
@@ -1322,6 +1330,38 @@ static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guin
    return fileAttributes;
 }
 
+
+
+static gboolean iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_one_by_one_when_idle(GtkTreeIter *iter){
+  load_thumbnail_or_enqueue_thumbQueue_for_store_row(iter);
+  if (gtk_tree_model_iter_next(treemodel, iter)) return G_SOURCE_CONTINUE;
+  else {
+    if (rfm_thumbQueue!=NULL) rfm_thumbScheduler=g_idle_add((GSourceFunc)mkThumb, NULL);
+    rfm_thumbLoadScheduler=0;
+    if (rfm_gitCommitMsgScheduler==0){
+      In_refresh_store = FALSE;
+      gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
+    }
+    return G_SOURCE_REMOVE;
+  }
+}
+
+
+static gboolean iterate_through_store_to_load_gitCommitMsg_one_by_one_when_idle(GtkTreeIter *iter)
+{
+     load_gitCommitMsg_for_store_row(iter);
+     if (gtk_tree_model_iter_next(treemodel, iter)) return G_SOURCE_CONTINUE;
+     else {
+       rfm_gitCommitMsgScheduler=0;
+       if (rfm_gitCommitMsgScheduler==0){
+	 In_refresh_store = FALSE;
+	 gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
+       }
+       return G_SOURCE_REMOVE;
+     }
+}
+
+
 static void iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_and_load_gitCommitMsg_ifdef_GitIntegration(void)
 {
    GtkTreeIter iter;
@@ -1771,6 +1811,7 @@ static void set_Titles(gchar * title){
    g_free(title);
 }
 
+
 static void refresh_store(RFM_ctx *rfmCtx)
 {
    In_refresh_store = TRUE;
@@ -1853,11 +1894,13 @@ static void refresh_store(RFM_ctx *rfmCtx)
        g_dir_close(dir);
 
        Iterate_through_fileAttribute_list_to_insert_into_store();
-       if (rfm_do_thumbs == 1 && g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR))
-	 iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_and_load_gitCommitMsg_ifdef_GitIntegration();
-
-       In_refresh_store = FALSE;
-       gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
+       if (rfm_do_thumbs == 1 && g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR) && gtk_tree_model_get_iter_first(treemodel, &thumbnail_load_iter))
+	   rfm_thumbLoadScheduler=g_idle_add((GSourceFunc)iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_one_by_one_when_idle, &thumbnail_load_iter);
+#ifdef GitIntegration
+       if (get_treeviewColumnByEnum(COL_GIT_COMMIT_MSG)->Show && gtk_tree_model_get_iter_first(treemodel, &gitMsg_load_iter)) rfm_gitCommitMsgScheduler=g_idle_add((GSourceFunc)iterate_through_store_to_load_gitCommitMsg_one_by_one_when_idle, &gitMsg_load_iter);
+#endif
+       //In_refresh_store = FALSE;
+       //gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
      }
   }
 #ifdef GitIntegration
