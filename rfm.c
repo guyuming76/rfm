@@ -642,6 +642,8 @@ static gboolean ExecCallback_freeChildAttribs(RFM_ChildAttribs * child_attribs){
 
 static void toggle_insert_fileAttributes_into_store_one_by_one(){
   insert_fileAttributes_into_store_one_by_one = !insert_fileAttributes_into_store_one_by_one;
+  if (insert_fileAttributes_into_store_one_by_one) printf("onebyone on\n");
+  else printf("onebyone off\n");
 }
 
 /* Supervise the children to prevent blocked pipes */
