@@ -361,7 +361,7 @@ static gboolean pauseInotifyHandler=FALSE;
 static int read_one_file_couter = 0;
 static char cmd_to_set_terminal_title[PATH_MAX];
 static gchar* saved_searchResultViewColumnLayout=NULL;
-static gboolean insert_fileAttributes_into_store_one_by_one=TRUE;
+static gboolean insert_fileAttributes_into_store_one_by_one=FALSE;
 static struct sigaction newaction;
 #ifdef GitIntegration
 // value " M " for modified
