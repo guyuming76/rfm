@@ -8,8 +8,13 @@ echo "输入为选中文件创建软链接的目录路径,可以是绝对路径�
 input_destination="$(rfmReadlineWithSpecificHistoryFile.sh ~/.rfm_history_directory)"
 
 if [[ ! -d "$input_destination" ]]; then
-	echo "输入路径无效!"
-else
+	read -p "输入路径不存在,是否(y/n)创建目录?默认是(y)" -r mkdir_input_destination
+	if [[ -z "$mkdir_input_destination" || "$mkdir_input_destination" == "y" || "$mkdir_input_destination" == "Y" ]];then
+		mkdir -p $input_destination
+	fi
+fi
+
+if [[ -d "$input_destination" ]]; then
 	read -p "是否(y/n)使用相对路径创建软链接?默认是(y)" -r useRelativeInSL
 	read -p "是否(y/n)自动 git stage 创建的软链接文件?默认是(y)" -r autoGitStage
 	sl_list=""
