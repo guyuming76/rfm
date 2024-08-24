@@ -1,9 +1,5 @@
 #!/bin/bash
 
-if [[ "$#" -gt 1 ]]; then
-	echo "本命令只作用于第一条选中文件,多选文件被忽略!"
-fi
-
 rfmFindScope=$(git rev-parse --show-toplevel 2>/dev/null)
 if [[ -z  "$rfmFindScope" ]]; then
 	rfmFindScope="/"
@@ -22,8 +18,16 @@ if [[ ! -z "$rfmInput" ]]; then
 	fi
 fi
 
-echo ""
-find "$rfmFindScope" -exec test "$1" -ef {} \; -print
+for i in "$@";do
+	read -p "是否(y/n)输出结果至剪贴板?默认是(n)" -r outputToClipBoard
+	echo ""
+	if [[ "$outputToClipBoard" == "y" || "$outputToClipBoard" == "Y" ]];then
+		find "$rfmFindScope" -exec test "$i" -ef {} \; -print | tee /dev/tty | xargs rfmToClipboard.sh
+	else
+		find "$rfmFindScope" -exec test "$i" -ef {} \; -print
+	fi
+	echo ""
+done
 
 echo ""
 read -p "按回车退出"
