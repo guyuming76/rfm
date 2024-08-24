@@ -14,7 +14,7 @@ else
 	read -p "是否(y/n)自动 git stage 创建的软链接文件?默认是(y)" -r autoGitStage
 	sl_list=""
 
-	for i in ${@:2}; do
+	for i in "$@"; do
 		sl_basename=$(basename "$i")
 		read -p "输入要创建的软链接名,回车取默认值 $sl_basename" -r input_sl_basename
 		if [[ ! -z "$input_sl_basename" ]]; then
@@ -33,10 +33,4 @@ else
 
 		sl_list+=" $input_destination/$sl_basename"
 	done
-
-	read -p "是否(y/n)打开新窗口查看创建的软链接?默认否(n)" -r newrfm
-	if [[ "$newrfm" == "y" || "$newrfm" == "Y" ]];then
-		rfm -d sl_list
-	fi
-
 fi
