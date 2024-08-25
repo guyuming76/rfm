@@ -1355,7 +1355,7 @@ static gboolean iterate_through_store_to_load_gitCommitMsg_one_by_one_when_idle(
      if (gtk_tree_model_iter_next(treemodel, iter)) return G_SOURCE_CONTINUE;
      else {
        rfm_gitCommitMsgScheduler=0;
-       if (rfm_gitCommitMsgScheduler==0){
+       if (rfm_thumbLoadScheduler==0){
 	 In_refresh_store = FALSE;
 	 gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
        }
