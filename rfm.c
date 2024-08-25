@@ -411,7 +411,7 @@ static void refresh_store_in_g_spawn_wrapper_callback(RFM_ChildAttribs*);
 static void clear_store(void);
 static void rfm_stop_all(RFM_ctx *rfmCtx);
 static gboolean fill_fileAttributeList_with_filenames_from_search_result_and_then_insert_into_store();
-static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store(GDir *dir);
+static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store_if_onebyone(GDir *dir);
 static void toggle_insert_fileAttributes_into_store_one_by_one();
 static void Iterate_through_fileAttribute_list_to_insert_into_store();
 static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,GtkTreeIter *iter);
@@ -1644,7 +1644,8 @@ static void load_GitTrackedFiles_into_HashTable()
 	  fileAttributes->mime_root=g_strdup("na");
 	  fileAttributes->mime_sub_type=g_strdup("na");
 	  //rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
-	  Insert_fileAttributes_into_store_with_thumbnail_and_more(fileAttributes);
+	  if (insert_fileAttributes_into_store_one_by_one) Insert_fileAttributes_into_store_with_thumbnail_and_more(fileAttributes);
+	  else rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
 	  //TODO: after i run `git rm -r --cached video`, rfm will show video subdir as shown on devPicAndVideo/20231210_15h14m08s_grim.png
 	  //so we should not insert fileattributes if the file is still in directory, and it is just removed from git track, not deleted
 	  //or we can insert fileattributes here, but update it when read fileattribute later from directory, instead of insert it again.
@@ -1678,7 +1679,7 @@ static void Insert_fileAttributes_into_store_with_thumbnail_and_more(RFM_FileAtt
 	    }  
 }
 
-static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store(GDir *dir) {
+static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store_if_onebyone(GDir *dir) {
    const gchar *name=NULL;
    time_t mtimeThreshold=time(NULL)-RFM_MTIME_OFFSET;
    RFM_FileAttributes *fileAttributes;
@@ -1890,9 +1891,9 @@ static void refresh_store(RFM_ctx *rfmCtx)
      title=g_strdup(rfm_curPath);
      read_one_file_couter = 0;
      if (insert_fileAttributes_into_store_one_by_one)
-       rfm_readDirSheduler=g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, (GSourceFunc)read_one_DirItem_into_fileAttributeList_and_insert_into_store, dir, (GDestroyNotify)g_dir_close);
+       rfm_readDirSheduler=g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, (GSourceFunc)read_one_DirItem_into_fileAttributeList_and_insert_into_store_if_onebyone, dir, (GDestroyNotify)g_dir_close);
      else{
-       while (read_one_DirItem_into_fileAttributeList_and_insert_into_store(dir)!=G_SOURCE_REMOVE){};
+       while (read_one_DirItem_into_fileAttributeList_and_insert_into_store_if_onebyone(dir)!=G_SOURCE_REMOVE){};
        g_dir_close(dir);
 
        Iterate_through_fileAttribute_list_to_insert_into_store();
