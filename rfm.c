@@ -1629,9 +1629,26 @@ static void load_GitTrackedFiles_into_HashTable()
       gchar *fullpath=g_build_filename(git_root,filename,NULL);         
       g_log(RFM_LOG_DATA_GIT,G_LOG_LEVEL_DEBUG,"gitTrackedFile Status:%s,%s",status,fullpath);
 
+      gchar* existingStatus=g_hash_table_lookup(gitTrackedFiles, fullpath);
+      //git status --porcelain return two lines for a single file if both staged and unstaged changes included. But we use the fullpath as hashtable key here, so i have to merge these two lines into single line and combine the status.
+      // TODO: this may also considered issue of git status instead of mine, but i provide a quick fix here.
+      if (existingStatus!=NULL){
+	// "D "+"??"="D?"
+	if (g_strcmp0(status, "??")==0 && g_strcmp0(existingStatus, "D ")==0){
+	  status[0]='D';
+	}else if (g_strcmp0(status, "D ")==0 && g_strcmp0(existingStatus, "??")==0){
+	  status[1]='?';
+	}
+	//TODO: can there be something like "A "+" D"="AD"?
+      }
+
       g_hash_table_insert(gitTrackedFiles,g_strdup(fullpath),status);
-      
-      if ((SearchResultViewInsteadOfDirectoryView^1) && (g_strcmp0(" D", status)==0 || g_strcmp0("D ", status)==0) && g_strcmp0(g_path_get_dirname(fullpath), rfm_curPath)==0){
+
+      struct stat statbuff;
+      if ((SearchResultViewInsteadOfDirectoryView^1)
+	  && (status[1]=='D' || status[0]=='D')
+	  && stat(fullpath, &statbuff)!=0 //file not exists
+	  && g_strcmp0(g_path_get_dirname(fullpath), rfm_curPath)==0){
 	//add item into fileattributelist so that user can git stage on it
 	RFM_FileAttributes *fileAttributes=malloc_fileAttributes();
 	if (fileAttributes==NULL)
