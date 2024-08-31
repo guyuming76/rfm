@@ -3117,7 +3117,7 @@ static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
 			}
 			col->enumCol=col_enum_with_sign;
 			
-		      }
+		      }else col_enum_with_sign = col->enumCol;
 		    }
 
 		    
