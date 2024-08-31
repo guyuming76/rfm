@@ -3105,14 +3105,14 @@ static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
 		      RFM_treeviewColumn* col = get_treeviewColumnByTitle(order_seq_array[j]);
 		      if (col==NULL) {
 			g_warning("failed to find column %s",order_seq_array[j]);
-			g_array_free(order_seq_array, TRUE);
+			g_strfreev(order_seq_array);
 			return;
 		      }
 		      if (col->enumCol==NUM_COLS){
 			col_enum_with_sign = get_available_ExtColumn(COL_Ext1);
 			if (col_enum_with_sign==NUM_COLS) {
 			  g_warning("no available extended columns for %s", order_seq_array[j]);
-			  g_array_free(order_seq_array, TRUE);
+			  g_strfreev(order_seq_array);
 			  return;
 			}
 			col->enumCol=col_enum_with_sign;
@@ -3124,11 +3124,11 @@ static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
 		    guint col_enum_at_order_sequence_item_j = abs(col_enum_with_sign);//col_enum 表示列常数,比如 COL_FILENAME
 		    int treeviewColumn_index_for_order_sequence_item_j = get_treeviewColumnsIndexByEnum(col_enum_at_order_sequence_item_j);//col_index 表示col_enum 在treeviewColumns数组里当前的下标
 		    g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"j:%d; col_enum_at_order_sequence_item_j:%d; treeviewColumn_index_for_order_sequence_item_j:[%d]; target_index_for_order_sequence_item_j_to_move_after:[%d] ",j,col_enum_at_order_sequence_item_j,treeviewColumn_index_for_order_sequence_item_j,target_treeviewColumn_index_for_order_sequence_item_j_to_move_after);
-                    g_free(order_seq_array[j]);
+                    
 		    if (treeviewColumn_index_for_order_sequence_item_j<0) {
 		      g_warning("cannot find column %d.",col_enum_at_order_sequence_item_j);
 		      for(int f=j+1; f<G_N_ELEMENTS(order_seq_array);f++) g_free(order_seq_array[f]);
-		      g_free(order_seq_array);
+		      g_strfreev(order_seq_array);
 		      return;
 		    }
 
@@ -3177,7 +3177,7 @@ static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
                 j++;
 	
               } while (order_seq_array[j]!=NULL);
-	      g_free(order_seq_array);
+	      g_strfreev(order_seq_array);
 }
 
 static gchar* get_showcolumn_cmd_from_currently_displaying_columns(){
