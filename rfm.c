@@ -123,6 +123,7 @@ typedef struct {  /* Update free_fileAttributes() and malloc_fileAttributes() if
    guint id; // usually, path can be unique id for fileAttributelist, however, for searchresult from grep, same file can appear more than once, so we need a id as key for grepMatch_hash and others.
    gchar *path; // absolute path
    gchar *file_name;
+   gchar *file_name_escaped_for_iconview_markup_column;
   //gchar *display_name;
    gboolean is_dir;
    gboolean is_mountPoint;
@@ -1173,6 +1174,7 @@ static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter)
 static void free_fileAttributes(RFM_FileAttributes *fileAttributes) {
    g_free(fileAttributes->path);
    g_free(fileAttributes->file_name);
+   g_free(fileAttributes->file_name_escaped_for_iconview_markup_column);
    g_free(fileAttributes->link_target_filename);
    //g_free(fileAttributes->display_name);
    g_clear_object(&(fileAttributes->pixbuf));
@@ -1425,7 +1427,11 @@ static void Update_Store_ExtColumns(RFM_ChildAttribs *childAttribs) {
    RFM_store_cell* cell= *(RFM_store_cell**)(childAttribs->customCallbackUserData);
    if (cell->store_column>=0 && cell->store_column<NUM_COLS)  gtk_list_store_set(store,cell->iter, cell->store_column, value, -1);
    if (g_strcmp0(value,"")!=0){
-     if (cell->iconview_markup) gtk_list_store_set(store, cell->iter, COL_ICONVIEW_MARKUP, value, -1);
+     if (cell->iconview_markup) {
+       gchar * markup_column_value_escaped=g_markup_escape_text(value, -1);
+       gtk_list_store_set(store, cell->iter, COL_ICONVIEW_MARKUP, markup_column_value_escaped, -1);
+       g_free(markup_column_value_escaped);
+     }
      if (cell->iconview_tooltip) gtk_list_store_set(store, cell->iter, COL_ICONVIEW_TOOLTIP, value, -1);
    }
    g_free(cell);
@@ -1459,7 +1465,13 @@ static void load_ExtColumns_and_iconview_markup_tooltip(RFM_FileAttributes* file
 	    }else if ((cell->iconview_markup) || (cell->iconview_tooltip)){
 	      GValue enumColValue = G_VALUE_INIT;
 	      gtk_tree_model_get_value(treemodel, iter, treeviewColumns[i].enumCol, &enumColValue);;
-	      if (cell->iconview_markup) gtk_list_store_set(store, cell->iter, COL_ICONVIEW_MARKUP, &enumColValue, -1);
+	      if (cell->iconview_markup) {
+		gchar * markup_column_value=g_value_get_string(&enumColValue);
+		gchar * markup_column_value_escaped=g_markup_escape_text(markup_column_value, -1);
+		gtk_list_store_set(store, cell->iter, COL_ICONVIEW_MARKUP, markup_column_value_escaped, -1);
+		g_free(markup_column_value_escaped);
+		g_free(markup_column_value);
+	      }
 	      if (cell->iconview_tooltip) gtk_list_store_set(store, cell->iter, COL_ICONVIEW_TOOLTIP, &enumColValue, -1);
 	    }
 	  }
@@ -1517,6 +1529,7 @@ static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,
       fileAttributes->mtime= fileAttributes->file_mtime==NULL ? NULL : g_date_time_format(fileAttributes->file_mtime,RFM_DATETIME_FORMAT);
       fileAttributes->atime= fileAttributes->file_atime==NULL ? NULL : g_date_time_format(fileAttributes->file_atime,RFM_DATETIME_FORMAT);
       fileAttributes->ctime= fileAttributes->file_ctime==NULL ? NULL : g_date_time_format(fileAttributes->file_ctime,RFM_DATETIME_FORMAT);
+      fileAttributes->file_name_escaped_for_iconview_markup_column = g_markup_escape_text(fileAttributes->file_name, -1);
       gtk_list_store_insert_with_values(store, iter, -1,
                           COL_MODE_STR, fileAttributes->file_mode_str,
 					//COL_DISPLAY_NAME, fileAttributes->display_name,
@@ -1539,7 +1552,7 @@ static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,
 					//COL_GIT_COMMIT_MSG,git_commit_msg,
 #endif
 			  COL_MIME_SORT,fileAttributes->mime_sort,
-			  COL_ICONVIEW_MARKUP, fileAttributes->file_name,
+			  COL_ICONVIEW_MARKUP, fileAttributes->file_name_escaped_for_iconview_markup_column,
 			  COL_ICONVIEW_TOOLTIP,NULL,
                           -1);
 
@@ -2737,6 +2750,7 @@ static void inotify_insert_item(gchar *name, gboolean is_dir)
    //char * c_time=ctime((time_t*)(&(fileAttributes->file_mtime)));
    // c_time[strcspn(c_time, "\n")] = 0;
    fileAttributes->mime_sort=g_strjoin(NULL,fileAttributes->mime_root,fileAttributes->mime_sub_type,NULL);
+   fileAttributes->file_name_escaped_for_iconview_markup_column = g_markup_escape_text(fileAttributes->file_name, -1);
    gtk_list_store_insert_with_values(store, &iter, -1,
 				     //                     COL_MODE_STR, fileAttributes->file_mode_str,
 				     //sCOL_DISPLAY_NAME, fileAttributes->display_name,
@@ -2754,7 +2768,7 @@ static void inotify_insert_item(gchar *name, gboolean is_dir)
 				     //		       COL_ATIME_STR,yyyymmddhhmmss(fileAttributes->file_atime),
 				     //                       COL_CTIME_STR,yyyymmddhhmmss(fileAttributes->file_ctime),
 		       COL_MIME_SORT,fileAttributes->mime_sort,
-		       COL_ICONVIEW_MARKUP, fileAttributes->file_name,
+		       COL_ICONVIEW_MARKUP, fileAttributes->file_name_escaped_for_iconview_markup_column,
                        -1);
 }
 
