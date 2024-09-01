@@ -1479,7 +1479,7 @@ static void load_ExtColumns_and_iconview_markup_tooltip(RFM_FileAttributes* file
       }  
 }
 
-
+//called in dir view when onebyone off or in searchresultview
 static void Iterate_through_fileAttribute_list_to_insert_into_store()
 {
    GList *listElement;
@@ -1495,6 +1495,7 @@ static void Iterate_through_fileAttribute_list_to_insert_into_store()
    }
 }
 
+// fileAttributes is the collection of attributes of one file
 static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes, GtkTreeIter *iter)
 {
       GtkTreePath *treePath=NULL;
@@ -1696,6 +1697,7 @@ static void load_GitTrackedFiles_into_HashTable()
 }
 #endif
 
+// call in dir view when onebyone on
 static void Insert_fileAttributes_into_store_with_thumbnail_and_more(RFM_FileAttributes* fileAttributes){
 	    GtkTreeIter iter;
             rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
