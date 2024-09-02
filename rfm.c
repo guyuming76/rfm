@@ -387,10 +387,8 @@ static void set_rfm_curPath(gchar *path);
 static int setup(RFM_ctx *rfmCtx);
 static void ReadFromPipeStdinIfAny(char *fd);
 static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamelist);
-static void ProcessOnelineForSearchResult(gchar* oneline);
-// read input from parent process stdin , and handle input such as
-// cd .
-// cd /tmp
+static void ProcessOnelineForSearchResult(gchar *oneline);
+static void ProcessKeyValuePairInFilesFromSearchResult(char *oneline);
 static int get_treeviewColumnsIndexByEnum(enum RFM_treeviewCol col);
 static RFM_treeviewColumn* get_treeviewcolumnByGtkTreeviewcolumn(GtkTreeViewColumn *gtkCol);
 static RFM_treeviewColumn* get_treeviewColumnByEnum(enum RFM_treeviewCol col);
@@ -3877,6 +3875,7 @@ int main(int argc, char *argv[])
    return 0;
 }
 
+//default search result processing function
 static void ProcessOnelineForSearchResult(char* oneline){
            if (oneline == NULL) return;
 	   char* key=calloc(10, sizeof(char));
@@ -3919,7 +3918,7 @@ static void ProcessOnelineForSearchResult(char* oneline){
       		    currentColumnTitleIndex++;
 		    sprintf(currentColumnTitle,"C%d", currentColumnTitleIndex);
 
-		    if (fileAttributeID==1){
+		    if (fileAttributeID==1){//搜索结果第一行
 		         g_assert(col->enumCol==NUM_COLS);
 			 g_assert(col->ValueFunc==getExtColumnValueFromHashTable);
 		         col->enumCol = current_Ext_Column;
@@ -3939,8 +3938,13 @@ static void ProcessOnelineForSearchResult(char* oneline){
 	   SearchResultFileNameList=g_list_prepend(SearchResultFileNameList, oneline);
 	   SearchResultFileNameListLength++;
 	   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"appended into SearchResultFileNameList:%s", oneline);
-	   fileAttributeID++;
+	   
 }
+
+static void ProcessKeyValuePairInFilesFromSearchResult(char *oneline){
+   ProcessOnelineForSearchResult(oneline);
+}
+
 
 static gchar* getExtColumnValueFromHashTable(guint fileAttributeId, guint ExtColumnHashTableIndex){
    if (ExtColumnHashTable[ExtColumnHashTableIndex]==NULL) return NULL;
@@ -3971,6 +3975,7 @@ static void ReadFromPipeStdinIfAny(char * fd)
    	   g_log(RFM_LOG_DATA,G_LOG_LEVEL_DEBUG,"%s",oneline_stdin);
            oneline_stdin[strcspn(oneline_stdin, "\n")] = 0; //manual set the last char to NULL to eliminate the trailing \n from fgets
 	   ProcessOnelineForSearchResult(oneline_stdin);
+	   fileAttributeID++;
            oneline_stdin=calloc(1,PATH_MAX);
          }
          if (SearchResultFileNameList != NULL) {
@@ -4016,6 +4021,7 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
   gchar * oneline=strtok((gchar*)filenamelist,"\n");
   while (oneline!=NULL){
     searchresultTypes[SearchResultTypeIndex].SearchResultLineProcessingFunc(oneline);
+    fileAttributeID++;
     oneline=strtok(NULL, "\n");
   }
 
