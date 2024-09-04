@@ -216,7 +216,7 @@ typedef struct {
 
 typedef struct {
   gchar* name;
-  void* (*SearchResultLineProcessingFunc)(gchar* oneline);
+  int (*SearchResultLineProcessingFunc)(gchar* oneline);
 }RFM_SearchResultType;
 
 //TODO: keep GtkTreeIter somewhere such as in fileAttribute, so that we can try load gitmsg and extcolumns with spawn async instead of sync. However, that can be complicated, what if we have spawned so many processes and user clicked refresh? we have to build Stop mechanism into it. Simple strategy is not to load this slow columns unless user configures to show them.
@@ -387,8 +387,8 @@ static void set_rfm_curPath(gchar *path);
 static int setup(RFM_ctx *rfmCtx);
 static void ReadFromPipeStdinIfAny(char *fd);
 static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamelist);
-static void ProcessOnelineForSearchResult(gchar *oneline);
-static void ProcessKeyValuePairInFilesFromSearchResult(char *oneline);
+static int ProcessOnelineForSearchResult(gchar *oneline);
+static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline);
 static int get_treeviewColumnsIndexByEnum(enum RFM_treeviewCol col);
 static RFM_treeviewColumn* get_treeviewcolumnByGtkTreeviewcolumn(GtkTreeViewColumn *gtkCol);
 static RFM_treeviewColumn* get_treeviewColumnByEnum(enum RFM_treeviewCol col);
@@ -3876,17 +3876,17 @@ int main(int argc, char *argv[])
 }
 
 //default search result processing function
-static void ProcessOnelineForSearchResult(char* oneline){
+static int ProcessOnelineForSearchResult(char* oneline){
            if (oneline == NULL) return;
 	   char* key=calloc(10, sizeof(char));
 	   uint seperatorPositionAfterCurrentExtColumnValue = strcspn(oneline, RFM_SearchResultLineSeperator);
+	   uint currentColumnTitleIndex=1;
 	   if (seperatorPositionAfterCurrentExtColumnValue < strlen(oneline)) { //found ":" in oneline
 	       sprintf(key, "%d", fileAttributeID);
 	       oneline[seperatorPositionAfterCurrentExtColumnValue] = 0; //ending NULL for filename
                char* currentExtColumnValue = oneline + seperatorPositionAfterCurrentExtColumnValue + 1; //moving char pointer
 	       uint currentExtColumnValueLength;
 	       enum RFM_treeviewCol current_Ext_Column=COL_Ext1;
-	       uint currentColumnTitleIndex=1;
 	       char currentColumnTitle[10];
 	       sprintf(currentColumnTitle,"C%d", currentColumnTitleIndex);
 	       RFM_treeviewColumn* col = get_treeviewColumnByTitle(currentColumnTitle);
@@ -3938,11 +3938,64 @@ static void ProcessOnelineForSearchResult(char* oneline){
 	   SearchResultFileNameList=g_list_prepend(SearchResultFileNameList, oneline);
 	   SearchResultFileNameListLength++;
 	   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"appended into SearchResultFileNameList:%s", oneline);
+	   return currentColumnTitleIndex;
 	   
 }
 
-static void ProcessKeyValuePairInFilesFromSearchResult(char *oneline){
-   ProcessOnelineForSearchResult(oneline);
+static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline){
+   int currentColumnOriginalTitleIndex = ProcessOnelineForSearchResult(oneline);
+   
+   char currentColumnOriginalTitle[10];
+   sprintf(currentColumnOriginalTitle,"C%d", currentColumnOriginalTitleIndex);
+
+   //https://blog.csdn.net/u013554213/article/details/97557715  KeyVal 文件一定要包含组, ini 可以不包含,所以这里还是用 ini
+   //https://forums.gentoo.org/viewtopic-p-8838389.html#8838389
+   gchar* dumb_keyfile_groupname = "https://discourse.gnome.org/t/gkeyfile-to-handle-conf-without-groupname/23080/3";
+   GKeyFile *keyfile=g_key_file_new();
+   GError *error=NULL;
+   if (!g_key_file_load_from_file(keyfile, (gchar*)(SearchResultFileNameList->data), G_KEY_FILE_NONE, &error)){
+     g_warning("error loading key value pair from file %s, error code: %d, message:%s",(gchar*)(SearchResultFileNameList->data), error==NULL?0:error->code, error==NULL?"":error->message);
+     goto ret;
+   }
+   gsize size;
+   gchar** keys=NULL;
+   keys = g_key_file_get_keys(keyfile,dumb_keyfile_groupname,&size, &error);
+   g_log(RFM_LOG_DATA, G_LOG_LEVEL_DEBUG, "number of keys in %s:%d",(gchar*)(SearchResultFileNameList->data),size);
+
+   for(int i=0; i<size; i++){
+       RFM_treeviewColumn * col;
+       enum RFM_treeviewCol current_Ext_Column;
+       if (col=get_treeviewColumnByTitle(keys[i])){ //已经有同名列了
+	   current_Ext_Column=col->enumCol;
+       }else{//新列名
+	   col = get_treeviewColumnByTitle(currentColumnOriginalTitle); //找到当前(空余,未被使用的)列名,如C1, C2, C3 ... 等等
+           current_Ext_Column=get_available_ExtColumn(COL_Ext1);//既然是空余列名,一定未绑定 emuncol, 找一个空的enum,就是COL_ExtX
+	   //简单地看,列名C1,C2和COL_Ext1, COL_Ext2 应该是一一对应的,似乎不存在找到空余的列名,却没有空余的COL_ExtX 的情况
+	   //但是万一有比如预定名称的列如MailFrom占据了某个COL_ExtX,会早成列名C1,C2虽够,但COL_ExtX不够了.
+	   //也就是说COL_ExtX总是比C1,C2..CX先用完
+	   if (current_Ext_Column==NUM_COLS) {
+	     g_warning("No enough COL_Exts!");
+	     goto ret;
+	   }
+	   col->enumCol=current_Ext_Column;
+	   col->title=strdup(keys[i]);
+	   col->ValueFunc=getExtColumnValueFromHashTable;
+   	   currentColumnOriginalTitleIndex++;
+	   sprintf(currentColumnOriginalTitle,"C%d", currentColumnOriginalTitleIndex);
+       }
+
+       uint currentExtColumnHashTableIndex = current_Ext_Column - COL_Ext1;
+       if (ExtColumnHashTable[currentExtColumnHashTableIndex]==NULL) ExtColumnHashTable[currentExtColumnHashTableIndex] = g_hash_table_new_full(g_str_hash, g_str_equal,g_free, g_free);
+       gchar* currentExtColumnValue = g_key_file_get_string(keyfile, dumb_keyfile_groupname, keys[i], error);
+       g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"Insert column %s into ExtColumnHashTable[%d]: key %s,value %s", col->title, currentExtColumnHashTableIndex,keys[i],currentExtColumnValue);
+       char* strFileAttributeID=calloc(10, sizeof(char));
+       sprintf(strFileAttributeID, "%d", fileAttributeID);
+       g_hash_table_insert(ExtColumnHashTable[currentExtColumnHashTableIndex],strFileAttributeID , currentExtColumnValue);
+   }
+
+ ret:
+   g_key_file_free(keyfile);
+   g_strfreev(keys);
 }
 
 
