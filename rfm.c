@@ -194,6 +194,26 @@ enum RFM_treeviewCol{
    COL_Ext8,
    COL_Ext9,
    COL_Ext10,
+   COL_Ext11,
+   COL_Ext12,
+   COL_Ext13,
+   COL_Ext14,
+   COL_Ext15,
+   COL_Ext16,
+   COL_Ext17,
+   COL_Ext18,
+   COL_Ext19,
+   COL_Ext20,
+   COL_Ext21,
+   COL_Ext22,
+   COL_Ext23,
+   COL_Ext24,
+   COL_Ext25,
+   COL_Ext26,
+   COL_Ext27,
+   COL_Ext28,
+   COL_Ext29,
+   COL_Ext30,   
    NUM_COLS
 };
 
@@ -3648,7 +3668,11 @@ static int setup(RFM_ctx *rfmCtx)
 #endif
 			      G_TYPE_STRING, //mime_sort
 			    G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING, //COL_Ext1..5
-                            G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING); //COL_Ext6..10
+                            G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING, //COL_Ext6..10
+   			    G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING, //COL_Ext11..15
+			    G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING, //COL_Ext16..20
+			    G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING, //COL_Ext21..25
+                            G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING); //COL_Ext26..30                    
    treemodel=GTK_TREE_MODEL(store);
    
    g_signal_connect(window,"destroy", G_CALLBACK(cleanup), rfmCtx);
@@ -3875,7 +3899,10 @@ int main(int argc, char *argv[])
    return 0;
 }
 
-//default search result processing function
+// default search result processing function
+// 处理通过pipeline 或者内置 >0 方式获得的用分隔符分开的字符串行
+// 同一searchresult包含的多行结果分隔符数相同,类似 csv 格式
+// 搜索结果第一行不包含表头,显示C1,C2,C3,...的顺序列名
 static int ProcessOnelineForSearchResult(char* oneline){
            if (oneline == NULL) return;
 	   char* key=calloc(10, sizeof(char));
@@ -3942,8 +3969,14 @@ static int ProcessOnelineForSearchResult(char* oneline){
 	   
 }
 
+//如要分配新的自定义列,此变量记录分配的列名,按C1,C2..顺序,分配后,用键值替换原始的Cx列名
+static int currentColumnOriginalTitleIndex;
+// 处理存储键值对文件(类似INI)数据,每行一个文件,每个文件可包含不同的键
+// 搜索结果除了包含文件名,还可以包含其他类似csv行数据,也就是先用 ProcessOnelineForSearchResult 处理
 static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline){
-   int currentColumnOriginalTitleIndex = ProcessOnelineForSearchResult(oneline);
+   if (fileAttributeID==1) currentColumnOriginalTitleIndex = ProcessOnelineForSearchResult(oneline);
+   //首行记录在  ProcessOnelineForSearchResult 里已经被分配掉的列序号
+   else ProcessOnelineForSearchResult(oneline);
    
    char currentColumnOriginalTitle[10];
    sprintf(currentColumnOriginalTitle,"C%d", currentColumnOriginalTitleIndex);
@@ -3974,13 +4007,14 @@ static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline){
 	   //但是万一有比如预定名称的列如MailFrom占据了某个COL_ExtX,会早成列名C1,C2虽够,但COL_ExtX不够了.
 	   //也就是说COL_ExtX总是比C1,C2..CX先用完
 	   if (current_Ext_Column==NUM_COLS) {
-	     g_warning("No enough COL_Exts!");
+	     g_warning("Not enough COL_Exts!");
 	     goto ret;
 	   }
 	   col->enumCol=current_Ext_Column;
 	   col->title=strdup(keys[i]);
 	   col->ValueFunc=getExtColumnValueFromHashTable;
-   	   currentColumnOriginalTitleIndex++;
+
+           currentColumnOriginalTitleIndex++;
 	   sprintf(currentColumnOriginalTitle,"C%d", currentColumnOriginalTitleIndex);
        }
 
