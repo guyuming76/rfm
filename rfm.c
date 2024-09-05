@@ -220,7 +220,7 @@ enum RFM_treeviewCol{
 #define NUM_Ext_Columns (NUM_COLS - COL_Ext1)
 
 typedef struct {
-  gchar* title;
+  gchar title[256];
   enum RFM_treeviewCol enumCol;
   gboolean Show;
   GtkTreeViewColumn* gtkCol;
@@ -381,7 +381,10 @@ static enum rfmTerminal rfmStartWithVirtualTerminal = INHERIT_TERMINAL;
 static gboolean pauseInotifyHandler=FALSE;
 static int read_one_file_couter = 0;
 static char cmd_to_set_terminal_title[PATH_MAX];
-static gchar* saved_searchResultViewColumnLayout=NULL;
+//static gchar* saved_searchResultViewColumnLayout=NULL;
+static RFM_treeviewColumn *savedDirectoryViewColumnsLayout;
+static RFM_treeviewColumn *savedSearchResultViewColumnsLayout;
+static RFM_treeviewColumn *orignalTreeViewColumnsLayout;
 static gboolean insert_fileAttributes_into_store_one_by_one=FALSE;
 static struct sigaction newaction;
 #ifdef GitIntegration
@@ -1901,11 +1904,10 @@ static void refresh_store(RFM_ctx *rfmCtx)
      }
    if(ExtColumnHashTablesHaveData){
      if (SearchResultViewInsteadOfDirectoryView){
-       if (saved_searchResultViewColumnLayout==NULL){//newly in searchresultview with grepMatch, keep old treeview columns
-	 gchar* cmd=get_showcolumn_cmd_from_currently_displaying_columns();
-	 saved_searchResultViewColumnLayout=strdup(cmd + 11); //exclude leading "showcolumn "
-	 g_free(cmd);
-	 //show_hide_treeview_columns_enum(4, INT_MAX, COL_FILENAME,COL_GREP_MATCH, INT_MAX);
+     //if (saved_searchResultViewColumnLayout==NULL){//newly in searchresultview, keep old treeview columns
+       //gchar* cmd=get_showcolumn_cmd_from_currently_displaying_columns();
+       //saved_searchResultViewColumnLayout=strdup(cmd + 11); //exclude leading "showcolumn "
+       //g_free(cmd);
 	 show_hide_treeview_columns_enum(3, INT_MAX,COL_FILENAME,INT_MAX);
 	 enum RFM_treeviewCol previousColumn = COL_FILENAME;
 	 for(int i=COL_Ext1; i<NUM_COLS;i++){
@@ -1914,13 +1916,14 @@ static void refresh_store(RFM_ctx *rfmCtx)
 	     previousColumn = i;
 	   }
 	 }
-       }
-     }else{// in DirectoryView
-       if (saved_searchResultViewColumnLayout!=NULL){
-	 show_hide_treeview_columns_in_order(saved_searchResultViewColumnLayout);
-	 g_free(saved_searchResultViewColumnLayout); saved_searchResultViewColumnLayout=NULL;
-       }
+     //}
      }
+     /* }else{// in DirectoryView */
+     /*   if (saved_searchResultViewColumnLayout!=NULL){ */
+     /* 	 show_hide_treeview_columns_in_order(saved_searchResultViewColumnLayout); */
+     /* 	 g_free(saved_searchResultViewColumnLayout); saved_searchResultViewColumnLayout=NULL; */
+     /*   } */
+     /* } */
    }
    icon_or_tree_view = add_view(rfmCtx);
 
@@ -2139,7 +2142,7 @@ static void set_env_to_pass_into_child_process(GtkTreeIter *iter, gchar*** env_f
     if (gtk_tree_model_get_column_type(GTK_TREE_MODEL(store), c)!=G_TYPE_STRING) continue;
     //TODO: deal with types such as G_TYPE_UINt64
     int i=get_treeviewColumnsIndexByEnum(c);
-    if (i>0 && treeviewColumns[i].Show && treeviewColumns[i].title!=NULL){
+    if (i>0 && treeviewColumns[i].Show){
       gchar* env_var_name = strcat(strdup(RFM_ENV_VAR_NAME_PREFIX), treeviewColumns[i].title);
       void* env_var_value = NULL;
       gtk_tree_model_get(GTK_TREE_MODEL(store), iter, c, &env_var_value, -1);
@@ -2732,6 +2735,13 @@ static void switch_iconview_treeview(RFM_ctx *rfmCtx) {
 static void Switch_SearchResultView_DirectoryView(GtkToolItem *item,RFM_ctx *rfmCtx)
 {
     SearchResultViewInsteadOfDirectoryView=SearchResultViewInsteadOfDirectoryView^1;
+    if (SearchResultViewInsteadOfDirectoryView){ //save treeviewColumns whenever switching from directory view to searchresult view, and restore saved view when switching back
+      memcpy(savedDirectoryViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
+      memcpy(treeviewColumns, savedSearchResultViewColumnsLayout, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
+    }else{
+      memcpy(savedSearchResultViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
+      memcpy(treeviewColumns, savedDirectoryViewColumnsLayout, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
+    }
     refresh_store(rfmCtx);
 }
 
@@ -3590,6 +3600,13 @@ static int setup(RFM_ctx *rfmCtx)
 {
    RFM_fileMenu *fileMenu=NULL;
 
+   savedDirectoryViewColumnsLayout = calloc(sizeof(RFM_treeviewColumn), G_N_ELEMENTS(treeviewColumns));
+   savedSearchResultViewColumnsLayout = calloc(sizeof(RFM_treeviewColumn), G_N_ELEMENTS(treeviewColumns));
+   orignalTreeViewColumnsLayout = calloc(sizeof(RFM_treeviewColumn), G_N_ELEMENTS(treeviewColumns));
+   memcpy(savedDirectoryViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
+   memcpy(savedSearchResultViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
+   memcpy(orignalTreeViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
+
    gtk_init(NULL, NULL);
 
    window=gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -4011,7 +4028,7 @@ static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline){
 	     goto ret;
 	   }
 	   col->enumCol=current_Ext_Column;
-	   col->title=strdup(keys[i]);
+	   sprintf(col->title,"%s",keys[i]);
 	   col->ValueFunc=getExtColumnValueFromHashTable;
 
            currentColumnOriginalTitleIndex++;
@@ -4095,12 +4112,9 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
   for(int i=0;i<=NUM_Ext_Columns;i++) {
     old_ExtColumnHashTable[i]=ExtColumnHashTable[i];
     ExtColumnHashTable[i]=NULL;
-    RFM_treeviewColumn* col = get_treeviewColumnByEnum(COL_Ext1 + i);
-    if (col){
-      //col->Show=FALSE;
-      col->enumCol=NUM_COLS;
-    }
   }
+  
+  memcpy(treeviewColumns, orignalTreeViewColumnsLayout, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
   
   SearchResultFileNameListLength=0;
   fileAttributeID=1;
