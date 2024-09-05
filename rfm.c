@@ -381,7 +381,9 @@ static enum rfmTerminal rfmStartWithVirtualTerminal = INHERIT_TERMINAL;
 static gboolean pauseInotifyHandler=FALSE;
 static int read_one_file_couter = 0;
 static char cmd_to_set_terminal_title[PATH_MAX];
-//static gchar* saved_searchResultViewColumnLayout=NULL;
+// 对于在下面几行代码运行git blame 显示commit msg
+// 里面提到的是否准备支持多搜索结果问题,我想我是有答案的:不准备支持
+// rfm在平铺窗口下运行比较好,用多个rfm实例来支持多搜索结果优于在一个实例里面支持多结果
 static RFM_treeviewColumn *savedDirectoryViewColumnsLayout;
 static RFM_treeviewColumn *savedSearchResultViewColumnsLayout;
 static RFM_treeviewColumn *orignalTreeViewColumnsLayout;
