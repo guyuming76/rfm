@@ -1896,35 +1896,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
 #ifdef GitIntegration
    if (curPath_is_git_repo) load_GitTrackedFiles_into_HashTable();
 #endif
-   gboolean ExtColumnHashTablesHaveData=FALSE;
-   for(int i=0;i<NUM_Ext_Columns;i++) if (ExtColumnHashTable[i]!=NULL) {
-       ExtColumnHashTablesHaveData=TRUE;
-       g_debug("ExtColumnHashTablesHaveData");
-       break;
-     }
-   if(ExtColumnHashTablesHaveData){
-     if (SearchResultViewInsteadOfDirectoryView){
-     //if (saved_searchResultViewColumnLayout==NULL){//newly in searchresultview, keep old treeview columns
-       //gchar* cmd=get_showcolumn_cmd_from_currently_displaying_columns();
-       //saved_searchResultViewColumnLayout=strdup(cmd + 11); //exclude leading "showcolumn "
-       //g_free(cmd);
-	 show_hide_treeview_columns_enum(3, INT_MAX,COL_FILENAME,INT_MAX);
-	 enum RFM_treeviewCol previousColumn = COL_FILENAME;
-	 for(int i=COL_Ext1; i<NUM_COLS;i++){
-	   if (ExtColumnHashTable[i-COL_Ext1]!=NULL){
-	     show_hide_treeview_columns_enum(3, previousColumn,i,INT_MAX);
-	     previousColumn = i;
-	   }
-	 }
-     //}
-     }
-     /* }else{// in DirectoryView */
-     /*   if (saved_searchResultViewColumnLayout!=NULL){ */
-     /* 	 show_hide_treeview_columns_in_order(saved_searchResultViewColumnLayout); */
-     /* 	 g_free(saved_searchResultViewColumnLayout); saved_searchResultViewColumnLayout=NULL; */
-     /*   } */
-     /* } */
-   }
+
    icon_or_tree_view = add_view(rfmCtx);
 
    gtk_tree_sortable_set_default_sort_func(GTK_TREE_SORTABLE(store), sort_func, NULL, NULL);
@@ -4130,6 +4102,26 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
   SearchResultViewInsteadOfDirectoryView = 1;
   g_free(rfm_SearchResultPath);
   rfm_SearchResultPath=strdup(rfm_curPath);
+
+  gboolean ExtColumnHashTablesHaveData=FALSE;
+  for(int i=0;i<NUM_Ext_Columns;i++) if (ExtColumnHashTable[i]!=NULL) {
+       ExtColumnHashTablesHaveData=TRUE;
+       g_debug("ExtColumnHashTablesHaveData");
+       break;
+  }
+  //for searchresults that contains only filepath, like those from locate, we use the same column layout as directory view
+  //for those contain more than filepath, the additionl column usually will be filled in the ExtColumnHashTable, we use following layout.
+  if(ExtColumnHashTablesHaveData){
+	 show_hide_treeview_columns_enum(3, INT_MAX,COL_FILENAME,INT_MAX);
+	 enum RFM_treeviewCol previousColumn = COL_FILENAME;
+	 for(int i=COL_Ext1; i<NUM_COLS;i++){
+	   if (ExtColumnHashTable[i-COL_Ext1]!=NULL){
+	     show_hide_treeview_columns_enum(3, previousColumn,i,INT_MAX);
+	     previousColumn = i;
+	   }
+	 }
+  }
+  
   FirstPage(rfmCtx);
   if (old_filenamelist!=NULL) g_list_free(old_filenamelist);
   for(int i=0;i<=NUM_Ext_Columns;i++) if (old_ExtColumnHashTable[i]!=NULL) g_hash_table_destroy(old_ExtColumnHashTable[i]);
