@@ -305,6 +305,7 @@ static RFM_treeviewColumn treeviewColumns[] = {
   {"MailTo",                  NUM_COLS,                   FALSE,  NULL, path_in_maildir,      NUM_COLS,                 getMailTo,       NULL,     "*",         "*",    FALSE,FALSE},
 };
 
+#define RFM_SearchResultTypeNamePrefix ">"
 #define RFM_SearchResultLineSeperator ":"
 static RFM_SearchResultType searchresultTypes[] = {
   {"default",                 ProcessOnelineForSearchResult }, //default searchresult, contain only filename list such as returned by locate, or filename followed by additional info such as returned by grep

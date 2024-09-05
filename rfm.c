@@ -3418,6 +3418,7 @@ static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * p
 
 // searchresulttype can be matched with index number or name
 // you can use >0  or >default or >your_custom_searchtype_name_or_index as suffix of your command
+// i use the ">" as RFM_SearchResultTypeNamePrefix since the beginning of development, but it can be confused with redirect to file in Bash. So, you mean define it to "}" or anything else you like in config.h
 static int MatchSearchResultType(gchar* readlineResult){
             gint len = strlen(readlineResult);
 	    if (len<=2) return -1; // the shortest suffix is >0 or >1 ...
@@ -3425,7 +3426,7 @@ static int MatchSearchResultType(gchar* readlineResult){
 	    for(int i=0; i<G_N_ELEMENTS(searchresultTypes) && i<=999; i++){
 
 	      char* searchTypeNumberSuffix=calloc(6,sizeof(char));
-	      sprintf(searchTypeNumberSuffix,">%d",i);
+	      sprintf(searchTypeNumberSuffix,"%s%d",RFM_SearchResultTypeNamePrefix,i);
 	      if (g_str_has_suffix(readlineResult, searchTypeNumberSuffix)){
 		g_debug("SearchResultTypeIndex:%d; searchResultTypeName:%s",i,searchresultTypes[i]);
 		for(int j=1; j<=strlen(searchTypeNumberSuffix); j++) readlineResult[len-j]='\0'; //set suffix such as >0 in readlineResult to '\0'
@@ -3434,7 +3435,7 @@ static int MatchSearchResultType(gchar* readlineResult){
 	      }
 	      g_free(searchTypeNumberSuffix);
 	      
-      	      char* searchTypeNameSuffix=strcat(strdup(">"),searchresultTypes[i].name);
+      	      char* searchTypeNameSuffix=strcat(strdup(RFM_SearchResultTypeNamePrefix),searchresultTypes[i].name);
 	      if (g_str_has_suffix(readlineResult, searchTypeNameSuffix)){
 		g_debug("SearchResultTypeIndex:%d; searchResultTypeName:%s",i,searchresultTypes[i]);
 		for(int j=1; j<=strlen(searchTypeNameSuffix); j++) readlineResult[len-j]='\0'; //set suffix such as >default in readlineResult to '\0'
