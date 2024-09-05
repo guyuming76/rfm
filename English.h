@@ -101,3 +101,5 @@
 "Get current value with:\n" \
 "             env |grep G_MESSAGES_DEBUG\n" \
 "             note that env command will be run in as subprocess, so it actually return the env value of subprocess. However, since a new subprocess is created for each command, inheriting the environment value of parent, we can know the value in parent process by checking value in subprocess\n"
+
+#define BuiltInCmd_SearchResultColumnSeperator "SearchResultColumnSeperator"

@@ -306,7 +306,7 @@ static RFM_treeviewColumn treeviewColumns[] = {
 };
 
 #define RFM_SearchResultTypeNamePrefix ">"
-#define RFM_SearchResultLineSeperator ":"
+#define RFM_SearchResultColumnSeperator ":"
 static RFM_SearchResultType searchresultTypes[] = {
   {"default",                 ProcessOnelineForSearchResult }, //default searchresult, contain only filename list such as returned by locate, or filename followed by additional info such as returned by grep
   {"keyvalue",                ProcessKeyValuePairInFilesFromSearchResult },

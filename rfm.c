@@ -546,6 +546,7 @@ static GHashTable *pixbuf_hash = NULL;
 #endif
 
 static gboolean auto_sort_entering_view = RFM_AUTO_SORT_ENTER_VIEW;
+static char *SearchResultColumnSeperator = RFM_SearchResultColumnSeperator;
 
 typedef struct {
    GtkWidget* menu;
@@ -3367,8 +3368,13 @@ static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * p
 	  pauseInotifyHandler = !pauseInotifyHandler;
 	  if (pauseInotifyHandler) printf("InotifyHandler Off\n"); else printf("InotifyHandler On\n");
 	  add_history(readline_result_string_after_file_name_substitution->str);
+	  history_entry_added++;
+	}else if (g_strcmp0(parsed_msg->we_wordv[0],BuiltInCmd_SearchResultColumnSeperator)==0) {
+	  if (parsed_msg->we_wordc==1) printf("%s\n",SearchResultColumnSeperator);
+	  else SearchResultColumnSeperator=strdup(parsed_msg->we_wordv[1]);
+	  add_history(readline_result_string_after_file_name_substitution->str);
 	  history_entry_added++;	  
-	}else if (g_strcmp0(parsed_msg->we_wordv[0],"/")==0) {
+        }else if (g_strcmp0(parsed_msg->we_wordv[0],"/")==0) {
 	  switch_iconview_treeview(rfmCtx);
 	}else if (g_strcmp0(parsed_msg->we_wordv[0],"//")==0) {
 	  Switch_SearchResultView_DirectoryView(NULL, rfmCtx);
@@ -3871,6 +3877,13 @@ int main(int argc, char *argv[])
 	if (ts!=0) RFM_THUMBNAIL_SIZE=ts;
 	else die("-T should be followd with custom RFM_THUMBNAIL_SIZE, for example: -T256");
 	break;
+      case '-': //-- for long argument
+	char* longArgument=argv[c] + 2 * sizeof(gchar);
+	if (g_strcmp0(longArgument, BuiltInCmd_SearchResultColumnSeperator)==0){
+	  printf("%s\n",RFM_SearchResultColumnSeperator);
+	  exit(Success);
+	}
+	break;
       default:
 	 die("invalid parameter, %s -h for help\n",PROG_NAME);
       }
@@ -3898,7 +3911,7 @@ int main(int argc, char *argv[])
 static int ProcessOnelineForSearchResult(char* oneline){
            if (oneline == NULL) return;
 	   char* key=calloc(10, sizeof(char));
-	   uint seperatorPositionAfterCurrentExtColumnValue = strcspn(oneline, RFM_SearchResultLineSeperator);
+	   uint seperatorPositionAfterCurrentExtColumnValue = strcspn(oneline, RFM_SearchResultColumnSeperator);
 	   uint currentColumnTitleIndex=1;
 	   if (seperatorPositionAfterCurrentExtColumnValue < strlen(oneline)) { //found ":" in oneline
 	       sprintf(key, "%d", fileAttributeID);
@@ -3926,7 +3939,7 @@ static int ProcessOnelineForSearchResult(char* oneline){
 		    uint currentExtColumnHashTableIndex = current_Ext_Column - COL_Ext1;
 	            if (ExtColumnHashTable[currentExtColumnHashTableIndex]==NULL) ExtColumnHashTable[currentExtColumnHashTableIndex] = g_hash_table_new_full(g_str_hash, g_str_equal,g_free, g_free);
 		    
-		    seperatorPositionAfterCurrentExtColumnValue = strcspn(currentExtColumnValue, RFM_SearchResultLineSeperator);
+		    seperatorPositionAfterCurrentExtColumnValue = strcspn(currentExtColumnValue, RFM_SearchResultColumnSeperator);
 		    currentExtColumnValue[seperatorPositionAfterCurrentExtColumnValue] = 0; //ending NULL for currentExtColumnValue
 		    g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"Insert column %s into ExtColumnHashTable[%d]: key %s,value %s", currentColumnTitle, currentExtColumnHashTableIndex,key,currentExtColumnValue);
 		    g_hash_table_insert(ExtColumnHashTable[currentExtColumnHashTableIndex], strdup(key), strdup(currentExtColumnValue));

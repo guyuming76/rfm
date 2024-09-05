@@ -102,3 +102,5 @@
 "获取当前值:\n" \
 "       env |grep G_MESSAGES_DEBUG\n" \
 "       注意,env命令实际是在子进程执行的,返回的实际上是子进程环境变量值.但每次命令执行都会创建子进程,并继承父进程的环境变量,因此可以通过子进程的环境变量值来推断父进程的值\n"
+
+#define BuiltInCmd_SearchResultColumnSeperator "SearchResultColumnSeperator"
