@@ -4093,7 +4093,8 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
     old_ExtColumnHashTable[i]=ExtColumnHashTable[i];
     ExtColumnHashTable[i]=NULL;
   }
-  
+
+  SearchResultViewInsteadOfDirectoryView = 1;
   memcpy(SearchResultViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
   
   SearchResultFileNameListLength=0;
@@ -4107,7 +4108,7 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
   }
 
   if (SearchResultFileNameList != NULL) SearchResultFileNameList=g_list_first(g_list_reverse(SearchResultFileNameList));
-  SearchResultViewInsteadOfDirectoryView = 1;
+
   g_free(rfm_SearchResultPath);
   rfm_SearchResultPath=strdup(rfm_curPath);
 
