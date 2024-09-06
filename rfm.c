@@ -381,12 +381,7 @@ static enum rfmTerminal rfmStartWithVirtualTerminal = INHERIT_TERMINAL;
 static gboolean pauseInotifyHandler=FALSE;
 static int read_one_file_couter = 0;
 static char cmd_to_set_terminal_title[PATH_MAX];
-// 对于在下面几行代码运行git blame 显示commit msg
-// 里面提到的是否准备支持多搜索结果问题,我想我是有答案的:不准备支持
-// rfm在平铺窗口下运行比较好,用多个rfm实例来支持多搜索结果优于在一个实例里面支持多结果
-static RFM_treeviewColumn *savedDirectoryViewColumnsLayout;
-static RFM_treeviewColumn *savedSearchResultViewColumnsLayout;
-static RFM_treeviewColumn *orignalTreeViewColumnsLayout;
+
 static gboolean insert_fileAttributes_into_store_one_by_one=FALSE;
 static struct sigaction newaction;
 #ifdef GitIntegration
@@ -544,6 +539,14 @@ static void endPythonEmbedding(){
 #ifdef RFM_CACHE_THUMBNAIL_IN_MEM
 static GHashTable *pixbuf_hash = NULL;
 #endif
+
+// 对于在下面几行代码运行git blame 显示commit msg
+// 里面提到的是否准备支持多搜索结果问题,我想我是有答案的:不准备支持
+// rfm在平铺窗口下运行比较好,用多个rfm实例来支持多搜索结果优于在一个实例里面支持多结果
+static RFM_treeviewColumn ViewColumnsLayouts[2][G_N_ELEMENTS(treeviewColumns)];
+#define DirectoryViewColumnsLayout ViewColumnsLayouts[0]
+#define SearchResultViewColumnsLayout ViewColumnsLayouts[1]
+#define TREEVIEW_COLUMNS ViewColumnsLayouts[SearchResultViewInsteadOfDirectoryView]
 
 static gboolean auto_sort_entering_view = RFM_AUTO_SORT_ENTER_VIEW;
 static char *SearchResultColumnSeperator = RFM_SearchResultColumnSeperator;
@@ -1464,31 +1467,31 @@ static void Update_Store_ExtColumns(RFM_ChildAttribs *childAttribs) {
 static void load_ExtColumns_and_iconview_markup_tooltip(RFM_FileAttributes* fileAttributes, GtkTreeIter *iter){
       g_log(RFM_LOG_DATA_EXT,G_LOG_LEVEL_DEBUG,"load_ExtColumns for %s",fileAttributes->path);
       for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++){
-	if ((treeviewColumns[i].Show || treeviewColumns[i].iconview_markup || treeviewColumns[i].iconview_tooltip)
-	    && (g_strcmp0(treeviewColumns[i].MIME_root, "*")==0 || g_strcmp0(fileAttributes->mime_root, treeviewColumns[i].MIME_root)==0) //treeviewColumns[i].MIME_root 为*, 或者和当前文件相同
-	    && (treeviewColumns[i].showCondition==NULL || treeviewColumns[i].showCondition(fileAttributes))
-	    && treeviewColumns[i].enumCol!=NUM_COLS
+	if ((TREEVIEW_COLUMNS[i].Show || TREEVIEW_COLUMNS[i].iconview_markup || TREEVIEW_COLUMNS[i].iconview_tooltip)
+	    && (g_strcmp0(TREEVIEW_COLUMNS[i].MIME_root, "*")==0 || g_strcmp0(fileAttributes->mime_root, TREEVIEW_COLUMNS[i].MIME_root)==0) //treeviewColumns[i].MIME_root 为*, 或者和当前文件相同
+	    && (TREEVIEW_COLUMNS[i].showCondition==NULL || TREEVIEW_COLUMNS[i].showCondition(fileAttributes))
+	    && TREEVIEW_COLUMNS[i].enumCol!=NUM_COLS
 	    ){
 	  //下面的if语句为啥不合并到上面的if,用&&连起来?
-	  if (g_strcmp0(treeviewColumns[i].MIME_sub, "*") || g_strcmp0(treeviewColumns[i].MIME_sub, fileAttributes->mime_sub_type)){ //treeviewColumns[i].MIME_sub 为*, 或者和当前文件相同
+	  if (g_strcmp0(TREEVIEW_COLUMNS[i].MIME_sub, "*") || g_strcmp0(TREEVIEW_COLUMNS[i].MIME_sub, fileAttributes->mime_sub_type)){ //treeviewColumns[i].MIME_sub 为*, 或者和当前文件相同
 	    RFM_store_cell* cell=malloc(sizeof(RFM_store_cell));
 	    cell->iter = iter;
-	    cell->store_column = treeviewColumns[i].enumCol;
-	    cell->iconview_markup = treeviewColumns[i].iconview_markup;
-	    cell->iconview_tooltip = treeviewColumns[i].iconview_tooltip;
+	    cell->store_column = TREEVIEW_COLUMNS[i].enumCol;
+	    cell->iconview_markup = TREEVIEW_COLUMNS[i].iconview_markup;
+	    cell->iconview_tooltip = TREEVIEW_COLUMNS[i].iconview_tooltip;
 	    //虽然所有的列都出现在treeviewColumns数组里,但只有满足如下条件之一的才会被load
-	    if (treeviewColumns[i].ValueCmd!=NULL){
-              gchar* ExtColumn_cmd = g_strdup_printf(treeviewColumns[i].ValueCmd, fileAttributes->path);
+	    if (TREEVIEW_COLUMNS[i].ValueCmd!=NULL){
+              gchar* ExtColumn_cmd = g_strdup_printf(TREEVIEW_COLUMNS[i].ValueCmd, fileAttributes->path);
 	      gchar* ExtColumn_cmd_template[] = {"/bin/bash", "-c", ExtColumn_cmd, NULL};
 	      g_spawn_wrapper(ExtColumn_cmd_template, NULL, G_SPAWN_DEFAULT, NULL, FALSE, Update_Store_ExtColumns, &cell, TRUE);
-	    }else if (treeviewColumns[i].ValueFunc==getExtColumnValueFromHashTable){
-	      gtk_list_store_set(store,cell->iter, cell->store_column, treeviewColumns[i].ValueFunc(fileAttributes->id,treeviewColumns[i].enumCol-COL_Ext1), -1);
-	    }else if (treeviewColumns[i].ValueFunc!=NULL){
-	      gtk_list_store_set(store,cell->iter, cell->store_column, treeviewColumns[i].ValueFunc(fileAttributes->id), -1);
+	    }else if (TREEVIEW_COLUMNS[i].ValueFunc==getExtColumnValueFromHashTable){
+	      gtk_list_store_set(store,cell->iter, cell->store_column, TREEVIEW_COLUMNS[i].ValueFunc(fileAttributes->id,TREEVIEW_COLUMNS[i].enumCol-COL_Ext1), -1);
+	    }else if (TREEVIEW_COLUMNS[i].ValueFunc!=NULL){
+	      gtk_list_store_set(store,cell->iter, cell->store_column, TREEVIEW_COLUMNS[i].ValueFunc(fileAttributes->id), -1);
 	      //for grepMatch column, fileAttributes->file_name is added as key into grepMatch_hash, however, we suppose grep output absoluteaddr, so filenamne equals fileattributes->path here
 	    }else if ((cell->iconview_markup) || (cell->iconview_tooltip)){
 	      GValue enumColValue = G_VALUE_INIT;
-	      gtk_tree_model_get_value(treemodel, iter, treeviewColumns[i].enumCol, &enumColValue);;
+	      gtk_tree_model_get_value(treemodel, iter, TREEVIEW_COLUMNS[i].enumCol, &enumColValue);;
 	      if (cell->iconview_markup) {
 		gchar * markup_column_value=g_value_get_string(&enumColValue);
 		gchar * markup_column_value_escaped=g_markup_escape_text(markup_column_value, -1);
@@ -2117,8 +2120,8 @@ static void set_env_to_pass_into_child_process(GtkTreeIter *iter, gchar*** env_f
     if (gtk_tree_model_get_column_type(GTK_TREE_MODEL(store), c)!=G_TYPE_STRING) continue;
     //TODO: deal with types such as G_TYPE_UINt64
     int i=get_treeviewColumnsIndexByEnum(c);
-    if (i>0 && treeviewColumns[i].Show){
-      gchar* env_var_name = strcat(strdup(RFM_ENV_VAR_NAME_PREFIX), treeviewColumns[i].title);
+    if (i>0 && TREEVIEW_COLUMNS[i].Show){
+      gchar* env_var_name = strcat(strdup(RFM_ENV_VAR_NAME_PREFIX), TREEVIEW_COLUMNS[i].title);
       void* env_var_value = NULL;
       gtk_tree_model_get(GTK_TREE_MODEL(store), iter, c, &env_var_value, -1);
       if(env_var_value!=NULL){
@@ -2649,14 +2652,14 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
      gtk_tree_view_set_headers_clickable(_view, TRUE);
      
      for(guint i=0; i<G_N_ELEMENTS(treeviewColumns); i++){
-       if (!treeviewColumns[i].Show) continue;
-       g_assert(treeviewColumns[i].enumCol!=NUM_COLS);
-       treeviewColumns[i].gtkCol = gtk_tree_view_column_new_with_attributes(treeviewColumns[i].title , renderer,"text" ,  treeviewColumns[i].enumCol , NULL);
-       gtk_tree_view_column_set_resizable(treeviewColumns[i].gtkCol,TRUE);
-       gtk_tree_view_append_column(GTK_TREE_VIEW(_view),treeviewColumns[i].gtkCol);
-       gtk_tree_view_column_set_visible(treeviewColumns[i].gtkCol, treeviewColumns[i].Show && ((treeviewColumns[i].showCondition==NULL) ? TRUE: treeviewColumns[i].showCondition(NULL)));
-       gtk_tree_view_column_set_sort_column_id(treeviewColumns[i].gtkCol, treeviewColumns[i].enumSortCol==NUM_COLS? treeviewColumns[i].enumCol: treeviewColumns[i].enumSortCol);
-       g_signal_connect(treeviewColumns[i].gtkCol, "clicked", G_CALLBACK(view_column_header_clicked), NULL);
+       if (!TREEVIEW_COLUMNS[i].Show) continue;
+       g_assert(TREEVIEW_COLUMNS[i].enumCol!=NUM_COLS);
+       TREEVIEW_COLUMNS[i].gtkCol = gtk_tree_view_column_new_with_attributes(TREEVIEW_COLUMNS[i].title , renderer,"text" ,  TREEVIEW_COLUMNS[i].enumCol , NULL);
+       gtk_tree_view_column_set_resizable(TREEVIEW_COLUMNS[i].gtkCol,TRUE);
+       gtk_tree_view_append_column(GTK_TREE_VIEW(_view),TREEVIEW_COLUMNS[i].gtkCol);
+       gtk_tree_view_column_set_visible(TREEVIEW_COLUMNS[i].gtkCol, TREEVIEW_COLUMNS[i].Show && ((TREEVIEW_COLUMNS[i].showCondition==NULL) ? TRUE: TREEVIEW_COLUMNS[i].showCondition(NULL)));
+       gtk_tree_view_column_set_sort_column_id(TREEVIEW_COLUMNS[i].gtkCol, TREEVIEW_COLUMNS[i].enumSortCol==NUM_COLS? TREEVIEW_COLUMNS[i].enumCol: TREEVIEW_COLUMNS[i].enumSortCol);
+       g_signal_connect(TREEVIEW_COLUMNS[i].gtkCol, "clicked", G_CALLBACK(view_column_header_clicked), NULL);
      }
 
    } else {
@@ -2710,13 +2713,6 @@ static void switch_iconview_treeview(RFM_ctx *rfmCtx) {
 static void Switch_SearchResultView_DirectoryView(GtkToolItem *item,RFM_ctx *rfmCtx)
 {
     SearchResultViewInsteadOfDirectoryView=SearchResultViewInsteadOfDirectoryView^1;
-    if (SearchResultViewInsteadOfDirectoryView){ //save treeviewColumns whenever switching from directory view to searchresult view, and restore saved view when switching back
-      memcpy(savedDirectoryViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
-      memcpy(treeviewColumns, savedSearchResultViewColumnsLayout, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
-    }else{
-      memcpy(savedSearchResultViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
-      memcpy(treeviewColumns, savedDirectoryViewColumnsLayout, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
-    }
     refresh_store(rfmCtx);
 }
 
@@ -3028,14 +3024,14 @@ static void stdin_command_help() {
 
 static int get_treeviewColumnsIndexByEnum(enum RFM_treeviewCol col){
   for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++){
-    if (treeviewColumns[i].enumCol==col) return i;
+    if (TREEVIEW_COLUMNS[i].enumCol==col) return i;
   }
   return -1;
 }
 
 static RFM_treeviewColumn* get_treeviewcolumnByGtkTreeviewcolumn(GtkTreeViewColumn *gtkCol){
   for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++){
-    if (treeviewColumns[i].gtkCol==gtkCol) return &treeviewColumns[i];
+    if (TREEVIEW_COLUMNS[i].gtkCol==gtkCol) return &TREEVIEW_COLUMNS[i];
   }
   return NULL;
 }
@@ -3050,12 +3046,12 @@ static enum RFM_treeviewCol get_available_ExtColumn(enum RFM_treeviewCol col){
 
 static RFM_treeviewColumn* get_treeviewColumnByEnum(enum RFM_treeviewCol col){
   int i = get_treeviewColumnsIndexByEnum(col);
-  return i<0 ? NULL : &treeviewColumns[i];
+  return i<0 ? NULL : &(TREEVIEW_COLUMNS[i]);
 }
 
 static RFM_treeviewColumn* get_treeviewColumnByTitle(char* title){
   for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++){
-    if (g_strcmp0(treeviewColumns[i].title, title)==0) return &treeviewColumns[i];
+    if (g_strcmp0(TREEVIEW_COLUMNS[i].title, title)==0) return &(TREEVIEW_COLUMNS[i]);
   }
   return NULL;
 }
@@ -3151,14 +3147,14 @@ static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
 		      return;
 		    }
 
-		    treeviewColumns[treeviewColumn_index_for_order_sequence_item_j].Show = (col_enum_with_sign>=0);
-		    if (treeviewColumns[treeviewColumn_index_for_order_sequence_item_j].gtkCol!=NULL){
+		    TREEVIEW_COLUMNS[treeviewColumn_index_for_order_sequence_item_j].Show = (col_enum_with_sign>=0);
+		    if (TREEVIEW_COLUMNS[treeviewColumn_index_for_order_sequence_item_j].gtkCol!=NULL){
 		      if (icon_or_tree_view!=NULL && treeview) {
-			gtk_tree_view_column_set_visible(treeviewColumns[treeviewColumn_index_for_order_sequence_item_j].gtkCol,treeviewColumns[treeviewColumn_index_for_order_sequence_item_j].Show);
-			if (j>=1) gtk_tree_view_move_column_after(GTK_TREE_VIEW(icon_or_tree_view) , treeviewColumns[treeviewColumn_index_for_order_sequence_item_j].gtkCol, target_treeviewColumn_index_for_order_sequence_item_j_to_move_after<0? NULL:treeviewColumns[target_treeviewColumn_index_for_order_sequence_item_j_to_move_after].gtkCol);
+			gtk_tree_view_column_set_visible(TREEVIEW_COLUMNS[treeviewColumn_index_for_order_sequence_item_j].gtkCol,TREEVIEW_COLUMNS[treeviewColumn_index_for_order_sequence_item_j].Show);
+			if (j>=1) gtk_tree_view_move_column_after(GTK_TREE_VIEW(icon_or_tree_view) , TREEVIEW_COLUMNS[treeviewColumn_index_for_order_sequence_item_j].gtkCol, target_treeviewColumn_index_for_order_sequence_item_j_to_move_after<0? NULL:TREEVIEW_COLUMNS[target_treeviewColumn_index_for_order_sequence_item_j_to_move_after].gtkCol);
 		      }
-		    }else if (treeviewColumns[treeviewColumn_index_for_order_sequence_item_j].Show && order_sequence!=treeviewcolumn_init_order_sequence)
-		      printf(VALUE_MAY_NOT_LOADED,col_enum_at_order_sequence_item_j,treeviewColumns[treeviewColumn_index_for_order_sequence_item_j].title);//TODO: shall we change this line into g_warning under subdomain rfm-column?
+		    }else if (TREEVIEW_COLUMNS[treeviewColumn_index_for_order_sequence_item_j].Show && order_sequence!=treeviewcolumn_init_order_sequence)
+		      printf(VALUE_MAY_NOT_LOADED,col_enum_at_order_sequence_item_j,TREEVIEW_COLUMNS[treeviewColumn_index_for_order_sequence_item_j].title);//TODO: shall we change this line into g_warning under subdomain rfm-column?
 		    
 		/* 几种情况: */
 		/* 第一:   2,1 */
@@ -3173,7 +3169,7 @@ static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
 		    if (j>=1 && (target_treeviewColumn_index_for_order_sequence_item_j_to_move_after+1!=treeviewColumn_index_for_order_sequence_item_j)){
 		      g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"target_index_for_order_sequence_item_j_to_move_after+1 <- treeviewColumn_index_for_order_sequence_item_j: [%d] <- [%d]",target_treeviewColumn_index_for_order_sequence_item_j_to_move_after+1,treeviewColumn_index_for_order_sequence_item_j);
 		      //把目前处于treeviewColumn_index_for_order_sequence_item_j位置的列移动到target_treeviewColumn_index_for_order_sequence_item_j_to_move_after后面,也就是target_treeviewColumn_index_for_order_sequence_item_j_to_move_after+1的位置
-		      move_array_item_a_after_b(treeviewColumns, target_treeviewColumn_index_for_order_sequence_item_j_to_move_after, treeviewColumn_index_for_order_sequence_item_j, sizeof(RFM_treeviewColumn), G_N_ELEMENTS(treeviewColumns));
+		      move_array_item_a_after_b(TREEVIEW_COLUMNS, target_treeviewColumn_index_for_order_sequence_item_j_to_move_after, treeviewColumn_index_for_order_sequence_item_j, sizeof(RFM_treeviewColumn), G_N_ELEMENTS(treeviewColumns));
 		    }
 		  
 		    if (j>=1) target_treeviewColumn_index_for_order_sequence_item_j_to_move_after++;
@@ -3186,9 +3182,9 @@ static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
 		    g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"j:%d; order_seq_array[j+1]==NULL",j);
                     for (guint i = target_treeviewColumn_index_for_order_sequence_item_j_to_move_after + 1;
                          i < G_N_ELEMENTS(treeviewColumns); i++) {
-		      treeviewColumns[i].Show = FALSE;
-		      if (treeviewColumns[i].gtkCol!=NULL && icon_or_tree_view!=NULL && treeview) gtk_tree_view_column_set_visible(treeviewColumns[i].gtkCol, FALSE);
-		      g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"%d invisible after ending ','",treeviewColumns[i].enumCol);
+		      TREEVIEW_COLUMNS[i].Show = FALSE;
+		      if (TREEVIEW_COLUMNS[i].gtkCol!=NULL && icon_or_tree_view!=NULL && treeview) gtk_tree_view_column_set_visible(TREEVIEW_COLUMNS[i].gtkCol, FALSE);
+		      g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"%d invisible after ending ','",TREEVIEW_COLUMNS[i].enumCol);
                     }
 
                 } else g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"j:%d; order_seq_array[j]:%s",j,order_seq_array[j]);
@@ -3204,9 +3200,9 @@ static gchar* get_showcolumn_cmd_from_currently_displaying_columns(){
 	    showColumnHistory = strcat(showColumnHistory, "showcolumn ,");
 	    for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++){
 	      //gchar* onecolumn=calloc(6, sizeof(char)); //5 chars for onecolumn + ending null
-	      if (treeviewColumns[i].enumCol==NUM_COLS) continue;
+	      if (TREEVIEW_COLUMNS[i].enumCol==NUM_COLS) continue;
 	      char onecolumn[6];
-	      sprintf(onecolumn,"%4d,", treeviewColumns[i].enumCol * (treeviewColumns[i].Show?1:-1));
+	      sprintf(onecolumn,"%4d,", TREEVIEW_COLUMNS[i].enumCol * (TREEVIEW_COLUMNS[i].Show?1:-1));
 	      showColumnHistory = strcat(showColumnHistory, onecolumn);
 	    }
 	    return showColumnHistory;
@@ -3234,11 +3230,11 @@ static void sort_on_column(wordexp_t * parsed_msg){
 static void print_columns_status(wordexp_t * parsed_msg){
 	    printf(CURRENT_COLUMN_STATUS);
 	    for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++)
-	      if (treeviewColumns[i].enumCol<NUM_COLS)
-		printf("%4d: %s%s\n", treeviewColumns[i].Show? treeviewColumns[i].enumCol : (-1)*treeviewColumns[i].enumCol,treeviewColumns[i].title, (current_sort_column_id==treeviewColumns[i].enumCol?(current_sorttype==GTK_SORT_ASCENDING?"{v}":"{^}"):""));
+	      if (TREEVIEW_COLUMNS[i].enumCol<NUM_COLS)
+		printf("%4d: %s%s\n", TREEVIEW_COLUMNS[i].Show? TREEVIEW_COLUMNS[i].enumCol : (-1)*TREEVIEW_COLUMNS[i].enumCol,TREEVIEW_COLUMNS[i].title, (current_sort_column_id==TREEVIEW_COLUMNS[i].enumCol?(current_sorttype==GTK_SORT_ASCENDING?"{v}":"{^}"):""));
 	      else{
-	        g_assert(!treeviewColumns[i].Show);
-		printf("    : %s%s\n",treeviewColumns[i].title,(current_sort_column_id==treeviewColumns[i].enumCol?(current_sorttype==GTK_SORT_ASCENDING?"{v}":"{^}"):""));
+	        g_assert(!TREEVIEW_COLUMNS[i].Show);
+		printf("    : %s%s\n",TREEVIEW_COLUMNS[i].title,(current_sort_column_id==TREEVIEW_COLUMNS[i].enumCol?(current_sorttype==GTK_SORT_ASCENDING?"{v}":"{^}"):""));
 	      }
 
 	    printf(SHOWCOLUMN_USAGE);
@@ -3581,13 +3577,6 @@ static int setup(RFM_ctx *rfmCtx)
 {
    RFM_fileMenu *fileMenu=NULL;
 
-   savedDirectoryViewColumnsLayout = calloc(sizeof(RFM_treeviewColumn), G_N_ELEMENTS(treeviewColumns));
-   savedSearchResultViewColumnsLayout = calloc(sizeof(RFM_treeviewColumn), G_N_ELEMENTS(treeviewColumns));
-   orignalTreeViewColumnsLayout = calloc(sizeof(RFM_treeviewColumn), G_N_ELEMENTS(treeviewColumns));
-   memcpy(savedDirectoryViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
-   memcpy(savedSearchResultViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
-   memcpy(orignalTreeViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
-
    gtk_init(NULL, NULL);
 
    window=gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -3802,6 +3791,9 @@ int main(int argc, char *argv[])
    else
       rfm_do_thumbs=1;
 
+   memcpy(SearchResultViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
+   memcpy(DirectoryViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
+   
    PROG_NAME = strdup(argv[0]);
    int c=1;
    while (c<argc) {
@@ -4102,7 +4094,7 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
     ExtColumnHashTable[i]=NULL;
   }
   
-  memcpy(treeviewColumns, orignalTreeViewColumnsLayout, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
+  memcpy(SearchResultViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
   
   SearchResultFileNameListLength=0;
   fileAttributeID=1;
