@@ -2172,9 +2172,10 @@ static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointe
          show_msgbox(msg, "Run Action", GTK_MESSAGE_INFO);
          g_free(msg);
       }
-   }
-   else /* If dir, reset rfm_curPath and fill the model */
+   }else{ /* If dir, reset rfm_curPath and fill the model */
+      SearchResultViewInsteadOfDirectoryView=0; //let the following set_rfm_curPath to tigger refresh_store from inotify_handler
       set_rfm_curPath(fileAttributes->path);
+   }
 
    g_list_foreach(activated_single_file_list, (GFunc)g_free, NULL);
    g_list_free(activated_single_file_list);
