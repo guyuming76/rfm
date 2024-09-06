@@ -3425,10 +3425,11 @@ static int MatchSearchResultType(gchar* readlineResult){
             gint len = strlen(readlineResult);
 	    if (len<=2) return -1; // the shortest suffix is >0 or >1 ...
 
-	    for(int i=0; i<G_N_ELEMENTS(searchresultTypes) && i<=999; i++){
+	    for(int i=0; i<G_N_ELEMENTS(searchresultTypes); i++){
 
-	      char* searchTypeNumberSuffix=calloc(6,sizeof(char));
+	      char* searchTypeNumberSuffix=calloc(256,sizeof(char));//RFM_SearchResultTypeNamePrefix can be long, but less then 256- 
 	      sprintf(searchTypeNumberSuffix,"%s%d",RFM_SearchResultTypeNamePrefix,i);
+	      //先用searchresultTypes数组下标数字匹配,类似0,1,2代表stdin,stdout,stderr, 数字提供了常用searchresultTypes快速输入简写方式
 	      if (g_str_has_suffix(readlineResult, searchTypeNumberSuffix)){
 		g_debug("SearchResultTypeIndex:%d; searchResultTypeName:%s",i,searchresultTypes[i]);
 		for(int j=1; j<=strlen(searchTypeNumberSuffix); j++) readlineResult[len-j]='\0'; //set suffix such as >0 in readlineResult to '\0'
@@ -3446,6 +3447,8 @@ static int MatchSearchResultType(gchar* readlineResult){
 	      }
 	      g_free(searchTypeNameSuffix);
 	    }
+	    if (strstr(readlineResult, RFM_SearchResultTypeNamePrefix)!=NULL)
+	      printf("SearchResultTypePrefix %s in input, and no SearchResultType matched, but this can be just fine. TODO: add a builtin command to list available SearchResultTypes\n",RFM_SearchResultTypeNamePrefix);
 	    return -1;
 }
 
@@ -4081,10 +4084,7 @@ static void ReadFromPipeStdinIfAny(char * fd)
 }
 
 static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamelist){
-  if (SearchResultTypeIndex<0 || SearchResultTypeIndex>=G_N_ELEMENTS(searchresultTypes)){
-    g_warning("invalid SearchResultTypeIndex:%d",SearchResultTypeIndex);
-    return;
-  }
+  g_assert(SearchResultTypeIndex>=0 && SearchResultTypeIndex<G_N_ELEMENTS(searchresultTypes));
   
   GList * old_filenamelist = SearchResultFileNameList;
   static GHashTable* old_ExtColumnHashTable[NUM_Ext_Columns + 1];
