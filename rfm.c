@@ -3433,7 +3433,7 @@ static int MatchSearchResultType(gchar* readlineResult){
 	      //先用searchresultTypes数组下标数字匹配,类似0,1,2代表stdin,stdout,stderr, 数字提供了常用searchresultTypes快速输入简写方式
 	      if (g_str_has_suffix(readlineResult, searchTypeNumberSuffix)){
 		g_debug("SearchResultTypeIndex:%d; searchResultTypeName:%s",i,searchresultTypes[i]);
-		for(int j=1; j<=strlen(searchTypeNumberSuffix); j++) readlineResult[len-j]='\0'; //set suffix such as >0 in readlineResult to '\0'
+		readlineResult[len-strlen(searchTypeNumberSuffix)]='\0';//remove suffix from readlineResult
 		g_free(searchTypeNumberSuffix);
 		return i;
 	      }
@@ -3442,7 +3442,7 @@ static int MatchSearchResultType(gchar* readlineResult){
       	      char* searchTypeNameSuffix=strcat(strdup(RFM_SearchResultTypeNamePrefix),searchresultTypes[i].name);
 	      if (g_str_has_suffix(readlineResult, searchTypeNameSuffix)){
 		g_debug("SearchResultTypeIndex:%d; searchResultTypeName:%s",i,searchresultTypes[i]);
-		for(int j=1; j<=strlen(searchTypeNameSuffix); j++) readlineResult[len-j]='\0'; //set suffix such as >default in readlineResult to '\0'
+		readlineResult[len-strlen(searchTypeNameSuffix)]='\0';//remove suffix from readlineResult
 		g_free(searchTypeNameSuffix);
 		return i;
 	      }
