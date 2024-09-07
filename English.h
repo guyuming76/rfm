@@ -20,6 +20,9 @@
 
 #define PRESS_ENTER_TO_CLOSE_WINDOW   "Press Enter to close current window"
 
+#define BuiltInCmd_SearchResultColumnSeperator "SearchResultColumnSeperator"
+#define BuiltInCmd_SearchResultColumnSeperator_Description "例如设置搜索结果列分割符为'&':  SearchResultColumnSeperator \"&\"   .不带参数则显示当前列分割符."
+
 #define builtinCMD_Help \
 "system views:\n" \
 "    with difference in data source, two types of view can be shown, one is current directory view, with the left-most toolbar button showing its path(and git branch). The other is search result view. You can switch between these two views with the left-most toolbar button.\n" \
@@ -76,7 +79,13 @@
 "-t       start rfm without readline thread, neither show command prompt nor accept command line input.\n" \
 "-T       set RFM_THUMBNAIL_SIZE, same as thumbnailsize command above.\n" \
 "-h       show this help\n" \
-"-H       stop auto refresh\n\n" \
+"-H       stop auto refresh\n" \
+"-x       启动rfm后自动执行命令,例如 rfm.sh -x \"" \
+BuiltInCmd_SearchResultColumnSeperator \
+" '&'\"\n" \
+"--" \
+BuiltInCmd_SearchResultColumnSeperator \
+"         显示默认搜索结果列分割符并退出rfm. 向rfm提供搜索结果输出的程序可以通过此参数获取rfm要求的分割符\n\n" \
 "Show debug message by setting environmental variable: G_MESSAGES_DEBUG=rfm,rfm-data,rfm-gspawn,rfm-column, etc.,please refer to config.h for log subdomain definition\n"
 
 #define CURRENT_COLUMN_STATUS "current column status(negative means invisible), {v}or{^} means sort ascending or descending (same as the little icon in column header)\n"
@@ -101,5 +110,3 @@
 "Get current value with:\n" \
 "             env |grep G_MESSAGES_DEBUG\n" \
 "             note that env command will be run in as subprocess, so it actually return the env value of subprocess. However, since a new subprocess is created for each command, inheriting the environment value of parent, we can know the value in parent process by checking value in subprocess\n"
-
-#define BuiltInCmd_SearchResultColumnSeperator "SearchResultColumnSeperator"

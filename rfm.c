@@ -107,7 +107,7 @@ typedef struct {
 
 typedef struct {
   gchar *cmd;
-  void (*action)();
+  void (*action)(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
   gchar *help_msg;
 } RFM_builtinCMD;
 
@@ -409,6 +409,7 @@ static void ReadFromPipeStdinIfAny(char *fd);
 static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamelist);
 static int ProcessOnelineForSearchResult(gchar *oneline);
 static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline);
+static void cmdSearchResultColumnSeperator(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
 static int get_treeviewColumnsIndexByEnum(enum RFM_treeviewCol col);
 static RFM_treeviewColumn* get_treeviewcolumnByGtkTreeviewcolumn(GtkTreeViewColumn *gtkCol);
 static RFM_treeviewColumn* get_treeviewColumnByEnum(enum RFM_treeviewCol col);
@@ -549,7 +550,6 @@ static RFM_treeviewColumn ViewColumnsLayouts[2][G_N_ELEMENTS(treeviewColumns)];
 #define TREEVIEW_COLUMNS ViewColumnsLayouts[SearchResultViewInsteadOfDirectoryView]
 
 static gboolean auto_sort_entering_view = RFM_AUTO_SORT_ENTER_VIEW;
-static char *SearchResultColumnSeperator = RFM_SearchResultColumnSeperator;
 
 typedef struct {
    GtkWidget* menu;
@@ -3279,11 +3279,19 @@ static void show_hide_treeview_columns_enum(int count, ...){
 static void null_log_handler(const gchar *log_domain,GLogLevelFlags log_level,const gchar *message,gpointer user_data){
 }
 
+static void cmdSearchResultColumnSeperator(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution){
+	if (parsed_msg->we_wordc==1) printf("%s\n",SearchResultColumnSeperator);
+	else sprintf(SearchResultColumnSeperator,"%s",parsed_msg->we_wordv[1]);
+
+	add_history(readline_result_string_after_file_name_substitution->str);
+	history_entry_added++;
+}
+
 static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution){
 
         for(int i=0;i<G_N_ELEMENTS(builtinCMD);i++){
 	  if (g_strcmp0(parsed_msg->we_wordv[0], builtinCMD[i].cmd)==0) {
-		builtinCMD[i].action();
+	        builtinCMD[i].action(parsed_msg,readline_result_string_after_file_name_substitution);
 		return TRUE;
 	  }
 	}
@@ -3366,11 +3374,6 @@ static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * p
 	  if (pauseInotifyHandler) printf("InotifyHandler Off\n"); else printf("InotifyHandler On\n");
 	  add_history(readline_result_string_after_file_name_substitution->str);
 	  history_entry_added++;
-	}else if (g_strcmp0(parsed_msg->we_wordv[0],BuiltInCmd_SearchResultColumnSeperator)==0) {
-	  if (parsed_msg->we_wordc==1) printf("%s\n",SearchResultColumnSeperator);
-	  else SearchResultColumnSeperator=strdup(parsed_msg->we_wordv[1]);
-	  add_history(readline_result_string_after_file_name_substitution->str);
-	  history_entry_added++;	  
         }else if (g_strcmp0(parsed_msg->we_wordv[0],"/")==0) {
 	  switch_iconview_treeview(rfmCtx);
 	}else if (g_strcmp0(parsed_msg->we_wordv[0],"//")==0) {
@@ -3876,7 +3879,7 @@ int main(int argc, char *argv[])
       case '-': //-- for long argument
 	char* longArgument=argv[c] + 2 * sizeof(gchar);
 	if (g_strcmp0(longArgument, BuiltInCmd_SearchResultColumnSeperator)==0){
-	  printf("%s\n",RFM_SearchResultColumnSeperator);
+	  printf("%s\n",SearchResultColumnSeperator);
 	  exit(Success);
 	}
 	break;
@@ -3907,7 +3910,7 @@ int main(int argc, char *argv[])
 static int ProcessOnelineForSearchResult(char* oneline){
            if (oneline == NULL) return;
 	   char* key=calloc(10, sizeof(char));
-	   uint seperatorPositionAfterCurrentExtColumnValue = strcspn(oneline, RFM_SearchResultColumnSeperator);
+	   uint seperatorPositionAfterCurrentExtColumnValue = strcspn(oneline, SearchResultColumnSeperator);
 	   uint currentColumnTitleIndex=1;
 	   if (seperatorPositionAfterCurrentExtColumnValue < strlen(oneline)) { //found ":" in oneline
 	       sprintf(key, "%d", fileAttributeID);
@@ -3935,7 +3938,7 @@ static int ProcessOnelineForSearchResult(char* oneline){
 		    uint currentExtColumnHashTableIndex = current_Ext_Column - COL_Ext1;
 	            if (ExtColumnHashTable[currentExtColumnHashTableIndex]==NULL) ExtColumnHashTable[currentExtColumnHashTableIndex] = g_hash_table_new_full(g_str_hash, g_str_equal,g_free, g_free);
 		    
-		    seperatorPositionAfterCurrentExtColumnValue = strcspn(currentExtColumnValue, RFM_SearchResultColumnSeperator);
+		    seperatorPositionAfterCurrentExtColumnValue = strcspn(currentExtColumnValue, SearchResultColumnSeperator);
 		    currentExtColumnValue[seperatorPositionAfterCurrentExtColumnValue] = 0; //ending NULL for currentExtColumnValue
 		    g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"Insert column %s into ExtColumnHashTable[%d]: key %s,value %s", currentColumnTitle, currentExtColumnHashTableIndex,key,currentExtColumnValue);
 		    g_hash_table_insert(ExtColumnHashTable[currentExtColumnHashTableIndex], strdup(key), strdup(currentExtColumnValue));

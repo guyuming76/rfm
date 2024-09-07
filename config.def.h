@@ -107,6 +107,7 @@ static RFM_builtinCMD builtinCMD[] = {
        	{"test_rfmFileChooser",Test_rfmFileChooser,"test rfmFileChooser" },
 #endif
 	{"onebyone",toggle_insert_fileAttributes_into_store_one_by_one,"toggle loading file one by one"},
+        {BuiltInCmd_SearchResultColumnSeperator,cmdSearchResultColumnSeperator,BuiltInCmd_SearchResultColumnSeperator_Description},
 };
 
 /* Menu Items
@@ -306,7 +307,7 @@ static RFM_treeviewColumn treeviewColumns[] = {
 };
 
 #define RFM_SearchResultTypeNamePrefix ">"
-#define RFM_SearchResultColumnSeperator ":"
+static char SearchResultColumnSeperator[32]={':',NULL};
 static RFM_SearchResultType searchresultTypes[] = {
   {"default",                 ProcessOnelineForSearchResult }, //default searchresult, contain only filename list such as returned by locate, or filename followed by additional info such as returned by grep
   {"gkeyfile",                ProcessKeyValuePairInFilesFromSearchResult },

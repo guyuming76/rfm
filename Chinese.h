@@ -20,6 +20,9 @@
 
 #define PRESS_ENTER_TO_CLOSE_WINDOW "按回车键关闭当前窗口"
 
+#define BuiltInCmd_SearchResultColumnSeperator "SearchResultColumnSeperator"
+#define BuiltInCmd_SearchResultColumnSeperator_Description "例如设置搜索结果列分割符为'&':  SearchResultColumnSeperator \"&\"   .不带参数则显示当前列分割符."
+
 #define builtinCMD_Help \
 "系统视图:\n" \
 "    按照数据源分两种: 一种是当前目录文件视图,此时,工具栏左边第一按钮显示目录路径(和git分支). 另一种是文件搜索结果视图,此时工具栏左边提示当前条/结果总数,每页条数, 点击此按钮在两种视图间切换.\n" \
@@ -77,7 +80,13 @@
 "-t       启动rfm后不创建readline线程,不显示命令输入提示,不接受命令输入.\n" \
 "-T       设置缩略图尺寸,同上述thumbnailsize命令.\n" \
 "-h       显示此帮助\n" \
-"-H       关闭自动刷新\n\n" \
+"-H       关闭自动刷新\n" \
+"-x       启动rfm后自动执行命令,例如 rfm.sh -x \"" \
+BuiltInCmd_SearchResultColumnSeperator \
+" '&'\"\n" \
+"--" \
+BuiltInCmd_SearchResultColumnSeperator \
+"         显示默认搜索结果列分割符并退出rfm. 向rfm提供搜索结果输出的程序可以通过此参数获取rfm要求的分割符\n\n" \
 "通过设置环境变量显示调试信息:G_MESSAGES_DEBUG=rfm, 这里rfm定义为log_domain(参见项目Makefile);代码中还定义了subdomain如rfm-data, rfm-gspawn, rfm-column 等(在config.h里查找完整subdomain列表), 所以,也可以设置环境变量G_MESSAGES_DEBUG=rfm-data,rfm-gspawn\n"
 
 #define CURRENT_COLUMN_STATUS "当前列状态(负号表示隐藏),{v}或{^}表示排序方向(同列标题栏上的三角形小尖头)\n"
@@ -102,5 +111,3 @@
 "获取当前值:\n" \
 "       env |grep G_MESSAGES_DEBUG\n" \
 "       注意,env命令实际是在子进程执行的,返回的实际上是子进程环境变量值.但每次命令执行都会创建子进程,并继承父进程的环境变量,因此可以通过子进程的环境变量值来推断父进程的值\n"
-
-#define BuiltInCmd_SearchResultColumnSeperator "SearchResultColumnSeperator"
