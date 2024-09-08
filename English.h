@@ -24,17 +24,17 @@
 #define BuiltInCmd_SearchResultColumnSeperator_Description "例如设置搜索结果列分割符为'&':  SearchResultColumnSeperator \"&\"   .不带参数则显示当前列分割符."
 
 #define builtinCMD_Help \
-"system views:\n" \
+"\n##system views:##\n" \
 "    with difference in data source, two types of view can be shown, one is current directory view, with the left-most toolbar button showing its path(and git branch). The other is search result view. You can switch between these two views with the left-most toolbar button.\n" \
 "    with difference in layout, there are also two types of view: icon view and list view, icons such as picture thumbnails are shown in icon view.\n" \
-"command prompt:\n" \
+"\n##command prompt:##\n" \
 "    b*> means there is selected file(s) in rfm view, and current command interpreter is Bash, which can be configured in config.h\n" \
 "        press TAB with empty prefix will insert the current selected file fullpath; press TAB with non-empty prefix will call readline default completion function.\n" \
 "    b>  means no selected files\n" \
 "    b?> means in refreshing and file selection cannot be determined, try press enter after refresh.\n" \
 "    prompt won't update when selection changes in rfm view, press Enter to refresh\n" \
 "    prompt b*],b>,b?] differ with explanation above only in that commands inputted in stdin is started in gtk thread instead of readline thread. When ] is displayed instead of >, gtk window will not refresh and file selection cannot be changed when command is executing(such as when selected file is being editted).\n" \
-"builtin commands for current window:\n" \
+"\n##rfm builtin commands:##\n" \
 "    cd address  go to address, note that PWD is not changed, just open address in rfm. can also be used to select file in rfm window.\n" \
 "    cd ..       go up to parent directory.\n" \
 "    cd -        go to directory in OLDPWD environment variable, that is, previously opened directory.\n" \
@@ -54,12 +54,12 @@
 "    sort        show or set sorting column\n" \
 "    toggleInotifyHandler  stop/start auto refresh, when you are view /dev directory for example\n" \
 "    toggleExecSync  switch between gtk window thread and readline thread, from which to start inputted command. Command prompt will switch between > and ]\n" \
-"Shell commands:\n" \
+"\n##Shell commands:##\n" \
 "    non-builtin commands will be sent to shell to execute.\n" \
 "    if there is ending space in command entered, selected filename(s) will be appended at the end. for example, you can view currently selected maildir mail file with `mu view `, with ending space before return.\n" \
 "    continue with the example above, if you want to view with less, you can use `mu view %s|less `. although %s in the command is replaced with selected filename, you still have to end the whole command line with space to trigger the filename replacing. one %s for one selected filename, if you choose multiple filenames, you can add more %s." \
 "    append >0 to commands that output filename list, for example: locate 202309|grep png >0 , it will be displayed in rfm, the same effect as starting rfm after pipeline: locate 202309|grep png|rfm\n" \
-"Shell commands run in new virtual terminal:\n" \
+"\n##Shell commands run in new virtual terminal:##\n" \
 "    add & suffix at the end of non-builtin commands discussed above, a new VT will be opened to run this command. Note that this is rfm custom behavior. The linux default behavior for & suffix in command line means running command in background. For commands such as ls&, the new VT will close immediately after open, you can run ls;read& instead, to wait for additional Enter key press.\n" \
 "custom builtin commands in config.h:\n"
 
