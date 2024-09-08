@@ -2604,7 +2604,6 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
    g_signal_connect(PathAndRepositoryNameDisplay, "clicked", G_CALLBACK(Switch_SearchResultView_DirectoryView),rfmCtx);
    
    for (guint i = 0; i < G_N_ELEMENTS(tool_buttons); i++) {
-     //if ((rfmReadFileNamesFromPipeStdIn && tool_buttons[i].readFromPipe) || (!rfmReadFileNamesFromPipeStdIn && tool_buttons[i].curPath)){
        GdkPixbuf *buttonIcon=NULL;
        if (tool_buttons[i].buttonIcon!=NULL) buttonIcon=gtk_icon_theme_load_icon(icon_theme, tool_buttons[i].buttonIcon, RFM_TOOL_SIZE, 0, NULL);
        if (buttonIcon==NULL)
@@ -2616,7 +2615,7 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
 
        tool_bar->buttons[i]=gtk_tool_button_new(buttonImage, tool_buttons[i].buttonName);
        gtk_toolbar_insert(GTK_TOOLBAR(tool_bar->toolbar), tool_bar->buttons[i], -1);
-
+       //https://discourse.gnome.org/t/hotkey-defined-with-gtk-widget-add-accelerator-wont-work-when-button-collapsed/23203
        if(tool_buttons[i].Accel) gtk_widget_add_accelerator(GTK_WIDGET(tool_bar->buttons[i]), "clicked", agMain,tool_buttons[i].Accel, MOD_KEY, GTK_ACCEL_VISIBLE);
        if(tool_buttons[i].tooltip!=NULL) gtk_tool_item_set_tooltip_text(tool_bar->buttons[i],tool_buttons[i].tooltip);
 
@@ -2631,10 +2630,7 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
       child_attribs->customCallbackUserData = rfmCtx;
 
       g_signal_connect(tool_bar->buttons[i], "clicked", G_CALLBACK(toolbar_button_exec),child_attribs);
-
-      //}
    }
-
 }
 
 static GtkWidget *add_view(RFM_ctx *rfmCtx)
