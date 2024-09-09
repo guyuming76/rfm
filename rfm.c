@@ -4008,8 +4008,7 @@ static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline){
    GError *error=NULL;
    if (!g_key_file_load_from_file(keyfile, (gchar*)(SearchResultFileNameList->data), G_KEY_FILE_NONE, &error)){
      g_warning("error loading key value pair from file %s, error code: %d, message:%s",(gchar*)(SearchResultFileNameList->data), error==NULL?0:error->code, error==NULL?"":error->message);
-     goto ret;
-   }
+   }else{
    gsize size;
    gchar** keys=NULL;
    keys = g_key_file_get_keys(keyfile,dumb_keyfile_groupname,&size, &error);
@@ -4027,8 +4026,8 @@ static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline){
 	   //但是万一有比如预定名称的列如MailFrom占据了某个COL_ExtX,会早成列名C1,C2虽够,但COL_ExtX不够了.
 	   //也就是说COL_ExtX总是比C1,C2..CX先用完
 	   if (current_Ext_Column==NUM_COLS) {
-	     g_warning("Not enough COL_Exts!");
-	     goto ret;
+	     g_warning("Not enough COL_Exts for %s",keys[i]);
+	     continue;;
 	   }
 	   col->enumCol=current_Ext_Column;
 	   sprintf(col->title,"%s",keys[i]);
@@ -4046,10 +4045,9 @@ static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline){
        sprintf(strFileAttributeID, "%d", fileAttributeID);
        g_hash_table_insert(ExtColumnHashTable[currentExtColumnHashTableIndex],strFileAttributeID , currentExtColumnValue);
    }
-
- ret:
-   g_key_file_free(keyfile);
    g_strfreev(keys);
+   }//end if g_key_file_load_from_file successfully
+   g_key_file_free(keyfile);
 }
 
 
