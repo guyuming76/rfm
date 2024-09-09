@@ -1659,7 +1659,26 @@ static void load_GitTrackedFiles_into_HashTable()
       gchar *status=g_strndup(oneline, 2);
       //copy rest of oneline into filename
       gchar *beginfilename = oneline + 3;
-      gchar *filename=g_strndup(beginfilename,strlen(oneline)-3);
+      //if you run git mv filename1 filename2
+      //git status --porcelain returns
+      //R  filename1 -> filename2
+      //that is, there are two filenames in oneline, we need to split it
+      //and insert into gitTrackedfiles two lines:
+      //D filename1
+      //A filename2
+      gchar** filenames=calloc(sizeof(gchar*), 2);
+      if (g_strcmp0(status, "R ")==0){
+	filenames = g_strsplit(beginfilename, " -> ", 2);
+      }else{
+	filenames[0]=g_strndup(beginfilename,strlen(oneline)-3);
+	filenames[1]=NULL;
+      }
+
+      for (int i=0;i<=1 && filenames[i];i++){ //如果 filenames[1]==NULL, 循环一次,否则循环两次
+	if (filenames[1]){//上面 status 为"R "的情况
+	  if (i==0) sprintf(status,"D ");
+	  else status=strdup("A ");
+	}
       //TODO: remove ending "/"
       //when i mkdir test in gitreporoot
       //cd test
@@ -1667,7 +1686,7 @@ static void load_GitTrackedFiles_into_HashTable()
       //i can see ?? test/ in git status --porcelain result
       //but the same file path in fileattributes does not have ending /, so , they won't match
       //BTW, git status --porcelain don't have something like ?? test/testfile.md, is it a git issue?
-      gchar *fullpath=g_build_filename(git_root,filename,NULL);         
+      gchar *fullpath=g_build_filename(git_root,filenames[i],NULL);//TODO:感觉这个fullpath没释放啊
       g_log(RFM_LOG_DATA_GIT,G_LOG_LEVEL_DEBUG,"gitTrackedFile Status:%s,%s",status,fullpath);
 
       gchar* existingStatus=g_hash_table_lookup(gitTrackedFiles, fullpath);
@@ -1696,7 +1715,7 @@ static void load_GitTrackedFiles_into_HashTable()
 	  g_warning("malloc_fileAttributes failed");
 	else{//if the file is rfm ignord file, we still add it into display here,but this may be changed.
 	  fileAttributes->pixbuf=g_object_ref(defaultPixbufs->broken);
-	  fileAttributes->file_name=g_strdup(filename);
+	  fileAttributes->file_name=g_strdup(filenames[i]);
 	  //fileAttributes->display_name=g_strdup(filename);
 	  fileAttributes->path=fullpath;
 	  fileAttributes->mime_root=g_strdup("na");
@@ -1710,8 +1729,9 @@ static void load_GitTrackedFiles_into_HashTable()
 	  //Furthur, think about we need to load extended attribs for files, such as those in email, shall we consider general multiple pass fileattributes loading framework?
 	}
       }
+      }
       
-      g_free(filename);
+      g_strfreev(filenames);
       oneline=strtok(NULL, "\n");
     }
   }
