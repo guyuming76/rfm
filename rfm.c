@@ -3957,8 +3957,13 @@ static int ProcessOnelineForSearchResult(char* oneline){
 			 current_Ext_Column++;
 			 current_Ext_Column=get_available_ExtColumn(current_Ext_Column);
 		    }else {
-		      	 col = get_treeviewColumnByTitle(currentColumnTitle);
-			 current_Ext_Column = col->enumCol;
+		         //如果搜索结果为 filename:xxx 的形式,column title 会是 filename C1
+		         //我们假定搜索结果每行列数都是相同的,第二行数据用 get_treeviewColumnByTitle(C1) 一定可以找到第一行为C1分配的位置
+		         //但这里currentColumnTitle do while 循环最后会调用get_treeviewColumnByTitle(C2), 对于本方法并没有问题,因为while 判断会结束循环
+		         //但如果ProcessKeyValuePairInFilesFromSearchResult 调用本方法,get_treeviewColumnByTitle(C2) 会返回NULL,所以下面语句加了if NULL 判断
+		         if (col = get_treeviewColumnByTitle(currentColumnTitle))
+			     current_Ext_Column = col->enumCol;
+			 else current_Ext_Column = NUM_COLS;
 		    }
 
 	       } while(current_Ext_Column<NUM_COLS && seperatorPositionAfterCurrentExtColumnValue < currentExtColumnValueLength);
