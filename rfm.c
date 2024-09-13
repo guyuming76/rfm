@@ -212,7 +212,7 @@ typedef struct {
 
 typedef struct {
   gchar* name;
-  int (*SearchResultLineProcessingFunc)(gchar* oneline);
+  int (*SearchResultLineProcessingFunc)(gchar* oneline, gboolean new_search);
 }RFM_SearchResultType;
 
 //TODO: keep GtkTreeIter somewhere such as in fileAttribute, so that we can try load gitmsg and extcolumns with spawn async instead of sync. However, that can be complicated, what if we have spawned so many processes and user clicked refresh? we have to build Stop mechanism into it. Simple strategy is not to load this slow columns unless user configures to show them.
@@ -302,6 +302,10 @@ static GtkIconTheme *icon_theme;
 static GHashTable *thumb_hash=NULL; /* Thumbnails in the current view */
 //hash table to store string shown in search result, with fileAttributeid as key
 static GHashTable* ExtColumnHashTable[NUM_Ext_Columns + 1];
+// For ExtColumn value from pipeline stdin, the total result batch is kept in
+// hashtable and value not refreshed during refresh_store or turn_page. 
+// For ExtColumn value from file parser, the hashtable keep only the values for the current page, and it will be refreshed during each refresh_store or turn_page. This is for performance.
+static gboolean ExtColumnHashTable_keep_during_refresh[NUM_Ext_Columns + 1];
 static GtkListStore *store=NULL;
 static GtkTreeModel *treemodel=NULL;
 
@@ -383,8 +387,10 @@ static void set_rfm_curPath(gchar *path);
 static int setup(RFM_ctx *rfmCtx);
 static void ReadFromPipeStdinIfAny(char *fd);
 static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamelist);
-static int ProcessOnelineForSearchResult(gchar *oneline);
-static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline);
+//this is very similiar to update_SearchResultFileNameList_and_refresh_store, just that this is called when refresh for turn page; and that is called for a new search result.
+static void call_SearchResultLineProcessingForCurrentSearchResultPage();
+static int ProcessOnelineForSearchResult(gchar *oneline, gboolean new_search);
+static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline, gboolean new_search);
 static void cmdSearchResultColumnSeperator(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
 static int get_treeviewColumnsIndexByEnum(enum RFM_treeviewCol col);
 static RFM_treeviewColumn* get_treeviewcolumnByGtkTreeviewcolumn(GtkTreeViewColumn *gtkCol);
@@ -1905,6 +1911,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
    gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(store), current_sort_column_id, current_sorttype);
    gchar * title;
    if (SearchResultViewInsteadOfDirectoryView) {
+     call_SearchResultLineProcessingForCurrentSearchResultPage();
      fileAttributeID=currentFileNum;
      title=g_strdup_printf(PipeTitle, currentFileNum,SearchResultFileNameListLength,PageSize_SearchResultView);
      fill_fileAttributeList_with_filenames_from_search_result_and_then_insert_into_store();
@@ -2933,7 +2940,7 @@ static void free_default_pixbufs(RFM_defaultPixbufs *defaultPixbufs)
 }
 
 static int SearchResultTypeIndex=-1; // we need to pass this status from exec_stdin_command to readlineInSeperatedThread, however, we can only pass one parameter in g_thread_new, so, i use a global variable here.
-
+static int SearchResultTypeIndexForCurrentExistingSearchResult=-1;
 static void add_history_after_stdin_command_execution(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution){
 	  add_history(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str);
 	  history_entry_added++;
@@ -3478,6 +3485,7 @@ static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult)
 	    stdin_cmd_ending_space = (readlineResult[len-1]==' ');
 	    while (readlineResult[len-1]==' ') { readlineResult[len-1]='\0'; len--; } //remove ending space
 	    SearchResultTypeIndex = MatchSearchResultType(readlineResult);
+	    if (SearchResultTypeIndex>=0) SearchResultTypeIndexForCurrentExistingSearchResult=SearchResultTypeIndex;
 
             readlineResultString=g_string_new(strdup(readlineResult));
 	  //if (stdin_cmd_ending_space){
@@ -3796,6 +3804,9 @@ int main(int argc, char *argv[])
    else
       rfm_do_thumbs=1;
 
+   for(int i=0;i<=NUM_Ext_Columns;i++) {
+     ExtColumnHashTable[i]=NULL;
+   }
    memcpy(SearchResultViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
    memcpy(DirectoryViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
    
@@ -3905,8 +3916,8 @@ int main(int argc, char *argv[])
 // 处理通过pipeline 或者内置 >0 方式获得的用分隔符分开的字符串行
 // 同一searchresult包含的多行结果分隔符数相同,类似 csv 格式
 // 搜索结果第一行不包含表头,显示C1,C2,C3,...的顺序列名
-static int ProcessOnelineForSearchResult(char* oneline){
-           if (oneline == NULL) return;
+static int ProcessOnelineForSearchResult(char* oneline, gboolean new_search){
+           if (oneline == NULL || !new_search) return;
 	   char* key=calloc(10, sizeof(char));
 	   uint seperatorPositionAfterCurrentExtColumnValue = strcspn(oneline, SearchResultColumnSeperator);
 	   uint currentColumnTitleIndex=1;
@@ -3934,7 +3945,10 @@ static int ProcessOnelineForSearchResult(char* oneline){
 		    currentExtColumnValueLength = strlen(currentExtColumnValue);
 
 		    uint currentExtColumnHashTableIndex = current_Ext_Column - COL_Ext1;
-	            if (ExtColumnHashTable[currentExtColumnHashTableIndex]==NULL) ExtColumnHashTable[currentExtColumnHashTableIndex] = g_hash_table_new_full(g_str_hash, g_str_equal,g_free, g_free);
+                    if (ExtColumnHashTable[currentExtColumnHashTableIndex]==NULL) {
+                        ExtColumnHashTable[currentExtColumnHashTableIndex] = g_hash_table_new_full(g_str_hash, g_str_equal,g_free, g_free);
+                        ExtColumnHashTable_keep_during_refresh[currentExtColumnHashTableIndex]=TRUE;
+                    }
 		    
 		    seperatorPositionAfterCurrentExtColumnValue = strcspn(currentExtColumnValue, SearchResultColumnSeperator);
 		    currentExtColumnValue[seperatorPositionAfterCurrentExtColumnValue] = 0; //ending NULL for currentExtColumnValue
@@ -3977,29 +3991,37 @@ static int ProcessOnelineForSearchResult(char* oneline){
 }
 
 //如要分配新的自定义列,此变量记录分配的列名,按C1,C2..顺序,分配后,用键值替换原始的Cx列名
-static int currentColumnOriginalTitleIndex;
+static int currentSearchResultTypeStartingColumnTitleIndex;
+static int currentPageStartingColumnTitleIndex;
 // 处理存储键值对文件(类似INI)数据,每行一个文件,每个文件可包含不同的键
 // 搜索结果除了包含文件名,还可以包含其他类似csv行数据,也就是先用 ProcessOnelineForSearchResult 处理
-static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline){
-   if (fileAttributeID==1) currentColumnOriginalTitleIndex = ProcessOnelineForSearchResult(oneline);
-   //首行记录在  ProcessOnelineForSearchResult 里已经被分配掉的列序号
-   else ProcessOnelineForSearchResult(oneline);
-   
+// if new_search, oneline contains leading filename plus optional columns, otherwise, oneline contains only filename
+static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline, gboolean new_search){
+   if (new_search){
+     if (fileAttributeID==1) {
+       currentSearchResultTypeStartingColumnTitleIndex = ProcessOnelineForSearchResult(oneline,new_search);
+       currentPageStartingColumnTitleIndex = currentSearchResultTypeStartingColumnTitleIndex;
+     //首行记录在  ProcessOnelineForSearchResult 里已经被分配掉的列序号
+     }else ProcessOnelineForSearchResult(oneline, new_search);
+     return;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
+   }
+   //下面判断表示当前搜索结果页第一行
+   if (fileAttributeID==currentFileNum) currentPageStartingColumnTitleIndex=currentSearchResultTypeStartingColumnTitleIndex;
    char currentColumnOriginalTitle[10];
-   sprintf(currentColumnOriginalTitle,"C%d", currentColumnOriginalTitleIndex);
+   sprintf(currentColumnOriginalTitle,"C%d", currentPageStartingColumnTitleIndex);
 
    //https://blog.csdn.net/u013554213/article/details/97557715  KeyVal 文件一定要包含组, ini 可以不包含,所以这里还是用 ini
    //https://forums.gentoo.org/viewtopic-p-8838389.html#8838389
    gchar* dumb_keyfile_groupname = "https://discourse.gnome.org/t/gkeyfile-to-handle-conf-without-groupname/23080/3";
    GKeyFile *keyfile=g_key_file_new();
    GError *error=NULL;
-   if (!g_key_file_load_from_file(keyfile, (gchar*)(SearchResultFileNameList->data), G_KEY_FILE_NONE, &error)){
-     g_warning("error loading key value pair from file %s, error code: %d, message:%s",(gchar*)(SearchResultFileNameList->data), error==NULL?0:error->code, error==NULL?"":error->message);
+   if (!g_key_file_load_from_file(keyfile, oneline, G_KEY_FILE_NONE, &error)){
+     g_warning("error loading key value pair from file %s, error code: %d, message:%s",oneline, error==NULL?0:error->code, error==NULL?"":error->message);
    }else{
    gsize size;
    gchar** keys=NULL;
    keys = g_key_file_get_keys(keyfile,dumb_keyfile_groupname,&size, &error);
-   g_log(RFM_LOG_DATA, G_LOG_LEVEL_DEBUG, "number of keys in %s:%d",(gchar*)(SearchResultFileNameList->data),size);
+   g_log(RFM_LOG_DATA, G_LOG_LEVEL_DEBUG, "number of keys in %s:%d",oneline,size);
 
    for(int i=0; i<size; i++){
        RFM_treeviewColumn * col;
@@ -4020,17 +4042,17 @@ static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline){
 	   sprintf(col->title,"%s",keys[i]);
 	   col->ValueFunc=getExtColumnValueFromHashTable;
 
-           currentColumnOriginalTitleIndex++;
-	   sprintf(currentColumnOriginalTitle,"C%d", currentColumnOriginalTitleIndex);
+           currentPageStartingColumnTitleIndex++;
+	   sprintf(currentColumnOriginalTitle,"C%d", currentPageStartingColumnTitleIndex);
        }
 
        uint currentExtColumnHashTableIndex = current_Ext_Column - COL_Ext1;
        if (ExtColumnHashTable[currentExtColumnHashTableIndex]==NULL) ExtColumnHashTable[currentExtColumnHashTableIndex] = g_hash_table_new_full(g_str_hash, g_str_equal,g_free, g_free);
        gchar* currentExtColumnValue = g_key_file_get_string(keyfile, dumb_keyfile_groupname, keys[i], error);
-       g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"Insert column %s into ExtColumnHashTable[%d]: key %s,value %s", col->title, currentExtColumnHashTableIndex,keys[i],currentExtColumnValue);
        char* strFileAttributeID=calloc(10, sizeof(char));
        sprintf(strFileAttributeID, "%d", fileAttributeID);
-       g_hash_table_insert(ExtColumnHashTable[currentExtColumnHashTableIndex],strFileAttributeID , currentExtColumnValue);
+       g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"Insert column %s into ExtColumnHashTable[%d]: key %s,value %s", col->title, currentExtColumnHashTableIndex,strFileAttributeID,currentExtColumnValue);
+       g_hash_table_insert(ExtColumnHashTable[currentExtColumnHashTableIndex], strFileAttributeID, currentExtColumnValue);
    }
    g_strfreev(keys);
    }//end if g_key_file_load_from_file successfully
@@ -4066,7 +4088,7 @@ static void ReadFromPipeStdinIfAny(char * fd)
          while (fgets(oneline_stdin, PATH_MAX,pipeStream ) != NULL) {
    	   g_log(RFM_LOG_DATA,G_LOG_LEVEL_DEBUG,"%s",oneline_stdin);
            oneline_stdin[strcspn(oneline_stdin, "\n")] = 0; //manual set the last char to NULL to eliminate the trailing \n from fgets
-	   ProcessOnelineForSearchResult(oneline_stdin);
+	   ProcessOnelineForSearchResult(oneline_stdin, TRUE);
 	   fileAttributeID++;
            oneline_stdin=calloc(1,PATH_MAX);
          }
@@ -4088,35 +4110,7 @@ static void ReadFromPipeStdinIfAny(char * fd)
    }
 }
 
-static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamelist){
-  g_assert(SearchResultTypeIndex>=0 && SearchResultTypeIndex<G_N_ELEMENTS(searchresultTypes));
-  
-  GList * old_filenamelist = SearchResultFileNameList;
-  static GHashTable* old_ExtColumnHashTable[NUM_Ext_Columns + 1];
-  SearchResultFileNameList = NULL;
-  for(int i=0;i<=NUM_Ext_Columns;i++) {
-    old_ExtColumnHashTable[i]=ExtColumnHashTable[i];
-    ExtColumnHashTable[i]=NULL;
-  }
-
-  SearchResultViewInsteadOfDirectoryView = 1;
-  memcpy(SearchResultViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
-  
-  SearchResultFileNameListLength=0;
-  fileAttributeID=1;
-  g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"update_SearchResultFileNameList, length: %d charactor(s)",strlen((gchar*)filenamelist));
-  gchar * oneline=strtok((gchar*)filenamelist,"\n");
-  while (oneline!=NULL){
-    searchresultTypes[SearchResultTypeIndex].SearchResultLineProcessingFunc(oneline);
-    fileAttributeID++;
-    oneline=strtok(NULL, "\n");
-  }
-
-  if (SearchResultFileNameList != NULL) SearchResultFileNameList=g_list_first(g_list_reverse(SearchResultFileNameList));
-
-  g_free(rfm_SearchResultPath);
-  rfm_SearchResultPath=strdup(rfm_curPath);
-
+static void showSearchResultExtColumnsBasedOnHashTableValues(){
   gboolean ExtColumnHashTablesHaveData=FALSE;
   for(int i=0;i<NUM_Ext_Columns;i++) if (ExtColumnHashTable[i]!=NULL) {
        ExtColumnHashTablesHaveData=TRUE;
@@ -4135,7 +4129,58 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
 	   }
 	 }
   }
+}
+
+static void call_SearchResultLineProcessingForCurrentSearchResultPage(){
+  static GHashTable* old_ExtColumnHashTable[NUM_Ext_Columns + 1];
+  for(int i=0;i<=NUM_Ext_Columns;i++) {
+    if (!ExtColumnHashTable_keep_during_refresh[i]){
+      old_ExtColumnHashTable[i]=ExtColumnHashTable[i];
+      ExtColumnHashTable[i]=NULL;
+    }
+  }
+  memcpy(SearchResultViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
+  GList* searchresultfilename = CurrentPage_SearchResultView;
+  fileAttributeID=currentFileNum;
+  while (searchresultfilename!=NULL && (fileAttributeID-currentFileNum)<PageSize_SearchResultView){
+    searchresultTypes[SearchResultTypeIndexForCurrentExistingSearchResult].SearchResultLineProcessingFunc((gchar*)(searchresultfilename->data), FALSE);
+    searchresultfilename=g_list_next(searchresultfilename);
+    fileAttributeID++;
+  }
+  showSearchResultExtColumnsBasedOnHashTableValues();
+  for(int i=0;i<=NUM_Ext_Columns;i++) if (old_ExtColumnHashTable[i]!=NULL) g_hash_table_destroy(old_ExtColumnHashTable[i]);
+}
+
+static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamelist){
+  g_assert(SearchResultTypeIndex>=0 && SearchResultTypeIndex<G_N_ELEMENTS(searchresultTypes));
   
+  GList * old_filenamelist = SearchResultFileNameList;
+  static GHashTable* old_ExtColumnHashTable[NUM_Ext_Columns + 1];
+  SearchResultFileNameList = NULL;
+  for(int i=0;i<=NUM_Ext_Columns;i++) {
+    old_ExtColumnHashTable[i]=ExtColumnHashTable[i];
+    ExtColumnHashTable[i]=NULL;
+    ExtColumnHashTable_keep_during_refresh[i]=FALSE;
+  }
+
+  SearchResultViewInsteadOfDirectoryView = 1;
+  memcpy(SearchResultViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
+  
+  SearchResultFileNameListLength=0;
+  fileAttributeID=1;
+  g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"update_SearchResultFileNameList, length: %d charactor(s)",strlen((gchar*)filenamelist));
+  gchar * oneline=strtok((gchar*)filenamelist,"\n");
+  while (oneline!=NULL){
+    searchresultTypes[SearchResultTypeIndex].SearchResultLineProcessingFunc(oneline, TRUE);
+    fileAttributeID++;
+    oneline=strtok(NULL, "\n");
+  }
+
+  if (SearchResultFileNameList != NULL) SearchResultFileNameList=g_list_first(g_list_reverse(SearchResultFileNameList));
+
+  g_free(rfm_SearchResultPath);
+  rfm_SearchResultPath=strdup(rfm_curPath);
+ 
   FirstPage(rfmCtx);
   if (old_filenamelist!=NULL) g_list_free(old_filenamelist);
   for(int i=0;i<=NUM_Ext_Columns;i++) if (old_ExtColumnHashTable[i]!=NULL) g_hash_table_destroy(old_ExtColumnHashTable[i]);
