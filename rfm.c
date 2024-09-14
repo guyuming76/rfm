@@ -392,6 +392,7 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
 static void call_SearchResultLineProcessingForCurrentSearchResultPage();
 static int ProcessOnelineForSearchResult(gchar *oneline, gboolean new_search);
 static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline, gboolean new_search);
+static int ProcessKeyValuePairInData(GKeyFile* keyfile, char *groupname);
 static void cmdSearchResultColumnSeperator(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
 static int get_treeviewColumnsIndexByEnum(enum RFM_treeviewCol col);
 static RFM_treeviewColumn* get_treeviewcolumnByGtkTreeviewcolumn(GtkTreeViewColumn *gtkCol);
@@ -864,7 +865,7 @@ static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *ch
          //gtk_widget_set_sensitive(GTK_WIDGET(info_button), TRUE);
       }else{
 	g_warning("g_spawn_async_with_pipe error:%s",err->message);
-	g_free(err);
+	g_error_free(err);
       }
    }
    return rv;
@@ -4009,8 +4010,6 @@ static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline, gboolean ne
    }
    //下面判断表示当前搜索结果页第一行
    if (fileAttributeID==currentFileNum) currentPageStartingColumnTitleIndex=currentSearchResultTypeStartingColumnTitleIndex;
-   char currentColumnOriginalTitle[10];
-   sprintf(currentColumnOriginalTitle,"C%d", currentPageStartingColumnTitleIndex);
 
    //https://blog.csdn.net/u013554213/article/details/97557715  KeyVal 文件一定要包含组, ini 可以不包含,所以这里还是用 ini
    //https://forums.gentoo.org/viewtopic-p-8838389.html#8838389
@@ -4019,11 +4018,22 @@ static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline, gboolean ne
    GError *error=NULL;
    if (!g_key_file_load_from_file(keyfile, oneline, G_KEY_FILE_NONE, &error)){
      g_warning("error loading key value pair from file %s, error code: %d, message:%s",oneline, error==NULL?0:error->code, error==NULL?"":error->message);
+     g_error_free(error);
    }else{
+     ProcessKeyValuePairInData(keyfile, dumb_keyfile_groupname);
+     g_key_file_free(keyfile);
+   }//end if g_key_file_load_from_file successfully
+}
+
+static int ProcessKeyValuePairInData(GKeyFile *keyfile, char* groupname){
    gsize size;
    gchar** keys=NULL;
-   keys = g_key_file_get_keys(keyfile,dumb_keyfile_groupname,&size, &error);
-   g_log(RFM_LOG_DATA, G_LOG_LEVEL_DEBUG, "number of keys in %s:%d",oneline,size);
+   GError *error=NULL;
+   keys = g_key_file_get_keys(keyfile,groupname,&size, &error);
+   g_log(RFM_LOG_DATA, G_LOG_LEVEL_DEBUG, "number of keys:%d",size);
+
+   char currentColumnOriginalTitle[10];
+   sprintf(currentColumnOriginalTitle,"C%d", currentPageStartingColumnTitleIndex);
 
    for(int i=0; i<size; i++){
        RFM_treeviewColumn * col;
@@ -4050,17 +4060,19 @@ static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline, gboolean ne
 
        uint currentExtColumnHashTableIndex = current_Ext_Column - COL_Ext1;
        if (ExtColumnHashTable[currentExtColumnHashTableIndex]==NULL) ExtColumnHashTable[currentExtColumnHashTableIndex] = g_hash_table_new_full(g_str_hash, g_str_equal,g_free, g_free);
-       gchar* currentExtColumnValue = g_key_file_get_string(keyfile, dumb_keyfile_groupname, keys[i], error);
+       gchar* currentExtColumnValue = g_key_file_get_string(keyfile, groupname, keys[i], &error);
+       if (currentExtColumnValue==NULL){
+	 g_warning("groupname %s, keyvalue %s, not found, error:%s",groupname,keys[i],error? error->message:"");
+	 g_error_free(error); error=NULL;
+	 continue;
+       }
        char* strFileAttributeID=calloc(10, sizeof(char));
        sprintf(strFileAttributeID, "%d", fileAttributeID);
        g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"Insert column %s into ExtColumnHashTable[%d]: key %s,value %s", col->title, currentExtColumnHashTableIndex,strFileAttributeID,currentExtColumnValue);
        g_hash_table_insert(ExtColumnHashTable[currentExtColumnHashTableIndex], strFileAttributeID, currentExtColumnValue);
    }
    g_strfreev(keys);
-   }//end if g_key_file_load_from_file successfully
-   g_key_file_free(keyfile);
 }
-
 
 static gchar* getExtColumnValueFromHashTable(guint fileAttributeId, guint ExtColumnHashTableIndex){
    if (ExtColumnHashTable[ExtColumnHashTableIndex]==NULL) return NULL;
