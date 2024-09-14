@@ -314,6 +314,7 @@ static  gint current_sort_column_id=GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID;
 
 static gboolean treeview=FALSE;
 static gchar* treeviewcolumn_init_order_sequence = NULL;
+static gboolean do_not_show_VALUE_MAY_NOT_LOADED_message_because_we_will_add_GtkTreeViewColumn_later = FALSE;
 static gchar* auto_execution_command_after_rfm_start = NULL;
 // keep previous selection when go back from cd directory to search result.
 // two elements, one for search result view, the other for directory view
@@ -1905,13 +1906,14 @@ static void refresh_store(RFM_ctx *rfmCtx)
    if (curPath_is_git_repo) load_GitTrackedFiles_into_HashTable();
 #endif
 
+   if (SearchResultViewInsteadOfDirectoryView) call_SearchResultLineProcessingForCurrentSearchResultPage();
+   
    icon_or_tree_view = add_view(rfmCtx);
 
    gtk_tree_sortable_set_default_sort_func(GTK_TREE_SORTABLE(store), sort_func, NULL, NULL);
    gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(store), current_sort_column_id, current_sorttype);
    gchar * title;
    if (SearchResultViewInsteadOfDirectoryView) {
-     call_SearchResultLineProcessingForCurrentSearchResultPage();
      fileAttributeID=currentFileNum;
      title=g_strdup_printf(PipeTitle, currentFileNum,SearchResultFileNameListLength,PageSize_SearchResultView);
      fill_fileAttributeList_with_filenames_from_search_result_and_then_insert_into_store();
@@ -3153,7 +3155,7 @@ static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
 			gtk_tree_view_column_set_visible(TREEVIEW_COLUMNS[treeviewColumn_index_for_order_sequence_item_j].gtkCol,TREEVIEW_COLUMNS[treeviewColumn_index_for_order_sequence_item_j].Show);
 			if (j>=1) gtk_tree_view_move_column_after(GTK_TREE_VIEW(icon_or_tree_view) , TREEVIEW_COLUMNS[treeviewColumn_index_for_order_sequence_item_j].gtkCol, target_treeviewColumn_index_for_order_sequence_item_j_to_move_after<0? NULL:TREEVIEW_COLUMNS[target_treeviewColumn_index_for_order_sequence_item_j_to_move_after].gtkCol);
 		      }
-		    }else if (TREEVIEW_COLUMNS[treeviewColumn_index_for_order_sequence_item_j].Show && order_sequence!=treeviewcolumn_init_order_sequence)
+		    }else if (TREEVIEW_COLUMNS[treeviewColumn_index_for_order_sequence_item_j].Show && order_sequence!=treeviewcolumn_init_order_sequence && !do_not_show_VALUE_MAY_NOT_LOADED_message_because_we_will_add_GtkTreeViewColumn_later)
 		      printf(VALUE_MAY_NOT_LOADED,col_enum_at_order_sequence_item_j,TREEVIEW_COLUMNS[treeviewColumn_index_for_order_sequence_item_j].title);//TODO: shall we change this line into g_warning under subdomain rfm-column?
 		    
 		/* 几种情况: */
@@ -4120,6 +4122,8 @@ static void showSearchResultExtColumnsBasedOnHashTableValues(){
   //for searchresults that contains only filepath, like those from locate, we use the same column layout as directory view
   //for those contain more than filepath, the additionl column usually will be filled in the ExtColumnHashTable, we use following layout.
   if(ExtColumnHashTablesHaveData){
+         gboolean old_value=do_not_show_VALUE_MAY_NOT_LOADED_message_because_we_will_add_GtkTreeViewColumn_later;
+	 do_not_show_VALUE_MAY_NOT_LOADED_message_because_we_will_add_GtkTreeViewColumn_later=TRUE;
 	 show_hide_treeview_columns_enum(3, INT_MAX,COL_FILENAME,INT_MAX);
 	 enum RFM_treeviewCol previousColumn = COL_FILENAME;
 	 for(int i=COL_Ext1; i<NUM_COLS;i++){
@@ -4128,6 +4132,7 @@ static void showSearchResultExtColumnsBasedOnHashTableValues(){
 	     previousColumn = i;
 	   }
 	 }
+	 do_not_show_VALUE_MAY_NOT_LOADED_message_because_we_will_add_GtkTreeViewColumn_later=old_value;
   }
 }
 
