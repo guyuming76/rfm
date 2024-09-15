@@ -4019,7 +4019,7 @@ static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline, gboolean ne
      return;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
    }
    //下面判断表示当前搜索结果页第一行
-   if (fileAttributeID==currentFileNum) currentPageStartingColumnTitleIndex=currentSearchResultTypeStartingColumnTitleIndex;
+   //if (fileAttributeID==currentFileNum) currentPageStartingColumnTitleIndex=currentSearchResultTypeStartingColumnTitleIndex;
 
    //https://blog.csdn.net/u013554213/article/details/97557715  KeyVal 文件一定要包含组, ini 可以不包含,所以这里还是用 ini
    //https://forums.gentoo.org/viewtopic-p-8838389.html#8838389
@@ -4174,7 +4174,7 @@ static void call_SearchResultLineProcessingForCurrentSearchResultPage(){
       ExtColumnHashTable[i]=NULL;
     }
   }
-  memcpy(SearchResultViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
+  
   GList* searchresultfilename = CurrentPage_SearchResultView;
   fileAttributeID=currentFileNum;
   while (searchresultfilename!=NULL && (fileAttributeID-currentFileNum)<PageSize_SearchResultView){
