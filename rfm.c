@@ -3120,24 +3120,30 @@ static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
 		    int col_enum_with_sign = atoi(order_seq_array[j]);
 		    //atoi 失败时返回 0,也就是说这时 order_seq_array[j] 不是数字, 是扩展列显示名比如ImageSize,MailTo等
 		    if (col_enum_with_sign==0){
-		      RFM_treeviewColumn* col = get_treeviewColumnByTitle(order_seq_array[j]);
+		      col_enum_with_sign = (order_seq_array[j][0]=='-')? -1 : 1;
+		      RFM_treeviewColumn* col = get_treeviewColumnByTitle( col_enum_with_sign>0 ? order_seq_array[j] : order_seq_array[j] + 1);//第一位是'-'要从title里去掉
 		      if (col==NULL) {
-			g_warning("failed to find column %s",order_seq_array[j]);
+			g_warning("failed to find column %s", col_enum_with_sign>0 ? order_seq_array[j] : order_seq_array[j] + 1);
 			g_strfreev(order_seq_array);
 			return;
 		      }
-		      if (col->enumCol==NUM_COLS){
-			col_enum_with_sign = get_available_ExtColumn(COL_Ext1);
-			if (col_enum_with_sign==NUM_COLS) {
-			  g_warning("no available extended columns for %s", order_seq_array[j]);
-			  g_strfreev(order_seq_array);
-			  return;
-			}
-			col->enumCol=col_enum_with_sign;
-			
-		      }else col_enum_with_sign = col->enumCol;
+		      if (col_enum_with_sign>0){ //只有显示列才有必要为其设置 enumCol,若是隐藏操作,没必要
+			if (col->enumCol==NUM_COLS){
+			  col_enum_with_sign = get_available_ExtColumn(COL_Ext1);
+			  if (col_enum_with_sign==NUM_COLS) {
+			    g_warning("no available extended columns for %s", order_seq_array[j]);
+			    g_strfreev(order_seq_array);
+			    return;
+			  }
+			  col->enumCol=col_enum_with_sign;
+			}else col_enum_with_sign = col->enumCol;
+		      }else if (col->enumCol==NUM_COLS) {
+			g_warning("no need to hide column %s, because its enumCol==NUM_COLS", col->title);
+			j++;
+			continue;
+		      }
+		      else col_enum_with_sign = col_enum_with_sign * col->enumCol;
 		    }
-
 		    
 		    guint col_enum_at_order_sequence_item_j = abs(col_enum_with_sign);//col_enum 表示列常数,比如 COL_FILENAME
 		    int treeviewColumn_index_for_order_sequence_item_j = get_treeviewColumnsIndexByEnum(col_enum_at_order_sequence_item_j);//col_index 表示col_enum 在treeviewColumns数组里当前的下标
