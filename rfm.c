@@ -2655,7 +2655,10 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
      gtk_tree_view_set_headers_clickable(_view, TRUE);
      
      for(guint i=0; i<G_N_ELEMENTS(treeviewColumns); i++){
-       if (!TREEVIEW_COLUMNS[i].Show) continue;
+       if (!TREEVIEW_COLUMNS[i].Show){
+	 TREEVIEW_COLUMNS[i].gtkCol=NULL;
+	 continue;
+       }
        g_assert(TREEVIEW_COLUMNS[i].enumCol!=NUM_COLS);
        TREEVIEW_COLUMNS[i].gtkCol = gtk_tree_view_column_new_with_attributes(TREEVIEW_COLUMNS[i].title , renderer,"text" ,  TREEVIEW_COLUMNS[i].enumCol , NULL);
        gtk_tree_view_column_set_resizable(TREEVIEW_COLUMNS[i].gtkCol,TRUE);
