@@ -213,6 +213,7 @@ typedef struct {
 typedef struct {
   gchar* name;
   int (*SearchResultLineProcessingFunc)(gchar* oneline, gboolean new_search);
+  const char** showcolumn;
 }RFM_SearchResultType;
 
 //TODO: keep GtkTreeIter somewhere such as in fileAttribute, so that we can try load gitmsg and extcolumns with spawn async instead of sync. However, that can be complicated, what if we have spawned so many processes and user clicked refresh? we have to build Stop mechanism into it. Simple strategy is not to load this slow columns unless user configures to show them.
@@ -3446,7 +3447,7 @@ static int MatchSearchResultType(gchar* readlineResult){
 	      sprintf(searchTypeNumberSuffix,"%s%d",RFM_SearchResultTypeNamePrefix,i);
 	      //先用searchresultTypes数组下标数字匹配,类似0,1,2代表stdin,stdout,stderr, 数字提供了常用searchresultTypes快速输入简写方式
 	      if (g_str_has_suffix(readlineResult, searchTypeNumberSuffix)){
-		g_debug("SearchResultTypeIndex:%d; searchResultTypeName:%s",i,searchresultTypes[i]);
+		g_debug("SearchResultTypeIndex:%d; searchResultTypeName:%s",i,searchresultTypes[i].name);
 		readlineResult[len-strlen(searchTypeNumberSuffix)]='\0';//remove suffix from readlineResult
 		g_free(searchTypeNumberSuffix);
 		return i;
@@ -3455,7 +3456,7 @@ static int MatchSearchResultType(gchar* readlineResult){
 	      
       	      char* searchTypeNameSuffix=strcat(strdup(RFM_SearchResultTypeNamePrefix),searchresultTypes[i].name);
 	      if (g_str_has_suffix(readlineResult, searchTypeNameSuffix)){
-		g_debug("SearchResultTypeIndex:%d; searchResultTypeName:%s",i,searchresultTypes[i]);
+		g_debug("SearchResultTypeIndex:%d; searchResultTypeName:%s",i,searchresultTypes[i].name);
 		readlineResult[len-strlen(searchTypeNameSuffix)]='\0';//remove suffix from readlineResult
 		g_free(searchTypeNameSuffix);
 		return i;
@@ -4142,9 +4143,9 @@ static void showSearchResultExtColumnsBasedOnHashTableValues(){
   }
   //for searchresults that contains only filepath, like those from locate, we use the same column layout as directory view
   //for those contain more than filepath, the additionl column usually will be filled in the ExtColumnHashTable, we use following layout.
+  gboolean old_value=do_not_show_VALUE_MAY_NOT_LOADED_message_because_we_will_add_GtkTreeViewColumn_later;
+  do_not_show_VALUE_MAY_NOT_LOADED_message_because_we_will_add_GtkTreeViewColumn_later=TRUE;
   if(ExtColumnHashTablesHaveData){
-         gboolean old_value=do_not_show_VALUE_MAY_NOT_LOADED_message_because_we_will_add_GtkTreeViewColumn_later;
-	 do_not_show_VALUE_MAY_NOT_LOADED_message_because_we_will_add_GtkTreeViewColumn_later=TRUE;
 	 show_hide_treeview_columns_enum(3, INT_MAX,COL_FILENAME,INT_MAX);
 	 enum RFM_treeviewCol previousColumn = COL_FILENAME;
 	 for(int i=COL_Ext1; i<NUM_COLS;i++){
@@ -4153,8 +4154,16 @@ static void showSearchResultExtColumnsBasedOnHashTableValues(){
 	     previousColumn = i;
 	   }
 	 }
-	 do_not_show_VALUE_MAY_NOT_LOADED_message_because_we_will_add_GtkTreeViewColumn_later=old_value;
   }
+
+  int i=0;
+  gchar* column_sequence;
+  while (column_sequence = searchresultTypes[SearchResultTypeIndexForCurrentExistingSearchResult].showcolumn[i]){
+    show_hide_treeview_columns_in_order(column_sequence);
+    i++;
+  }
+  do_not_show_VALUE_MAY_NOT_LOADED_message_because_we_will_add_GtkTreeViewColumn_later=old_value;
+  
 }
 
 static void call_SearchResultLineProcessingForCurrentSearchResultPage(){

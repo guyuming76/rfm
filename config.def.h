@@ -338,9 +338,11 @@ static RFM_treeviewColumn treeviewColumns[] = {
 
 #define RFM_SearchResultTypeNamePrefix ">"
 static char SearchResultColumnSeperator[32]={':',NULL};
+static gchar* EmptyShowColumn[] = { NULL };
+static gchar* HideFileName[] = { "-FileName",NULL };
 static RFM_SearchResultType searchresultTypes[] = {
-  {"default",                 ProcessOnelineForSearchResult }, //default searchresult, contain only filename list such as returned by locate, or filename followed by additional info such as returned by grep
-  {"gkeyfile",                ProcessKeyValuePairInFilesFromSearchResult },
+  {"default",                 ProcessOnelineForSearchResult,                          EmptyShowColumn }, //default searchresult, contain only filename list such as returned by locate, or filename followed by additional info such as returned by grep
+  {"gkeyfile",                ProcessKeyValuePairInFilesFromSearchResult,             EmptyShowColumn },
 };
 
 /* Thumbnailers
