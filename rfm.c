@@ -4053,7 +4053,7 @@ static int ProcessKeyValuePairInCmdOutputFromSearchResult(char *oneline, gboolea
    gchar* cmdError=NULL;
    char mailHeadCmd[PATH_MAX];
    sprintf(mailHeadCmd,"mu view %s | rfmGetMailHeaderWithMuView.sh",oneline);
-   const char* cmd[] = { "bash","-i","-c",mailHeadCmd,NULL };
+   const char** cmd = stdin_cmd_interpretors[current_stdin_cmd_interpretor].cmdTransformer(mailHeadCmd, FALSE);
 
    if (!g_spawn_sync(rfm_curPath, cmd, env_for_g_spawn, G_SPAWN_SEARCH_PATH, NULL, NULL, &cmdOutput, &cmdError, NULL, &error)){
    //if (!g_spawn_command_line_sync(cmd, &cmdOutput, &cmdError, NULL, &error)){
