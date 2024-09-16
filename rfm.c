@@ -393,6 +393,7 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
 static void call_SearchResultLineProcessingForCurrentSearchResultPage();
 static int ProcessOnelineForSearchResult(gchar *oneline, gboolean new_search);
 static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline, gboolean new_search);
+static int ProcessKeyValuePairInCmdOutputFromSearchResult(char *oneline, gboolean new_search);
 static int ProcessKeyValuePairInData(GKeyFile* keyfile, char *groupname);
 static void cmdSearchResultColumnSeperator(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
 static int get_treeviewColumnsIndexByEnum(enum RFM_treeviewCol col);
@@ -4033,6 +4034,43 @@ static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline, gboolean ne
      ProcessKeyValuePairInData(keyfile, dumb_keyfile_groupname);
      g_key_file_free(keyfile);
    }//end if g_key_file_load_from_file successfully
+}
+
+static int ProcessKeyValuePairInCmdOutputFromSearchResult(char *oneline, gboolean new_search){
+   if (new_search){
+     if (fileAttributeID==1) {
+       currentSearchResultTypeStartingColumnTitleIndex = ProcessOnelineForSearchResult(oneline,new_search);
+       currentPageStartingColumnTitleIndex = currentSearchResultTypeStartingColumnTitleIndex;
+     //首行记录在  ProcessOnelineForSearchResult 里已经被分配掉的列序号
+     }else ProcessOnelineForSearchResult(oneline, new_search);
+     return;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
+   }
+
+   gchar* dumb_keyfile_groupname = "https://discourse.gnome.org/t/gkeyfile-to-handle-conf-without-groupname/23080/3";
+   GKeyFile *keyfile=g_key_file_new();
+   GError *error=NULL;
+   gchar* cmdOutput=NULL;
+   gchar* cmdError=NULL;
+   char mailHeadCmd[PATH_MAX];
+   sprintf(mailHeadCmd,"mu view %s | rfmGetMailHeaderWithMuView.sh",oneline);
+   const char* cmd[] = { "bash","-i","-c",mailHeadCmd,NULL };
+
+   if (!g_spawn_sync(rfm_curPath, cmd, env_for_g_spawn, G_SPAWN_SEARCH_PATH, NULL, NULL, &cmdOutput, &cmdError, NULL, &error)){
+   //if (!g_spawn_command_line_sync(cmd, &cmdOutput, &cmdError, NULL, &error)){
+     g_warning("error executing cmd %s, error:%s",mailHeadCmd, error==NULL?"":error->message);
+     if (error) g_error_free(error);
+   }else{
+   
+     if (!g_key_file_load_from_data(keyfile, cmdOutput, strlen(cmdOutput), G_KEY_FILE_NONE, &error)){
+       g_warning("error loading key value pair in cmdOutput from file %s, error code: %d, message:%s",oneline, error==NULL?0:error->code, error==NULL?"":error->message);
+       if (error) g_error_free(error);
+     }else{
+       ProcessKeyValuePairInData(keyfile, dumb_keyfile_groupname);
+       g_key_file_free(keyfile);
+     }
+   }
+   g_free(cmdOutput);
+   g_free(cmdError);
 }
 
 static int ProcessKeyValuePairInData(GKeyFile *keyfile, char* groupname){

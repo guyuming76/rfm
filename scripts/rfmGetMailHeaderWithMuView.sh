@@ -6,6 +6,11 @@ while read OneLine; do
 	if [[ -z "$OneLine" ]]; then
 		exit 0
 	else
-		echo $OneLine
+		OneLine=${OneLine/#From:/From=}
+		OneLine=${OneLine/#To:/To=}
+		OneLine=${OneLine/#Subject:/Subject=}
+		OneLine=${OneLine/#Date:/Date=}
+		OneLine=${OneLine/#Attachments:/Attachments=}
+		echo "$OneLine"
 	fi
 done

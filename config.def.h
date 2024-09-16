@@ -343,6 +343,7 @@ static gchar* HideFileName[] = { "-FileName",NULL };
 static RFM_SearchResultType searchresultTypes[] = {
   {"default",                 ProcessOnelineForSearchResult,                          EmptyShowColumn }, //default searchresult, contain only filename list such as returned by locate, or filename followed by additional info such as returned by grep
   {"gkeyfile",                ProcessKeyValuePairInFilesFromSearchResult,             EmptyShowColumn },
+  {"muview",                  ProcessKeyValuePairInCmdOutputFromSearchResult,         HideFileName    },
 };
 
 /* Thumbnailers
