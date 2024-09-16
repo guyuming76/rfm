@@ -212,8 +212,10 @@ typedef struct {
 
 typedef struct {
   gchar* name;
-  int (*SearchResultLineProcessingFunc)(gchar* oneline, gboolean new_search);
-  const char** showcolumn;
+  int (*SearchResultLineProcessingFunc)(gchar* oneline, gboolean new_search, char* cmdTemplate);
+  const char** showcolumn; //the same type of string used in showcolumn builtin command
+  const char* SearchResultColumnSeperator;
+  const char* cmdTemplate;//used by ProcessKeyValuePairInCmdOutputFromSearchResult
 }RFM_SearchResultType;
 
 //TODO: keep GtkTreeIter somewhere such as in fileAttribute, so that we can try load gitmsg and extcolumns with spawn async instead of sync. However, that can be complicated, what if we have spawned so many processes and user clicked refresh? we have to build Stop mechanism into it. Simple strategy is not to load this slow columns unless user configures to show them.
@@ -393,7 +395,7 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
 static void call_SearchResultLineProcessingForCurrentSearchResultPage();
 static int ProcessOnelineForSearchResult(gchar *oneline, gboolean new_search);
 static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline, gboolean new_search);
-static int ProcessKeyValuePairInCmdOutputFromSearchResult(char *oneline, gboolean new_search);
+static int ProcessKeyValuePairInCmdOutputFromSearchResult(char *oneline, gboolean new_search, char *cmdtemplate);
 static int ProcessKeyValuePairInData(GKeyFile* keyfile, char *groupname);
 static void cmdSearchResultColumnSeperator(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
 static int get_treeviewColumnsIndexByEnum(enum RFM_treeviewCol col);
@@ -4036,7 +4038,7 @@ static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline, gboolean ne
    }//end if g_key_file_load_from_file successfully
 }
 
-static int ProcessKeyValuePairInCmdOutputFromSearchResult(char *oneline, gboolean new_search){
+static int ProcessKeyValuePairInCmdOutputFromSearchResult(char *oneline, gboolean new_search, char* cmdtemplate){
    if (new_search){
      if (fileAttributeID==1) {
        currentSearchResultTypeStartingColumnTitleIndex = ProcessOnelineForSearchResult(oneline,new_search);
@@ -4052,7 +4054,7 @@ static int ProcessKeyValuePairInCmdOutputFromSearchResult(char *oneline, gboolea
    gchar* cmdOutput=NULL;
    gchar* cmdError=NULL;
    char mailHeadCmd[PATH_MAX];
-   sprintf(mailHeadCmd,"mu view %s | rfmGetMailHeaderWithMuView.sh",oneline);
+   sprintf(mailHeadCmd,cmdtemplate,oneline);
    const char** cmd = stdin_cmd_interpretors[current_stdin_cmd_interpretor].cmdTransformer(mailHeadCmd, FALSE);
 
    if (!g_spawn_sync(rfm_curPath, cmd, env_for_g_spawn, G_SPAWN_SEARCH_PATH, NULL, NULL, &cmdOutput, &cmdError, NULL, &error)){
@@ -4216,7 +4218,7 @@ static void call_SearchResultLineProcessingForCurrentSearchResultPage(){
   GList* searchresultfilename = CurrentPage_SearchResultView;
   fileAttributeID=currentFileNum;
   while (searchresultfilename!=NULL && (fileAttributeID-currentFileNum)<PageSize_SearchResultView){
-    searchresultTypes[SearchResultTypeIndexForCurrentExistingSearchResult].SearchResultLineProcessingFunc((gchar*)(searchresultfilename->data), FALSE);
+    searchresultTypes[SearchResultTypeIndexForCurrentExistingSearchResult].SearchResultLineProcessingFunc((gchar*)(searchresultfilename->data), FALSE, searchresultTypes[SearchResultTypeIndexForCurrentExistingSearchResult].cmdTemplate);
     searchresultfilename=g_list_next(searchresultfilename);
     fileAttributeID++;
   }
@@ -4238,19 +4240,26 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
 
   SearchResultViewInsteadOfDirectoryView = 1;
   memcpy(SearchResultViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
-  
+  char old_searchresultcolumnSeperator[32];
+  if (searchresultTypes[SearchResultTypeIndex].SearchResultColumnSeperator) {
+    strcpy(old_searchresultcolumnSeperator, SearchResultColumnSeperator);
+    strcpy(SearchResultColumnSeperator, searchresultTypes[SearchResultTypeIndex].SearchResultColumnSeperator);
+  }
   SearchResultFileNameListLength=0;
   fileAttributeID=1;
   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"update_SearchResultFileNameList, length: %d charactor(s)",strlen((gchar*)filenamelist));
   gchar * oneline=strtok((gchar*)filenamelist,"\n");
   while (oneline!=NULL){
-    searchresultTypes[SearchResultTypeIndex].SearchResultLineProcessingFunc(oneline, TRUE);
+    searchresultTypes[SearchResultTypeIndex].SearchResultLineProcessingFunc(oneline, TRUE, searchresultTypes[SearchResultTypeIndex].cmdTemplate);
     fileAttributeID++;
     oneline=strtok(NULL, "\n");
   }
 
   if (SearchResultFileNameList != NULL) SearchResultFileNameList=g_list_first(g_list_reverse(SearchResultFileNameList));
 
+  if (searchresultTypes[SearchResultTypeIndex].SearchResultColumnSeperator) {
+    strcpy(SearchResultColumnSeperator, old_searchresultcolumnSeperator);
+  }
   g_free(rfm_SearchResultPath);
   rfm_SearchResultPath=strdup(rfm_curPath);
  
