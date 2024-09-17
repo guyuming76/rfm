@@ -379,7 +379,7 @@ static struct sigaction newaction;
 // the same as git status --porcelain
 static GHashTable *gitTrackedFiles;
 static gboolean curPath_is_git_repo = FALSE;
-static gboolean cur_path_is_git_repo(RFM_FileAttributes * fileAttributes) { return curPath_is_git_repo; }
+static gboolean cur_path_is_git_repo(RFM_FileAttributes * fileAttributes) { return SearchResultViewInsteadOfDirectoryView^1 && curPath_is_git_repo; }
 static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpointer *child_attribs);
 #endif
 static void set_terminal_window_title(char* title);
