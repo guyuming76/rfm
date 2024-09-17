@@ -2078,13 +2078,13 @@ static void set_rfm_curPath(gchar* path)
 
 #ifdef GitIntegration
      g_spawn_wrapper(git_inside_work_tree_cmd, NULL, G_SPAWN_DEFAULT, NULL, FALSE, set_curPath_is_git_repo, NULL,TRUE);
-   if (SearchResultViewInsteadOfDirectoryView){
+   if (SearchResultViewInsteadOfDirectoryView^1){
      if (curPath_is_git_repo)
        g_spawn_wrapper(git_current_branch_cmd, NULL, G_SPAWN_DEFAULT, NULL, TRUE, set_window_title_with_git_branch_and_sort_view_with_git_status, NULL,TRUE);
      else set_Titles(g_strdup(rfm_curPath));
    }
 #else
-   if (SearchResultViewInsteadOfDirectoryView) set_Titles(g_strdup(rfm_curPath));
+   if (SearchResultViewInsteadOfDirectoryView^1) set_Titles(g_strdup(rfm_curPath));
 #endif
 }
 
