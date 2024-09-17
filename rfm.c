@@ -66,6 +66,7 @@ typedef struct {
    gchar *runName;
    gchar *runRoot;
    gchar *runSub;
+   gchar *OrSearchResultType;
    const gchar **runCmd;
   //gint  runOpts;
    gboolean (*showCondition)();
@@ -342,6 +343,8 @@ static gint currentFileNum=0;
 static char* pipefd="0";
 static GList *CurrentPage_SearchResultView=NULL;
 static gint PageSize_SearchResultView=100;
+static int SearchResultTypeIndex=-1; // we need to pass this status from exec_stdin_command to readlineInSeperatedThread, however, we can only pass one parameter in g_thread_new, so, i use a global variable here.
+static int SearchResultTypeIndexForCurrentExistingSearchResult=-1;
 /*keep the original user inputs for add_history*/
 static gchar *OriginalReadlineResult=NULL;
 static guint history_entry_added=0;
@@ -2150,7 +2153,7 @@ static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointe
 {
    GtkTreeIter iter;
    long int i;
-   long int index_of_default_file_activation_action_based_on_mime=-1;
+   long int index_of_default_file_activation_action_based_on_mime_or_searchresultType=-1;
    gchar *msg;
    GList *activated_single_file_list=NULL;//although there is only one file, we need a list here to meet the requirement of g_spawn_wrapper parameter.
    RFM_FileAttributes *fileAttributes;
@@ -2163,19 +2166,23 @@ static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointe
    if (!fileAttributes->is_dir) {
 
       for(i=0; i<G_N_ELEMENTS(run_actions); i++) {
+	 if (SearchResultViewInsteadOfDirectoryView && g_strcmp0(run_actions[i].OrSearchResultType, searchresultTypes[SearchResultTypeIndexForCurrentExistingSearchResult].name)==0){
+	    index_of_default_file_activation_action_based_on_mime_or_searchresultType = i;
+	    break;
+	 }
          if (strcmp(fileAttributes->mime_root, run_actions[i].runRoot)==0) {
             if (strcmp(fileAttributes->mime_sub_type, run_actions[i].runSub)==0 || strncmp("*", run_actions[i].runSub, 1)==0) { /* Exact match */
-               index_of_default_file_activation_action_based_on_mime=i;
+               index_of_default_file_activation_action_based_on_mime_or_searchresultType = i;
                break;
             }
          }
       }
 
-      if (index_of_default_file_activation_action_based_on_mime != -1){
+      if (index_of_default_file_activation_action_based_on_mime_or_searchresultType != -1){
 	g_assert_null(env_for_g_spawn);
 	env_for_g_spawn = g_get_environ();
 	set_env_to_pass_into_child_process(&iter,&env_for_g_spawn);
-	g_spawn_wrapper(run_actions[index_of_default_file_activation_action_based_on_mime].runCmd, activated_single_file_list, G_SPAWN_DEFAULT, NULL,TRUE,NULL,NULL,FALSE);
+	g_spawn_wrapper(run_actions[index_of_default_file_activation_action_based_on_mime_or_searchresultType].runCmd, activated_single_file_list, G_SPAWN_DEFAULT, NULL,TRUE,NULL,NULL,FALSE);
 	g_strfreev(env_for_g_spawn); env_for_g_spawn = NULL;
       }else {
          msg=g_strdup_printf("No default file activation action defined for mime type:\n %s/%s\n", fileAttributes->mime_root, fileAttributes->mime_sub_type);
@@ -2472,6 +2479,7 @@ static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx)
       }
       if (strncmp("*", run_actions[i].runRoot, 1)==0)
          showMenuItem[i]++;   /* Run actions to show for all files */
+      if (SearchResultViewInsteadOfDirectoryView && g_strcmp0(run_actions[i].OrSearchResultType, searchresultTypes[SearchResultTypeIndexForCurrentExistingSearchResult].name)==0) showMenuItem[i]++;
    }
 
    for(i=0; i<G_N_ELEMENTS(run_actions); i++) {
@@ -2949,8 +2957,6 @@ static void free_default_pixbufs(RFM_defaultPixbufs *defaultPixbufs)
    g_free(defaultPixbufs);
 }
 
-static int SearchResultTypeIndex=-1; // we need to pass this status from exec_stdin_command to readlineInSeperatedThread, however, we can only pass one parameter in g_thread_new, so, i use a global variable here.
-static int SearchResultTypeIndexForCurrentExistingSearchResult=-1;
 static void add_history_after_stdin_command_execution(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution){
 	  add_history(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str);
 	  history_entry_added++;
