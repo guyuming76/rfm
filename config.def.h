@@ -228,22 +228,6 @@ static RFM_ToolButton tool_buttons[] = {
 //#define getImageSize  "exiv2 %s |grep \"^Image size\"|awk -F : '{print $2}'"
 #define getComment  "exiftool %s |grep '^Comment'|awk -F : '{print $2}'"
 //#define getComment  "exiv2 %s |grep \"^Exif comment\"|awk -F : '{print $2}'"
-#define getMailFrom  "mu view %s |grep \"^From:\" |cut -c 6-"
-#define getMailTo  "mu view %s |grep \"^To:\" |cut -c 4-"
-#define getMailSubject "mu view %s |grep \"^Subject:\" |cut -c 9-"
-#define getMailDate "mu view %s |grep \"^Date:\" |cut -c 6- | xargs -0 -I _ date -d _ '+%%Y/%%m/%%d-%%H:%%M:%%S'"
-#define getMailAttachments  "mu view %s |grep \"^Attachments:\" |cut -c 13-"
-
-//TODO:update it to your own Maildir or remove it if you don't have a Maidir
-static const gchar* maildirs[] = { "/home/guyuming/Mail/", NULL };
-static gboolean path_in_maildir(RFM_FileAttributes* fileAttribs){
-	for (guint i=0; i<G_N_ELEMENTS(maildirs)-1; i++)
-		if (fileAttribs==NULL ? (SearchResultViewInsteadOfDirectoryView ? TRUE : g_str_has_prefix(rfm_curPath,maildirs[i])) 
-                                      : g_str_has_prefix(fileAttribs->path,maildirs[i])) 
-			return TRUE;
-        g_debug("path_in_maildir return false for %s", fileAttribs==NULL ? "NULL" : fileAttribs->path);
-	return FALSE;
-}
 
 static RFM_treeviewColumn treeviewColumns[] = {
 #ifdef GitIntegration
@@ -331,11 +315,6 @@ static RFM_treeviewColumn treeviewColumns[] = {
   {"C60",                     NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 NULL,getExtColumnValueFromHashTable,"*","*",    FALSE,FALSE},
   {"ImageSize",               NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 getImageSize,    NULL,     "image",     "*",    FALSE,FALSE},
   {"Comment",                 NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 getComment,      NULL,     "image",     "*",    FALSE,FALSE},
-  {"MailDate",                NUM_COLS,                   FALSE,  NULL, path_in_maildir,      NUM_COLS,                 getMailDate,     NULL,     "*",         "*",    FALSE,FALSE},
-  {"MailFrom",                NUM_COLS,                   FALSE,  NULL, path_in_maildir,      NUM_COLS,                 getMailFrom,     NULL,     "*",         "*",    FALSE,FALSE},
-  {"MailSubject",             NUM_COLS,                   FALSE,  NULL, path_in_maildir,      NUM_COLS,                 getMailSubject,  NULL,     "*",         "*",    FALSE,FALSE},
-  {"MailAttachments",         NUM_COLS,                   FALSE,  NULL, path_in_maildir,      NUM_COLS,                 getMailAttachments,NULL,   "*",         "*",    FALSE,FALSE},
-  {"MailTo",                  NUM_COLS,                   FALSE,  NULL, path_in_maildir,      NUM_COLS,                 getMailTo,       NULL,     "*",         "*",    FALSE,FALSE},
 };
 
 #define RFM_SearchResultTypeNamePrefix ">"
