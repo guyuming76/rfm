@@ -2028,6 +2028,10 @@ static void set_rfm_curPath_internal(gchar* path){
          rfm_curPath = g_strdup(path);
 	 chdir(rfm_curPath);//TODO: i don't know whether we really need this
 
+#ifdef GitIntegration
+	 g_spawn_wrapper(git_inside_work_tree_cmd, NULL, G_SPAWN_DEFAULT, NULL, FALSE, set_curPath_is_git_repo, NULL,TRUE);
+#endif
+
          //g_setenv("PWD", rfm_curPath, 1);
 	 //TODO: i am not sure wether i shold set PWD env value here too, and remove the builtin command setpwd
    //when we run commands such as echo $PWD, we spawn child process with working directory rfm_curPath, so, even we do not set $PWD, we get result as expected with this kind of commands.
@@ -2062,7 +2066,7 @@ static void set_rfm_curPath(gchar* path)
        g_free(msg);
      } else {
        set_rfm_curPath_internal(realpath);
-       
+
        // inotify_rm_watch will trigger refresh_store in inotify_handler
        // and it will destory and recreate view base on conditions such as whether curPath_is_git_repo
        inotify_rm_watch(rfm_inotify_fd, rfm_curPath_wd);
@@ -2075,17 +2079,6 @@ static void set_rfm_curPath(gchar* path)
    /* if (e=read_history(g_build_filename(rfm_curPath,".rfm_history", NULL))) */
    /*     g_warning("failed to read_history(%s) error code:%d. it's normal if you enter this directory for the first time with rfm.",g_build_filename(rfm_curPath,".rfm_history", NULL),e); */
    /* history_entry_added=0; */
-
-#ifdef GitIntegration
-     g_spawn_wrapper(git_inside_work_tree_cmd, NULL, G_SPAWN_DEFAULT, NULL, FALSE, set_curPath_is_git_repo, NULL,TRUE);
-   if (SearchResultViewInsteadOfDirectoryView^1){
-     if (curPath_is_git_repo)
-       g_spawn_wrapper(git_current_branch_cmd, NULL, G_SPAWN_DEFAULT, NULL, TRUE, set_window_title_with_git_branch_and_sort_view_with_git_status, NULL,TRUE);
-     else set_Titles(g_strdup(rfm_curPath));
-   }
-#else
-   if (SearchResultViewInsteadOfDirectoryView^1) set_Titles(g_strdup(rfm_curPath));
-#endif
 }
 
 
