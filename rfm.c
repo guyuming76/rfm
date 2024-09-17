@@ -1914,7 +1914,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
    if (curPath_is_git_repo) load_GitTrackedFiles_into_HashTable();
 #endif
 
-   if (SearchResultViewInsteadOfDirectoryView) call_SearchResultLineProcessingForCurrentSearchResultPage();
+   if (SearchResultViewInsteadOfDirectoryView && SearchResultTypeIndexForCurrentExistingSearchResult>=0) call_SearchResultLineProcessingForCurrentSearchResultPage();
    
    icon_or_tree_view = add_view(rfmCtx);
 
