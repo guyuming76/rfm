@@ -234,18 +234,36 @@ typedef struct {
   gchar** (*cmdTransformer)(gchar *, gboolean inNewVT);
 } stdin_cmd_interpretor;
 
-enum rfmTerminal{
+/******Terminal Emulator related definitions*********/
+enum rfmTerminal {
   NO_TERMINAL,
   NEW_TERMINAL,
   INHERIT_TERMINAL,
 };
-/******Terminal Emulator related definitions*********/
+
 static char* pipefd="0";
 static FILE *pipeStream=NULL;
-
+// since it's may be complicated if possible to update stdin prompt whenever the terminal window get focus, i just show ItemSelected prompt in new prompt, and user press two times to refresh gtk view.So, I need a way to recognize consecutive enter press.
+static time_t lastEnter;
+//used by exec_stdin_command and exec_stdin_command_builtin to share status
+static gboolean stdin_cmd_ending_space = FALSE;
+static enum rfmTerminal rfmStartWithVirtualTerminal = INHERIT_TERMINAL;
+static guint stdin_command_Scheduler=0;
+static GThread * readlineThread=NULL;
+static gchar *auto_execution_command_after_rfm_start = NULL;
+/*keep the original user inputs for add_history*/
+static gchar *OriginalReadlineResult = NULL;
+static guint history_entry_added=0;
+static char *rfm_historyFileLocation;
+static char *rfm_historyDirectory_FileLocation;
+static char** (*OLD_rl_attempted_completion_function)(const char *text, int start, int end);
+static char **rfm_filename_completion(const char *text, int start, int end);
 void handle_commandline_argument(char* arg);
 int readlink_proc_self_fd_pipefd_and_confirm_pipefd_is_used_by_pipeline();
 void ensure_fd0_is_opened_for_stdin_inherited_from_parent_process_instead_of_used_by_pipeline_any_more();
+
+static void readlineInSeperateThread();
+
 /******Terminal Emulator related definitions end*****/
 
 static gchar*  PROG_NAME = NULL;
@@ -257,8 +275,7 @@ static gchar *rfmFileChooserReturnSelectionIntoFilename = NULL;
 // I need a method to show in stdin prompt whether there are selected files in
 // gtk view. if there are, *> is prompted, otherwise, just prompt >
 static gint ItemSelected = 0;
-// since it's may be complicated if possible to update stdin prompt whenever the terminal window get focus, i just show ItemSelected prompt in new prompt, and user press two times to refresh gtk view.So, I need a way to recognize consecutive enter press.
-static time_t lastEnter;
+
 static gboolean In_refresh_store=FALSE;
 
 static GtkWidget *window=NULL;      /* Main window */
@@ -289,9 +306,6 @@ static guint rfm_extColumnScheduler = 0;
 #ifdef GitIntegration
 static guint rfm_gitCommitMsgScheduler = 0;
 #endif
-
-static guint stdin_command_Scheduler=0;
-static GThread * readlineThread=NULL;
 
 static int rfm_inotify_fd;
 static int rfm_curPath_wd = -1;    /* Current path (rfm_curPath) watch */
@@ -326,7 +340,7 @@ static  gint current_sort_column_id=GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID;
 static gboolean treeview=FALSE;
 static gchar* treeviewcolumn_init_order_sequence = NULL;
 static gboolean do_not_show_VALUE_MAY_NOT_LOADED_message_because_we_will_add_GtkTreeViewColumn_later = FALSE;
-static gchar* auto_execution_command_after_rfm_start = NULL;
+
 // keep previous selection when go back from cd directory to search result.
 // two elements, one for search result view, the other for directory view
 // filepath string in this list is created with strdup.
@@ -351,26 +365,19 @@ static GList *CurrentPage_SearchResultView=NULL;
 static gint PageSize_SearchResultView=100;
 static int SearchResultTypeIndex=-1; // we need to pass this status from exec_stdin_command to readlineInSeperatedThread, however, we can only pass one parameter in g_thread_new, so, i use a global variable here.
 static int SearchResultTypeIndexForCurrentExistingSearchResult=-1;
-/*keep the original user inputs for add_history*/
-static gchar *OriginalReadlineResult=NULL;
-static guint history_entry_added=0;
-static char *rfm_historyFileLocation;
-static char *rfm_historyDirectory_FileLocation;
-static char** (*OLD_rl_attempted_completion_function)(const char *text, int start, int end);
-static char **rfm_filename_completion(const char *text, int start, int end);
+
 static char *rfm_selection_completion = NULL;
 static GMutex rfm_selection_completion_lock;
 static gboolean showHelpOnStart = TRUE;
 static gboolean exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread = FALSE;
 static gboolean execStdinCmdInNewVT = FALSE;
-//used by exec_stdin_command and exec_stdin_command_builtin to share status
-static gboolean stdin_cmd_ending_space=FALSE;
+
 static GList * stdin_cmd_selection_list=NULL; //selected files used in stdin cmd expansion(or we call it substitution) which replace ending space and %s with selected file names
 static RFM_FileAttributes *stdin_cmd_selection_fileAttributes;
 static gchar** env_for_g_spawn=NULL;
 static gchar** env_for_g_spawn_used_by_exec_stdin_command=NULL;
 static uint current_stdin_cmd_interpretor = 0;
-static enum rfmTerminal rfmStartWithVirtualTerminal = INHERIT_TERMINAL;
+
 static gboolean pauseInotifyHandler=FALSE;
 static int read_one_file_couter = 0;
 static char cmd_to_set_terminal_title[PATH_MAX];
@@ -419,7 +426,7 @@ static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlin
 static void parse_and_exec_stdin_command_in_gtk_thread(gchar *msg);
 static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * parsed_msg, GString* readline_result_string);
 static void stdin_command_help();
-static void readlineInSeperateThread();
+
 static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer rfmCtx);
 static void inotify_insert_item(gchar *name, gboolean is_dir);
 static gboolean delayed_refreshAll(gpointer user_data);
