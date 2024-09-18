@@ -1,9 +1,45 @@
 ## 更新20240918 ##
 如下命令,通过config.h中定义的muview查询结果类型查看Maildir中邮件, 需要把locate 命令后的Maildir目录换成你自己系统上实际的目录:
 
-```locate 139INBOX/cur/>muview```
+```
+locate 139INBOX/cur/>muview
+#上面命令邮件不一定按时间排序,可以换成下面的:
+cd /home/guyuming/Mail/139INBOX/cur
+ls -1t>muview
+```
 
 ![查看Maildir](20240918_15h59m08s_grim.png)
+
+我使用mbsync同步139邮箱和maildir, 配置文件和同步命令如下:
+```
+$cat ~/.mbsyncrc
+Expunge None
+Create Near
+SyncState *
+
+IMAPAccount 139
+Host imap.139.com
+User 136xxxxxxxx
+Pass xxxxxxxx
+SSLType IMAPS
+CertificateFile /etc/ssl/certs/ca-certificates.crt
+
+MaildirStore local
+Path ~/Mail/
+MapInbox Inbox
+Subfolders Verbatim
+
+IMAPStore 139
+Account 139
+
+Channel guyuming139
+Far :139:
+Near :local:139
+Patterns *
+CopyArrivalDate yes
+
+$mbsync -a -V
+```
 
 ## 更新20240524 ##
 除了使用执行文件rfm启动外,推荐使用脚本rfm.sh启动,脚本会识别当前终端模拟器,并设置环境变量$RFM_TERM, 在需要启动新终端模拟器实例时使这个变量. 也可以在系统环境设置默认环境变量值.
