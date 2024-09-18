@@ -243,6 +243,16 @@ enum rfmTerminal {
 
 static char* pipefd="0";
 static FILE *pipeStream=NULL;
+// I need a method to show in stdin prompt whether there are selected files in
+// gtk view. if there are, *> is prompted, otherwise, just prompt >
+static gint ItemSelected = 0;
+static char *rfm_selection_completion = NULL;
+static GMutex rfm_selection_completion_lock;
+static gchar** env_for_g_spawn_used_by_exec_stdin_command=NULL;
+static uint current_stdin_cmd_interpretor = 0;
+static char cmd_to_set_terminal_title[PATH_MAX];
+static gboolean exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread = FALSE;
+static gboolean execStdinCmdInNewVT = FALSE;
 // since it's may be complicated if possible to update stdin prompt whenever the terminal window get focus, i just show ItemSelected prompt in new prompt, and user press two times to refresh gtk view.So, I need a way to recognize consecutive enter press.
 static time_t lastEnter;
 //used by exec_stdin_command and exec_stdin_command_builtin to share status
@@ -271,10 +281,6 @@ static gchar*  PROG_NAME = NULL;
 static gboolean StartedAs_rfmFileChooser = FALSE;
 static int rfmFileChooserResultNumber = 0;
 static gchar *rfmFileChooserReturnSelectionIntoFilename = NULL;
-
-// I need a method to show in stdin prompt whether there are selected files in
-// gtk view. if there are, *> is prompted, otherwise, just prompt >
-static gint ItemSelected = 0;
 
 static gboolean In_refresh_store=FALSE;
 
@@ -366,21 +372,16 @@ static gint PageSize_SearchResultView=100;
 static int SearchResultTypeIndex=-1; // we need to pass this status from exec_stdin_command to readlineInSeperatedThread, however, we can only pass one parameter in g_thread_new, so, i use a global variable here.
 static int SearchResultTypeIndexForCurrentExistingSearchResult=-1;
 
-static char *rfm_selection_completion = NULL;
-static GMutex rfm_selection_completion_lock;
+
 static gboolean showHelpOnStart = TRUE;
-static gboolean exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread = FALSE;
-static gboolean execStdinCmdInNewVT = FALSE;
 
 static GList * stdin_cmd_selection_list=NULL; //selected files used in stdin cmd expansion(or we call it substitution) which replace ending space and %s with selected file names
 static RFM_FileAttributes *stdin_cmd_selection_fileAttributes;
 static gchar** env_for_g_spawn=NULL;
-static gchar** env_for_g_spawn_used_by_exec_stdin_command=NULL;
-static uint current_stdin_cmd_interpretor = 0;
 
 static gboolean pauseInotifyHandler=FALSE;
 static int read_one_file_couter = 0;
-static char cmd_to_set_terminal_title[PATH_MAX];
+
 
 static gboolean insert_fileAttributes_into_store_one_by_one=FALSE;
 static struct sigaction newaction;
