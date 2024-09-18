@@ -4023,9 +4023,6 @@ static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline, gboolean ne
    //下面判断表示当前搜索结果页第一行
    //if (fileAttributeID==currentFileNum) currentPageStartingColumnTitleIndex=currentSearchResultTypeStartingColumnTitleIndex;
 
-   //https://blog.csdn.net/u013554213/article/details/97557715  KeyVal 文件一定要包含组, ini 可以不包含,所以这里还是用 ini
-   //https://forums.gentoo.org/viewtopic-p-8838389.html#8838389
-   gchar* dumb_keyfile_groupname = "https://discourse.gnome.org/t/gkeyfile-to-handle-conf-without-groupname/23080/3";
    GKeyFile *keyfile=g_key_file_new();
    GError *error=NULL;
    if (!g_key_file_load_from_file(keyfile, oneline, G_KEY_FILE_NONE, &error)){
@@ -4047,7 +4044,6 @@ static int ProcessKeyValuePairInCmdOutputFromSearchResult(char *oneline, gboolea
      return;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
    }
 
-   gchar* dumb_keyfile_groupname = "https://discourse.gnome.org/t/gkeyfile-to-handle-conf-without-groupname/23080/3";
    GKeyFile *keyfile=g_key_file_new();
    GError *error=NULL;
    gchar* cmdOutput=NULL;

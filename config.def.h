@@ -39,7 +39,7 @@ static gboolean UseTargetAddressWhenEnterSymbloicLinkForDir=TRUE;
 #define RFM_LOG_GTK "rfm-gtk"
 
 static gboolean keep_selection_on_view_across_refresh = TRUE; 
-
+static gchar* dumb_keyfile_groupname = "https://discourse.gnome.org/t/gkeyfile-to-handle-conf-without-groupname/23080/3"; 
 /* rfmBinPath is passed in by compiler via Makefile*/
 static const char *f_rm[]   = { "$RFM_TERM",rfmBinPath "/rfmRemove.sh",NULL };
 static const char *f_cp[]   = { "$RFM_TERM",rfmBinPath "/rfmCopyMove.sh","cp", NULL };
