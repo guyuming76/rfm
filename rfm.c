@@ -239,7 +239,14 @@ enum rfmTerminal{
   NEW_TERMINAL,
   INHERIT_TERMINAL,
 };
+/******Terminal Emulator related definitions*********/
+static char* pipefd="0";
+static FILE *pipeStream=NULL;
 
+void handle_commandline_argument(char* arg);
+int readlink_proc_self_fd_pipefd_and_confirm_pipefd_is_used_by_pipeline();
+void ensure_fd0_is_opened_for_stdin_inherited_from_parent_process_instead_of_used_by_pipeline_any_more();
+/******Terminal Emulator related definitions end*****/
 
 static gchar*  PROG_NAME = NULL;
 
@@ -340,7 +347,6 @@ static guint fileAttributeID=0;
 static gint SearchResultFileNameListLength=0;
 //the number shown in upper left button in search result view.
 static gint currentFileNum=0;
-static char* pipefd="0";
 static GList *CurrentPage_SearchResultView=NULL;
 static gint PageSize_SearchResultView=100;
 static int SearchResultTypeIndex=-1; // we need to pass this status from exec_stdin_command to readlineInSeperatedThread, however, we can only pass one parameter in g_thread_new, so, i use a global variable here.
@@ -3911,10 +3917,7 @@ int main(int argc, char *argv[])
 	 die("invalid parameter, %s -h for help\n",PROG_NAME);
       }
     }
-    else if (g_strcmp0(g_utf8_substring(argv[c], 0, 8),"/dev/fd/")==0) {
-      //try  `gdb --args rfm <(locate rfm.c)` and find in htop what this /dev/fd means
-      pipefd=g_utf8_substring(argv[c], 8, strlen(argv[c]));
-    }
+    else handle_commandline_argument(argv[c]);
     c++;
    }
 
@@ -4130,14 +4133,7 @@ static gchar* getExtColumnValueFromHashTable(guint fileAttributeId, guint ExtCol
 
 static void ReadFromPipeStdinIfAny(char * fd)
 {
-   static char buf[PATH_MAX];
-   char name[50];
-   sprintf(name,"/proc/self/fd/%s",fd);
-   int rslt = readlink(name, buf, PATH_MAX);
-
-   g_debug("readlink for %s: %s",name,buf);
-
-   if (strlen(buf)>4 && g_strcmp0(g_utf8_substring(buf, 0, 4),"pipe")==0){
+   if (readlink_proc_self_fd_pipefd_and_confirm_pipefd_is_used_by_pipeline()){
          if (initDir!=NULL && (SearchResultViewInsteadOfDirectoryView^1)) die("if you have -d specified, and read file name list from pipeline, -p parameter must goes BEFORE -d\n");
 	 else SearchResultViewInsteadOfDirectoryView=1;
 	 fileAttributeID=1;
@@ -4159,14 +4155,37 @@ static void ReadFromPipeStdinIfAny(char * fd)
 	   g_free(rfm_SearchResultPath);
 	   rfm_SearchResultPath=strdup(cwd);
 	 }
-
-         if (atoi(fd) == 0) { // open parent stdin to replace pipe
-           char *tty = ttyname(1);
-	   int pts=open(tty,O_RDWR);
-	   dup2(pts,0);
-	   close(pts);
-         }
+	 ensure_fd0_is_opened_for_stdin_inherited_from_parent_process_instead_of_used_by_pipeline_any_more();
    }
+}
+
+void handle_commandline_argument(char* arg){
+   if (strcmp(g_utf8_substring(arg, 0, 8),"/dev/fd/")==0) {
+      //try  `gdb --args rfm <(locate rfm.c)` and find in htop what this /dev/fd means
+     pipefd = g_utf8_substring(arg, 8, strlen(arg));
+   }
+}
+
+int readlink_proc_self_fd_pipefd_and_confirm_pipefd_is_used_by_pipeline(){
+   static char buf[PATH_MAX];
+   char name[50];
+   sprintf(name,"/proc/self/fd/%s", pipefd);
+   int rslt = readlink(name, buf, PATH_MAX);
+   //g_debug("readlink for %s: %s",name,buf); //do we really need to use glib in this file?
+   if (strlen(buf)>4 && strcmp(g_utf8_substring(buf, 0, 4),"pipe")==0) {
+     if (atoi(pipefd)==STDIN_FILENO) pipeStream=stdin;
+     else pipeStream=fdopen(atoi(pipefd),"r");
+     return TRUE;
+   }else return FALSE;
+}
+
+void ensure_fd0_is_opened_for_stdin_inherited_from_parent_process_instead_of_used_by_pipeline_any_more(){
+         if (atoi(pipefd) == STDIN_FILENO) { // open parent stdin to replace pipe
+           char *tty = ttyname(STDOUT_FILENO);
+	   int pts=open(tty,O_RDWR);
+	   dup2(pts,STDIN_FILENO); //i guess dup2 call fclose for pipeStream(STDIN_FILENO) here
+	   close(pts);
+         }else fclose(pipeStream);
 }
 
 static void showSearchResultExtColumnsBasedOnHashTableValues(){
