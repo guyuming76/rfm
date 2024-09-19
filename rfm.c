@@ -261,6 +261,9 @@ typedef struct RFM_ChildAttributes{
    gint exitcode;
    gboolean output_read_by_program;
 } RFM_ChildAttribs;
+
+static GList *rfm_childList = NULL;
+static gchar** env_for_g_spawn=NULL;
 static void free_child_attribs(RFM_ChildAttribs *child_attribs);
 static void g_spawn_wrapper_for_selected_fileList_(RFM_ChildAttribs *childAttribs);
 /* instantiate childAttribs and call g_spawn_wrapper_ */
@@ -452,28 +455,32 @@ static void show_hide_treeview_columns_enum(int count, ...);
 /******TreeView column related definitions end*******/
 /****************************************************/
 /******View Selection related definitions************/
-
+// keep previous selection when go back from cd directory to search result.
+// two elements, one for search result view, the other for directory view
+// filepath string in this list is created with strdup.
+static GList * filepath_lists_for_selection_on_view[2] = {NULL,NULL};
+static GList * filepath_lists_for_selection_on_view_clone;
+static GList* get_view_selection_list(GtkWidget * view, gboolean treeview, GtkTreeModel ** model);
+static void selectionChanged(GtkWidget *view, gpointer user_data);
+static void set_view_selection(GtkWidget* view, gboolean treeview, GtkTreePath* treePath);
+static void set_view_selection_list(GtkWidget *view, gboolean treeview,GList *selectionList);
+static gboolean path_is_selected(GtkWidget *widget, gboolean treeview, GtkTreePath *path);
 /******View Selection related definitions end********/
-
-
+/****************************************************/
+/******View sort related definitions*****************/
+static GtkSortType current_sorttype=GTK_SORT_ASCENDING;
+static gint current_sort_column_id=GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID;
+/******View sort related definitions end*************/
 static gchar*  PROG_NAME = NULL;
 static gchar *rfm_homePath;         /* Users home dir */
-
-static GList *rfm_childList=NULL;
 
 static char *initDir=NULL;
 static char cwd[PATH_MAX];
 
 static GtkWidget *icon_or_tree_view = NULL;
 static gboolean treeview=FALSE;
-static  GtkSortType current_sorttype=GTK_SORT_ASCENDING;
-static  gint current_sort_column_id=GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID;
 
-// keep previous selection when go back from cd directory to search result.
-// two elements, one for search result view, the other for directory view
-// filepath string in this list is created with strdup.
-static GList * filepath_lists_for_selection_on_view[2] = {NULL,NULL};
-static GList * filepath_lists_for_selection_on_view_clone;
+
 // if true, means that rfm read file names in following way:
 //      ls|xargs realpath|rfm
 // or
@@ -483,27 +490,12 @@ static unsigned int SearchResultViewInsteadOfDirectoryView=0;
 
 static GList * stdin_cmd_selection_list=NULL; //selected files used in stdin cmd expansion(or we call it substitution) which replace ending space and %s with selected file names
 static RFM_FileAttributes *stdin_cmd_selection_fileAttributes;
-static gchar** env_for_g_spawn=NULL;
 
 static struct sigaction newaction;
-static GList* get_view_selection_list(GtkWidget * view, gboolean treeview, GtkTreeModel ** model);
-
 static void show_msgbox(gchar *msg, gchar *title, gint type);
 static void die(const char *errstr, ...);
-
-
 static int setup(RFM_ctx *rfmCtx);
-
-static void selectionChanged(GtkWidget *view, gpointer user_data);
-
-static void set_view_selection(GtkWidget* view, gboolean treeview, GtkTreePath* treePath);
-static void set_view_selection_list(GtkWidget *view, gboolean treeview,GList *selectionList);
-static gboolean path_is_selected(GtkWidget *widget, gboolean treeview, GtkTreePath *path);
-
-
 static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx);
-
-
 
 /******FileChooser related definitions***************/
 static gboolean StartedAs_rfmFileChooser = FALSE;
