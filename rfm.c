@@ -279,10 +279,6 @@ typedef struct {
   const char* cmdTemplate;//used by ProcessKeyValuePairInCmdOutputFromSearchResult
 }RFM_SearchResultType;
 
-// use clear_store() to free
-// in searchresultview, this list only contains files on current view page.
-// The SearchResultViewFileNameList contains files for the whole result.
-static GList *rfm_fileAttributeList=NULL;
 static gchar *rfm_SearchResultPath=NULL; /*keep the rfm_curPath value when SearchResult was created */
 static GList *SearchResultFileNameList = NULL;
 // in search result view, same file can appear more than once(for example, in
@@ -414,6 +410,25 @@ static void show_hide_treeview_columns_enum(int count, ...);
 /******GtkListStore and refresh definitions**********/
 static GtkListStore *store=NULL;
 static GtkTreeModel *treemodel=NULL;
+// use clear_store() to free
+// in searchresultview, this list only contains files on current view page.
+// The SearchResultViewFileNameList contains files for the whole result.
+static GList *rfm_fileAttributeList=NULL;
+//hash table to store string shown in search result, with fileAttributeid as key
+static GHashTable* ExtColumnHashTable[NUM_Ext_Columns + 1];
+// For ExtColumn value from pipeline stdin, the total result batch is kept in
+// hashtable and value not refreshed during refresh_store or turn_page. 
+// For ExtColumn value from file parser, the hashtable keep only the values for the current page, and it will be refreshed during each refresh_store or turn_page. This is for performance.
+static gboolean ExtColumnHashTable_keep_during_refresh[NUM_Ext_Columns + 1];
+
+static gboolean In_refresh_store=FALSE;
+static gboolean insert_fileAttributes_into_store_one_by_one=FALSE;
+static guint rfm_readDirSheduler=0;
+static int rfm_inotify_fd;
+static int rfm_curPath_wd = -1;    /* Current path (rfm_curPath) watch */
+static gboolean pauseInotifyHandler = FALSE;
+
+static int read_one_file_couter = 0;//this is useless except for logging information
 static RFM_FileAttributes *malloc_fileAttributes(void);
 static void free_fileAttributes(RFM_FileAttributes *fileAttributes);
 static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guint64 mtimeThreshold, GHashTable *mount_hash);
@@ -426,6 +441,16 @@ static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store_if
 static void toggle_insert_fileAttributes_into_store_one_by_one();
 static void Iterate_through_fileAttribute_list_to_insert_into_store();
 static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,GtkTreeIter *iter);
+static void Insert_fileAttributes_into_store_with_thumbnail_and_more(RFM_FileAttributes* fileAttributes);
+static void iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_and_load_gitCommitMsg_ifdef_GitIntegration(void);
+static GHashTable *get_mount_points(void);
+static gboolean mounts_handler(GUnixMountMonitor *monitor, gpointer rfmCtx);
+static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer rfmCtx);
+static void inotify_insert_item(gchar *name, gboolean is_dir);
+static gboolean delayed_refreshAll(gpointer user_data);
+static void Update_Store_ExtColumns(RFM_ChildAttribs *childAttribs);
+static gchar* getExtColumnValueFromHashTable(guint fileAttributeId, guint ExtColumnHashTableIndex);
+
 /******GtkListStore and refresh definitions end******/
 /****************************************************/
 /******FileChooser related definitions***************/
@@ -444,7 +469,7 @@ static gchar** rfmFileChooser_CMD(enum rfmTerminal startWithVT, gchar* search_cm
 /******FileChooser related definitions end***********/
 
 static gchar*  PROG_NAME = NULL;
-static gboolean In_refresh_store=FALSE;
+
 static GtkWidget *window=NULL;      /* Main window */
 static GtkWidget *rfm_main_box;
 static GtkWidget *scroll_window = NULL;
@@ -454,7 +479,7 @@ static RFM_ctx *rfmCtx=NULL;
 static gchar *rfm_homePath;         /* Users home dir */
 
 static GList *rfm_childList=NULL;
-static guint rfm_readDirSheduler=0;
+
 
 //TODO: i added the following two schedulers so that i can put off the loading of these slow columns after file list appears in the view first. But have not implemented them yet. Anyway, if user choose to show this slow columns, they have to wait to the end, show files slowly one by one may be better.
 static guint rfm_extColumnScheduler = 0;
@@ -462,8 +487,6 @@ static guint rfm_extColumnScheduler = 0;
 static guint rfm_gitCommitMsgScheduler = 0;
 static GtkTreeIter gitMsg_load_iter;
 #endif
-static int rfm_inotify_fd;
-static int rfm_curPath_wd = -1;    /* Current path (rfm_curPath) watch */
 
 static gulong viewSelectionChangedSignalConnection=0;
 
@@ -474,12 +497,6 @@ static char cwd[PATH_MAX];
 static GtkAccelGroup *agMain = NULL;
 static RFM_toolbar *tool_bar = NULL;
 
-//hash table to store string shown in search result, with fileAttributeid as key
-static GHashTable* ExtColumnHashTable[NUM_Ext_Columns + 1];
-// For ExtColumn value from pipeline stdin, the total result batch is kept in
-// hashtable and value not refreshed during refresh_store or turn_page. 
-// For ExtColumn value from file parser, the hashtable keep only the values for the current page, and it will be refreshed during each refresh_store or turn_page. This is for performance.
-static gboolean ExtColumnHashTable_keep_during_refresh[NUM_Ext_Columns + 1];
 
 static  GtkSortType current_sorttype=GTK_SORT_ASCENDING;
 static  gint current_sort_column_id=GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID;
@@ -500,10 +517,6 @@ static GList * stdin_cmd_selection_list=NULL; //selected files used in stdin cmd
 static RFM_FileAttributes *stdin_cmd_selection_fileAttributes;
 static gchar** env_for_g_spawn=NULL;
 
-static gboolean pauseInotifyHandler=FALSE;
-static int read_one_file_couter = 0;
-
-static gboolean insert_fileAttributes_into_store_one_by_one=FALSE;
 static struct sigaction newaction;
 #ifdef GitIntegration
 // value " M " for modified
@@ -520,8 +533,6 @@ static void load_GitTrackedFiles_into_HashTable();
 static void load_gitCommitMsg_for_store_row(GtkTreeIter *iter);
 #endif
 static void set_terminal_window_title(char* title);
-//static gchar *getGrepMatchFromHashTable(guint fileAttributeId);
-static gchar* getExtColumnValueFromHashTable(guint fileAttributeId, guint ExtColumnHashTableIndex);
 
 static void show_msgbox(gchar *msg, gchar *title, gint type);
 static void die(const char *errstr, ...);
@@ -529,16 +540,6 @@ static void die(const char *errstr, ...);
 static void set_rfm_curPath(gchar *path);
 static int setup(RFM_ctx *rfmCtx);
 
-static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer rfmCtx);
-static void inotify_insert_item(gchar *name, gboolean is_dir);
-static gboolean delayed_refreshAll(gpointer user_data);
-
-static void Insert_fileAttributes_into_store_with_thumbnail_and_more(RFM_FileAttributes* fileAttributes);
-
-static GHashTable *get_mount_points(void);
-static gboolean mounts_handler(GUnixMountMonitor *monitor, gpointer rfmCtx);
-
-static void iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_and_load_gitCommitMsg_ifdef_GitIntegration(void);
 static void selectionChanged(GtkWidget *view, gpointer user_data);
 static GtkWidget *add_view(RFM_ctx *rfmCtx);
 static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixbufs, RFM_ctx *rfmCtx);
