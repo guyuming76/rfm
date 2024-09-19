@@ -454,7 +454,6 @@ static void show_hide_treeview_columns_enum(int count, ...);
 
 
 static gchar*  PROG_NAME = NULL;
-
 static gchar *rfm_homePath;         /* Users home dir */
 
 static GList *rfm_childList=NULL;
@@ -495,36 +494,11 @@ static void die(const char *errstr, ...);
 static int setup(RFM_ctx *rfmCtx);
 
 static void selectionChanged(GtkWidget *view, gpointer user_data);
-static GtkWidget *add_view(RFM_ctx *rfmCtx);
-static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixbufs, RFM_ctx *rfmCtx);
-static void refresh_toolbar();
-static gboolean view_key_press(GtkWidget *widget, GdkEvent *event,RFM_ctx *rfmCtx);
-static gboolean view_button_press(GtkWidget *widget, GdkEvent *event,RFM_ctx *rfmCtx);
-static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointer user_data);
-static void row_activated(GtkTreeView *tree_view, GtkTreePath *tree_path,GtkTreeViewColumn *col, gpointer user_data);
 
 static void set_view_selection(GtkWidget* view, gboolean treeview, GtkTreePath* treePath);
 static void set_view_selection_list(GtkWidget *view, gboolean treeview,GList *selectionList);
 static gboolean path_is_selected(GtkWidget *widget, gboolean treeview, GtkTreePath *path);
 
-static void up_clicked(gpointer user_data);
-static void home_clicked(gpointer user_data);
-static void PreviousPage(RFM_ctx *rfmCtx);
-static void NextPage(RFM_ctx *rfmCtx);
-static void info_clicked(gpointer user_data);
-static void switch_iconview_treeview(RFM_ctx *rfmCtx);
-static void Switch_SearchResultView_DirectoryView(GtkToolItem *item,RFM_ctx *rfmCtx);
-/* callback function for toolbar buttons. Its possible to make function such as home_clicked as callback directly, instead of use toolbar_button_exec as a wrapper. However,i would add GtkToolItems as first parameter for so many different callback functions then. */
-/* since g_spawn_wrapper will free child_attribs, and we don't want the childAttribs object associated with UI interface item to be freed, we duplicate childAttribs here. */
-/* tool_buttons actions are basically defined at current directory level, or current view level, for example: to go to parent directory, or to switch between icon or tree view */
-static void toolbar_button_exec(GtkToolItem *item, RFM_ChildAttribs *childAttribs);
-/* callback function for contextual file menu, which appear after mouse right click on selected file, or the after the menu key on keyboard pressed */
-/* since g_spawn_wrapper will free child_attribs, and we don't want the childAttribs object associated with UI interface item to be freed, we duplicate childAttribs here. */
-static void file_menu_exec(GtkMenuItem *menuitem, RFM_ChildAttribs *childAttribs);
-static void setup_file_menu(RFM_ctx * rfmCtx);
-static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx);
-
-static void copy_curPath_to_clipboard(GtkWidget *menuitem, gpointer user_data);
 
 static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx);
 
@@ -581,7 +555,33 @@ static GtkWidget * PathAndRepositoryNameDisplay;
 static RFM_toolbar *tool_bar = NULL;
 static GtkAccelGroup *agMain = NULL;
 
+static void up_clicked(gpointer user_data);
+static void home_clicked(gpointer user_data);
+static void PreviousPage(RFM_ctx *rfmCtx);
+static void NextPage(RFM_ctx *rfmCtx);
+static void info_clicked(gpointer user_data);
+static void copy_curPath_to_clipboard(GtkWidget *menuitem, gpointer user_data);
+static void switch_iconview_treeview(RFM_ctx *rfmCtx);
+static void Switch_SearchResultView_DirectoryView(GtkToolItem *item,RFM_ctx *rfmCtx);
+/* callback function for toolbar buttons. Its possible to make function such as home_clicked as callback directly, instead of use toolbar_button_exec as a wrapper. However,i would add GtkToolItems as first parameter for so many different callback functions then. */
+/* since g_spawn_wrapper will free child_attribs, and we don't want the childAttribs object associated with UI interface item to be freed, we duplicate childAttribs here. */
+/* tool_buttons actions are basically defined at current directory level, or current view level, for example: to go to parent directory, or to switch between icon or tree view */
+static void toolbar_button_exec(GtkToolItem *item, RFM_ChildAttribs *childAttribs);
+/* callback function for contextual file menu, which appear after mouse right click on selected file, or the after the menu key on keyboard pressed */
+/* since g_spawn_wrapper will free child_attribs, and we don't want the childAttribs object associated with UI interface item to be freed, we duplicate childAttribs here. */
+static void file_menu_exec(GtkMenuItem *menuitem, RFM_ChildAttribs *childAttribs);
+static void setup_file_menu(RFM_ctx * rfmCtx);
+static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx);
+
 #include "config.h"
+
+static GtkWidget *add_view(RFM_ctx *rfmCtx);
+static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixbufs, RFM_ctx *rfmCtx);
+static void refresh_toolbar();
+static gboolean view_key_press(GtkWidget *widget, GdkEvent *event,RFM_ctx *rfmCtx);
+static gboolean view_button_press(GtkWidget *widget, GdkEvent *event,RFM_ctx *rfmCtx);
+static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointer user_data);
+static void row_activated(GtkTreeView *tree_view, GtkTreePath *tree_path,GtkTreeViewColumn *col, gpointer user_data);
 
 // 对于在下面几行代码运行git blame 显示commit msg
 // 里面提到的是否准备支持多搜索结果问题,我想我是有答案的:不准备支持
