@@ -70,7 +70,6 @@ typedef struct {
   GtkWidget **buttons;
 } RFM_toolbar;
 
-
 /****************************************************/
 /******Thumbnail related definitions*****************/
 typedef struct {
@@ -522,22 +521,6 @@ static gchar** env_for_g_spawn=NULL;
 static struct sigaction newaction;
 static GList* get_view_selection_list(GtkWidget * view, gboolean treeview, GtkTreeModel ** model);
 
-/******FileChooser related definitions***************/
-static gboolean StartedAs_rfmFileChooser = FALSE;
-static int rfmFileChooserResultNumber = 0;
-static gchar *rfmFileChooserReturnSelectionIntoFilename = NULL;
-#ifdef RFM_FILE_CHOOSER
-static void (*FileChooserClientCallback)(char **) = NULL;
-GList *str_array_ToGList(char *a[]);
-char **GList_to_str_array(GList *l, int count);
-static void rfmFileChooserResultReader(RFM_ChildAttribs *child_attribs);
-GList* rfmFileChooser_glist(enum rfmTerminal startWithVirtualTerminal, char* search_cmd, gboolean async, GList** fileChooserSelectionListAddress, void (*fileChooserClientCallback)(char **));
-char** rfmFileChooser(enum rfmTerminal startWithVirtualTerminal, char* search_cmd, gboolean async, char *fileSelectionStringArray[], void (*fileChooserClientCallback)(char**));
-#include "rfmFileChooser.h"
-#endif
-static gchar** rfmFileChooser_CMD(enum rfmTerminal startWithVT, gchar* search_cmd, gchar** defaultFileSelection, gchar* rfmFileChooserReturnSelectionIntoFilename);
-/******FileChooser related definitions end***********/
-
 static void show_msgbox(gchar *msg, gchar *title, gint type);
 static void die(const char *errstr, ...);
 
@@ -578,8 +561,28 @@ static void copy_curPath_to_clipboard(GtkWidget *menuitem, gpointer user_data);
 
 static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx);
 
+
+
+/******FileChooser related definitions***************/
+static gboolean StartedAs_rfmFileChooser = FALSE;
+static int rfmFileChooserResultNumber = 0;
+static gchar *rfmFileChooserReturnSelectionIntoFilename = NULL;
+#ifdef RFM_FILE_CHOOSER
+static void (*FileChooserClientCallback)(char **) = NULL;
+GList *str_array_ToGList(char *a[]);
+char **GList_to_str_array(GList *l, int count);
+static void rfmFileChooserResultReader(RFM_ChildAttribs *child_attribs);
+GList* rfmFileChooser_glist(enum rfmTerminal startWithVirtualTerminal, char* search_cmd, gboolean async, GList** fileChooserSelectionListAddress, void (*fileChooserClientCallback)(char **));
+char** rfmFileChooser(enum rfmTerminal startWithVirtualTerminal, char* search_cmd, gboolean async, char *fileSelectionStringArray[], void (*fileChooserClientCallback)(char**));
+#include "rfmFileChooser.h"
+#endif
+static gchar** rfmFileChooser_CMD(enum rfmTerminal startWithVT, gchar* search_cmd, gchar** defaultFileSelection, gchar* rfmFileChooserReturnSelectionIntoFilename);
+/******FileChooser related definitions end***********/
+
+
 #include "config.h"
 
+/**************gtk UI, filemenu, toolbar*****************************/
 // 对于在下面几行代码运行git blame 显示commit msg
 // 里面提到的是否准备支持多搜索结果问题,我想我是有答案的:不准备支持
 // rfm在平铺窗口下运行比较好,用多个rfm实例来支持多搜索结果优于在一个实例里面支持多结果
@@ -587,8 +590,6 @@ static RFM_treeviewColumn ViewColumnsLayouts[2][G_N_ELEMENTS(treeviewColumns)];
 #define DirectoryViewColumnsLayout ViewColumnsLayouts[0]
 #define SearchResultViewColumnsLayout ViewColumnsLayouts[1]
 #define TREEVIEW_COLUMNS ViewColumnsLayouts[SearchResultViewInsteadOfDirectoryView]
-
-
 
 typedef struct {
    GtkWidget* menu;
@@ -598,6 +599,11 @@ typedef struct {
 } RFM_fileMenu;
 
 RFM_fileMenu fileMenu;
+
+/**************gtk UI, filemenu, toolbar end**************************/
+
+
+
 
 char * strmode(mode_t st_mode){
     char * ret=calloc(11,sizeof(char));
