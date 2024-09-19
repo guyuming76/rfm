@@ -478,20 +478,7 @@ static void show_hide_treeview_columns_enum(int count, ...);
 
 /******TreeView column related definitions end*******/
 /****************************************************/
-/******FileChooser related definitions***************/
-static gboolean StartedAs_rfmFileChooser = FALSE;
-static int rfmFileChooserResultNumber = 0;
-static gchar *rfmFileChooserReturnSelectionIntoFilename = NULL;
-#ifdef RFM_FILE_CHOOSER
-static void (*FileChooserClientCallback)(char **) = NULL;
-GList *str_array_ToGList(char *a[]);
-char **GList_to_str_array(GList *l, int count);
-static void rfmFileChooserResultReader(RFM_ChildAttribs *child_attribs);
-GList* rfmFileChooser_glist(enum rfmTerminal startWithVirtualTerminal, char* search_cmd, gboolean async, GList** fileChooserSelectionListAddress, void (*fileChooserClientCallback)(char **));
-char** rfmFileChooser(enum rfmTerminal startWithVirtualTerminal, char* search_cmd, gboolean async, char *fileSelectionStringArray[], void (*fileChooserClientCallback)(char**));
-#endif
-static gchar** rfmFileChooser_CMD(enum rfmTerminal startWithVT, gchar* search_cmd, gchar** defaultFileSelection, gchar* rfmFileChooserReturnSelectionIntoFilename);
-/******FileChooser related definitions end***********/
+
 
 static gchar*  PROG_NAME = NULL;
 
@@ -533,6 +520,23 @@ static RFM_FileAttributes *stdin_cmd_selection_fileAttributes;
 static gchar** env_for_g_spawn=NULL;
 
 static struct sigaction newaction;
+static GList* get_view_selection_list(GtkWidget * view, gboolean treeview, GtkTreeModel ** model);
+
+/******FileChooser related definitions***************/
+static gboolean StartedAs_rfmFileChooser = FALSE;
+static int rfmFileChooserResultNumber = 0;
+static gchar *rfmFileChooserReturnSelectionIntoFilename = NULL;
+#ifdef RFM_FILE_CHOOSER
+static void (*FileChooserClientCallback)(char **) = NULL;
+GList *str_array_ToGList(char *a[]);
+char **GList_to_str_array(GList *l, int count);
+static void rfmFileChooserResultReader(RFM_ChildAttribs *child_attribs);
+GList* rfmFileChooser_glist(enum rfmTerminal startWithVirtualTerminal, char* search_cmd, gboolean async, GList** fileChooserSelectionListAddress, void (*fileChooserClientCallback)(char **));
+char** rfmFileChooser(enum rfmTerminal startWithVirtualTerminal, char* search_cmd, gboolean async, char *fileSelectionStringArray[], void (*fileChooserClientCallback)(char**));
+#include "rfmFileChooser.h"
+#endif
+static gchar** rfmFileChooser_CMD(enum rfmTerminal startWithVT, gchar* search_cmd, gchar** defaultFileSelection, gchar* rfmFileChooserReturnSelectionIntoFilename);
+/******FileChooser related definitions end***********/
 
 static void show_msgbox(gchar *msg, gchar *title, gint type);
 static void die(const char *errstr, ...);
@@ -548,7 +552,7 @@ static gboolean view_key_press(GtkWidget *widget, GdkEvent *event,RFM_ctx *rfmCt
 static gboolean view_button_press(GtkWidget *widget, GdkEvent *event,RFM_ctx *rfmCtx);
 static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointer user_data);
 static void row_activated(GtkTreeView *tree_view, GtkTreePath *tree_path,GtkTreeViewColumn *col, gpointer user_data);
-static GList* get_view_selection_list(GtkWidget * view, gboolean treeview, GtkTreeModel ** model);
+
 static void set_view_selection(GtkWidget* view, gboolean treeview, GtkTreePath* treePath);
 static void set_view_selection_list(GtkWidget *view, gboolean treeview,GList *selectionList);
 static gboolean path_is_selected(GtkWidget *widget, gboolean treeview, GtkTreePath *path);
@@ -574,10 +578,6 @@ static void copy_curPath_to_clipboard(GtkWidget *menuitem, gpointer user_data);
 
 static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx);
 
-
-#ifdef RFM_FILE_CHOOSER
-#include "rfmFileChooser.h"
-#endif
 #include "config.h"
 
 // 对于在下面几行代码运行git blame 显示commit msg
