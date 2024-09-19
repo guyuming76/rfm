@@ -42,6 +42,7 @@ typedef struct {
    gint        showMimeType;              /* Display detected mime type on stdout when a file is right-clicked: toggled via -i option */
    guint       delayedRefresh_GSourceID;  /* Main loop source ID for refresh_store() delayed refresh timer */
 } RFM_ctx;
+static RFM_ctx *rfmCtx = NULL;
 
 /****************************************************/
 /******Thumbnail related definitions*****************/
@@ -454,12 +455,6 @@ static void show_hide_treeview_columns_enum(int count, ...);
 
 static gchar*  PROG_NAME = NULL;
 
-static GtkWidget *window=NULL;      /* Main window */
-static GtkWidget *rfm_main_box;
-static GtkWidget *scroll_window = NULL;
-static GtkWidget *icon_or_tree_view = NULL;
-static GtkWidget * PathAndRepositoryNameDisplay;
-static RFM_ctx *rfmCtx=NULL;
 static gchar *rfm_homePath;         /* Users home dir */
 
 static GList *rfm_childList=NULL;
@@ -468,9 +463,9 @@ static gulong viewSelectionChangedSignalConnection=0;
 
 static char *initDir=NULL;
 static char cwd[PATH_MAX];
-static GtkAccelGroup *agMain = NULL;
 
-
+static GtkWidget *icon_or_tree_view = NULL;
+static gboolean treeview=FALSE;
 static  GtkSortType current_sorttype=GTK_SORT_ASCENDING;
 static  gint current_sort_column_id=GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID;
 
@@ -485,7 +480,7 @@ static GList * filepath_lists_for_selection_on_view_clone;
 //      locate blablablaa |rfm
 // , instead of from a directory
 static unsigned int SearchResultViewInsteadOfDirectoryView=0;
-static gboolean treeview=FALSE;
+
 static GList * stdin_cmd_selection_list=NULL; //selected files used in stdin cmd expansion(or we call it substitution) which replace ending space and %s with selected file names
 static RFM_FileAttributes *stdin_cmd_selection_fileAttributes;
 static gchar** env_for_g_spawn=NULL;
@@ -579,7 +574,12 @@ typedef struct {
   GtkWidget **buttons;
 } RFM_toolbar;
 
+static GtkWidget *window=NULL;      /* Main window */
+static GtkWidget *rfm_main_box;
+static GtkWidget *scroll_window = NULL;
+static GtkWidget * PathAndRepositoryNameDisplay;
 static RFM_toolbar *tool_bar = NULL;
+static GtkAccelGroup *agMain = NULL;
 
 #include "config.h"
 
