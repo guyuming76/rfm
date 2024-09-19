@@ -36,25 +36,6 @@
 #define PIPE_SZ 65535      /* Kernel pipe size */
 
 typedef struct {
-   gchar *path;
-   gchar *thumb_name;
-   gchar *md5;
-   gchar *uri;
-   gint64 mtime_file;
-   gint t_idx;
-   pid_t rfm_pid;
-   gint thumb_size; 
-} RFM_ThumbQueueData;
-
-typedef struct {
-   gchar *thumbRoot;
-   gchar *thumbSub;
-  //GdkPixbuf *(*func)(RFM_ThumbQueueData * thumbData);
-   const gchar **thumbCmd;
-} RFM_Thumbnailer;
-
-
-typedef struct {
    gchar *runName;
    gchar *runRoot;
    gchar *runSub;
@@ -120,6 +101,33 @@ typedef struct {  /* Update free_fileAttributes() and malloc_fileAttributes() if
 
 } RFM_FileAttributes;
 
+//TODO: keep GtkTreeIter somewhere such as in fileAttribute, so that we can try load gitmsg and extcolumns with spawn async instead of sync. However, that can be complicated, what if we have spawned so many processes and user clicked refresh? we have to build Stop mechanism into it. Simple strategy is not to load this slow columns unless user configures to show them.
+typedef struct {
+  GtkTreeIter * iter;
+  gint store_column;
+  gboolean iconview_markup;
+  gboolean iconview_tooltip;
+} RFM_store_cell;
+
+/******Thumbnail related definitions*****************/
+typedef struct {
+   gchar *path;
+   gchar *thumb_name;
+   gchar *md5;
+   gchar *uri;
+   gint64 mtime_file;
+   gint t_idx;
+   pid_t rfm_pid;
+   gint thumb_size; 
+} RFM_ThumbQueueData;
+
+typedef struct {
+   gchar *thumbRoot;
+   gchar *thumbSub;
+  //GdkPixbuf *(*func)(RFM_ThumbQueueData * thumbData);
+   const gchar **thumbCmd;
+} RFM_Thumbnailer;
+
 typedef struct {
    GdkPixbuf *file, *dir;
    GdkPixbuf *symlinkDir;
@@ -130,15 +138,22 @@ typedef struct {
    GdkPixbuf *broken;
 } RFM_defaultPixbufs;
 
-//TODO: keep GtkTreeIter somewhere such as in fileAttribute, so that we can try load gitmsg and extcolumns with spawn async instead of sync. However, that can be complicated, what if we have spawned so many processes and user clicked refresh? we have to build Stop mechanism into it. Simple strategy is not to load this slow columns unless user configures to show them.
-typedef struct {
-  GtkTreeIter * iter;
-  gint store_column;
-  gboolean iconview_markup;
-  gboolean iconview_tooltip;
-} RFM_store_cell;
-
-
+static gchar *rfm_thumbDir;         /* Users thumbnail directory */
+static gint rfm_do_thumbs;          /* Show thumbnail images of files: 0: disabled; 1: enabled; 2: disabled for current dir */
+static GList *rfm_thumbQueue=NULL;
+static guint rfm_thumbScheduler = 0; // this is for mkthumb
+static guint rfm_thumbLoadScheduler = 0; //
+static GtkTreeIter thumbnail_load_iter;
+static int rfm_thumbnail_wd;  /* Thumbnail watch */
+static GHashTable *thumb_hash=NULL; /* Thumbnails in the current view */
+static void load_thumbnail_or_enqueue_thumbQueue_for_store_row(GtkTreeIter *iter);
+static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter);
+static gint find_thumbnailer(gchar *mime_root, gchar *mime_sub_type);
+static int load_thumbnail(gchar *key, gboolean show_Thumbnail_Itself_InsteadOf_As_Thumbnail_For_Original_Picture);
+static void rfm_saveThumbnail(GdkPixbuf *thumb, RFM_ThumbQueueData *thumbData);
+static gboolean mkThumb();
+/******Thumbnail related definitions end*************/
+/****************************************************/
 /******Terminal Emulator related definitions*********/
 #ifdef PythonEmbedded
 #define PY_SSIZE_T_CLEAN
@@ -409,20 +424,14 @@ static GtkWidget *icon_or_tree_view = NULL;
 static GtkWidget * PathAndRepositoryNameDisplay;
 static RFM_ctx *rfmCtx=NULL;
 static gchar *rfm_homePath;         /* Users home dir */
-static gchar *rfm_thumbDir;         /* Users thumbnail directory */
-static gint rfm_do_thumbs;          /* Show thumbnail images of files: 0: disabled; 1: enabled; 2: disabled for current dir */
 
 // use clear_store() to free
 // in searchresultview, this list only contains files on current view page.
 // The SearchResultViewFileNameList contains files for the whole result.
 static GList *rfm_fileAttributeList=NULL;
-static GList *rfm_thumbQueue=NULL;
 static GList *rfm_childList=NULL;
-
 static guint rfm_readDirSheduler=0;
-static guint rfm_thumbScheduler = 0; // this is for mkthumb
-static guint rfm_thumbLoadScheduler = 0; //
-static GtkTreeIter thumbnail_load_iter;
+
 static GtkTreeIter gitMsg_load_iter;
 
 //TODO: i added the following two schedulers so that i can put off the loading of these slow columns after file list appears in the view first. But have not implemented them yet. Anyway, if user choose to show this slow columns, they have to wait to the end, show files slowly one by one may be better.
@@ -432,7 +441,7 @@ static guint rfm_gitCommitMsgScheduler = 0;
 #endif
 static int rfm_inotify_fd;
 static int rfm_curPath_wd = -1;    /* Current path (rfm_curPath) watch */
-static int rfm_thumbnail_wd;  /* Thumbnail watch */
+
 static gulong viewSelectionChangedSignalConnection=0;
 
 static char *initDir=NULL;
@@ -443,7 +452,7 @@ static GtkAccelGroup *agMain = NULL;
 static RFM_toolbar *tool_bar = NULL;
 static RFM_defaultPixbufs *defaultPixbufs=NULL;
 static GtkIconTheme *icon_theme;
-static GHashTable *thumb_hash=NULL; /* Thumbnails in the current view */
+
 //hash table to store string shown in search result, with fileAttributeid as key
 static GHashTable* ExtColumnHashTable[NUM_Ext_Columns + 1];
 // For ExtColumn value from pipeline stdin, the total result batch is kept in
@@ -521,12 +530,6 @@ static void load_GitTrackedFiles_into_HashTable();
 static void load_gitCommitMsg_for_store_row(GtkTreeIter *iter);
 #endif
 static void iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_and_load_gitCommitMsg_ifdef_GitIntegration(void);
-static void load_thumbnail_or_enqueue_thumbQueue_for_store_row(GtkTreeIter *iter);
-static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter);
-static gint find_thumbnailer(gchar *mime_root, gchar *mime_sub_type);
-static int load_thumbnail(gchar *key, gboolean show_Thumbnail_Itself_InsteadOf_As_Thumbnail_For_Original_Picture);
-static void rfm_saveThumbnail(GdkPixbuf *thumb, RFM_ThumbQueueData *thumbData);
-static gboolean mkThumb();
 static void selectionChanged(GtkWidget *view, gpointer user_data);
 static GtkWidget *add_view(RFM_ctx *rfmCtx);
 static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixbufs, RFM_ctx *rfmCtx);
