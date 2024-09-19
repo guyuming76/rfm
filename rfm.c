@@ -427,8 +427,11 @@ static guint rfm_readDirSheduler=0;
 static int rfm_inotify_fd;
 static int rfm_curPath_wd = -1;    /* Current path (rfm_curPath) watch */
 static gboolean pauseInotifyHandler = FALSE;
-
+static gchar *rfm_curPath=NULL;  /* The current directory */
+static gchar *rfm_prePath=NULL;  /* keep previous rfm_curPath, so that it will be autoselected in view. But manual selection change such as user pressing ESC in view will set it to null. Rodney invented this to autoselect child directory after going to parent directory*/
 static int read_one_file_couter = 0;//this is useless except for logging information
+//TODO: i added the following two schedulers so that i can put off the loading of these slow columns after file list appears in the view first. But have not implemented them yet. Anyway, if user choose to show this slow columns, they have to wait to the end, show files slowly one by one may be better.
+static guint rfm_extColumnScheduler = 0;
 static RFM_FileAttributes *malloc_fileAttributes(void);
 static void free_fileAttributes(RFM_FileAttributes *fileAttributes);
 static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guint64 mtimeThreshold, GHashTable *mount_hash);
@@ -450,6 +453,24 @@ static void inotify_insert_item(gchar *name, gboolean is_dir);
 static gboolean delayed_refreshAll(gpointer user_data);
 static void Update_Store_ExtColumns(RFM_ChildAttribs *childAttribs);
 static gchar* getExtColumnValueFromHashTable(guint fileAttributeId, guint ExtColumnHashTableIndex);
+static void set_rfm_curPath(gchar *path);
+#ifdef GitIntegration
+// value " M " for modified
+// value "M " for staged
+// value "MM" for both modified and staged
+// value "??" for untracked
+// the same as git status --porcelain
+static GHashTable *gitTrackedFiles;
+static gboolean curPath_is_git_repo = FALSE;
+static guint rfm_gitCommitMsgScheduler = 0;
+static GtkTreeIter gitMsg_load_iter;
+static gboolean cur_path_is_git_repo(RFM_FileAttributes * fileAttributes);
+static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpointer *child_attribs);
+static void readGitCommitMsgFromGitLogCmdAndUpdateStore(RFM_ChildAttribs * childAttribs);
+static void load_GitTrackedFiles_into_HashTable();
+static void load_gitCommitMsg_for_store_row(GtkTreeIter *iter);
+#endif
+static void set_terminal_window_title(char* title);
 
 /******GtkListStore and refresh definitions end******/
 /****************************************************/
@@ -480,19 +501,9 @@ static gchar *rfm_homePath;         /* Users home dir */
 
 static GList *rfm_childList=NULL;
 
-
-//TODO: i added the following two schedulers so that i can put off the loading of these slow columns after file list appears in the view first. But have not implemented them yet. Anyway, if user choose to show this slow columns, they have to wait to the end, show files slowly one by one may be better.
-static guint rfm_extColumnScheduler = 0;
-#ifdef GitIntegration
-static guint rfm_gitCommitMsgScheduler = 0;
-static GtkTreeIter gitMsg_load_iter;
-#endif
-
 static gulong viewSelectionChangedSignalConnection=0;
 
 static char *initDir=NULL;
-static gchar *rfm_curPath=NULL;  /* The current directory */
-static gchar *rfm_prePath=NULL;  /* keep previous rfm_curPath, so that it will be autoselected in view. But manual selection change such as user pressing ESC in view will set it to null. Rodney invented this to autoselect child directory after going to parent directory*/
 static char cwd[PATH_MAX];
 static GtkAccelGroup *agMain = NULL;
 static RFM_toolbar *tool_bar = NULL;
@@ -518,26 +529,11 @@ static RFM_FileAttributes *stdin_cmd_selection_fileAttributes;
 static gchar** env_for_g_spawn=NULL;
 
 static struct sigaction newaction;
-#ifdef GitIntegration
-// value " M " for modified
-// value "M " for staged
-// value "MM" for both modified and staged
-// value "??" for untracked
-// the same as git status --porcelain
-static GHashTable *gitTrackedFiles;
-static gboolean curPath_is_git_repo = FALSE;
-static gboolean cur_path_is_git_repo(RFM_FileAttributes * fileAttributes) { return SearchResultViewInsteadOfDirectoryView^1 && curPath_is_git_repo; }
-static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpointer *child_attribs);
-static void readGitCommitMsgFromGitLogCmdAndUpdateStore(RFM_ChildAttribs * childAttribs);
-static void load_GitTrackedFiles_into_HashTable();
-static void load_gitCommitMsg_for_store_row(GtkTreeIter *iter);
-#endif
-static void set_terminal_window_title(char* title);
 
 static void show_msgbox(gchar *msg, gchar *title, gint type);
 static void die(const char *errstr, ...);
 
-static void set_rfm_curPath(gchar *path);
+
 static int setup(RFM_ctx *rfmCtx);
 
 static void selectionChanged(GtkWidget *view, gpointer user_data);
@@ -2045,6 +2041,10 @@ static void set_curPath_is_git_repo(gpointer *child_attribs)
   }
   
   g_debug("curPath_is_git_repo:%d",curPath_is_git_repo);
+}
+
+static gboolean cur_path_is_git_repo(RFM_FileAttributes *fileAttributes) {
+  return SearchResultViewInsteadOfDirectoryView ^ 1 && curPath_is_git_repo;
 }
 
 static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpointer *child_attribs) {
