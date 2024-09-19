@@ -111,6 +111,9 @@ static guint rfm_thumbLoadScheduler = 0; //
 static GtkTreeIter thumbnail_load_iter;
 static int rfm_thumbnail_wd;  /* Thumbnail watch */
 static GHashTable *thumb_hash=NULL; /* Thumbnails in the current view */
+#ifdef RFM_CACHE_THUMBNAIL_IN_MEM
+static GHashTable *pixbuf_hash = NULL;
+#endif
 static void load_thumbnail_or_enqueue_thumbQueue_for_store_row(GtkTreeIter *iter);
 static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter);
 static gint find_thumbnailer(gchar *mime_root, gchar *mime_sub_type);
@@ -576,10 +579,6 @@ static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx);
 #include "rfmFileChooser.h"
 #endif
 #include "config.h"
-
-#ifdef RFM_CACHE_THUMBNAIL_IN_MEM
-static GHashTable *pixbuf_hash = NULL;
-#endif
 
 // 对于在下面几行代码运行git blame 显示commit msg
 // 里面提到的是否准备支持多搜索结果问题,我想我是有答案的:不准备支持
