@@ -138,6 +138,8 @@ typedef struct {
    GdkPixbuf *broken;
 } RFM_defaultPixbufs;
 
+static RFM_defaultPixbufs *defaultPixbufs=NULL;
+static GtkIconTheme *icon_theme;
 static gchar *rfm_thumbDir;         /* Users thumbnail directory */
 static gint rfm_do_thumbs;          /* Show thumbnail images of files: 0: disabled; 1: enabled; 2: disabled for current dir */
 static GList *rfm_thumbQueue=NULL;
@@ -432,12 +434,11 @@ static GList *rfm_fileAttributeList=NULL;
 static GList *rfm_childList=NULL;
 static guint rfm_readDirSheduler=0;
 
-static GtkTreeIter gitMsg_load_iter;
-
 //TODO: i added the following two schedulers so that i can put off the loading of these slow columns after file list appears in the view first. But have not implemented them yet. Anyway, if user choose to show this slow columns, they have to wait to the end, show files slowly one by one may be better.
 static guint rfm_extColumnScheduler = 0;
 #ifdef GitIntegration
 static guint rfm_gitCommitMsgScheduler = 0;
+static GtkTreeIter gitMsg_load_iter;
 #endif
 static int rfm_inotify_fd;
 static int rfm_curPath_wd = -1;    /* Current path (rfm_curPath) watch */
@@ -450,8 +451,6 @@ static gchar *rfm_prePath=NULL;  /* keep previous rfm_curPath, so that it will b
 static char cwd[PATH_MAX];
 static GtkAccelGroup *agMain = NULL;
 static RFM_toolbar *tool_bar = NULL;
-static RFM_defaultPixbufs *defaultPixbufs=NULL;
-static GtkIconTheme *icon_theme;
 
 //hash table to store string shown in search result, with fileAttributeid as key
 static GHashTable* ExtColumnHashTable[NUM_Ext_Columns + 1];
@@ -496,6 +495,9 @@ static GHashTable *gitTrackedFiles;
 static gboolean curPath_is_git_repo = FALSE;
 static gboolean cur_path_is_git_repo(RFM_FileAttributes * fileAttributes) { return SearchResultViewInsteadOfDirectoryView^1 && curPath_is_git_repo; }
 static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpointer *child_attribs);
+static void readGitCommitMsgFromGitLogCmdAndUpdateStore(RFM_ChildAttribs * childAttribs);
+static void load_GitTrackedFiles_into_HashTable();
+static void load_gitCommitMsg_for_store_row(GtkTreeIter *iter);
 #endif
 static void set_terminal_window_title(char* title);
 //static gchar *getGrepMatchFromHashTable(guint fileAttributeId);
@@ -524,11 +526,7 @@ static RFM_FileAttributes *malloc_fileAttributes(void);
 static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guint64 mtimeThreshold, GHashTable *mount_hash);
 static GHashTable *get_mount_points(void);
 static gboolean mounts_handler(GUnixMountMonitor *monitor, gpointer rfmCtx);
-#ifdef GitIntegration
-static void readGitCommitMsgFromGitLogCmdAndUpdateStore(RFM_ChildAttribs * childAttribs);
-static void load_GitTrackedFiles_into_HashTable();
-static void load_gitCommitMsg_for_store_row(GtkTreeIter *iter);
-#endif
+
 static void iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_and_load_gitCommitMsg_ifdef_GitIntegration(void);
 static void selectionChanged(GtkWidget *view, gpointer user_data);
 static GtkWidget *add_view(RFM_ctx *rfmCtx);
