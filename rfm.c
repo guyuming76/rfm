@@ -272,9 +272,9 @@ static char **rfm_filename_completion(const char *text, int start, int end);
 void handle_commandline_argument(char* arg);
 int readlink_proc_self_fd_pipefd_and_confirm_pipefd_is_used_by_pipeline();
 void ensure_fd0_is_opened_for_stdin_inherited_from_parent_process_instead_of_used_by_pipeline_any_more();
-
+static gboolean startWithVT();
 static void readlineInSeperateThread();
-
+static void ReadFromPipeStdinIfAny(char *fd);
 static gchar shell_cmd_buffer[ARG_MAX]; //TODO: notice that this is shared single instance. But we only run shell command in sync mode now. so, no more than one thread will use this
 static gchar* stdin_cmd_template_bash[]={"/bin/bash","-i","-c", shell_cmd_buffer, NULL};
 static gchar* stdin_cmd_template_nu[]={"nu","-c", shell_cmd_buffer, NULL};
@@ -315,18 +315,32 @@ static GList *CurrentPage_SearchResultView=NULL;
 static gint PageSize_SearchResultView=100;
 static int SearchResultTypeIndex=-1; // we need to pass this status from exec_stdin_command to readlineInSeperatedThread, however, we can only pass one parameter in g_thread_new, so, i use a global variable here.
 static int SearchResultTypeIndexForCurrentExistingSearchResult=-1;
-
+static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamelist);
+//this is very similiar to update_SearchResultFileNameList_and_refresh_store, just that this is called when refresh for turn page; and that is called for a new search result.
+static void call_SearchResultLineProcessingForCurrentSearchResultPage();
+static int ProcessOnelineForSearchResult(gchar *oneline, gboolean new_search);
+static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline, gboolean new_search);
+static int ProcessKeyValuePairInCmdOutputFromSearchResult(char *oneline, gboolean new_search, char *cmdtemplate);
+static int ProcessKeyValuePairInData(GKeyFile* keyfile, char *groupname);
+static void cmdSearchResultColumnSeperator(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
 /******Search Result related definitions end*********/
+/****************************************************/
+/******Process spawn related definitions*************/
 
-
-static gchar*  PROG_NAME = NULL;
-
+/******Process spawn related definitions end*********/
+/****************************************************/
+/******TreeView column related definitions***********/
+void move_array_item_a_after_b(void * array, int index_b, int index_a, uint32_t array_item_size, uint32_t array_length);
+/******TreeView column related definitions end*******/
+/****************************************************/
+/******FileChooser related definitions***************/
 static gboolean StartedAs_rfmFileChooser = FALSE;
 static int rfmFileChooserResultNumber = 0;
 static gchar *rfmFileChooserReturnSelectionIntoFilename = NULL;
+/******FileChooser related definitions end***********/
 
+static gchar*  PROG_NAME = NULL;
 static gboolean In_refresh_store=FALSE;
-
 static GtkWidget *window=NULL;      /* Main window */
 static GtkWidget *rfm_main_box;
 static GtkWidget *scroll_window = NULL;
@@ -355,7 +369,6 @@ static guint rfm_extColumnScheduler = 0;
 #ifdef GitIntegration
 static guint rfm_gitCommitMsgScheduler = 0;
 #endif
-
 static int rfm_inotify_fd;
 static int rfm_curPath_wd = -1;    /* Current path (rfm_curPath) watch */
 static int rfm_thumbnail_wd;  /* Thumbnail watch */
@@ -365,13 +378,10 @@ static char *initDir=NULL;
 static gchar *rfm_curPath=NULL;  /* The current directory */
 static gchar *rfm_prePath=NULL;  /* keep previous rfm_curPath, so that it will be autoselected in view. But manual selection change such as user pressing ESC in view will set it to null. Rodney invented this to autoselect child directory after going to parent directory*/
 static char cwd[PATH_MAX];
-
 static GtkAccelGroup *agMain = NULL;
 static RFM_toolbar *tool_bar = NULL;
 static RFM_defaultPixbufs *defaultPixbufs=NULL;
-
 static GtkIconTheme *icon_theme;
-
 static GHashTable *thumb_hash=NULL; /* Thumbnails in the current view */
 //hash table to store string shown in search result, with fileAttributeid as key
 static GHashTable* ExtColumnHashTable[NUM_Ext_Columns + 1];
@@ -425,22 +435,13 @@ static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpoin
 static void set_terminal_window_title(char* title);
 //static gchar *getGrepMatchFromHashTable(guint fileAttributeId);
 static gchar* getExtColumnValueFromHashTable(guint fileAttributeId, guint ExtColumnHashTableIndex);
-void move_array_item_a_after_b(void * array, int index_b, int index_a, uint32_t array_item_size, uint32_t array_length);
-static gboolean startWithVT();
+
 static void show_msgbox(gchar *msg, gchar *title, gint type);
 static void die(const char *errstr, ...);
 static RFM_defaultPixbufs *load_default_pixbufs(void);
 static void set_rfm_curPath(gchar *path);
 static int setup(RFM_ctx *rfmCtx);
-static void ReadFromPipeStdinIfAny(char *fd);
-static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamelist);
-//this is very similiar to update_SearchResultFileNameList_and_refresh_store, just that this is called when refresh for turn page; and that is called for a new search result.
-static void call_SearchResultLineProcessingForCurrentSearchResultPage();
-static int ProcessOnelineForSearchResult(gchar *oneline, gboolean new_search);
-static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline, gboolean new_search);
-static int ProcessKeyValuePairInCmdOutputFromSearchResult(char *oneline, gboolean new_search, char *cmdtemplate);
-static int ProcessKeyValuePairInData(GKeyFile* keyfile, char *groupname);
-static void cmdSearchResultColumnSeperator(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
+
 static int get_treeviewColumnsIndexByEnum(enum RFM_treeviewCol col);
 static RFM_treeviewColumn* get_treeviewcolumnByGtkTreeviewcolumn(GtkTreeViewColumn *gtkCol);
 static RFM_treeviewColumn* get_treeviewColumnByEnum(enum RFM_treeviewCol col);
