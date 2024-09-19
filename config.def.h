@@ -5,7 +5,6 @@
 #include <linux/limits.h>
 #define RFM_TOOL_SIZE 22
 #define RFM_ICON_SIZE 48
-static gint RFM_THUMBNAIL_SIZE = 128; /* Maximum size for thumb dir normal is 128 */
 //#define RFM_CACHE_THUMBNAIL_IN_MEM TRUE
 #define RFM_MX_MSGBOX_CHARS 1500 /* Maximum chars for show_msg output; messages exceeding this will be displayed in parent stdout */
 #define RFM_MX_ARGS 128 /* Maximum allowed number of command line arguments in action commands below */
@@ -15,8 +14,6 @@ static gint RFM_THUMBNAIL_SIZE = 128; /* Maximum size for thumb dir normal is 12
 #define RFM_DATETIME_FORMAT "%Y-%m-%d,%H:%M:%S"
 #define RFM_HISTORY_SIZE 10000
 #define RFM_AUTOSELECT_OLDPWD_IN_VIEW TRUE
-#define RFM_AUTO_SORT_ENTER_VIEW FALSE
-static gboolean UseTargetAddressWhenEnterSymbloicLinkForDir=TRUE;
 #define RFM_FILE_CHOOSER_NAMED_PIPE_PREFIX "/tmp/rfmFileChooser_"
 #define RFM_ENV_VAR_NAME_PREFIX ""  //change this if your extented column name conflicts with existing ENV Variable name
 
@@ -38,6 +35,9 @@ static gboolean UseTargetAddressWhenEnterSymbloicLinkForDir=TRUE;
 #define RFM_LOG_COLUMN_VERBOSE "rfm-column-verbose"
 #define RFM_LOG_GTK "rfm-gtk"
 
+static gint RFM_THUMBNAIL_SIZE = 128; /* Maximum size for thumb dir normal is 128 */
+static gboolean UseTargetAddressWhenEnterSymbloicLinkForDir=TRUE;
+static gboolean auto_sort_entering_view = FALSE;
 static gboolean keep_selection_on_view_across_refresh = TRUE; 
 static gchar* dumb_keyfile_groupname = "https://discourse.gnome.org/t/gkeyfile-to-handle-conf-without-groupname/23080/3"; 
 /* rfmBinPath is passed in by compiler via Makefile*/

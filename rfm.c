@@ -589,7 +589,7 @@ static RFM_treeviewColumn ViewColumnsLayouts[2][G_N_ELEMENTS(treeviewColumns)];
 #define SearchResultViewColumnsLayout ViewColumnsLayouts[1]
 #define TREEVIEW_COLUMNS ViewColumnsLayouts[SearchResultViewInsteadOfDirectoryView]
 
-static gboolean auto_sort_entering_view = RFM_AUTO_SORT_ENTER_VIEW;
+
 
 typedef struct {
    GtkWidget* menu;
