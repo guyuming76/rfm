@@ -49,14 +49,8 @@ static char *initDir=NULL;
 static char cwd[PATH_MAX];
 static struct sigaction newaction;
 
-static GtkWidget *icon_or_tree_view = NULL;
+static GtkWidget *icon_or_tree_view = NULL; //this should be in the gtk ui section, however, it does not compile if moved there
 static gboolean treeview=FALSE;
-// if true, means that rfm read file names in following way:
-//      ls|xargs realpath|rfm
-// or
-//      locate blablablaa |rfm
-// , instead of from a directory
-static unsigned int SearchResultViewInsteadOfDirectoryView=0;
 static void show_msgbox(gchar *msg, gchar *title, gint type);
 static void die(const char *errstr, ...);
 static int setup(RFM_ctx *rfmCtx);
@@ -390,7 +384,12 @@ static GHashTable* ExtColumnHashTable[NUM_Ext_Columns + 1];
 // hashtable and value not refreshed during refresh_store or turn_page. 
 // For ExtColumn value from file parser, the hashtable keep only the values for the current page, and it will be refreshed during each refresh_store or turn_page. This is for performance.
 static gboolean ExtColumnHashTable_keep_during_refresh[NUM_Ext_Columns + 1];
-
+// if true, means that rfm read file names in following way:
+//      ls|xargs realpath|rfm
+// or
+//      locate blablablaa |rfm
+// , instead of from a directory
+static unsigned int SearchResultViewInsteadOfDirectoryView=0;
 static gboolean In_refresh_store=FALSE;
 static gboolean insert_fileAttributes_into_store_one_by_one=FALSE;
 static guint rfm_readDirSheduler=0;
