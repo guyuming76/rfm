@@ -218,6 +218,8 @@ static gchar** stdin_command_nu(gchar* user_input_cmd, gboolean inNewVT) {
   sprintf(shell_cmd_buffer,"%s",g_strdup(user_input_cmd));
   return inNewVT? stdin_cmd_template_nu_inNewVT_nonHold : stdin_cmd_template_nu;
 }
+static void null_log_handler(const gchar *log_domain,GLogLevelFlags log_level,const gchar *message,gpointer user_data){
+}
 
 /******Terminal Emulator related definitions end*****/
 /****************************************************/
@@ -470,6 +472,8 @@ void move_array_item_a_after_b(void * array, int index_b, int index_a, uint32_t 
 static int get_treeviewColumnsIndexByEnum(enum RFM_treeviewCol col);
 static RFM_treeviewColumn* get_treeviewcolumnByGtkTreeviewcolumn(GtkTreeViewColumn *gtkCol);
 static RFM_treeviewColumn* get_treeviewColumnByEnum(enum RFM_treeviewCol col);
+static RFM_treeviewColumn* get_treeviewColumnByTitle(char* title);
+static enum RFM_treeviewCol get_available_ExtColumn(enum RFM_treeviewCol col);
 static gchar* get_showcolumn_cmd_from_currently_displaying_columns();
 static void show_hide_treeview_columns_in_order(gchar *order_sequence);
 static void show_hide_treeview_columns_enum(int count, ...);
@@ -3326,9 +3330,6 @@ static void show_hide_treeview_columns_enum(int count, ...){
     va_end(valist);
     show_hide_treeview_columns_in_order(order_seq);
     g_free(order_seq);
-}
-
-static void null_log_handler(const gchar *log_domain,GLogLevelFlags log_level,const gchar *message,gpointer user_data){
 }
 
 static void cmdSearchResultColumnSeperator(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution){
