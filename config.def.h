@@ -363,27 +363,3 @@ static stdin_cmd_interpretor stdin_cmd_interpretors[] = {
 	{"PythonEmbedded", "p>",                  "p",              NULL               },
 #endif
 };
-
-
-static gchar** rfmFileChooser_CMD(enum rfmTerminal startWithVT, gchar* search_cmd, gchar** defaultFileSelection, gchar* rfmFileChooserReturnSelectionIntoFilename){
-    if (search_cmd == NULL || g_strcmp0(search_cmd,"")==0)
-    	sprintf(shell_cmd_buffer, "rfm.sh -r %s", g_strdup(rfmFileChooserReturnSelectionIntoFilename));
-    else
-	sprintf(shell_cmd_buffer, "exec %s | rfm.sh -r %s -p", g_strdup(search_cmd), g_strdup(rfmFileChooserReturnSelectionIntoFilename));
-
-    if (defaultFileSelection != NULL){
-      strcat(shell_cmd_buffer, strdup(" -d"));
-      for(int i=0; i<G_N_ELEMENTS(defaultFileSelection); i++)
-	if (defaultFileSelection[i]!=NULL && strlen(defaultFileSelection[i])>0){
-	  strcat(shell_cmd_buffer, strdup(" "));
-	  strcat(shell_cmd_buffer, defaultFileSelection[i]);
-	};
-    };
-
-    if (startWithVT == NEW_TERMINAL){
-	return stdin_cmd_template_bash_newVT_nonHold;
-    }else if (startWithVT == NO_TERMINAL){
-	strcat(shell_cmd_buffer, strdup(" -t"));
-        return stdin_cmd_template_bash;
-    }else return stdin_cmd_template_bash;
-}

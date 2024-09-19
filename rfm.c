@@ -397,6 +397,7 @@ static void rfmFileChooserResultReader(RFM_ChildAttribs *child_attribs);
 GList* rfmFileChooser_glist(enum rfmTerminal startWithVirtualTerminal, char* search_cmd, gboolean async, GList** fileChooserSelectionListAddress, void (*fileChooserClientCallback)(char **));
 char** rfmFileChooser(enum rfmTerminal startWithVirtualTerminal, char* search_cmd, gboolean async, char *fileSelectionStringArray[], void (*fileChooserClientCallback)(char**));
 #endif
+static gchar** rfmFileChooser_CMD(enum rfmTerminal startWithVT, gchar* search_cmd, gchar** defaultFileSelection, gchar* rfmFileChooserReturnSelectionIntoFilename);
 /******FileChooser related definitions end***********/
 
 static gchar*  PROG_NAME = NULL;
@@ -4415,5 +4416,28 @@ char** rfmFileChooser(enum rfmTerminal startWithVirtualTerminal, char* search_cm
   rfmFileChooser_glist(startWithVirtualTerminal, search_cmd, async, &fileChooserSelectionList, fileChooserClientCallback);
   if (async) return NULL;
   else return GList_to_str_array(fileChooserSelectionList, g_list_length(fileChooserSelectionList));
+}
+
+static gchar** rfmFileChooser_CMD(enum rfmTerminal startWithVT, gchar* search_cmd, gchar** defaultFileSelection, gchar* rfmFileChooserReturnSelectionIntoFilename){
+    if (search_cmd == NULL || g_strcmp0(search_cmd,"")==0)
+    	sprintf(shell_cmd_buffer, "rfm.sh -r %s", g_strdup(rfmFileChooserReturnSelectionIntoFilename));
+    else
+	sprintf(shell_cmd_buffer, "exec %s | rfm.sh -r %s -p", g_strdup(search_cmd), g_strdup(rfmFileChooserReturnSelectionIntoFilename));
+
+    if (defaultFileSelection != NULL){
+      strcat(shell_cmd_buffer, strdup(" -d"));
+      for(int i=0; i<G_N_ELEMENTS(defaultFileSelection); i++)
+	if (defaultFileSelection[i]!=NULL && strlen(defaultFileSelection[i])>0){
+	  strcat(shell_cmd_buffer, strdup(" "));
+	  strcat(shell_cmd_buffer, defaultFileSelection[i]);
+	};
+    };
+
+    if (startWithVT == NEW_TERMINAL){
+	return stdin_cmd_template_bash_newVT_nonHold;
+    }else if (startWithVT == NO_TERMINAL){
+	strcat(shell_cmd_buffer, strdup(" -t"));
+        return stdin_cmd_template_bash;
+    }else return stdin_cmd_template_bash;
 }
 #endif
