@@ -43,33 +43,6 @@ typedef struct {
    guint       delayedRefresh_GSourceID;  /* Main loop source ID for refresh_store() delayed refresh timer */
 } RFM_ctx;
 
-typedef struct {
-   gchar *runName;
-   gchar *runRoot;
-   gchar *runSub;
-   gchar *OrSearchResultType;
-   const gchar **runCmd;
-  //gint  runOpts;
-   gboolean (*showCondition)();
-} RFM_MenuItem;
-
-typedef struct {
-   gchar *buttonName;
-   gchar *buttonIcon;
-   void (*func)(gpointer);
-   const gchar **RunCmd;
-   gboolean showInSearchResultView;
-   gboolean showInDirectoryView;
-   guint Accel;
-   gchar *tooltip;
-   gboolean (*showCondition)();
-} RFM_ToolButton;
-
-typedef struct {
-  GtkWidget *toolbar;
-  GtkWidget **buttons;
-} RFM_toolbar;
-
 /****************************************************/
 /******Thumbnail related definitions*****************/
 typedef struct {
@@ -496,7 +469,6 @@ static gulong viewSelectionChangedSignalConnection=0;
 static char *initDir=NULL;
 static char cwd[PATH_MAX];
 static GtkAccelGroup *agMain = NULL;
-static RFM_toolbar *tool_bar = NULL;
 
 
 static  GtkSortType current_sorttype=GTK_SORT_ASCENDING;
@@ -578,11 +550,39 @@ char** rfmFileChooser(enum rfmTerminal startWithVirtualTerminal, char* search_cm
 #endif
 static gchar** rfmFileChooser_CMD(enum rfmTerminal startWithVT, gchar* search_cmd, gchar** defaultFileSelection, gchar* rfmFileChooserReturnSelectionIntoFilename);
 /******FileChooser related definitions end***********/
+/********************************************************************/
+/**************gtk UI, filemenu, toolbar*****************************/
+typedef struct {
+   gchar *runName;
+   gchar *runRoot;
+   gchar *runSub;
+   gchar *OrSearchResultType;
+   const gchar **runCmd;
+  //gint  runOpts;
+   gboolean (*showCondition)();
+} RFM_MenuItem;
 
+typedef struct {
+   gchar *buttonName;
+   gchar *buttonIcon;
+   void (*func)(gpointer);
+   const gchar **RunCmd;
+   gboolean showInSearchResultView;
+   gboolean showInDirectoryView;
+   guint Accel;
+   gchar *tooltip;
+   gboolean (*showCondition)();
+} RFM_ToolButton;
+
+typedef struct {
+  GtkWidget *toolbar;
+  GtkWidget **buttons;
+} RFM_toolbar;
+
+static RFM_toolbar *tool_bar = NULL;
 
 #include "config.h"
 
-/**************gtk UI, filemenu, toolbar*****************************/
 // 对于在下面几行代码运行git blame 显示commit msg
 // 里面提到的是否准备支持多搜索结果问题,我想我是有答案的:不准备支持
 // rfm在平铺窗口下运行比较好,用多个rfm实例来支持多搜索结果优于在一个实例里面支持多结果
