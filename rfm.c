@@ -266,6 +266,7 @@ static gchar *OriginalReadlineResult = NULL;
 static guint history_entry_added=0;
 static char *rfm_historyFileLocation;
 static char *rfm_historyDirectory_FileLocation;
+static gboolean showHelpOnStart = TRUE;
 static char** (*OLD_rl_attempted_completion_function)(const char *text, int start, int end);
 static char **rfm_filename_completion(const char *text, int start, int end);
 void handle_commandline_argument(char* arg);
@@ -275,6 +276,25 @@ void ensure_fd0_is_opened_for_stdin_inherited_from_parent_process_instead_of_use
 static void readlineInSeperateThread();
 
 /******Terminal Emulator related definitions end*****/
+/****************************************************/
+/******Search Result related definitions*************/
+static gchar *rfm_SearchResultPath=NULL; /*keep the rfm_curPath value when SearchResult was created */
+static GList *SearchResultFileNameList = NULL;
+// in search result view, same file can appear more than once(for example, in
+// grep result), which means there can be duplicate files in fileAttribute list,
+// so we use this id as unique key field for fileAttribute list
+// In searchresultview, this value equals currentFileNum
+static guint fileAttributeID=0;
+static gint SearchResultFileNameListLength=0;
+//the number shown in upper left button in search result view.
+static gint currentFileNum=0;
+static GList *CurrentPage_SearchResultView=NULL;
+static gint PageSize_SearchResultView=100;
+static int SearchResultTypeIndex=-1; // we need to pass this status from exec_stdin_command to readlineInSeperatedThread, however, we can only pass one parameter in g_thread_new, so, i use a global variable here.
+static int SearchResultTypeIndexForCurrentExistingSearchResult=-1;
+
+/******Search Result related definitions end*********/
+
 
 static gchar*  PROG_NAME = NULL;
 
@@ -320,7 +340,6 @@ static gulong viewSelectionChangedSignalConnection=0;
 
 static char *initDir=NULL;
 static gchar *rfm_curPath=NULL;  /* The current directory */
-static gchar *rfm_SearchResultPath=NULL; /*keep the rfm_curPath value when SearchResult was created */
 static gchar *rfm_prePath=NULL;  /* keep previous rfm_curPath, so that it will be autoselected in view. But manual selection change such as user pressing ESC in view will set it to null. Rodney invented this to autoselect child directory after going to parent directory*/
 static char cwd[PATH_MAX];
 
@@ -358,22 +377,6 @@ static GList * filepath_lists_for_selection_on_view_clone;
 //      locate blablablaa |rfm
 // , instead of from a directory
 static unsigned int SearchResultViewInsteadOfDirectoryView=0;
-static GList *SearchResultFileNameList = NULL;
-// in search result view, same file can appear more than once(for example, in
-// grep result), which means there can be duplicate files in fileAttribute list,
-// so we use this id as unique key field for fileAttribute list
-// In searchresultview, this value equals currentFileNum
-static guint fileAttributeID=0;
-static gint SearchResultFileNameListLength=0;
-//the number shown in upper left button in search result view.
-static gint currentFileNum=0;
-static GList *CurrentPage_SearchResultView=NULL;
-static gint PageSize_SearchResultView=100;
-static int SearchResultTypeIndex=-1; // we need to pass this status from exec_stdin_command to readlineInSeperatedThread, however, we can only pass one parameter in g_thread_new, so, i use a global variable here.
-static int SearchResultTypeIndexForCurrentExistingSearchResult=-1;
-
-
-static gboolean showHelpOnStart = TRUE;
 
 static GList * stdin_cmd_selection_list=NULL; //selected files used in stdin cmd expansion(or we call it substitution) which replace ending space and %s with selected file names
 static RFM_FileAttributes *stdin_cmd_selection_fileAttributes;
