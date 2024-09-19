@@ -142,56 +142,6 @@ typedef struct {
    GdkPixbuf *broken;
 } RFM_defaultPixbufs;
 
-enum RFM_treeviewCol{
-   COL_ICONVIEW_MARKUP,
-   COL_ICONVIEW_TOOLTIP,
-   COL_PIXBUF,
-   COL_MODE_STR,
-   //COL_DISPLAY_NAME,
-   COL_FILENAME,
-   COL_LINK_TARGET,
-   COL_FULL_PATH,
-   COL_MTIME,
-   COL_MTIME_STR,
-   COL_SIZE,
-   COL_ATTR,
-   COL_OWNER,
-   COL_GROUP,
-   COL_MIME_ROOT,
-   COL_MIME_SUB,
-   COL_MIME_SORT, //mime root + sub for listview sort
-   COL_ATIME_STR,
-   COL_CTIME_STR,
-#ifdef GitIntegration
-   COL_GIT_STATUS_STR,
-   COL_GIT_COMMIT_MSG,
-#endif
-   COL_Ext1,COL_Ext2,COL_Ext3,COL_Ext4,COL_Ext5,COL_Ext6,COL_Ext7,COL_Ext8,COL_Ext9,
-   COL_Ext10,COL_Ext11,COL_Ext12,COL_Ext13,COL_Ext14,COL_Ext15,COL_Ext16,COL_Ext17,COL_Ext18,COL_Ext19,
-   COL_Ext20,COL_Ext21,COL_Ext22,COL_Ext23,COL_Ext24,COL_Ext25,COL_Ext26,COL_Ext27,COL_Ext28,COL_Ext29,
-   COL_Ext30,COL_Ext31,COL_Ext32,COL_Ext33,COL_Ext34,COL_Ext35,COL_Ext36,COL_Ext37,COL_Ext38,COL_Ext39,
-   COL_Ext40,COL_Ext41,COL_Ext42,COL_Ext43,COL_Ext44,COL_Ext45,COL_Ext46,COL_Ext47,COL_Ext48,COL_Ext49,
-   COL_Ext50,COL_Ext51,COL_Ext52,COL_Ext53,COL_Ext54,COL_Ext55,COL_Ext56,COL_Ext57,COL_Ext58,COL_Ext59,
-   COL_Ext60,
-   NUM_COLS,
-};
-#define NUM_Ext_Columns (NUM_COLS - COL_Ext1)
-
-typedef struct {
-  gchar title[256];
-  enum RFM_treeviewCol enumCol;
-  gboolean Show;
-  GtkTreeViewColumn* gtkCol;
-  gboolean (*showCondition)(RFM_FileAttributes * fileAttributes);
-  enum RFM_treeviewCol enumSortCol;
-  gchar* ValueCmd;
-  gchar* (*ValueFunc)(guint,...);
-  gchar* MIME_root;
-  gchar* MIME_sub;
-  gboolean iconview_markup;
-  gboolean iconview_tooltip;
-} RFM_treeviewColumn;
-
 typedef struct {
   gchar* name;
   int (*SearchResultLineProcessingFunc)(gchar* oneline, gboolean new_search, char* cmdTemplate);
@@ -330,6 +280,56 @@ typedef struct RFM_ChildAttributes{
 /******Process spawn related definitions end*********/
 /****************************************************/
 /******TreeView column related definitions***********/
+enum RFM_treeviewCol{
+   COL_ICONVIEW_MARKUP,
+   COL_ICONVIEW_TOOLTIP,
+   COL_PIXBUF,
+   COL_MODE_STR,
+   //COL_DISPLAY_NAME,
+   COL_FILENAME,
+   COL_LINK_TARGET,
+   COL_FULL_PATH,
+   COL_MTIME,
+   COL_MTIME_STR,
+   COL_SIZE,
+   COL_ATTR,
+   COL_OWNER,
+   COL_GROUP,
+   COL_MIME_ROOT,
+   COL_MIME_SUB,
+   COL_MIME_SORT, //mime root + sub for listview sort
+   COL_ATIME_STR,
+   COL_CTIME_STR,
+#ifdef GitIntegration
+   COL_GIT_STATUS_STR,
+   COL_GIT_COMMIT_MSG,
+#endif
+   COL_Ext1,COL_Ext2,COL_Ext3,COL_Ext4,COL_Ext5,COL_Ext6,COL_Ext7,COL_Ext8,COL_Ext9,
+   COL_Ext10,COL_Ext11,COL_Ext12,COL_Ext13,COL_Ext14,COL_Ext15,COL_Ext16,COL_Ext17,COL_Ext18,COL_Ext19,
+   COL_Ext20,COL_Ext21,COL_Ext22,COL_Ext23,COL_Ext24,COL_Ext25,COL_Ext26,COL_Ext27,COL_Ext28,COL_Ext29,
+   COL_Ext30,COL_Ext31,COL_Ext32,COL_Ext33,COL_Ext34,COL_Ext35,COL_Ext36,COL_Ext37,COL_Ext38,COL_Ext39,
+   COL_Ext40,COL_Ext41,COL_Ext42,COL_Ext43,COL_Ext44,COL_Ext45,COL_Ext46,COL_Ext47,COL_Ext48,COL_Ext49,
+   COL_Ext50,COL_Ext51,COL_Ext52,COL_Ext53,COL_Ext54,COL_Ext55,COL_Ext56,COL_Ext57,COL_Ext58,COL_Ext59,
+   COL_Ext60,
+   NUM_COLS,
+};
+#define NUM_Ext_Columns (NUM_COLS - COL_Ext1)
+
+typedef struct {
+  gchar title[256];
+  enum RFM_treeviewCol enumCol;
+  gboolean Show;
+  GtkTreeViewColumn* gtkCol;
+  gboolean (*showCondition)(RFM_FileAttributes * fileAttributes);
+  enum RFM_treeviewCol enumSortCol;
+  gchar* ValueCmd;
+  gchar* (*ValueFunc)(guint,...);
+  gchar* MIME_root;
+  gchar* MIME_sub;
+  gboolean iconview_markup;
+  gboolean iconview_tooltip;
+} RFM_treeviewColumn;
+
 static gchar* treeviewcolumn_init_order_sequence = NULL;
 static gboolean do_not_show_VALUE_MAY_NOT_LOADED_message_because_we_will_add_GtkTreeViewColumn_later = FALSE;
 void move_array_item_a_after_b(void * array, int index_b, int index_a, uint32_t array_item_size, uint32_t array_length);
