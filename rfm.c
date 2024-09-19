@@ -87,12 +87,6 @@ typedef struct {
   GtkWidget **buttons;
 } RFM_toolbar;
 
-typedef struct {
-  gchar *cmd;
-  void (*action)(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
-  gchar *help_msg;
-} RFM_builtinCMD;
-
 //I don't understand why Rodney need this ctx type. it's only instantiated in main, so, all members can be changed into global variable, and many function parameter can be removed. However, if there would be any important usage, adding the removed function parameters will be time taking. So, just keep as is, although it makes current code confusing.
 typedef struct {
    gint        rfm_sortColumn;   /* The column in the tree model to sort on */
@@ -142,14 +136,6 @@ typedef struct {
    GdkPixbuf *broken;
 } RFM_defaultPixbufs;
 
-typedef struct {
-  gchar* name;
-  int (*SearchResultLineProcessingFunc)(gchar* oneline, gboolean new_search, char* cmdTemplate);
-  const char** showcolumn; //the same type of string used in showcolumn builtin command
-  const char* SearchResultColumnSeperator;
-  const char* cmdTemplate;//used by ProcessKeyValuePairInCmdOutputFromSearchResult
-}RFM_SearchResultType;
-
 //TODO: keep GtkTreeIter somewhere such as in fileAttribute, so that we can try load gitmsg and extcolumns with spawn async instead of sync. However, that can be complicated, what if we have spawned so many processes and user clicked refresh? we have to build Stop mechanism into it. Simple strategy is not to load this slow columns unless user configures to show them.
 typedef struct {
   GtkTreeIter * iter;
@@ -158,12 +144,6 @@ typedef struct {
   gboolean iconview_tooltip;
 } RFM_store_cell;
 
-typedef struct {
-  gchar* name;
-  gchar* activationKey;
-  gchar* prompt;
-  gchar** (*cmdTransformer)(gchar *, gboolean inNewVT);
-} stdin_cmd_interpretor;
 
 /******Terminal Emulator related definitions*********/
 enum rfmTerminal {
@@ -171,6 +151,19 @@ enum rfmTerminal {
   NEW_TERMINAL,
   INHERIT_TERMINAL,
 };
+
+typedef struct {
+  gchar *cmd;
+  void (*action)(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
+  gchar *help_msg;
+} RFM_builtinCMD;
+
+typedef struct {
+  gchar* name;
+  gchar* activationKey;
+  gchar* prompt;
+  gchar** (*cmdTransformer)(gchar *, gboolean inNewVT);
+} stdin_cmd_interpretor;
 
 static char* pipefd="0";
 static FILE *pipeStream=NULL;
@@ -232,6 +225,14 @@ static gchar** stdin_command_nu(gchar* user_input_cmd, gboolean inNewVT) {
 /******Terminal Emulator related definitions end*****/
 /****************************************************/
 /******Search Result related definitions*************/
+typedef struct {
+  gchar* name;
+  int (*SearchResultLineProcessingFunc)(gchar* oneline, gboolean new_search, char* cmdTemplate);
+  const char** showcolumn; //the same type of string used in showcolumn builtin command
+  const char* SearchResultColumnSeperator;
+  const char* cmdTemplate;//used by ProcessKeyValuePairInCmdOutputFromSearchResult
+}RFM_SearchResultType;
+
 static gchar *rfm_SearchResultPath=NULL; /*keep the rfm_curPath value when SearchResult was created */
 static GList *SearchResultFileNameList = NULL;
 // in search result view, same file can appear more than once(for example, in
