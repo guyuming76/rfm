@@ -279,6 +279,7 @@ static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline, gboolean ne
 static int ProcessKeyValuePairInCmdOutputFromSearchResult(char *oneline, gboolean new_search, char *cmdtemplate);
 static int ProcessKeyValuePairInData(GKeyFile* keyfile, char *groupname);
 static void cmdSearchResultColumnSeperator(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
+static int MatchSearchResultType(gchar* readlineResult);
 /******Search Result related definitions end*********/
 /****************************************************/
 /******Process spawn related definitions*************/
@@ -388,6 +389,14 @@ static void show_hide_treeview_columns_enum(int count, ...);
 static gboolean StartedAs_rfmFileChooser = FALSE;
 static int rfmFileChooserResultNumber = 0;
 static gchar *rfmFileChooserReturnSelectionIntoFilename = NULL;
+#ifdef RFM_FILE_CHOOSER
+static void (*FileChooserClientCallback)(char **) = NULL;
+GList *str_array_ToGList(char *a[]);
+char **GList_to_str_array(GList *l, int count);
+static void rfmFileChooserResultReader(RFM_ChildAttribs *child_attribs);
+GList* rfmFileChooser_glist(enum rfmTerminal startWithVirtualTerminal, char* search_cmd, gboolean async, GList** fileChooserSelectionListAddress, void (*fileChooserClientCallback)(char **));
+char** rfmFileChooser(enum rfmTerminal startWithVirtualTerminal, char* search_cmd, gboolean async, char *fileSelectionStringArray[], void (*fileChooserClientCallback)(char**));
+#endif
 /******FileChooser related definitions end***********/
 
 static gchar*  PROG_NAME = NULL;
@@ -4316,8 +4325,6 @@ static gboolean startWithVT(){
 }
 
 #ifdef RFM_FILE_CHOOSER
-static void (*FileChooserClientCallback)(char**) =NULL;
-
 GList* str_array_ToGList(char* a[]){
   GList * ret = NULL;
   if (a!=NULL)
@@ -4373,10 +4380,9 @@ static void rfmFileChooserResultReader(RFM_ChildAttribs* child_attribs){
 }
 
 
-/* default selection files can be passed in with fileSelectionList. After user
-   interaction, this list is returned with user selection. And the default
-   selection is freed in rfmFileChooserResultReader*/
-
+   /* default selection files can be passed in with fileSelectionList. After user */
+   /* interaction, this list is returned with user selection. And the default */
+   /* selection is freed in rfmFileChooserResultReader */
 GList* rfmFileChooser_glist(enum rfmTerminal startWithVirtualTerminal, char* search_cmd, gboolean async, GList** fileChooserSelectionListAddress, void (*fileChooserClientCallback)(char **)) {
   char named_pipe_name[50];
   sprintf(named_pipe_name, "%s%d", RFM_FILE_CHOOSER_NAMED_PIPE_PREFIX,getpid());
