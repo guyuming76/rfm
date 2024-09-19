@@ -70,14 +70,6 @@ typedef struct {
    guint       delayedRefresh_GSourceID;  /* Main loop source ID for refresh_store() delayed refresh timer */
 } RFM_ctx;
 
-//TODO: keep GtkTreeIter somewhere such as in fileAttribute, so that we can try load gitmsg and extcolumns with spawn async instead of sync. However, that can be complicated, what if we have spawned so many processes and user clicked refresh? we have to build Stop mechanism into it. Simple strategy is not to load this slow columns unless user configures to show them.
-typedef struct {
-  GtkTreeIter * iter;
-  gint store_column;
-  gboolean iconview_markup;
-  gboolean iconview_tooltip;
-} RFM_store_cell;
-
 
 /****************************************************/
 /******Thumbnail related definitions*****************/
@@ -379,6 +371,14 @@ typedef struct {  /* Update free_fileAttributes() and malloc_fileAttributes() if
    gchar * ctime;
 
 } RFM_FileAttributes;
+
+//TODO: keep GtkTreeIter somewhere such as in fileAttribute, so that we can try load gitmsg and extcolumns with spawn async instead of sync. However, that can be complicated, what if we have spawned so many processes and user clicked refresh? we have to build Stop mechanism into it. Simple strategy is not to load this slow columns unless user configures to show them.
+typedef struct {
+  GtkTreeIter * iter;
+  gint store_column;
+  gboolean iconview_markup;
+  gboolean iconview_tooltip;
+} RFM_store_cell;
 
 static GtkListStore *store=NULL;
 static GtkTreeModel *treemodel=NULL;
