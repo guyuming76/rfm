@@ -451,14 +451,15 @@ static void show_hide_treeview_columns_enum(int count, ...);
 
 /******TreeView column related definitions end*******/
 /****************************************************/
+/******View Selection related definitions************/
+
+/******View Selection related definitions end********/
 
 
 static gchar*  PROG_NAME = NULL;
 static gchar *rfm_homePath;         /* Users home dir */
 
 static GList *rfm_childList=NULL;
-
-static gulong viewSelectionChangedSignalConnection=0;
 
 static char *initDir=NULL;
 static char cwd[PATH_MAX];
@@ -2747,11 +2748,11 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
 
    if (treeview){
      g_signal_connect(_view, "row-activated", G_CALLBACK(row_activated), NULL);
-     viewSelectionChangedSignalConnection = g_signal_connect(gtk_tree_view_get_selection(GTK_TREE_VIEW(_view)), "changed", G_CALLBACK(selectionChanged), NULL);
+     g_signal_connect(gtk_tree_view_get_selection(GTK_TREE_VIEW(_view)), "changed", G_CALLBACK(selectionChanged), NULL);
    }
    else{
      g_signal_connect(_view, "item-activated", G_CALLBACK(item_activated), NULL);
-     viewSelectionChangedSignalConnection = g_signal_connect(_view, "selection-changed", G_CALLBACK(selectionChanged), NULL);
+     g_signal_connect(_view, "selection-changed", G_CALLBACK(selectionChanged), NULL);
    }
    
    gtk_container_add(GTK_CONTAINER(scroll_window), _view);
