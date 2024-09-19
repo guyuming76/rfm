@@ -48,6 +48,15 @@ static gchar *rfm_homePath;         /* Users home dir */
 static char *initDir=NULL;
 static char cwd[PATH_MAX];
 static struct sigaction newaction;
+
+static GtkWidget *icon_or_tree_view = NULL;
+static gboolean treeview=FALSE;
+// if true, means that rfm read file names in following way:
+//      ls|xargs realpath|rfm
+// or
+//      locate blablablaa |rfm
+// , instead of from a directory
+static unsigned int SearchResultViewInsteadOfDirectoryView=0;
 static void show_msgbox(gchar *msg, gchar *title, gint type);
 static void die(const char *errstr, ...);
 static int setup(RFM_ctx *rfmCtx);
@@ -483,17 +492,11 @@ static gboolean path_is_selected(GtkWidget *widget, gboolean treeview, GtkTreePa
 /****************************************************/
 /******View sort related definitions*****************/
 static GtkSortType current_sorttype=GTK_SORT_ASCENDING;
-static gint current_sort_column_id=GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID;
+static gint current_sort_column_id = GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID;
+static void sort_on_column_header(RFM_treeviewColumn *rfmCol);
+static void view_column_header_clicked(GtkTreeViewColumn* tree_column, gpointer user_data);
 /******View sort related definitions end*************/
-static GtkWidget *icon_or_tree_view = NULL;
-static gboolean treeview=FALSE;
-// if true, means that rfm read file names in following way:
-//      ls|xargs realpath|rfm
-// or
-//      locate blablablaa |rfm
-// , instead of from a directory
-static unsigned int SearchResultViewInsteadOfDirectoryView=0;
-
+/****************************************************/
 /******FileChooser related definitions***************/
 static gboolean StartedAs_rfmFileChooser = FALSE;
 static int rfmFileChooserResultNumber = 0;
