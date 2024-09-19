@@ -109,6 +109,8 @@ typedef struct {
   gboolean iconview_tooltip;
 } RFM_store_cell;
 
+
+/****************************************************/
 /******Thumbnail related definitions*****************/
 typedef struct {
    gchar *path;
@@ -154,6 +156,9 @@ static gint find_thumbnailer(gchar *mime_root, gchar *mime_sub_type);
 static int load_thumbnail(gchar *key, gboolean show_Thumbnail_Itself_InsteadOf_As_Thumbnail_For_Original_Picture);
 static void rfm_saveThumbnail(GdkPixbuf *thumb, RFM_ThumbQueueData *thumbData);
 static gboolean mkThumb();
+static void free_thumbQueueData(RFM_ThumbQueueData *thumbData);
+static RFM_defaultPixbufs *load_default_pixbufs(void);
+static void free_default_pixbufs(RFM_defaultPixbufs *defaultPixbufs);
 /******Thumbnail related definitions end*************/
 /****************************************************/
 /******Terminal Emulator related definitions*********/
@@ -274,6 +279,10 @@ typedef struct {
   const char* cmdTemplate;//used by ProcessKeyValuePairInCmdOutputFromSearchResult
 }RFM_SearchResultType;
 
+// use clear_store() to free
+// in searchresultview, this list only contains files on current view page.
+// The SearchResultViewFileNameList contains files for the whole result.
+static GList *rfm_fileAttributeList=NULL;
 static gchar *rfm_SearchResultPath=NULL; /*keep the rfm_curPath value when SearchResult was created */
 static GList *SearchResultFileNameList = NULL;
 // in search result view, same file can appear more than once(for example, in
@@ -319,7 +328,7 @@ typedef struct RFM_ChildAttributes{
    gint exitcode;
    gboolean output_read_by_program;
 } RFM_ChildAttribs;
-
+static void free_child_attribs(RFM_ChildAttribs *child_attribs);
 static void g_spawn_wrapper_for_selected_fileList_(RFM_ChildAttribs *childAttribs);
 /* instantiate childAttribs and call g_spawn_wrapper_ */
 /* caller should g_list_free(file_list), but usually not g_list_free_full, since the file char* is usually owned by rfm_fileattributes */
@@ -402,6 +411,23 @@ static void show_hide_treeview_columns_enum(int count, ...);
 
 /******TreeView column related definitions end*******/
 /****************************************************/
+/******GtkListStore and refresh definitions**********/
+static GtkListStore *store=NULL;
+static GtkTreeModel *treemodel=NULL;
+static RFM_FileAttributes *malloc_fileAttributes(void);
+static void free_fileAttributes(RFM_FileAttributes *fileAttributes);
+static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guint64 mtimeThreshold, GHashTable *mount_hash);
+static void refresh_store(RFM_ctx *rfmCtx);
+static void refresh_store_in_g_spawn_wrapper_callback(RFM_ChildAttribs*);
+static void clear_store(void);
+static void rfm_stop_all(RFM_ctx *rfmCtx);
+static gboolean fill_fileAttributeList_with_filenames_from_search_result_and_then_insert_into_store();
+static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store_if_onebyone(GDir *dir);
+static void toggle_insert_fileAttributes_into_store_one_by_one();
+static void Iterate_through_fileAttribute_list_to_insert_into_store();
+static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,GtkTreeIter *iter);
+/******GtkListStore and refresh definitions end******/
+/****************************************************/
 /******FileChooser related definitions***************/
 static gboolean StartedAs_rfmFileChooser = FALSE;
 static int rfmFileChooserResultNumber = 0;
@@ -427,10 +453,6 @@ static GtkWidget * PathAndRepositoryNameDisplay;
 static RFM_ctx *rfmCtx=NULL;
 static gchar *rfm_homePath;         /* Users home dir */
 
-// use clear_store() to free
-// in searchresultview, this list only contains files on current view page.
-// The SearchResultViewFileNameList contains files for the whole result.
-static GList *rfm_fileAttributeList=NULL;
 static GList *rfm_childList=NULL;
 static guint rfm_readDirSheduler=0;
 
@@ -458,8 +480,6 @@ static GHashTable* ExtColumnHashTable[NUM_Ext_Columns + 1];
 // hashtable and value not refreshed during refresh_store or turn_page. 
 // For ExtColumn value from file parser, the hashtable keep only the values for the current page, and it will be refreshed during each refresh_store or turn_page. This is for performance.
 static gboolean ExtColumnHashTable_keep_during_refresh[NUM_Ext_Columns + 1];
-static GtkListStore *store=NULL;
-static GtkTreeModel *treemodel=NULL;
 
 static  GtkSortType current_sorttype=GTK_SORT_ASCENDING;
 static  gint current_sort_column_id=GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID;
@@ -505,25 +525,16 @@ static gchar* getExtColumnValueFromHashTable(guint fileAttributeId, guint ExtCol
 
 static void show_msgbox(gchar *msg, gchar *title, gint type);
 static void die(const char *errstr, ...);
-static RFM_defaultPixbufs *load_default_pixbufs(void);
+
 static void set_rfm_curPath(gchar *path);
 static int setup(RFM_ctx *rfmCtx);
 
 static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer rfmCtx);
 static void inotify_insert_item(gchar *name, gboolean is_dir);
 static gboolean delayed_refreshAll(gpointer user_data);
-static void refresh_store(RFM_ctx *rfmCtx);
-static void refresh_store_in_g_spawn_wrapper_callback(RFM_ChildAttribs*);
-static void clear_store(void);
-static void rfm_stop_all(RFM_ctx *rfmCtx);
-static gboolean fill_fileAttributeList_with_filenames_from_search_result_and_then_insert_into_store();
-static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store_if_onebyone(GDir *dir);
-static void toggle_insert_fileAttributes_into_store_one_by_one();
-static void Iterate_through_fileAttribute_list_to_insert_into_store();
-static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,GtkTreeIter *iter);
+
 static void Insert_fileAttributes_into_store_with_thumbnail_and_more(RFM_FileAttributes* fileAttributes);
-static RFM_FileAttributes *malloc_fileAttributes(void);
-static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guint64 mtimeThreshold, GHashTable *mount_hash);
+
 static GHashTable *get_mount_points(void);
 static gboolean mounts_handler(GUnixMountMonitor *monitor, gpointer rfmCtx);
 
@@ -560,11 +571,6 @@ static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx);
 
 static void copy_curPath_to_clipboard(GtkWidget *menuitem, gpointer user_data);
 
-/* Free functions*/
-static void free_thumbQueueData(RFM_ThumbQueueData *thumbData);
-static void free_child_attribs(RFM_ChildAttribs *child_attribs);
-static void free_fileAttributes(RFM_FileAttributes *fileAttributes);
-static void free_default_pixbufs(RFM_defaultPixbufs *defaultPixbufs);
 static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx);
 
 
