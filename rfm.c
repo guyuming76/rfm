@@ -32,14 +32,8 @@
 #include <wordexp.h>
 #include <stdarg.h>
 
-#ifdef PythonEmbedded
-#define PY_SSIZE_T_CLEAN
-#include <Python.h>
-#endif
-
 #define INOTIFY_MASK IN_MOVE|IN_CREATE|IN_CLOSE_WRITE|IN_DELETE|IN_DELETE_SELF|IN_MOVE_SELF
 #define PIPE_SZ 65535      /* Kernel pipe size */
-
 
 typedef struct {
    gchar *path;
@@ -146,6 +140,31 @@ typedef struct {
 
 
 /******Terminal Emulator related definitions*********/
+#ifdef PythonEmbedded
+#define PY_SSIZE_T_CLEAN
+#include <Python.h>
+/*https://docs.python.org/3.10/extending/embedding.html*/
+static  wchar_t *pyProgramName=NULL;
+static void startPythonEmbedding(){
+  pyProgramName = Py_DecodeLocale(PROG_NAME, NULL);
+  if (pyProgramName == NULL) {
+        g_warning("Py_DecodeLocale: cannot decode argv[0]");
+	return;
+  }
+  Py_SetProgramName(pyProgramName);  /* optional but recommended */
+  Py_Initialize();
+}
+
+static void endPythonEmbedding(){
+    if (Py_FinalizeEx() < 0) {
+        g_warning("Py_FinalizeEx()<0");
+	return;
+    }
+    PyMem_RawFree(pyProgramName);
+    pyProgramName=NULL;
+}
+#endif
+
 enum rfmTerminal {
   NO_TERMINAL,
   NEW_TERMINAL,
@@ -427,8 +446,6 @@ static GtkTreeModel *treemodel=NULL;
 static  GtkSortType current_sorttype=GTK_SORT_ASCENDING;
 static  gint current_sort_column_id=GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID;
 
-static gboolean treeview=FALSE;
-
 // keep previous selection when go back from cd directory to search result.
 // two elements, one for search result view, the other for directory view
 // filepath string in this list is created with strdup.
@@ -440,14 +457,13 @@ static GList * filepath_lists_for_selection_on_view_clone;
 //      locate blablablaa |rfm
 // , instead of from a directory
 static unsigned int SearchResultViewInsteadOfDirectoryView=0;
-
+static gboolean treeview=FALSE;
 static GList * stdin_cmd_selection_list=NULL; //selected files used in stdin cmd expansion(or we call it substitution) which replace ending space and %s with selected file names
 static RFM_FileAttributes *stdin_cmd_selection_fileAttributes;
 static gchar** env_for_g_spawn=NULL;
 
 static gboolean pauseInotifyHandler=FALSE;
 static int read_one_file_couter = 0;
-
 
 static gboolean insert_fileAttributes_into_store_one_by_one=FALSE;
 static struct sigaction newaction;
@@ -540,28 +556,7 @@ static void free_fileAttributes(RFM_FileAttributes *fileAttributes);
 static void free_default_pixbufs(RFM_defaultPixbufs *defaultPixbufs);
 static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx);
 
-#ifdef PythonEmbedded
-/*https://docs.python.org/3.10/extending/embedding.html*/
-static  wchar_t *pyProgramName=NULL;
-static void startPythonEmbedding(){
-  pyProgramName = Py_DecodeLocale(PROG_NAME, NULL);
-  if (pyProgramName == NULL) {
-        g_warning("Py_DecodeLocale: cannot decode argv[0]");
-	return;
-  }
-  Py_SetProgramName(pyProgramName);  /* optional but recommended */
-  Py_Initialize();
-}
 
-static void endPythonEmbedding(){
-    if (Py_FinalizeEx() < 0) {
-        g_warning("Py_FinalizeEx()<0");
-	return;
-    }
-    PyMem_RawFree(pyProgramName);
-    pyProgramName=NULL;
-}
-#endif
 #ifdef RFM_FILE_CHOOSER
 #include "rfmFileChooser.h"
 #endif
