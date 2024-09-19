@@ -344,7 +344,7 @@ static int read_char_pipe(gint fd, ssize_t block_size, char **buffer);
 static void GSpawnChildSetupFunc_setenv(gpointer user_data);
 /******Process spawn related definitions end*********/
 /****************************************************/
-/******TreeView column related definitions***********/
+/******GtkListStore and refresh definitions**********/
 enum RFM_treeviewCol{
    COL_ICONVIEW_MARKUP,
    COL_ICONVIEW_TOOLTIP,
@@ -380,34 +380,6 @@ enum RFM_treeviewCol{
 };
 #define NUM_Ext_Columns (NUM_COLS - COL_Ext1)
 
-typedef struct {
-  gchar title[256];
-  enum RFM_treeviewCol enumCol;
-  gboolean Show;
-  GtkTreeViewColumn* gtkCol;
-  gboolean (*showCondition)(RFM_FileAttributes * fileAttributes);
-  enum RFM_treeviewCol enumSortCol;
-  gchar* ValueCmd;
-  gchar* (*ValueFunc)(guint,...);
-  gchar* MIME_root;
-  gchar* MIME_sub;
-  gboolean iconview_markup;
-  gboolean iconview_tooltip;
-} RFM_treeviewColumn;
-
-static gchar* treeviewcolumn_init_order_sequence = NULL;
-static gboolean do_not_show_VALUE_MAY_NOT_LOADED_message_because_we_will_add_GtkTreeViewColumn_later = FALSE;
-void move_array_item_a_after_b(void * array, int index_b, int index_a, uint32_t array_item_size, uint32_t array_length);
-static int get_treeviewColumnsIndexByEnum(enum RFM_treeviewCol col);
-static RFM_treeviewColumn* get_treeviewcolumnByGtkTreeviewcolumn(GtkTreeViewColumn *gtkCol);
-static RFM_treeviewColumn* get_treeviewColumnByEnum(enum RFM_treeviewCol col);
-static gchar* get_showcolumn_cmd_from_currently_displaying_columns();
-static void show_hide_treeview_columns_in_order(gchar *order_sequence);
-static void show_hide_treeview_columns_enum(int count, ...);
-
-/******TreeView column related definitions end*******/
-/****************************************************/
-/******GtkListStore and refresh definitions**********/
 static GtkListStore *store=NULL;
 static GtkTreeModel *treemodel=NULL;
 // use clear_store() to free
@@ -473,6 +445,35 @@ static void load_gitCommitMsg_for_store_row(GtkTreeIter *iter);
 static void set_terminal_window_title(char* title);
 
 /******GtkListStore and refresh definitions end******/
+/****************************************************/
+/******TreeView column related definitions***********/
+
+typedef struct {
+  gchar title[256];
+  enum RFM_treeviewCol enumCol;
+  gboolean Show;
+  GtkTreeViewColumn* gtkCol;
+  gboolean (*showCondition)(RFM_FileAttributes * fileAttributes);
+  enum RFM_treeviewCol enumSortCol;
+  gchar* ValueCmd;
+  gchar* (*ValueFunc)(guint,...);
+  gchar* MIME_root;
+  gchar* MIME_sub;
+  gboolean iconview_markup;
+  gboolean iconview_tooltip;
+} RFM_treeviewColumn;
+
+static gchar* treeviewcolumn_init_order_sequence = NULL;
+static gboolean do_not_show_VALUE_MAY_NOT_LOADED_message_because_we_will_add_GtkTreeViewColumn_later = FALSE;
+void move_array_item_a_after_b(void * array, int index_b, int index_a, uint32_t array_item_size, uint32_t array_length);
+static int get_treeviewColumnsIndexByEnum(enum RFM_treeviewCol col);
+static RFM_treeviewColumn* get_treeviewcolumnByGtkTreeviewcolumn(GtkTreeViewColumn *gtkCol);
+static RFM_treeviewColumn* get_treeviewColumnByEnum(enum RFM_treeviewCol col);
+static gchar* get_showcolumn_cmd_from_currently_displaying_columns();
+static void show_hide_treeview_columns_in_order(gchar *order_sequence);
+static void show_hide_treeview_columns_enum(int count, ...);
+
+/******TreeView column related definitions end*******/
 /****************************************************/
 /******FileChooser related definitions***************/
 static gboolean StartedAs_rfmFileChooser = FALSE;
