@@ -199,6 +199,11 @@ void ensure_fd0_is_opened_for_stdin_inherited_from_parent_process_instead_of_use
 static gboolean startWithVT();
 static void readlineInSeperateThread();
 static void ReadFromPipeStdinIfAny(char *fd);
+static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
+static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
+static void parse_and_exec_stdin_command_in_gtk_thread(gchar *msg);
+static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * parsed_msg, GString* readline_result_string);
+static void stdin_command_help();
 static gchar shell_cmd_buffer[ARG_MAX]; //TODO: notice that this is shared single instance. But we only run shell command in sync mode now. so, no more than one thread will use this
 static gchar* stdin_cmd_template_bash[]={"/bin/bash","-i","-c", shell_cmd_buffer, NULL};
 static gchar* stdin_cmd_template_nu[]={"nu","-c", shell_cmd_buffer, NULL};
@@ -278,6 +283,23 @@ typedef struct RFM_ChildAttributes{
    gboolean output_read_by_program;
 } RFM_ChildAttribs;
 
+static void g_spawn_wrapper_for_selected_fileList_(RFM_ChildAttribs *childAttribs);
+/* instantiate childAttribs and call g_spawn_wrapper_ */
+/* caller should g_list_free(file_list), but usually not g_list_free_full, since the file char* is usually owned by rfm_fileattributes */
+static gboolean g_spawn_wrapper(const char **action, GList *file_list, int run_opts, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData,gboolean output_read_by_program);
+/* call build_cmd_vector to create the argv parameter for g_spawn_* */
+/* call different g_spawn_* functions based on child_attribs->spawn_async and child_attribs->runOpts */
+/* free child_attribs */
+static gboolean g_spawn_wrapper_(GList *file_list, char *dest_path, RFM_ChildAttribs * childAttribs);
+/* create argv parameter for g_spawn functions  */
+static gchar **build_cmd_vector(const char **cmd, GList *file_list, char *dest_path);
+static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *child_attribs);
+static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_data);
+static void child_handler_to_set_finished_status_for_child_supervisor(GPid pid, gint status, RFM_ChildAttribs *child_attribs);
+static gboolean ExecCallback_freeChildAttribs(RFM_ChildAttribs * child_attribs);
+static void show_child_output(RFM_ChildAttribs *child_attribs);
+static int read_char_pipe(gint fd, ssize_t block_size, char **buffer);
+static void GSpawnChildSetupFunc_setenv(gpointer user_data);
 /******Process spawn related definitions end*********/
 /****************************************************/
 /******TreeView column related definitions***********/
@@ -450,12 +472,6 @@ static RFM_defaultPixbufs *load_default_pixbufs(void);
 static void set_rfm_curPath(gchar *path);
 static int setup(RFM_ctx *rfmCtx);
 
-static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
-static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
-static void parse_and_exec_stdin_command_in_gtk_thread(gchar *msg);
-static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * parsed_msg, GString* readline_result_string);
-static void stdin_command_help();
-
 static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer rfmCtx);
 static void inotify_insert_item(gchar *name, gboolean is_dir);
 static gboolean delayed_refreshAll(gpointer user_data);
@@ -517,31 +533,12 @@ static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx);
 
 static void copy_curPath_to_clipboard(GtkWidget *menuitem, gpointer user_data);
 
-static void g_spawn_wrapper_for_selected_fileList_(RFM_ChildAttribs *childAttribs);
-/* instantiate childAttribs and call g_spawn_wrapper_ */
-/* caller should g_list_free(file_list), but usually not g_list_free_full, since the file char* is usually owned by rfm_fileattributes */
-static gboolean g_spawn_wrapper(const char **action, GList *file_list, int run_opts, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData,gboolean output_read_by_program);
-/* call build_cmd_vector to create the argv parameter for g_spawn_* */
-/* call different g_spawn_* functions based on child_attribs->spawn_async and child_attribs->runOpts */
-/* free child_attribs */
-static gboolean g_spawn_wrapper_(GList *file_list, char *dest_path, RFM_ChildAttribs * childAttribs);
-/* create argv parameter for g_spawn functions  */
-static gchar **build_cmd_vector(const char **cmd, GList *file_list, char *dest_path);
-static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *child_attribs);
-static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_data);
-static void child_handler_to_set_finished_status_for_child_supervisor(GPid pid, gint status, RFM_ChildAttribs *child_attribs);
-static gboolean ExecCallback_freeChildAttribs(RFM_ChildAttribs * child_attribs);
-static void show_child_output(RFM_ChildAttribs *child_attribs);
-static int read_char_pipe(gint fd, ssize_t block_size, char **buffer);
-static void GSpawnChildSetupFunc_setenv(gpointer user_data);
-
 /* Free functions*/
 static void free_thumbQueueData(RFM_ThumbQueueData *thumbData);
 static void free_child_attribs(RFM_ChildAttribs *child_attribs);
 static void free_fileAttributes(RFM_FileAttributes *fileAttributes);
 static void free_default_pixbufs(RFM_defaultPixbufs *defaultPixbufs);
 static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx);
-
 
 #ifdef PythonEmbedded
 /*https://docs.python.org/3.10/extending/embedding.html*/
