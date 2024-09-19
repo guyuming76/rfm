@@ -35,6 +35,14 @@
 #define INOTIFY_MASK IN_MOVE|IN_CREATE|IN_CLOSE_WRITE|IN_DELETE|IN_DELETE_SELF|IN_MOVE_SELF
 #define PIPE_SZ 65535      /* Kernel pipe size */
 
+//I don't understand why Rodney need this ctx type. it's only instantiated in main, so, all members can be changed into global variable, and many function parameter can be removed. However, if there would be any important usage, adding the removed function parameters will be time taking. So, just keep as is, although it makes current code confusing.
+typedef struct {
+   gint        rfm_sortColumn;   /* The column in the tree model to sort on */
+   GUnixMountMonitor *rfm_mountMonitor;   /* Reference for monitor mount events */
+   gint        showMimeType;              /* Display detected mime type on stdout when a file is right-clicked: toggled via -i option */
+   guint       delayedRefresh_GSourceID;  /* Main loop source ID for refresh_store() delayed refresh timer */
+} RFM_ctx;
+
 typedef struct {
    gchar *runName;
    gchar *runRoot;
@@ -61,14 +69,6 @@ typedef struct {
   GtkWidget *toolbar;
   GtkWidget **buttons;
 } RFM_toolbar;
-
-//I don't understand why Rodney need this ctx type. it's only instantiated in main, so, all members can be changed into global variable, and many function parameter can be removed. However, if there would be any important usage, adding the removed function parameters will be time taking. So, just keep as is, although it makes current code confusing.
-typedef struct {
-   gint        rfm_sortColumn;   /* The column in the tree model to sort on */
-   GUnixMountMonitor *rfm_mountMonitor;   /* Reference for monitor mount events */
-   gint        showMimeType;              /* Display detected mime type on stdout when a file is right-clicked: toggled via -i option */
-   guint       delayedRefresh_GSourceID;  /* Main loop source ID for refresh_store() delayed refresh timer */
-} RFM_ctx;
 
 
 /****************************************************/
