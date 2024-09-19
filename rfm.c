@@ -194,6 +194,7 @@ static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPrevi
 static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
 static void parse_and_exec_stdin_command_in_gtk_thread(gchar *msg);
 static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * parsed_msg, GString* readline_result_string);
+static void add_history_after_stdin_command_execution(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
 static void stdin_command_help();
 static gchar shell_cmd_buffer[ARG_MAX]; //TODO: notice that this is shared single instance. But we only run shell command in sync mode now. so, no more than one thread will use this
 static gchar* stdin_cmd_template_bash[]={"/bin/bash","-i","-c", shell_cmd_buffer, NULL};
@@ -251,7 +252,8 @@ static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline, gboolean ne
 static int ProcessKeyValuePairInCmdOutputFromSearchResult(char *oneline, gboolean new_search, char *cmdtemplate);
 static int ProcessKeyValuePairInData(GKeyFile* keyfile, char *groupname);
 static void cmdSearchResultColumnSeperator(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
-static int MatchSearchResultType(gchar* readlineResult);
+static int MatchSearchResultType(gchar *readlineResult);
+static void set_DisplayingPageSize_ForFileNameListFromPipesStdIn(uint pagesize);
 /******Search Result related definitions end*********/
 /****************************************************/
 /******Process spawn related definitions*************/
@@ -403,6 +405,7 @@ static int read_one_file_couter = 0;//this is useless except for logging informa
 static guint rfm_extColumnScheduler = 0;
 static RFM_FileAttributes *malloc_fileAttributes(void);
 static void free_fileAttributes(RFM_FileAttributes *fileAttributes);
+char * strmode(mode_t st_mode);//get drwxrwxrwx mode
 static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guint64 mtimeThreshold, GHashTable *mount_hash);
 static void refresh_store(RFM_ctx *rfmCtx);
 static void refresh_store_in_g_spawn_wrapper_callback(RFM_ChildAttribs*);
@@ -423,6 +426,7 @@ static gboolean delayed_refreshAll(gpointer user_data);
 static void Update_Store_ExtColumns(RFM_ChildAttribs *childAttribs);
 static gchar* getExtColumnValueFromHashTable(guint fileAttributeId, guint ExtColumnHashTableIndex);
 static void set_rfm_curPath(gchar *path);
+static void set_rfm_curPath_internal(gchar* path);
 #ifdef GitIntegration
 // value " M " for modified
 // value "M " for staged
@@ -440,7 +444,7 @@ static void load_GitTrackedFiles_into_HashTable();
 static void load_gitCommitMsg_for_store_row(GtkTreeIter *iter);
 #endif
 static void set_terminal_window_title(char* title);
-
+static void set_Titles(gchar * title);
 /******GtkListStore and refresh definitions end******/
 /****************************************************/
 /******TreeView column related definitions***********/
@@ -494,6 +498,7 @@ static GtkSortType current_sorttype=GTK_SORT_ASCENDING;
 static gint current_sort_column_id = GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID;
 static void sort_on_column_header(RFM_treeviewColumn *rfmCol);
 static void view_column_header_clicked(GtkTreeViewColumn* tree_column, gpointer user_data);
+static gint sort_func(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, gpointer user_data);
 /******View sort related definitions end*************/
 /****************************************************/
 /******FileChooser related definitions***************/
@@ -1262,22 +1267,6 @@ static RFM_FileAttributes *malloc_fileAttributes(void)
    RFM_FileAttributes *fileAttributes=calloc(1,sizeof(RFM_FileAttributes));
    if (fileAttributes==NULL)
      g_error("calloc failed!");
-
-   /* fileAttributes->path=NULL; */
-   /* fileAttributes->file_name=NULL; */
-   /* fileAttributes->display_name=NULL; */
-   /* fileAttributes->pixbuf=NULL; */
-   /* fileAttributes->mime_root=NULL; */
-   /* fileAttributes->mime_sub_type=NULL; */
-   /* fileAttributes->file_mtime=0; */
-   /* fileAttributes->is_dir=FALSE; */
-   /* fileAttributes->is_mountPoint=FALSE; */
-   /* fileAttributes->is_symlink=FALSE; */
-   /* fileAttributes->icon_name=NULL; */
-   /* fileAttributes->group=NULL; */
-   /* fileAttributes->owner=NULL; */
-   /* fileAttributes->file_mode_str=NULL; */
-   /* fileAttributes->mime_sort=NULL; */
    return fileAttributes;
 }
 
