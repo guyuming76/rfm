@@ -40,8 +40,6 @@
 #define INOTIFY_MASK IN_MOVE|IN_CREATE|IN_CLOSE_WRITE|IN_DELETE|IN_DELETE_SELF|IN_MOVE_SELF
 #define PIPE_SZ 65535      /* Kernel pipe size */
 
-#define   RFM_EXEC_STDOUT   G_SPAWN_CHILD_INHERITS_STDIN | G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR
-#define   RFM_EXEC_MOUNT   G_SPAWN_CHILD_INHERITS_STDIN | G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR  //TODO: i don't know what this mean yet.
 
 typedef struct {
    gchar *path;
@@ -83,23 +81,6 @@ typedef struct {
    gchar *tooltip;
    gboolean (*showCondition)();
 } RFM_ToolButton;
-
-typedef struct RFM_ChildAttributes{
-   gchar *name;
-   const gchar **RunCmd;
-   GSpawnFlags  runOpts;
-   GPid  pid;
-   gint  stdOut_fd;
-   gint  stdErr_fd;
-   char *stdOut;
-   char *stdErr;
-   int   status;
-   void (*customCallBackFunc)(struct RFM_ChildAttributes*); //In Searchresultviewinsteadofdirectoryview situation, after runAction such as Move, i need to fill_store to reflect remove of files, so, i need a callback function. Rodney's original code only deals with working directory, and use INotify to reflect the change.
-   gpointer customCallbackUserData; //this is not freed in free_child_attribs, user should free it.
-   gboolean spawn_async;
-   gint exitcode;
-   gboolean output_read_by_program;
-} RFM_ChildAttribs;
 
 typedef struct {
   GtkWidget *toolbar;
@@ -326,11 +307,39 @@ static void cmdSearchResultColumnSeperator(wordexp_t * parsed_msg, GString* read
 /******Search Result related definitions end*********/
 /****************************************************/
 /******Process spawn related definitions*************/
+#define   RFM_EXEC_STDOUT   G_SPAWN_CHILD_INHERITS_STDIN | G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR
+#define   RFM_EXEC_MOUNT   G_SPAWN_CHILD_INHERITS_STDIN | G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR  //TODO: i don't know what this mean yet.
+
+typedef struct RFM_ChildAttributes{
+   gchar *name;
+   const gchar **RunCmd;
+   GSpawnFlags  runOpts;
+   GPid  pid;
+   gint  stdOut_fd;
+   gint  stdErr_fd;
+   char *stdOut;
+   char *stdErr;
+   int   status;
+   void (*customCallBackFunc)(struct RFM_ChildAttributes*); //In Searchresultviewinsteadofdirectoryview situation, after runAction such as Move, i need to fill_store to reflect remove of files, so, i need a callback function. Rodney's original code only deals with working directory, and use INotify to reflect the change.
+   gpointer customCallbackUserData; //this is not freed in free_child_attribs, user should free it.
+   gboolean spawn_async;
+   gint exitcode;
+   gboolean output_read_by_program;
+} RFM_ChildAttribs;
 
 /******Process spawn related definitions end*********/
 /****************************************************/
 /******TreeView column related definitions***********/
+static gchar* treeviewcolumn_init_order_sequence = NULL;
+static gboolean do_not_show_VALUE_MAY_NOT_LOADED_message_because_we_will_add_GtkTreeViewColumn_later = FALSE;
 void move_array_item_a_after_b(void * array, int index_b, int index_a, uint32_t array_item_size, uint32_t array_length);
+static int get_treeviewColumnsIndexByEnum(enum RFM_treeviewCol col);
+static RFM_treeviewColumn* get_treeviewcolumnByGtkTreeviewcolumn(GtkTreeViewColumn *gtkCol);
+static RFM_treeviewColumn* get_treeviewColumnByEnum(enum RFM_treeviewCol col);
+static gchar* get_showcolumn_cmd_from_currently_displaying_columns();
+static void show_hide_treeview_columns_in_order(gchar *order_sequence);
+static void show_hide_treeview_columns_enum(int count, ...);
+
 /******TreeView column related definitions end*******/
 /****************************************************/
 /******FileChooser related definitions***************/
@@ -396,8 +405,6 @@ static  GtkSortType current_sorttype=GTK_SORT_ASCENDING;
 static  gint current_sort_column_id=GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID;
 
 static gboolean treeview=FALSE;
-static gchar* treeviewcolumn_init_order_sequence = NULL;
-static gboolean do_not_show_VALUE_MAY_NOT_LOADED_message_because_we_will_add_GtkTreeViewColumn_later = FALSE;
 
 // keep previous selection when go back from cd directory to search result.
 // two elements, one for search result view, the other for directory view
@@ -441,13 +448,6 @@ static void die(const char *errstr, ...);
 static RFM_defaultPixbufs *load_default_pixbufs(void);
 static void set_rfm_curPath(gchar *path);
 static int setup(RFM_ctx *rfmCtx);
-
-static int get_treeviewColumnsIndexByEnum(enum RFM_treeviewCol col);
-static RFM_treeviewColumn* get_treeviewcolumnByGtkTreeviewcolumn(GtkTreeViewColumn *gtkCol);
-static RFM_treeviewColumn* get_treeviewColumnByEnum(enum RFM_treeviewCol col);
-static gchar* get_showcolumn_cmd_from_currently_displaying_columns();
-static void show_hide_treeview_columns_in_order(gchar *order_sequence);
-static void show_hide_treeview_columns_enum(int count, ...);
 
 static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
 static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
