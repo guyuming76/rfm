@@ -43,6 +43,15 @@ typedef struct {
    guint       delayedRefresh_GSourceID;  /* Main loop source ID for refresh_store() delayed refresh timer */
 } RFM_ctx;
 static RFM_ctx *rfmCtx = NULL;
+static gchar*  PROG_NAME = NULL;
+static gchar *rfm_homePath;         /* Users home dir */
+static char *initDir=NULL;
+static char cwd[PATH_MAX];
+static struct sigaction newaction;
+static void show_msgbox(gchar *msg, gchar *title, gint type);
+static void die(const char *errstr, ...);
+static int setup(RFM_ctx *rfmCtx);
+static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx);
 
 /****************************************************/
 /******Thumbnail related definitions*****************/
@@ -150,6 +159,7 @@ static FILE *pipeStream=NULL;
 static gint ItemSelected = 0;
 static char *rfm_selection_completion = NULL;
 static GMutex rfm_selection_completion_lock;
+
 static gchar** env_for_g_spawn_used_by_exec_stdin_command=NULL;
 static uint current_stdin_cmd_interpretor = 0;
 static char cmd_to_set_terminal_title[PATH_MAX];
@@ -460,6 +470,10 @@ static void show_hide_treeview_columns_enum(int count, ...);
 // filepath string in this list is created with strdup.
 static GList * filepath_lists_for_selection_on_view[2] = {NULL,NULL};
 static GList * filepath_lists_for_selection_on_view_clone;
+
+static GList * stdin_cmd_selection_list=NULL; //selected files used in stdin cmd expansion(or we call it substitution) which replace ending space and %s with selected file names
+static RFM_FileAttributes *stdin_cmd_selection_fileAttributes;
+
 static GList* get_view_selection_list(GtkWidget * view, gboolean treeview, GtkTreeModel ** model);
 static void selectionChanged(GtkWidget *view, gpointer user_data);
 static void set_view_selection(GtkWidget* view, gboolean treeview, GtkTreePath* treePath);
@@ -471,31 +485,14 @@ static gboolean path_is_selected(GtkWidget *widget, gboolean treeview, GtkTreePa
 static GtkSortType current_sorttype=GTK_SORT_ASCENDING;
 static gint current_sort_column_id=GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID;
 /******View sort related definitions end*************/
-static gchar*  PROG_NAME = NULL;
-static gchar *rfm_homePath;         /* Users home dir */
-
-static char *initDir=NULL;
-static char cwd[PATH_MAX];
-
 static GtkWidget *icon_or_tree_view = NULL;
 static gboolean treeview=FALSE;
-
-
 // if true, means that rfm read file names in following way:
 //      ls|xargs realpath|rfm
 // or
 //      locate blablablaa |rfm
 // , instead of from a directory
 static unsigned int SearchResultViewInsteadOfDirectoryView=0;
-
-static GList * stdin_cmd_selection_list=NULL; //selected files used in stdin cmd expansion(or we call it substitution) which replace ending space and %s with selected file names
-static RFM_FileAttributes *stdin_cmd_selection_fileAttributes;
-
-static struct sigaction newaction;
-static void show_msgbox(gchar *msg, gchar *title, gint type);
-static void die(const char *errstr, ...);
-static int setup(RFM_ctx *rfmCtx);
-static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx);
 
 /******FileChooser related definitions***************/
 static gboolean StartedAs_rfmFileChooser = FALSE;
@@ -594,7 +591,6 @@ typedef struct {
 RFM_fileMenu fileMenu;
 
 /**************gtk UI, filemenu, toolbar end**************************/
-
 
 
 
