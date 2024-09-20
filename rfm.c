@@ -3541,14 +3541,14 @@ static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult)
 	    if (SearchResultTypeIndex>=0) SearchResultTypeIndexForCurrentExistingSearchResult=SearchResultTypeIndex;
 
             readlineResultString=g_string_new(strdup(readlineResult));
-	  //if (stdin_cmd_ending_space){
+
 	      // combine runCmd with selected files to get gchar** v
 	      // TODO: the following code share the same pattern as g_spawn_wrapper_for_selected_fileList_ , anyway to remove the duplicate code?
-	      GtkTreeIter iter;
-	      GList *listElement;
-	      stdin_cmd_selection_list=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
+	    GtkTreeIter iter;
+	    GList *listElement;
+	    stdin_cmd_selection_list=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
 
-	      if (stdin_cmd_selection_list!=NULL) {
+	    if (stdin_cmd_selection_list!=NULL) {
 		listElement=g_list_first(stdin_cmd_selection_list);
 		while(listElement!=NULL) {
 		  gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, listElement->data);
@@ -3576,13 +3576,12 @@ static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult)
 		    set_env_to_pass_into_child_process(&iter, &env_for_g_spawn_used_by_exec_stdin_command);
 		  }
 		}
-	      }
-	  //} //end if (endingspace)
+	    }//end if (stdin_cmd_selection_list!=NULL)
 
 	    if (!execStdinCmdInNewVT){
 	      wordexp_t parsed_msg;
 	      int wordexp_retval = wordexp(readlineResult,&parsed_msg,0);
-	      if (wordexp_retval==0 && parse_and_exec_stdin_builtin_command_in_gtk_thread(&parsed_msg, readlineResultString)){
+	      if (wordexp_retval==0 && parse_and_exec_stdin_builtin_command_in_gtk_thread(&parsed_msg, readlineResultString)){ //wordexp_retval 0 means success
 		g_string_free(readlineResultString,TRUE);
 		readlineResultString=NULL; //since readlineInseperatethread function will check this, we must clear it here after cmd already been executed.
 	      }
@@ -3601,7 +3600,7 @@ static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult)
 		readlineResultString=NULL;
 	      }
 #endif
-	    }
+	    }//end if (!execStdinCmdInNewVT)
 	    if (stdin_cmd_selection_list!=NULL){
 	      g_list_free_full(stdin_cmd_selection_list, (GDestroyNotify)gtk_tree_path_free);
 	      stdin_cmd_selection_list=NULL;
