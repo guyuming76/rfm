@@ -516,8 +516,8 @@ static void rfmFileChooserResultReader(RFM_ChildAttribs *child_attribs);
 GList* rfmFileChooser_glist(enum rfmTerminal startWithVirtualTerminal, char* search_cmd, gboolean async, GList** fileChooserSelectionListAddress, void (*fileChooserClientCallback)(char **));
 char** rfmFileChooser(enum rfmTerminal startWithVirtualTerminal, char* search_cmd, gboolean async, char *fileSelectionStringArray[], void (*fileChooserClientCallback)(char**));
 #include "rfmFileChooser.h"
-#endif
 static gchar** rfmFileChooser_CMD(enum rfmTerminal startWithVT, gchar* search_cmd, gchar** defaultFileSelection, gchar* rfmFileChooserReturnSelectionIntoFilename);
+#endif
 /******FileChooser related definitions end***********/
 /********************************************************************/
 /**************gtk UI, filemenu, toolbar*****************************/
