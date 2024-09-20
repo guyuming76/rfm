@@ -3046,9 +3046,9 @@ static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlin
               g_warning("%d;%s", err->code, err->message);
 	      g_error_free(err);
 	  }
-	  g_strfreev(env_for_g_spawn_used_by_exec_stdin_command);env_for_g_spawn_used_by_exec_stdin_command=NULL;
 	  add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
   }
+  g_strfreev(env_for_g_spawn_used_by_exec_stdin_command);env_for_g_spawn_used_by_exec_stdin_command=NULL;
 }
 
 static void readlineInSeperateThread(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution) {
@@ -3580,7 +3580,7 @@ static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult)
 		    env_for_g_spawn = g_get_environ();
 		    set_env_to_pass_into_child_process(&iter, &env_for_g_spawn);
 		  }else{
-		    if (exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread) g_assert_null(env_for_g_spawn_used_by_exec_stdin_command);//TODO: assert failure recorded in commit 22cf6eeb9d3be6c364e806bb3d6c93afeda06997 in devPicAndVideo submodule
+		    if (exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread) g_assert_null(env_for_g_spawn_used_by_exec_stdin_command);
 		    env_for_g_spawn_used_by_exec_stdin_command = g_get_environ();
 		    set_env_to_pass_into_child_process(&iter, &env_for_g_spawn_used_by_exec_stdin_command);
 		  }
