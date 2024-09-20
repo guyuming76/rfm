@@ -507,7 +507,6 @@ static gint sort_func(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, gpoin
 /****************************************************/
 /******FileChooser related definitions***************/
 static gboolean StartedAs_rfmFileChooser = FALSE;
-static int rfmFileChooserResultNumber = 0;
 static gchar *rfmFileChooserReturnSelectionIntoFilename = NULL;
 #ifdef RFM_FILE_CHOOSER
 static void (*FileChooserClientCallback)(char **) = NULL;
@@ -3801,7 +3800,6 @@ static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx)
 	      write(returnToFile_fd,"\n",1);
 	    }else printf("%s\n",g_value_get_string(&fullpath));
 	    selectionList=g_list_next(selectionList);
-	    rfmFileChooserResultNumber++;
 	  };
 	  if (returnToFile_fd>0) close(returnToFile_fd);
 	  g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
