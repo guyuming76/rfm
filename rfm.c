@@ -2995,10 +2995,11 @@ static void add_history_after_stdin_command_execution(GString * readlineResultSt
 	  add_history(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str);
 	  history_entry_added++;
 	  if (OriginalReadlineResult!=NULL){ //with rfm -x , Originalreadlineresult can be null here
+	    //TODO: investigation add_history, what if Originalreadlineresult equals readlineresultstring?
 	    add_history(OriginalReadlineResult);
 	    history_entry_added++;
 	  }
-          g_string_free(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution,TRUE);  
+          g_string_free(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution,TRUE);
 }
 
 static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution){
@@ -3589,15 +3590,9 @@ static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult)
 
 #ifdef PythonEmbedded
 	      if (readlineResultString!=NULL && pyProgramName!=NULL && g_strcmp0(stdin_cmd_interpretors[current_stdin_cmd_interpretor].name,"PythonEmbedded")==0){
-		add_history(readlineResultString->str);
-		history_entry_added++;
-		add_history(OriginalReadlineResult);
-		history_entry_added++;
-		//TODO: investigation add_history, what if Originalreadlineresult equals readlineresultstring?
-		readlineResultString = g_string_append(readlineResultString, "\n");
 		PyRun_SimpleString(readlineResultString->str);//TODO: 这里要检查一下, 和exec_stdin_command 类似,都是执行用户输入命令,但这里似乎不受exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread控制
-		g_string_free(readlineResultString, TRUE);
-		readlineResultString=NULL;
+		add_history_after_stdin_command_execution(readlineResultString);
+		readlineResultString=NULL;//add_history_... above free the string without setting it to NULL. This is very important here, otherwise, exec_stdin_command called bellow will try to run this command again.
 	      }
 #endif
 	    }//end if (!execStdinCmdInNewVT)
