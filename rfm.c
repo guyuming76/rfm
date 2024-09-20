@@ -3020,8 +3020,16 @@ static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlin
   }
   
   if (readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution!=NULL){ //this means it's not initial run after rfm start, so i should first run cmd from previous readline here
+#ifdef PythonEmbedded
+	  if (pyProgramName!=NULL && g_strcmp0(stdin_cmd_interpretors[current_stdin_cmd_interpretor].name,"PythonEmbedded")==0){
+		PyRun_SimpleString(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str);
+		g_strfreev(env_for_g_spawn_used_by_exec_stdin_command);env_for_g_spawn_used_by_exec_stdin_command=NULL;
+		add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
+		return;
+	  }
+#endif
 	  GError *err = NULL;
-	  gchar* cmd_stdout;
+	  gchar* cmd_stdout;	  
 	  if (SearchResultTypeIndex>=0 && g_spawn_sync(rfm_curPath, 
 						       stdin_cmd_interpretors[current_stdin_cmd_interpretor].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE),
 					      env_for_g_spawn_used_by_exec_stdin_command,
@@ -3588,13 +3596,6 @@ static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult)
 	      }
 	      if (wordexp_retval == 0) wordfree(&parsed_msg);
 
-#ifdef PythonEmbedded
-	      if (readlineResultString!=NULL && pyProgramName!=NULL && g_strcmp0(stdin_cmd_interpretors[current_stdin_cmd_interpretor].name,"PythonEmbedded")==0){
-		PyRun_SimpleString(readlineResultString->str);//TODO: 这里要检查一下, 和exec_stdin_command 类似,都是执行用户输入命令,但这里似乎不受exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread控制
-		add_history_after_stdin_command_execution(readlineResultString);
-		readlineResultString=NULL;//add_history_... above free the string without setting it to NULL. This is very important here, otherwise, exec_stdin_command called bellow will try to run this command again.
-	      }
-#endif
 	    }//end if (!execStdinCmdInNewVT)
 	    if (stdin_cmd_selection_list!=NULL){
 	      g_list_free_full(stdin_cmd_selection_list, (GDestroyNotify)gtk_tree_path_free);
