@@ -22,6 +22,7 @@
 
 #define BuiltInCmd_SearchResultColumnSeperator "SearchResultColumnSeperator"
 #define BuiltInCmd_SearchResultColumnSeperator_Description "例如设置搜索结果列分割符为'&':  SearchResultColumnSeperator \"&\"   .不带参数则显示当前列分割符."
+#define BuiltInCmd_toggleBlockGUI_Description "切换在gtk窗口线程或readline线程执行输入的命令,命令提示符相应显示 ] 或 > , ] 表示命令执行会阻塞图形窗口刷新"
 
 #define builtinCMD_Help \
 "\n##system views:##\n" \
@@ -53,7 +54,6 @@
 "    showcolumn  show or hide column (if currently in listview); current treeview column layout will be added in to command history if no parameter follows showcolumn\n" \
 "    sort        show or set sorting column\n" \
 "    toggleInotifyHandler  stop/start auto refresh, when you are view /dev directory for example\n" \
-"    toggleExecSync  switch between gtk window thread and readline thread, from which to start inputted command. Command prompt will switch between > and ]\n" \
 "\n##Shell commands:##\n" \
 "    non-builtin commands will be sent to shell to execute.\n" \
 "    if there is ending space in command entered, selected filename(s) will be appended at the end. for example, you can view currently selected maildir mail file with `mu view `, with ending space before return.\n" \

@@ -22,6 +22,7 @@
 
 #define BuiltInCmd_SearchResultColumnSeperator "SearchResultColumnSeperator"
 #define BuiltInCmd_SearchResultColumnSeperator_Description "例如设置搜索结果列分割符为'&':  SearchResultColumnSeperator \"&\"   .不带参数则显示当前列分割符."
+#define BuiltInCmd_toggleBlockGUI_Description "切换在gtk窗口线程或readline线程执行输入的命令,命令提示符相应显示 ] 或 > , ] 表示命令执行会阻塞图形窗口刷新"
 
 #define builtinCMD_Help \
 "\n##系统视图:##\n" \
@@ -53,7 +54,6 @@
 "    showcolumn  显示或隐藏列(若当前在列表视图), 并且当参数为空的时候,把当前列表视图列设置作为一条showcolumn命令加入命令历史,方便通过命令历史记录恢复当前列设置\n" \
 "    sort        设置排序列,效果等同点击列标题\n" \
 "    toggleInotifyHandler 关/开自动刷新,比如当你浏览/dev目录时\n" \
-"    toggleExecSync  在gtk窗口线程和readline线程间切换输入命令启动线程,命令提示符会在 > 和 ] 间变化\n" \
 "\n##创建Shell子进程执行的命令:##\n" \
 "    非rfm内置命令会被发送到操作系统Shell执行,可在config.h内配置shell类型如bash, nushell等.\n" \
 "    如果命令末尾有空格字符, 当前rfm视图选中文件会被添加到命令末尾. 例如你选中一个maildir目录里的邮件文件, 输入 mu view 并在回车前以空格结尾, 则可以查看选中邮件内容.\n" \

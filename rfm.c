@@ -194,6 +194,7 @@ static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPrevi
 static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
 static void parse_and_exec_stdin_command_in_gtk_thread(gchar *msg);
 static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * parsed_msg, GString* readline_result_string);
+static void toggle_exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread();
 static void add_history_after_stdin_command_execution(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
 static void stdin_command_help();
 static gchar shell_cmd_buffer[ARG_MAX]; //TODO: notice that this is shared single instance. But we only run shell command in sync mode now. so, no more than one thread will use this
@@ -3353,6 +3354,9 @@ static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * p
         for(int i=0;i<G_N_ELEMENTS(builtinCMD);i++){
 	  if (g_strcmp0(parsed_msg->we_wordv[0], builtinCMD[i].cmd)==0) {
 	        builtinCMD[i].action(parsed_msg,readline_result_string_after_file_name_substitution);
+		add_history(readline_result_string_after_file_name_substitution->str);
+		history_entry_added++;
+		//TODO:在统一返回TRUE前调用g_free_string 后, 把上面两行改成调用 add_history_after_stdin_command_execution, 这样,本函数返回后就无需调用 g_free_string 了, 防止double free, 但返回后要把gstring设为NULL. 如果在 add_history_after_stdin_command_execution 里先free,再设NULL会很好,这样要把gstring* 改成 gstring**.
 		return TRUE;
 	  }
 	}
@@ -3474,13 +3478,13 @@ static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * p
 	    else printf("Usage: glog off|on\n");
 	  }else
 	    printf("Usage: glog off|on\n");
-	}else if (g_strcmp0(parsed_msg->we_wordv[0], "toggleExecSync")==0){
-	  exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread = !exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread;
-	  add_history(readline_result_string_after_file_name_substitution->str);
-	  history_entry_added++;	  
         }else return FALSE; // parsed_msg->we_wordv[0] does not match any build command
 
 	return TRUE; //execution reaches here if parsed_msg->we_wordv[0] matchs any keyword, and have finished the corresponding logic
+}
+
+static void toggle_exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread(){
+  exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread = !exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread;
 }
 
 // searchresulttype can be matched with index number or name
