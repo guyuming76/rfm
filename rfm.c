@@ -408,7 +408,7 @@ static int read_one_file_couter = 0;//this is useless except for logging informa
 static guint rfm_extColumnScheduler = 0;
 static RFM_FileAttributes *malloc_fileAttributes(void);
 static void free_fileAttributes(RFM_FileAttributes *fileAttributes);
-char * strmode(mode_t st_mode);//get drwxrwxrwx mode
+char * get_drwxrwxrwx(mode_t st_mode);
 static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guint64 mtimeThreshold, GHashTable *mount_hash);
 static void refresh_store(RFM_ctx *rfmCtx);
 static void refresh_store_in_g_spawn_wrapper_callback(RFM_ChildAttribs*);
@@ -605,7 +605,7 @@ RFM_fileMenu fileMenu;
 
 
 
-char * strmode(mode_t st_mode){
+char * get_drwxrwxrwx(mode_t st_mode){
     char * ret=calloc(11,sizeof(char));
     //文件类型
     if(S_ISDIR(st_mode))//目录文件
@@ -1326,7 +1326,7 @@ static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guin
    fileAttributes->file_ctime=g_file_info_get_creation_date_time(info);
    fileAttributes->file_size=g_file_info_get_attribute_uint64(info, G_FILE_ATTRIBUTE_STANDARD_SIZE);
    fileAttributes->file_mode=g_file_info_get_attribute_uint32(info, G_FILE_ATTRIBUTE_UNIX_MODE);
-   fileAttributes->file_mode_str=strmode(fileAttributes->file_mode);
+   fileAttributes->file_mode_str=get_drwxrwxrwx(fileAttributes->file_mode);
    fileAttributes->file_name=g_strdup(name);
 
    fileAttributes->is_symlink=g_file_info_get_is_symlink(info); // if the strmode function return l correctly for symlink instead of d as currently, does it mean that we don't need to call this function anymore, we can use fileAttributes->file_mode_str[0] directly?
