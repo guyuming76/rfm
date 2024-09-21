@@ -72,8 +72,10 @@ typedef struct {
 typedef struct {
    gchar *thumbRoot;
    gchar *thumbSub;
+   gchar *filenameSuffix;
   //GdkPixbuf *(*func)(RFM_ThumbQueueData * thumbData);
    const gchar **thumbCmd;
+  gboolean check_tEXt;
 } RFM_Thumbnailer;
 
 typedef struct {
@@ -101,8 +103,8 @@ static GHashTable *pixbuf_hash = NULL;
 #endif
 static void load_thumbnail_or_enqueue_thumbQueue_for_store_row(GtkTreeIter *iter);
 static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter);
-static gint find_thumbnailer(gchar *mime_root, gchar *mime_sub_type);
-static int load_thumbnail(gchar *key, gboolean show_Thumbnail_Itself_InsteadOf_As_Thumbnail_For_Original_Picture);
+static gint find_thumbnailer(gchar *mime_root, gchar *mime_sub_type, gchar *filepath);
+static int load_thumbnail(gchar *key, gboolean show_Thumbnail_Itself_InsteadOf_As_Thumbnail_For_Original_Picture, gboolean check_tEXt);
 static void rfm_saveThumbnail(GdkPixbuf *thumb, RFM_ThumbQueueData *thumbData);
 static gboolean mkThumb();
 static void free_thumbQueueData(RFM_ThumbQueueData *thumbData);
@@ -1044,7 +1046,7 @@ static gboolean g_spawn_wrapper(const char **action, GList *file_list, int run_o
 }
 
 /* Load and update a thumbnail from disk cache: key is the md5 hash of the required thumbnail */
-static int load_thumbnail(gchar *key, gboolean show_Thumbnail_Itself_InsteadOf_As_Thumbnail_For_Original_Picture)
+static int load_thumbnail(gchar *key, gboolean show_Thumbnail_Itself_InsteadOf_As_Thumbnail_For_Original_Picture, gboolean check_tEXt)
 {
    GtkTreeIter iter;
    GdkPixbuf *pixbuf=NULL;
@@ -1078,11 +1080,11 @@ static int load_thumbnail(gchar *key, gboolean show_Thumbnail_Itself_InsteadOf_A
       g_hash_table_insert(pixbuf_hash, key, pixbuf);
 #endif
    }
-   g_free(thumb_path);
 
-   if (!show_Thumbnail_Itself_InsteadOf_As_Thumbnail_For_Original_Picture){ //显示thumbnail本身,就不要考虑过期问题了,否则为thumbnail再生成thumbnail有些奇怪
+   if (!show_Thumbnail_Itself_InsteadOf_As_Thumbnail_For_Original_Picture && check_tEXt){ //显示thumbnail本身,就不要考虑过期问题了,否则为thumbnail再生成thumbnail有些奇怪
      gtk_tree_model_get(GTK_TREE_MODEL(store), &iter, COL_MTIME, &mtime_file, -1);
      tmp=gdk_pixbuf_get_option(pixbuf, "tEXt::Thumb::MTime");
+     g_log(RFM_LOG_DATA_THUMBNAIL,G_LOG_LEVEL_DEBUG,"tEXt::Thumb::MTime for %s:%s",thumb_path,(tmp?tmp:"NULL"));
      if (tmp!=NULL) mtime_thumb=g_ascii_strtoll(tmp, NULL, 10); /* Convert to gint64 */
      if (mtime_file!=mtime_thumb) {
 #ifdef Allow_Thumbnail_Without_tExtThumbMTime
@@ -1099,7 +1101,7 @@ static int load_thumbnail(gchar *key, gboolean show_Thumbnail_Itself_InsteadOf_A
 #endif
      }
    }
-   
+   g_free(thumb_path);
    gtk_list_store_set (store, &iter, COL_PIXBUF, pixbuf, -1);
 #ifndef RFM_CACHE_THUMBNAIL_IN_MEM
    g_object_unref(pixbuf);
@@ -1107,24 +1109,41 @@ static int load_thumbnail(gchar *key, gboolean show_Thumbnail_Itself_InsteadOf_A
    return 0;
 }
 
-/* Return the index of a defined thumbnailer which will handle the mime type */
-static gint find_thumbnailer(gchar *mime_root, gchar *mime_sub_type)
+/* Return the index of a defined thumbnailer which will handle the filename suffix and mime type */
+static gint find_thumbnailer(gchar *mime_root, gchar *mime_sub_type, gchar *filepath)
 {
-   gint t_idx=-1;
-   gint a_idx=-1;
-   gint i;
-   
-   for(i=0;i<G_N_ELEMENTS(thumbnailers);i++) {   /* Check for user defined thumbnailer */
-      if (strcmp(mime_root, thumbnailers[i].thumbRoot)==0 && strcmp(mime_sub_type, thumbnailers[i].thumbSub)==0) {
-         t_idx=i;
-         break;
-      }
-      if (strcmp(mime_root, thumbnailers[i].thumbRoot)==0 && strncmp("*", thumbnailers[i].thumbSub, 1)==0)
-         a_idx=i;
-   }
-   if (t_idx==-1) t_idx=a_idx; /* Maybe we have a generator for all sub types of mimeRoot */
+   gint filenameSuffix_root_sub_idx=-1;
+   gint filenameSuffix_root_idx=-1;
+   gint filenameSuffix_idx=-1;
+   gint root_sub_idx=-1;
+   gint root_idx=-1;
 
-   return t_idx;
+   for(gint i=0;i<G_N_ELEMENTS(thumbnailers);i++) {
+     if (thumbnailers[i].filenameSuffix){
+       if (g_str_has_suffix(filepath, thumbnailers[i].filenameSuffix)){
+	 if (strcmp(mime_root, thumbnailers[i].thumbRoot)==0 && strcmp(mime_sub_type, thumbnailers[i].thumbSub)==0) {
+	   filenameSuffix_root_sub_idx=i;
+	   break;
+	 }else if (strcmp(mime_root, thumbnailers[i].thumbRoot)==0 && strncmp("*", thumbnailers[i].thumbSub, 1)==0)
+	   filenameSuffix_root_idx=i;
+	 else if (strcmp("*", thumbnailers[i].thumbRoot)==0 && strncmp("*", thumbnailers[i].thumbSub, 1)==0)
+	   filenameSuffix_idx=1;
+       }
+     }else{
+       if (strcmp(mime_root, thumbnailers[i].thumbRoot)==0 && strcmp(mime_sub_type, thumbnailers[i].thumbSub)==0) {
+         root_sub_idx=i;
+       }else if (strcmp(mime_root, thumbnailers[i].thumbRoot)==0 && strncmp("*", thumbnailers[i].thumbSub, 1)==0)
+         root_idx=i;
+     }
+   }
+
+   if (filenameSuffix_root_sub_idx!=-1) return filenameSuffix_root_sub_idx;
+   else if (filenameSuffix_root_idx!=-1) return filenameSuffix_root_idx;
+   else if (root_sub_idx!=-1) return root_sub_idx;
+   else if (root_idx!=-1) return root_idx;
+   else if (filenameSuffix_idx!=-1) return filenameSuffix_idx;
+
+   return -1;
 }
 
 static void rfm_saveThumbnail(GdkPixbuf *thumb, RFM_ThumbQueueData *thumbData)
@@ -1216,7 +1235,7 @@ static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter)
    thumbData=calloc(1, sizeof(RFM_ThumbQueueData));
    if (thumbData==NULL) return NULL;
 
-   thumbData->t_idx=find_thumbnailer(fileAttributes->mime_root, fileAttributes->mime_sub_type);
+   thumbData->t_idx=find_thumbnailer(fileAttributes->mime_root, fileAttributes->mime_sub_type, fileAttributes->path);
    if (thumbData->t_idx==-1) {
       free(thumbData);
       return NULL;  /* Don't show thumbnails for files types with no thumbnailer */
@@ -1445,7 +1464,7 @@ static void load_thumbnail_or_enqueue_thumbQueue_for_store_row(GtkTreeIter *iter
       thumbData=get_thumbData(iter); /* Returns NULL if thumbnail not handled */
       if (thumbData!=NULL) {
          /* Try to load any existing thumbnail */
-	 int ld=load_thumbnail(thumbData->thumb_name, (strncmp(rfm_thumbDir, thumbData->path, strlen(rfm_thumbDir))==0)); //如同get_thumbData函数里面同样的逻辑, thumbData->path 在 rfm_thumbDir, 就视为显示thumbnail本身,而不是将其视作其他图片的thumbnail
+	int ld=load_thumbnail(thumbData->thumb_name, (strncmp(rfm_thumbDir, thumbData->path, strlen(rfm_thumbDir))==0), thumbnailers[thumbData->t_idx].check_tEXt); //如同get_thumbData函数里面同样的逻辑, thumbData->path 在 rfm_thumbDir, 就视为显示thumbnail本身,而不是将其视作其他图片的thumbnail
 	 if ( ld == 0) { /* Success: thumbnail exists in cache and is valid */
 	   g_log(RFM_LOG_DATA_THUMBNAIL,G_LOG_LEVEL_DEBUG,"thumbnail %s exists for %s",thumbData->thumb_name, thumbData->path);
            free_thumbQueueData(thumbData);
@@ -2859,7 +2878,7 @@ static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer user_d
          if (event->wd==rfm_thumbnail_wd) {
             /* Update thumbnails in the current view */
             if (event->mask & IN_MOVED_TO || event->mask & IN_CREATE) { /* Only update thumbnail move - not interested in temporary files */
-              load_thumbnail(event->name, FALSE); //我们假设thumbnail只会被mkthumb更新,show_Thumbnail_Itself_InsteadOf_As_Thumbnail_For_Original_Picture 时,不会触发enque mkthumb, 也就不会触发这里在Inotify_handler里load_thumbnail. 也就是说这里load_thumbnail, 不是为show_Thumbnail_Itself_InsteadOf_As_Thumbnail_For_Original_Picture,所以这里参数为FALSE
+              load_thumbnail(event->name, FALSE, FALSE); //我们假设thumbnail只会被mkthumb更新,show_Thumbnail_Itself_InsteadOf_As_Thumbnail_For_Original_Picture 时,不会触发enque mkthumb, 也就不会触发这里在Inotify_handler里load_thumbnail. 也就是说这里load_thumbnail, 不是为show_Thumbnail_Itself_InsteadOf_As_Thumbnail_For_Original_Picture,所以这里参数为FALSE
 
 	      g_debug("thumbnail %s loaded in inotify_handler",event->name);
 

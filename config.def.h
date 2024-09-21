@@ -76,6 +76,7 @@ static const char *open_with[]  = { rfmBinPath "/open_with_dmenu.sh", NULL };
 static const char *gnumeric[]   = { "/usr/bin/gnumeric", NULL };
 static const char *ftview[] = { "/usr/bin/ftview", "14", NULL }; /* pacman -S freetype2-demos */
 static const char *ffmpegThumb[] =  { "/usr/bin/ffmpeg", "-i","", "-frames", "1", "-s", "256x256",NULL  };
+static const char *geogebraThumb[] = { rfmBinPath "/rfmMakeThumbnailForGGB.sh",NULL };
 static const char *term_cmd[]  = { "$RFM_TERM", NULL };
 static const char *new_rfm[]  = { "$RFM_TERM", rfmBinPath "/rfm", NULL };
 static const char *share_dir[] = { "$RFM_TERM", rfmBinPath "/rfmShareDir.sh", NULL };
@@ -337,10 +338,11 @@ static RFM_SearchResultType searchresultTypes[] = {
  * For other thumbnails, const gchar *thumbCmd  may be defined to handle that kind of thumbnail with shell command.
 */
 static const RFM_Thumbnailer thumbnailers[] = {
-    /* mime root      mime sub type        thumbCmd */
-    {"image", "*", NULL},
-    {"video","mp4",ffmpegThumb},
-    //   { "application",  "dicom",             dcmThumb},
+    /* mime root      mime sub type    filenameSuffix    thumbCmd          check_tEXt */
+    {"image",         "*",             NULL,             NULL,             TRUE  },
+    {"video",         "mp4",           NULL,             ffmpegThumb,      TRUE  },
+    //{ "application",  "dicom",       NULL,             dcmThumb     },
+    {"application",   "zip",           ".ggb",           geogebraThumb,    FALSE },
 };
 
 #define Allow_Thumbnail_Without_tExtThumbMTime
