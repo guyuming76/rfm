@@ -528,6 +528,7 @@ typedef struct {
    gchar *runName;
    gchar *runRoot;
    gchar *runSub;
+   gchar *filenameSuffix;
    gchar *OrSearchResultType;
    const gchar **runCmd;
   //gint  runOpts;
@@ -2534,6 +2535,18 @@ static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx)
       if (strncmp("*", run_actions[i].runRoot, 1)==0)
          showMenuItem[i]++;   /* Run actions to show for all files */
       if (SearchResultViewInsteadOfDirectoryView && g_strcmp0(run_actions[i].OrSearchResultType, searchresultTypes[SearchResultTypeIndexForCurrentExistingSearchResult].name)==0) showMenuItem[i]++;
+      if (run_actions[i].filenameSuffix){
+	 listElement=g_list_first(selectionList);
+	 while (listElement) {
+	    gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, listElement->data);
+	    gtk_tree_model_get (GTK_TREE_MODEL(store), &iter, COL_ATTR, &fileAttributes, -1);
+            if (!g_str_has_suffix(fileAttributes->path, run_actions[i].filenameSuffix)){
+	      showMenuItem[i]=0;
+	      break;
+	    }
+	    listElement=g_list_next(listElement);
+	 }
+      }
    }
 
    for(i=0; i<G_N_ELEMENTS(run_actions); i++) {

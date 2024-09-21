@@ -9,6 +9,7 @@
 #define RunActionSL "Create SoftLink to selected files"
 #define RunActionFindSL "Find all links to the same file"
 #define RunActionGitStage "git stage"
+#define RunActionRefreshThumb "Refresh Thumbnail"
 #define Paste "Paste"
 #define MoveTo "MoveToHere"
 #define LinkTo "SoftLink"

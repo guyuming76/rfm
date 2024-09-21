@@ -9,6 +9,7 @@
 #define RunActionSL "创建指向选中文件的软链接"
 #define RunActionFindSL "查找(Find)指向同一文件的链接"
 #define RunActionGitStage "git 暂存"
+#define RunActionRefreshThumb "刷新缩略图"
 #define Paste "粘帖"
 #define MoveTo "移至此"
 #define LinkTo "软链接"
