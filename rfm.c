@@ -302,6 +302,7 @@ static gboolean ExecCallback_freeChildAttribs(RFM_ChildAttribs * child_attribs);
 static void show_child_output(RFM_ChildAttribs *child_attribs);
 static int read_char_pipe(gint fd, ssize_t block_size, char **buffer);
 static void GSpawnChildSetupFunc_setenv(gpointer user_data);
+static void set_env_to_pass_into_child_process(GtkTreeIter *iter, gchar*** env_for_g_spawn);
 /******Process spawn related definitions end*********/
 /****************************************************/
 /******GtkListStore and refresh definitions**********/
@@ -425,6 +426,7 @@ static void Insert_fileAttributes_into_store_with_thumbnail_and_more(RFM_FileAtt
 static void iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_and_load_gitCommitMsg_ifdef_GitIntegration(void);
 static GHashTable *get_mount_points(void);
 static gboolean mounts_handler(GUnixMountMonitor *monitor, gpointer rfmCtx);
+static gboolean init_inotify(RFM_ctx *rfmCtx);
 static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer rfmCtx);
 static void inotify_insert_item(gchar *name, gboolean is_dir);
 static gboolean delayed_refreshAll(gpointer user_data);
@@ -633,24 +635,43 @@ char * get_drwxrwxrwx(mode_t st_mode){
     else ret[1]='-';
     if(st_mode&S_IWUSR) ret[2]='w';
     else ret[2]='-';
-    if(st_mode&S_IXUSR) ret[3]='x';
-    else ret[3]='-';
+    //https://blog.csdn.net/u013769350/article/details/88903671
+    if(st_mode&S_IXUSR){
+      if (st_mode & S_ISUID ) ret[3]='s';
+      else ret[3]='x';
+    }else{
+      if (st_mode & S_ISUID ) ret[3]='S';
+      else ret[3]='-';
+    }
     
     //用户组权限
     if(st_mode&S_IRGRP) ret[4]='r';
     else ret[4]='-';
     if(st_mode&S_IWGRP) ret[5]='w';
     else ret[5]='-';
-    if(st_mode&S_IXGRP) ret[6]='x';
-    else ret[6]='-';
+    //https://blog.csdn.net/u013769350/article/details/88909329
+    if(st_mode&S_IXGRP){
+      if (st_mode & S_ISGID ) ret[6]='s';
+      else ret[6]='x';
+    }else{
+      if (st_mode & S_ISGID ) ret[6]='S';
+      else ret[6]='-';
+    }
 
     //其他用户权限
     if(st_mode&S_IROTH) ret[7]='r';
     else ret[7]='-';
     if(st_mode&S_IWOTH) ret[8]='w';
     else ret[8]='-';
-    if(st_mode&S_IXOTH) ret[9]='x';
-    else ret[9]='-';
+    //https://www.gnu.org/software/libc/manual/html_node/Permission-Bits.html
+    //https://blog.csdn.net/u013769350/article/details/88915759
+    if(st_mode&S_IXOTH){
+      if (st_mode & S_ISVTX ) ret[9]='s';
+      else ret[9]='x';
+    }else{
+      if (st_mode & S_ISVTX ) ret[9]='S';
+      else ret[9]='-';
+    }
 
     ret[10]=0;
     return ret;
