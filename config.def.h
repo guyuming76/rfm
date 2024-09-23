@@ -322,6 +322,7 @@ static RFM_treeviewColumn treeviewColumns[] = {
 
 #define RFM_SearchResultTypeNamePrefix ">"
 static char SearchResultColumnSeperator[32]={':',NULL};
+static char selected_filename_placeholder[32]={'%','s',NULL};
 static gchar* EmptyShowColumn[] = { NULL };
 static gchar* muviewColumns[] = { "-FileName",",From,Subject,Date,Attachments",NULL };
 static RFM_SearchResultType searchresultTypes[] = {

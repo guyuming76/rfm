@@ -165,7 +165,8 @@ static FILE *pipeStream=NULL;
 static gint ItemSelected = 0;
 static char *rfm_selection_completion = NULL;
 static GMutex rfm_selection_completion_lock;
-
+static char selected_filename_placeholder_in_space[32];       //" %s "  by default
+static char selected_filename_placeholder_in_quotation[32];   //"'%s'"  by default
 static gchar** env_for_g_spawn_used_by_exec_stdin_command=NULL;
 static uint current_stdin_cmd_interpretor = 0;
 static char cmd_to_set_terminal_title[PATH_MAX];
@@ -1063,6 +1064,7 @@ static gboolean g_spawn_wrapper_(GList *file_list, char *dest_path, RFM_ChildAtt
    }
    return ret;
 }
+
 
 static gboolean g_spawn_wrapper(const char **action, GList *file_list, int run_opts, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData, gboolean output_read_by_program){
   RFM_ChildAttribs *child_attribs=calloc(1,sizeof(RFM_ChildAttribs));
@@ -3643,12 +3645,11 @@ static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult)
 		  gtk_tree_model_get (GTK_TREE_MODEL(store), &iter, COL_ATTR, &stdin_cmd_selection_fileAttributes, -1);
 
 		  //if there is %s in msg, replace it with selected filename one by one, otherwise, append filenames to the end.
-		  //TODO: what if userinput need %s literally? how to escape?
 		  if (stdin_cmd_ending_space){
-		    if (strstr(readlineResultString->str, "%s") == NULL) g_string_append(readlineResultString, " %s ");
+		    if (strstr(readlineResultString->str, selected_filename_placeholder) == NULL) g_string_append(readlineResultString, selected_filename_placeholder_in_space);
 		    //if file path contains space, wrap path inside ''
-		    if (strstr(stdin_cmd_selection_fileAttributes->path," ") != NULL) g_string_replace(readlineResultString, "%s", "'%s'", 1);
-		    g_string_replace(readlineResultString, "%s",stdin_cmd_selection_fileAttributes->path, 1);
+		    if (strstr(stdin_cmd_selection_fileAttributes->path," ") != NULL) g_string_replace(readlineResultString, selected_filename_placeholder, selected_filename_placeholder_in_quotation, 1);
+		    g_string_replace(readlineResultString, selected_filename_placeholder,stdin_cmd_selection_fileAttributes->path, 1);
 		  }
 	      
 		  listElement=g_list_next(listElement);
@@ -3935,6 +3936,8 @@ int main(int argc, char *argv[])
    }
    memcpy(SearchResultViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
    memcpy(DirectoryViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
+   sprintf(selected_filename_placeholder_in_space," %s ",selected_filename_placeholder);
+   sprintf(selected_filename_placeholder_in_quotation, "'%s'",selected_filename_placeholder);
    
    PROG_NAME = strdup(argv[0]);
    int c=1;
