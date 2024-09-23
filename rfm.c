@@ -1296,7 +1296,20 @@ static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter)
    return thumbData;
 }
 
-static void refreshThumbnail() {}
+static void refreshThumbnail() {
+  GList* selection_GtkTreePath_list = get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
+  GtkTreeIter iter;
+  GList *listElement = g_list_first(selection_GtkTreePath_list);
+  while(listElement!=NULL) {
+	 gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, listElement->data); //GtkTreePath to GtkTreeIter
+	 RFM_ThumbQueueData* thumbdata = get_thumbData(&iter);
+	 rfm_thumbQueue = g_list_append(rfm_thumbQueue, thumbdata);
+	 g_log(RFM_LOG_DATA_THUMBNAIL,G_LOG_LEVEL_DEBUG,"thumbnail %s creation enqueued for %s; manual refresh",thumbdata->thumb_name,thumbdata->path);
+
+         listElement=g_list_next(listElement);
+  }
+  if (rfm_thumbQueue && rfm_thumbScheduler==0) rfm_thumbScheduler=g_idle_add((GSourceFunc)mkThumb, NULL);
+}
 
 static void free_fileAttributes(RFM_FileAttributes *fileAttributes) {
    g_free(fileAttributes->path);
