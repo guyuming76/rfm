@@ -3619,7 +3619,7 @@ static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult)
 	      }
 	    }
 
-            if (g_str_has_suffix(readlineResult, "&")){
+            if (g_str_has_suffix(readlineResult, run_cmd_in_new_terminal_emulator_suffix)){
 	      execStdinCmdInNewVT = TRUE;
 	      readlineResult[len-1] = '\0'; //remove ending '&'
       	      len = strlen(readlineResult);

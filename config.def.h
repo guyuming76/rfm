@@ -17,6 +17,8 @@
 #define RFM_FILE_CHOOSER_NAMED_PIPE_PREFIX "/tmp/rfmFileChooser_"
 #define RFM_ENV_VAR_NAME_PREFIX ""  //change this if your extented column name conflicts with existing ENV Variable name
 
+static char selected_filename_placeholder[32] = {'%', 's', NULL };
+static char run_cmd_in_new_terminal_emulator_suffix[32] = { '&', NULL };
 //add the two line follows into ~/.inputrc so that readline can search history based on prefix. read https://www.man7.org/linux/man-pages/man3/readline.3.html  for more
 // arrow up
 // "\e[A":history-search-backward
@@ -322,7 +324,6 @@ static RFM_treeviewColumn treeviewColumns[] = {
 
 #define RFM_SearchResultTypeNamePrefix ">"
 static char SearchResultColumnSeperator[32]={':',NULL};
-static char selected_filename_placeholder[32]={'%','s',NULL};
 static gchar* EmptyShowColumn[] = { NULL };
 static gchar* muviewColumns[] = { "-FileName",",From,Subject,Date,Attachments",NULL };
 static RFM_SearchResultType searchresultTypes[] = {
