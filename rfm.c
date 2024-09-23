@@ -110,6 +110,7 @@ static gboolean mkThumb();
 static void free_thumbQueueData(RFM_ThumbQueueData *thumbData);
 static RFM_defaultPixbufs *load_default_pixbufs(void);
 static void free_default_pixbufs(RFM_defaultPixbufs *defaultPixbufs);
+static void refreshThumbnail();
 /******Thumbnail related definitions end*************/
 /****************************************************/
 /******Terminal Emulator related definitions*********/
@@ -146,7 +147,7 @@ enum rfmTerminal {
 
 typedef struct {
   gchar *cmd;
-  void (*action)(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
+  void (*action)(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);//this point to function which takes two parameters, but in config.h, i assign it with function taking not parameter, it still works!
   gchar *help_msg;
 } RFM_builtinCMD;
 
@@ -532,6 +533,7 @@ typedef struct {
    gchar *runSub;
    gchar *filenameSuffix;
    gchar *OrSearchResultType;
+   void (*func)(gpointer);
    const gchar **runCmd;
   //gint  runOpts;
    gboolean (*showCondition)();
@@ -576,11 +578,21 @@ static void toolbar_button_exec(GtkToolItem *item, RFM_ChildAttribs *childAttrib
 /* callback function for contextual file menu, which appear after mouse right click on selected file, or the after the menu key on keyboard pressed */
 /* since g_spawn_wrapper will free child_attribs, and we don't want the childAttribs object associated with UI interface item to be freed, we duplicate childAttribs here. */
 static void file_menu_exec(GtkMenuItem *menuitem, RFM_ChildAttribs *childAttribs);
+/* Every action defined in config.h is added to the menu here; each menu item is associated with
+ * the corresponding index in the run_actions_array.
+ * Items are shown or hidden in popup_file_menu() depending on the selected files mime types.
+ */
 static void setup_file_menu(RFM_ctx * rfmCtx);
+/* Generate a filemenu based on mime type of the files selected and show
+ * If all files are the same type selection_mimeRoot and selection_mimeSub are set
+ * If all files are the same mime root but different sub, then selection_mimeSub is set to NULL
+ * If all the files are completely different types, both root and sub types are set to NULL
+ */
 static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx);
 
 #include "config.h"
 
+//TODO: shall we call signal disconnect, like in setup_file_menu?
 static GtkWidget *add_view(RFM_ctx *rfmCtx);
 static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixbufs, RFM_ctx *rfmCtx);
 static void refresh_toolbar();
@@ -1283,6 +1295,8 @@ static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter)
 
    return thumbData;
 }
+
+static void refreshThumbnail() {}
 
 static void free_fileAttributes(RFM_FileAttributes *fileAttributes) {
    g_free(fileAttributes->path);
@@ -2408,7 +2422,9 @@ middle-mouse-click.  */
    gtk_clipboard_set_text(clipboard, rfm_curPath, -1);
 }
 
-
+// 这个函数的主要目的就是获得当前选中文件,产生一个data为 fileAttributes->path
+// 的Glist,然后汇同参数childAttribs一起传递各g_spawn_wrapper
+// TODO: 直接往g_spawn_wrapper 里面传data 我fileAttribtes 的GList不好吗?不过要注意释放问题,目前fileAttributes都是在refresh_store时统一释放的,其他地方都是引用
 static void g_spawn_wrapper_for_selected_fileList_(RFM_ChildAttribs *childAttribs)
 {
    GtkTreeIter iter;
@@ -2439,6 +2455,7 @@ static void g_spawn_wrapper_for_selected_fileList_(RFM_ChildAttribs *childAttrib
    }
 }
 
+//这个函数做的主要就是复制一份childAttribs, 因为child_attribs包含stdOut这类执行完后要释放的内容,而依附于菜单项的childAttribs模板要在setup_file_menu时才销毁重建
 static void file_menu_exec(GtkMenuItem *menuitem, RFM_ChildAttribs *childAttribs)
 { 
   RFM_ChildAttribs *child_attribs=calloc(1, sizeof(RFM_ChildAttribs));
@@ -2455,10 +2472,6 @@ static void file_menu_exec(GtkMenuItem *menuitem, RFM_ChildAttribs *childAttribs
 }
 
 
-/* Every action defined in config.h is added to the menu here; each menu item is associated with
- * the corresponding index in the run_actions_array.
- * Items are shown or hidden in popup_file_menu() depending on the selected files mime types.
- */
 static void setup_file_menu(RFM_ctx * rfmCtx){
    gint i;
    RFM_ChildAttribs *child_attribs;
@@ -2498,15 +2511,11 @@ static void setup_file_menu(RFM_ctx * rfmCtx){
 	 child_attribs->customCallbackUserData = NULL;
       }
 
-      fileMenu.menuItemSignalHandlers[i] = g_signal_connect(fileMenu.menuItem[i], "activate", G_CALLBACK(file_menu_exec), child_attribs);
+      fileMenu.menuItemSignalHandlers[i] = g_signal_connect(fileMenu.menuItem[i], "activate", (run_actions[i].func ? G_CALLBACK(run_actions[i].func) : G_CALLBACK(file_menu_exec)), child_attribs);
    }
 }
 
-/* Generate a filemenu based on mime type of the files selected and show
- * If all files are the same type selection_mimeRoot and selection_mimeSub are set
- * If all files are the same mime root but different sub, then selection_mimeSub is set to NULL
- * If all the files are completely different types, both root and sub types are set to NULL
- */
+
 static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx)
 {
    int showMenuItem[G_N_ELEMENTS(run_actions)]={0};
