@@ -254,6 +254,7 @@ static int SearchResultTypeIndexForCurrentExistingSearchResult=-1;
 static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamelist);
 //this is very similiar to update_SearchResultFileNameList_and_refresh_store, just that this is called when refresh for turn page; and that is called for a new search result.
 static void call_SearchResultLineProcessingForCurrentSearchResultPage();
+static void showSearchResultExtColumnsBasedOnHashTableValues();
 static int ProcessOnelineForSearchResult(gchar *oneline, gboolean new_search);
 static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline, gboolean new_search);
 static int ProcessKeyValuePairInCmdOutputFromSearchResult(char *oneline, gboolean new_search, char *cmdtemplate);
@@ -4244,7 +4245,9 @@ static void ReadFromPipeStdinIfAny(char * fd)
 {
    if (readlink_proc_self_fd_pipefd_and_confirm_pipefd_is_used_by_pipeline()){
          if (initDir!=NULL && (SearchResultViewInsteadOfDirectoryView^1)) die("if you have -d specified, and read file name list from pipeline, -p parameter must goes BEFORE -d\n");
-	 else SearchResultViewInsteadOfDirectoryView=1;
+	 SearchResultViewInsteadOfDirectoryView=1;
+	 SearchResultTypeIndex=1;
+	 SearchResultTypeIndexForCurrentExistingSearchResult=1;
 	 fileAttributeID=1;
 	 gchar *oneline_stdin=calloc(1,PATH_MAX);
 	 FILE *pipeStream = stdin;
@@ -4349,6 +4352,19 @@ static void call_SearchResultLineProcessingForCurrentSearchResultPage(){
   for(int i=0;i<=NUM_Ext_Columns;i++) if (old_ExtColumnHashTable[i]!=NULL) g_hash_table_destroy(old_ExtColumnHashTable[i]);
 }
 
+// 根据 SearchResultTypeIndex 调用SearchResultLineProcessingFunc
+// 进入查询结果FirstPage,这个会调用refresh_store
+// 准备ExtColumnHashTable, 释放旧值
+// 虽然此处初始化和释放(也是通过old指针)了SearchResultFileNameList,
+// 但实际添加值是通过默认查询结果类型处理函数 ProcessOnelineForSearchResult 添加的
+// 所以特定的SearchResultLineProcessingFunc都会先调用此默认处理函数
+//
+// SearchResultLineProcessingFunc 实际会被调用两次,
+// 一次是本方法,另一次通过refresh_store
+// 调用call_SearchResultLineProcessingForCurrentSearchResultPage
+// 两次调用通过 newsearch 参数区别
+// 本函数是newsearch 为True, 对应新的查询结果集
+// call_SearchResultLineProcessingForCurrentSearchResultPage 里的调用 newsearch 为false,对应页面刷新以及翻页
 static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamelist){
   g_assert(SearchResultTypeIndex>=0 && SearchResultTypeIndex<G_N_ELEMENTS(searchresultTypes));
   
@@ -4364,6 +4380,7 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
   SearchResultViewInsteadOfDirectoryView = 1;
   memcpy(SearchResultViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
   char old_searchresultcolumnSeperator[32];
+  //apply searchresulttype specific column seperator
   if (searchresultTypes[SearchResultTypeIndex].SearchResultColumnSeperator) {
     strcpy(old_searchresultcolumnSeperator, SearchResultColumnSeperator);
     strcpy(SearchResultColumnSeperator, searchresultTypes[SearchResultTypeIndex].SearchResultColumnSeperator);

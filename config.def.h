@@ -323,7 +323,7 @@ static RFM_treeviewColumn treeviewColumns[] = {
 };
 
 #define RFM_SearchResultTypeNamePrefix ">"
-static char SearchResultColumnSeperator[32]={':',NULL};
+static char SearchResultColumnSeperator[32]={':',NULL}; //this is the default value and can be override by specific searchresulttype and can also be set manually with builtin cmd
 static gchar* EmptyShowColumn[] = { NULL };
 static gchar* muviewColumns[] = { "-FileName",",From,Subject,Date,Attachments",NULL };
 static RFM_SearchResultType searchresultTypes[] = {
