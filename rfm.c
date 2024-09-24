@@ -296,6 +296,7 @@ static gboolean g_spawn_wrapper(const char **action, GList *file_list, int run_o
 /* free child_attribs */
 static gboolean g_spawn_wrapper_(GList *file_list, char *dest_path, RFM_ChildAttribs * childAttribs);
 /* create argv parameter for g_spawn functions  */
+/* The char* in file_list will be used (WITHOUT strdup) in returned gchar** v and owned by rfm_FileAttributelist before */
 static gchar **build_cmd_vector(const char **cmd, GList *file_list, char *dest_path);
 static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *child_attribs);
 static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_data);
@@ -969,7 +970,7 @@ static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *ch
    return rv;
 }
 
-// The char* in file_list will be used (WITHOUT strdup) in returned gchar** v and owned by rfm_FileAttributelist before
+
 static gchar **build_cmd_vector(const char **cmd, GList *file_list, char *dest_path)
 {
    long j=0;
@@ -982,8 +983,8 @@ static gchar **build_cmd_vector(const char **cmd, GList *file_list, char *dest_p
       return NULL;
 
    while (cmd[j]!=NULL && j<RFM_MX_ARGS) {
-     if (strcmp(cmd[j],"")==0 && listElement!=NULL){
-       // before this commit, file_list and dest_path are all appended after cmd, but commands like ffmpeg to create thumbnail need to have file name in the middle of the argv, appended at the end won't work. So i modify the rule here so that if we have empty string in cmd, we replace it with item in file_list. So, file_list can work as generic argument list later, not necessarily the filename. And replacing empty string place holders in cmd with items in file_list can be something like printf.
+     if (strcmp(cmd[j],selected_filename_placeholder)==0 && listElement!=NULL){
+       // before this commit, file_list and dest_path are all appended after cmd, but commands like ffmpeg to create thumbnail need to have file name in the middle of the argv, appended at the end won't work. So i modify the rule here so that if we have placeholder in cmd, we replace it with item in file_list. So, file_list can work as generic argument list later, not necessarily the filename. And replacing empty string place holders in cmd with items in file_list can be something like printf.
        v[j]=listElement->data; //this data is owned by rfm_FileAttributes and was not freed before, but now, v and file_list share the reference.  g_list_free_full never called on file_list, and filename char* is not freed when free(v),  but freed with rfm_FileAttributes.
        listElement=g_list_next(listElement);
      }else if (cmd[j][0]=='$' && strlen(cmd[j])>1){
