@@ -250,7 +250,7 @@ static gint currentFileNum=0;
 static GList *CurrentPage_SearchResultView=NULL;
 static gint PageSize_SearchResultView=100;
 static int SearchResultTypeIndex=-1; // we need to pass this status from exec_stdin_command to readlineInSeperatedThread, however, we can only pass one parameter in g_thread_new, so, i use a global variable here.
-static int SearchResultTypeIndexForCurrentExistingSearchResult=-1;
+static int SearchResultTypeIndexForCurrentExistingSearchResult=-1;//The value above will be override by next command, which can be a non-search command, we need this variable to preserve the current displaying searchresulttype
 static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamelist);
 //this is very similiar to update_SearchResultFileNameList_and_refresh_store, just that this is called when refresh for turn page; and that is called for a new search result.
 static void call_SearchResultLineProcessingForCurrentSearchResultPage();
