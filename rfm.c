@@ -427,6 +427,11 @@ static void toggle_insert_fileAttributes_into_store_one_by_one();
 static void Iterate_through_fileAttribute_list_to_insert_into_store();
 static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,GtkTreeIter *iter);
 static void Insert_fileAttributes_into_store_with_thumbnail_and_more(RFM_FileAttributes* fileAttributes);
+//called in dir view when onebyone off
+static gboolean iterate_through_store_to_load_gitCommitMsg_one_by_one_when_idle(GtkTreeIter *iter);
+//called in dir view when onebyone off
+static gboolean iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_one_by_one_when_idle(GtkTreeIter *iter);
+//called in search result view
 static void iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_and_load_gitCommitMsg_ifdef_GitIntegration(void);
 static GHashTable *get_mount_points(void);
 static gboolean mounts_handler(GUnixMountMonitor *monitor, gpointer rfmCtx);
@@ -1480,7 +1485,6 @@ static gboolean iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_o
   }
 }
 
-
 static gboolean iterate_through_store_to_load_gitCommitMsg_one_by_one_when_idle(GtkTreeIter *iter)
 {
      load_gitCommitMsg_for_store_row(iter);
@@ -1543,6 +1547,7 @@ static void load_gitCommitMsg_for_store_row(GtkTreeIter *iter){
 	GtkTreeIter **iterPointerPointer=calloc(1, sizeof(GtkTreeIter**));//This will be passed into childAttribs, which will be freed in g_spawn_wrapper. but we shall not free iter, so i use pointer to pointer here.
 	*iterPointerPointer=iter;
 	if(!g_spawn_wrapper(git_commit_message_cmd, file_list, G_SPAWN_DEFAULT ,NULL, FALSE, readGitCommitMsgFromGitLogCmdAndUpdateStore, iterPointerPointer,TRUE)){
+	  //if false returned here, g_warning would have been called in g_spawn_wrapper, so i write no log entry here
 	}
 	g_list_free(file_list);
       }
@@ -2060,6 +2065,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
 
        if (rfm_do_thumbs == 1 && g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR) && gtk_tree_model_get_iter_first(treemodel, &thumbnail_load_iter))
 	 //rfm_thumbLoadScheduler=g_idle_add((GSourceFunc)iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_one_by_one_when_idle, &thumbnail_load_iter);
+	 rfm_thumbLoadScheduler=1;
 	 while(iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_one_by_one_when_idle(&thumbnail_load_iter)){};
      }
   }
