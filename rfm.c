@@ -4196,7 +4196,7 @@ static int ProcessKeyValuePairInCmdOutputFromSearchResult(char *oneline, gboolea
 }
 
 static int ProcessKeyValuePairInData(GKeyFile *keyfile, char* groupname){
-   gsize size;
+   gsize size=0;
    gchar** keys=NULL;
    GError *error=NULL;
    keys = g_key_file_get_keys(keyfile,groupname,&size, &error);
