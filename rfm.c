@@ -448,7 +448,9 @@ static GHashTable *gitTrackedFiles;
 static gboolean curPath_is_git_repo = FALSE;
 static guint rfm_gitCommitMsgScheduler = 0;
 static GtkTreeIter gitMsg_load_iter;
-static gboolean cur_path_is_git_repo(RFM_FileAttributes * fileAttributes);
+static void set_curPath_is_git_repo(gpointer *child_attribs);
+static gboolean show_gitColumns(RFM_FileAttributes * fileAttributes);
+static gboolean show_gitMenus(RFM_FileAttributes * fileAttributes);
 static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpointer *child_attribs);
 static void readGitCommitMsgFromGitLogCmdAndUpdateStore(RFM_ChildAttribs * childAttribs);
 static void load_GitTrackedFiles_into_HashTable();
@@ -2105,8 +2107,12 @@ static void set_curPath_is_git_repo(gpointer *child_attribs)
   g_debug("curPath_is_git_repo:%d",curPath_is_git_repo);
 }
 
-static gboolean cur_path_is_git_repo(RFM_FileAttributes *fileAttributes) {
+static gboolean show_gitMenus(RFM_FileAttributes *fileAttributes) {
   return SearchResultViewInsteadOfDirectoryView ^ 1 && curPath_is_git_repo;
+}
+
+static gboolean show_gitColumns() {
+  return curPath_is_git_repo;
 }
 
 static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpointer *child_attribs) {

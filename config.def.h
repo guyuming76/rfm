@@ -134,9 +134,9 @@ static RFM_MenuItem run_actions[] = {
    { RunActionSL,    "*",              "*",                    NULL,			NULL,			NULL,		create_softlink,                NULL },
    { RunActionFindSL,"*",              "*",                    NULL,			NULL,			NULL,		find_softlink,                  NULL },
 #ifdef GitIntegration
-   { RunActionGitStage,  "*",          "*",                    NULL,			NULL,			NULL,		git_stage_cmd,    		cur_path_is_git_repo },
-   { "git log",      "*",              "*",                    NULL,			NULL,			NULL,		git_log_cmd,      		cur_path_is_git_repo },
-// { "tig",          "*",              "*",                    NULL,			NULL,			NULL,		tig_cmd,          		cur_path_is_git_repo },
+   { RunActionGitStage,  "*",          "*",                    NULL,			NULL,			NULL,		git_stage_cmd,    		show_gitMenus },
+   { "git log",      "*",              "*",                    NULL,			NULL,			NULL,		git_log_cmd,      		show_gitMenus },
+// { "tig",          "*",              "*",                    NULL,			NULL,			NULL,		tig_cmd,          		show_gitMenus },
 #endif
    { "Properties",   "*",              "*",                    NULL,			NULL,			NULL,		properties,       		NULL },
    { "Open with...", "*",              "*",                    NULL,			NULL,			NULL,		open_with,        		NULL },
@@ -236,13 +236,13 @@ static RFM_ToolButton tool_buttons[] = {
 
 static RFM_treeviewColumn treeviewColumns[] = {
 #ifdef GitIntegration
-  {"Git",                     COL_GIT_STATUS_STR,         TRUE,   NULL, cur_path_is_git_repo, COL_GIT_STATUS_STR ,      NULL,            NULL,     "*",         "*",     FALSE,FALSE},
+  {"Git",                     COL_GIT_STATUS_STR,         TRUE,   NULL, show_gitColumns,      COL_GIT_STATUS_STR ,      NULL,            NULL,     "*",         "*",     FALSE,FALSE},
 #endif
   {"Mode",                    COL_MODE_STR,               TRUE,   NULL, NULL,                 COL_MODE_STR,             NULL,            NULL,     "*",         "*",     FALSE,FALSE},
   //  COL_DISPLAY_NAME,
   {"FileName",                COL_FILENAME,               TRUE,   NULL, NULL,                 COL_FILENAME,             NULL,            NULL,     "*",         "*",     FALSE,FALSE},
 #ifdef GitIntegration
-  {"gitCommitMsg",            COL_GIT_COMMIT_MSG,         TRUE,   NULL, cur_path_is_git_repo, COL_GIT_COMMIT_MSG,       NULL,            NULL,     "*",         "*",     FALSE,FALSE},
+  {"gitCommitMsg",            COL_GIT_COMMIT_MSG,         TRUE,   NULL, show_gitColumns,      COL_GIT_COMMIT_MSG,       NULL,            NULL,     "*",         "*",     FALSE,FALSE},
 #endif
   //  COL_FULL_PATH,
   //  COL_PIXBUF,
