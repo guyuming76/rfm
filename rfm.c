@@ -251,11 +251,15 @@ static GList *CurrentPage_SearchResultView=NULL;
 static gint PageSize_SearchResultView=100;
 static int SearchResultTypeIndex=-1; // we need to pass this status from exec_stdin_command to readlineInSeperatedThread, however, we can only pass one parameter in g_thread_new, so, i use a global variable here.
 static int SearchResultTypeIndexForCurrentExistingSearchResult=-1;//The value above will be override by next command, which can be a non-search command, we need this variable to preserve the current displaying searchresulttype
+//如要分配新的自定义列,此变量记录分配的列名,按C1,C2..顺序,分配后,用键值替换原始的Cx列名
+static int currentSearchResultTypeStartingColumnTitleIndex;
+static int currentPageStartingColumnTitleIndex;
 static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamelist);
 //this is very similiar to update_SearchResultFileNameList_and_refresh_store, just that this is called when refresh for turn page; and that is called for a new search result.
 static void call_SearchResultLineProcessingForCurrentSearchResultPage();
 static void showSearchResultExtColumnsBasedOnHashTableValues();
 static int ProcessOnelineForSearchResult(gchar *oneline, gboolean new_search);
+static void CallDefaultSearchResultFunctionForNewSearch(char *one_line_in_search_result);
 static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline, gboolean new_search);
 static int ProcessKeyValuePairInCmdOutputFromSearchResult(char *oneline, gboolean new_search, char *cmdtemplate);
 static int ProcessKeyValuePairInData(GKeyFile* keyfile, char *groupname);
@@ -4130,19 +4134,20 @@ static int ProcessOnelineForSearchResult(char* oneline, gboolean new_search){
 	   
 }
 
-//如要分配新的自定义列,此变量记录分配的列名,按C1,C2..顺序,分配后,用键值替换原始的Cx列名
-static int currentSearchResultTypeStartingColumnTitleIndex;
-static int currentPageStartingColumnTitleIndex;
+static void CallDefaultSearchResultFunctionForNewSearch(char *one_line_in_search_result){
+     if (fileAttributeID==1) {
+       currentSearchResultTypeStartingColumnTitleIndex = ProcessOnelineForSearchResult(one_line_in_search_result,TRUE);
+       currentPageStartingColumnTitleIndex = currentSearchResultTypeStartingColumnTitleIndex;
+     //首行记录在  ProcessOnelineForSearchResult 里已经被分配掉的列序号
+     }else ProcessOnelineForSearchResult(one_line_in_search_result, TRUE);
+}
+
 // 处理存储键值对文件(类似INI)数据,每行一个文件,每个文件可包含不同的键
 // 搜索结果除了包含文件名,还可以包含其他类似csv行数据,也就是先用 ProcessOnelineForSearchResult 处理
 // if new_search, oneline contains leading filename plus optional columns, otherwise, oneline contains only filename
 static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline, gboolean new_search){
    if (new_search){
-     if (fileAttributeID==1) {
-       currentSearchResultTypeStartingColumnTitleIndex = ProcessOnelineForSearchResult(oneline,new_search);
-       currentPageStartingColumnTitleIndex = currentSearchResultTypeStartingColumnTitleIndex;
-     //首行记录在  ProcessOnelineForSearchResult 里已经被分配掉的列序号
-     }else ProcessOnelineForSearchResult(oneline, new_search);
+     CallDefaultSearchResultFunctionForNewSearch(oneline);
      return;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
    }
    //下面判断表示当前搜索结果页第一行
@@ -4161,11 +4166,7 @@ static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline, gboolean ne
 
 static int ProcessKeyValuePairInCmdOutputFromSearchResult(char *oneline, gboolean new_search, char* cmdtemplate){
    if (new_search){
-     if (fileAttributeID==1) {
-       currentSearchResultTypeStartingColumnTitleIndex = ProcessOnelineForSearchResult(oneline,new_search);
-       currentPageStartingColumnTitleIndex = currentSearchResultTypeStartingColumnTitleIndex;
-     //首行记录在  ProcessOnelineForSearchResult 里已经被分配掉的列序号
-     }else ProcessOnelineForSearchResult(oneline, new_search);
+     CallDefaultSearchResultFunctionForNewSearch(oneline);
      return;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
    }
 
