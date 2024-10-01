@@ -327,9 +327,11 @@ static char SearchResultColumnSeperator[32]={':',NULL}; //this is the default va
 static gchar* EmptyShowColumn[] = { NULL };
 static gchar* muviewColumns[] = { "-FileName",",From,Subject,Date,Attachments",NULL };
 static RFM_SearchResultType searchresultTypes[] = {
+//name	       SearchResultLineProcessingFunc                  showcolumn     SearchResultColumnSeperator  cmdTemplate
   {"default",  ProcessOnelineForSearchResult,                  EmptyShowColumn, NULL, NULL                                         }, //default searchresult, contain only filename list such as returned by locate, or filename followed by additional info such as returned by grep
   {"gkeyfile", ProcessKeyValuePairInFilesFromSearchResult,     EmptyShowColumn, NULL, NULL                                         },
   {"muview",   ProcessKeyValuePairInCmdOutputFromSearchResult, muviewColumns  , "&" , "mu view %s | rfmGetMailHeaderWithMuView.sh" }, //%s in cmdTemplate will be replaced by filename in searchresult
+  {"TODO.md",  ProcessKeyValuePairInCmdOutputFromSearchResult, EmptyShowColumn, NULL, "extractKeyValuePairFromMarkdown 0 %s 简述 问题状态"},
 };
 
 /* Thumbnailers

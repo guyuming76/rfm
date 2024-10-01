@@ -87,6 +87,7 @@ int main(int argc, char *argv[]){
     /*     print_heading(child);   */
     /* } */
 
+    printf("[https://discourse.gnome.org/t/gkeyfile-to-handle-conf-without-groupname/23080/3]\n");
     cmark_event_type ev_type;
     cmark_iter *iter = cmark_iter_new(root);
     while ((ev_type = cmark_iter_next(iter)) != CMARK_EVENT_DONE) {

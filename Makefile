@@ -13,7 +13,10 @@ endif
 # Edit below for extra libs (e.g. for thumbnailers etc.)
 #LIBS = -L./libdcmthumb -lm -ldcmthumb
 GTK_VERSION = gtk+-3.0
-CPPFLAGS = -DrfmBinPath=${rfmBinPath} --include ${languageInclude} -DG_LOG_DOMAIN=\"rfm\" ${GitIntegration} ${PythonEmbedded} ${RFM_FILE_CHOOSER} ${ParseMarkdown}
+CPPFLAGS = -DrfmBinPath=${rfmBinPath} --include ${languageInclude} -DG_LOG_DOMAIN=\"rfm\" ${GitIntegration} ${PythonEmbedded} ${RFM_FILE_CHOOSER}
+ifneq (${extractKeyValuePairFromMarkdown},)
+CPPFLAGS += -D${extractKeyValuePairFromMarkdown}
+endif
 
 # Uncomment the line below if compiling on a 32 bit system (otherwise stat() may fail on large directories; see man 2 stat)
 CPPFLAGS += -D_FILE_OFFSET_BITS=64
@@ -22,6 +25,9 @@ SRC = rfm.c
 OBJ = ${SRC:.c=.o}
 INCS = -I. -I/usr/include
 LIBS += -L/usr/lib `pkg-config --libs ${GTK_VERSION} readline`
+ifneq (${extractKeyValuePairFromMarkdown},)
+LIBS += `pkg-config --libs libcmark`
+endif
 CPPFLAGS += -DVERSION=\"${VERSION}\"
 GTK_CFLAGS = `pkg-config --cflags ${GTK_VERSION}`
 CFLAGS += -g -Wall -std=c11 -O0 -fPIC -pie  ${GTK_CFLAGS} ${INCS} ${CPPFLAGS}
@@ -35,9 +41,9 @@ endif
 # compiler and linker
 CC = gcc
 ifneq ($(RFM_FILE_CHOOSER),)
-all: options rfm ${LIBNAME}
+all: options rfm ${LIBNAME} ${extractKeyValuePairFromMarkdown}
 else
-all: options rfm
+all: options rfm ${extractKeyValuePairFromMarkdown}
 endif
 options:
 	@echo rfm build options:
@@ -68,12 +74,17 @@ ${LIBNAME}: ${OBJ}
 # i tried to use librfm.so as both lib and exec and set entry point for librfm.so, however, i got segfault after launching librfm.so
 # https://unix.stackexchange.com/questions/223385/why-and-how-are-some-shared-libraries-runnable-as-though-they-are-executables
 endif
+
+extractKeyValuePairFromMarkdown: extractKeyValuePairFromMarkdown.o
+	@echo CC -o $@
+	@${CC} -o $@ extractKeyValuePairFromMarkdown.o ${LDFLAGS}
+
 clean:
 	@echo cleaning
 ifneq ($(RFM_FILE_CHOOSER),)
-	@rm -f rfm ${LIBNAME} ${OBJ}
+	@rm -f rfm ${LIBNAME} ${OBJ} ${extractKeyValuePairFromMarkdown}
 else
-	@rm -f rfm ${OBJ}
+	@rm -f rfm ${OBJ} ${extractKeyValuePairFromMarkdown}
 endif
 install: all
 	@echo installing files to ${DESTDIR}${PREFIX}/{bin,lib}
@@ -83,6 +94,9 @@ ifneq ($(RFM_FILE_CHOOSER),)
 	@cp -f ${LIBNAME} ${DESTDIR}${PREFIX}/lib64/${LIBNAME}
 	@ln -sf ./${LIBNAME} ${DESTDIR}${PREFIX}/lib64/${SONAME}
 	@ln -sf ./${LIBNAME} ${DESTDIR}${PREFIX}/lib64/${LINKERNAME}
+endif
+ifneq (${extractKeyValuePairFromMarkdown},)
+	@cp -f extractKeyValuePairFromMarkdown ${DESTDIR}${PREFIX}/bin
 endif
 	@cp -f rfm ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfm.sh ${DESTDIR}${PREFIX}/bin
@@ -119,6 +133,9 @@ ifneq ($(CalledByEbuild),YES)
 ifneq ($(RFM_FILE_CHOOSER),)
 	@chmod 755 ${DESTDIR}${PREFIX}/lib64/${LIBNAME}
 endif
+ifneq (${extractKeyValuePairFromMarkdown},)
+	@chmod +x ${DESTDIR}${PREFIX}/bin/extractKeyValuePairFromMarkdown
+endif
 	@chmod 755 ${DESTDIR}${PREFIX}/bin/rfm
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfm.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmRefreshImage.sh
@@ -151,6 +168,9 @@ uninstall:
 	@echo removing files from ${DESTDIR}${PREFIX}/{bin,lib}
 ifneq ($(RFM_FILE_CHOOSER),)
 	@rm -f ${DESTDIR}${PREFIX}/lib64/${LIBNAME}
+endif
+ifneq (${extractKeyValuePairFromMarkdown},)
+	@rm -f ${DESTDIR}${PREFIX}/bin/extractKeyValuePairFromMarkdown
 endif
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfm
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfm.sh
