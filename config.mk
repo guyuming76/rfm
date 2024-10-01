@@ -17,6 +17,9 @@ PythonEmbedded = -DPythonEmbedded
 RFM_FILE_CHOOSER = -DRFM_FILE_CHOOSER
 #RFM_FILE_CHOOSER =
 
+ParseMarkdown = -DParseMarkdown
+#ParseMarkdown =
+
 #CFLAGS = -fsanitize=address
 
 #LDFLAGS = -lasan
