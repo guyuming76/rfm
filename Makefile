@@ -21,8 +21,6 @@ endif
 # Uncomment the line below if compiling on a 32 bit system (otherwise stat() may fail on large directories; see man 2 stat)
 CPPFLAGS += -D_FILE_OFFSET_BITS=64
 
-SRC = rfm.c
-OBJ = ${SRC:.c=.o}
 INCS = -I. -I/usr/include
 LIBS += -L/usr/lib `pkg-config --libs ${GTK_VERSION} readline`
 ifneq (${extractKeyValuePairFromMarkdown},)
@@ -40,6 +38,7 @@ endif
 
 # compiler and linker
 CC = gcc
+
 ifneq ($(RFM_FILE_CHOOSER),)
 all: options rfm ${LIBNAME} ${extractKeyValuePairFromMarkdown}
 else
@@ -54,38 +53,47 @@ options:
 .c.o:
 	@echo CC $<
 	@${CC} -c ${CFLAGS} $<
+
 ifneq ($(RFM_FILE_CHOOSER),)
-${OBJ}: config.h rfmFileChooser.h
+rfm.o: config.h rfmFileChooser.h
 else
-${OBJ}: config.h
+rfm.o: config.h
 endif
+
 config.h:
 	@echo creating $@ from config.def.h
 	@cp config.def.h $@
 
-rfm: ${OBJ}
+rfm: rfm.o
 	@echo CC -o $@
-	@${CC} -o $@ ${OBJ} ${LDFLAGS}
+	@${CC} -o $@ rfm.o ${LDFLAGS}
+
 ifneq ($(RFM_FILE_CHOOSER),)
-${LIBNAME}: ${OBJ}
+${LIBNAME}: rfm.o
 	@echo CC -o $@
-	@${CC} -o $@ ${OBJ} ${LDFLAGS} -shared -Wl,-soname=${SONAME},-E
+	@${CC} -o $@ rfm.o ${LDFLAGS} -shared -Wl,-soname=${SONAME},-E
 #	@${CC} -o $@ ${OBJ} ${LDFLAGS} -shared -Wl,-E,-e,main
 # i tried to use librfm.so as both lib and exec and set entry point for librfm.so, however, i got segfault after launching librfm.so
 # https://unix.stackexchange.com/questions/223385/why-and-how-are-some-shared-libraries-runnable-as-though-they-are-executables
 endif
 
+ifneq (${extractKeyValuePairFromMarkdown},)
 extractKeyValuePairFromMarkdown: extractKeyValuePairFromMarkdown.o
 	@echo CC -o $@
 	@${CC} -o $@ extractKeyValuePairFromMarkdown.o ${LDFLAGS}
+endif
 
 clean:
 	@echo cleaning
 ifneq ($(RFM_FILE_CHOOSER),)
-	@rm -f rfm ${LIBNAME} ${OBJ} ${extractKeyValuePairFromMarkdown}
+	@rm -f rfm ${LIBNAME} rfm.o
 else
-	@rm -f rfm ${OBJ} ${extractKeyValuePairFromMarkdown}
+	@rm -f rfm rfm.o
 endif
+ifneq (${extractKeyValuePairFromMarkdown},)
+	@rm -f extractKeyValuePairFromMarkdown extractKeyValuePairFromMarkdown.o
+endif
+
 install: all
 	@echo installing files to ${DESTDIR}${PREFIX}/{bin,lib}
 	@mkdir -p ${DESTDIR}${PREFIX}/bin
