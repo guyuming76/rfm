@@ -20,6 +20,9 @@ RFM_FILE_CHOOSER = -DRFM_FILE_CHOOSER
 extractKeyValuePairFromMarkdown = extractKeyValuePairFromMarkdown
 #extractKeyValuePairFromMarkdown =
 
+MU_VIEW = -DMU_VIEW
+#MU_VIEW =
+
 #CFLAGS = -fsanitize=address
 
 #LDFLAGS = -lasan
