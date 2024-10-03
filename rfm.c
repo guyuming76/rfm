@@ -263,6 +263,7 @@ static void CallDefaultSearchResultFunctionForNewSearch(char *one_line_in_search
 static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline, gboolean new_search);
 static int ProcessKeyValuePairInCmdOutputFromSearchResult(char *oneline, gboolean new_search, char *cmdtemplate);
 static int ProcessKeyValuePairInData(GKeyFile* keyfile, char *groupname);
+static int CallMatchingProcessorForSearchResultLine(char *oneline, gboolean new_search);
 static void cmdSearchResultColumnSeperator(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
 static int MatchSearchResultType(gchar *readlineResult);
 static void set_DisplayingPageSize_ForFileNameListFromPipesStdIn(uint pagesize);
@@ -4243,6 +4244,22 @@ static int ProcessKeyValuePairInData(GKeyFile *keyfile, char* groupname){
        g_hash_table_insert(ExtColumnHashTable[currentExtColumnHashTableIndex], strFileAttributeID, currentExtColumnValue);
    }
    g_strfreev(keys);
+}
+
+// 根据文件属性,例如文件名后缀,调用适当的处理函数
+// new_search为FALSE时,oneline仅包含文件路径
+static int CallMatchingProcessorForSearchResultLine(char *oneline, gboolean new_search){
+   if (new_search){
+     CallDefaultSearchResultFunctionForNewSearch(oneline);
+     return;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
+   }
+
+   for(int i=0; i<G_N_ELEMENTS(searchresultTypes); i++){
+     if (g_str_has_suffix(oneline, searchresultTypes[i].name)){
+       searchresultTypes[i].SearchResultLineProcessingFunc(oneline,new_search,searchresultTypes[i].cmdTemplate);
+       break;
+     }
+   }
 }
 
 static gchar* getExtColumnValueFromHashTable(guint fileAttributeId, guint ExtColumnHashTableIndex){

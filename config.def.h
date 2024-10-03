@@ -336,6 +336,7 @@ static RFM_SearchResultType searchresultTypes[] = {
 #ifdef extractKeyValuePairFromMarkdown
   {"TODO.md",  ProcessKeyValuePairInCmdOutputFromSearchResult, EmptyShowColumn, NULL, "extractKeyValuePairFromMarkdown 0 %s 简述 问题状态"},
 #endif
+  {"multitype",CallMatchingProcessorForSearchResultLine,       EmptyShowColumn, NULL, NULL                                        },
 };
 
 /* Thumbnailers
