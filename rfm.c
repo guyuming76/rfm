@@ -255,8 +255,6 @@ static int SearchResultTypeIndexForCurrentExistingSearchResult=-1;//The value ab
 static int currentSearchResultTypeStartingColumnTitleIndex;
 static int currentPageStartingColumnTitleIndex;
 static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamelist);
-//this is very similiar to update_SearchResultFileNameList_and_refresh_store, just that this is called when refresh for turn page; and that is called for a new search result.
-static void call_SearchResultLineProcessingForCurrentSearchResultPage();
 static void showSearchResultExtColumnsBasedOnHashTableValues();
 static int ProcessOnelineForSearchResult(gchar *oneline, gboolean new_search);
 static void CallDefaultSearchResultFunctionForNewSearch(char *one_line_in_search_result);
@@ -1949,12 +1947,15 @@ static gboolean fill_fileAttributeList_with_filenames_from_search_result_and_the
     if (fileAttributes != NULL) {
       rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
       g_log(RFM_LOG_DATA,G_LOG_LEVEL_DEBUG,"appended into rfm_fileAttributeList:%s", (char*)name->data);
+      if (SearchResultViewInsteadOfDirectoryView && SearchResultTypeIndexForCurrentExistingSearchResult>=0)
+	searchresultTypes[SearchResultTypeIndexForCurrentExistingSearchResult].SearchResultLineProcessingFunc((gchar*)(name->data), FALSE, searchresultTypes[SearchResultTypeIndexForCurrentExistingSearchResult].cmdTemplate);
     }
     name=g_list_next(name);
     i++;
   }
   rfm_fileAttributeList=g_list_reverse(rfm_fileAttributeList);
 
+  showSearchResultExtColumnsBasedOnHashTableValues();
   //We can load thumbnail and gitCommitMsg one by one right after one row of store inserted, as we do in read_one_DirItem_into_fileAttributeList_and_insert_into_store_in_each_cal. But since for pipeline, we have the paging mechanism, we won't have too much rows loaded in a batch, so, we keep the old way of loading thumbnails and gitCommitMsg in batch here. 
   Iterate_through_fileAttribute_list_to_insert_into_store();
   if (rfm_do_thumbs == 1 && g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR))
@@ -2036,20 +2037,26 @@ static void refresh_store(RFM_ctx *rfmCtx)
    if (curPath_is_git_repo) load_GitTrackedFiles_into_HashTable();
 #endif
 
-   if (SearchResultViewInsteadOfDirectoryView && SearchResultTypeIndexForCurrentExistingSearchResult>=0) call_SearchResultLineProcessingForCurrentSearchResultPage();
-   
-   icon_or_tree_view = add_view(rfmCtx);
-
    gtk_tree_sortable_set_default_sort_func(GTK_TREE_SORTABLE(store), sort_func, NULL, NULL);
    gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(store), current_sort_column_id, current_sorttype);
    gchar * title;
    if (SearchResultViewInsteadOfDirectoryView) {
+     if (SearchResultTypeIndexForCurrentExistingSearchResult>=0){
+         for(int i=0;i<=NUM_Ext_Columns;i++) {
+	   if (!ExtColumnHashTable_keep_during_refresh[i] && ExtColumnHashTable[i]!=NULL){
+	     g_hash_table_destroy(ExtColumnHashTable[i]);
+	     ExtColumnHashTable[i]=NULL;
+	   }
+	 }
+     }
      fileAttributeID=currentFileNum;
      title=g_strdup_printf(PipeTitle, currentFileNum,SearchResultFileNameListLength,PageSize_SearchResultView);
      fill_fileAttributeList_with_filenames_from_search_result_and_then_insert_into_store();
+     icon_or_tree_view = add_view(rfmCtx);//add view have to be called after showSearchResultExtColumnsBasedOnHashTableValues()
      In_refresh_store=FALSE;
      gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
    } else {
+     icon_or_tree_view = add_view(rfmCtx);//call add_view earlier for directory view so that user won't see a blank window for long.
      fileAttributeID=1;
      GDir *dir=NULL;
      dir=g_dir_open(rfm_curPath, 0, NULL);
@@ -4362,25 +4369,6 @@ static void showSearchResultExtColumnsBasedOnHashTableValues(){
   
 }
 
-static void call_SearchResultLineProcessingForCurrentSearchResultPage(){
-  static GHashTable* old_ExtColumnHashTable[NUM_Ext_Columns + 1];
-  for(int i=0;i<=NUM_Ext_Columns;i++) {
-    if (!ExtColumnHashTable_keep_during_refresh[i]){
-      old_ExtColumnHashTable[i]=ExtColumnHashTable[i];
-      ExtColumnHashTable[i]=NULL;
-    }
-  }
-  
-  GList* searchresultfilename = CurrentPage_SearchResultView;
-  fileAttributeID=currentFileNum;
-  while (searchresultfilename!=NULL && (fileAttributeID-currentFileNum)<PageSize_SearchResultView){
-    searchresultTypes[SearchResultTypeIndexForCurrentExistingSearchResult].SearchResultLineProcessingFunc((gchar*)(searchresultfilename->data), FALSE, searchresultTypes[SearchResultTypeIndexForCurrentExistingSearchResult].cmdTemplate);
-    searchresultfilename=g_list_next(searchresultfilename);
-    fileAttributeID++;
-  }
-  showSearchResultExtColumnsBasedOnHashTableValues();
-  for(int i=0;i<=NUM_Ext_Columns;i++) if (old_ExtColumnHashTable[i]!=NULL) g_hash_table_destroy(old_ExtColumnHashTable[i]);
-}
 
 // 根据 SearchResultTypeIndex 调用SearchResultLineProcessingFunc
 // 进入查询结果FirstPage,这个会调用refresh_store
@@ -4390,11 +4378,11 @@ static void call_SearchResultLineProcessingForCurrentSearchResultPage(){
 // 所以特定的SearchResultLineProcessingFunc都会先调用此默认处理函数
 //
 // SearchResultLineProcessingFunc 实际会被调用两次,
-// 一次是本方法,另一次通过refresh_store
-// 调用call_SearchResultLineProcessingForCurrentSearchResultPage
+// 一次是本方法,另一次通过refresh_store调用
+// fill_fileAttributeList_with_filenames_from_search_result_and_then_insert_into_store();
 // 两次调用通过 newsearch 参数区别
 // 本函数是newsearch 为True, 对应新的查询结果集
-// call_SearchResultLineProcessingForCurrentSearchResultPage 里的调用 newsearch 为false,对应页面刷新以及翻页
+// fill_fileAttributeList_with_filenames_from_search_result_and_then_insert_into_store 里的调用 newsearch 为false,对应页面刷新以及翻页
 static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamelist){
   g_assert(SearchResultTypeIndex>=0 && SearchResultTypeIndex<G_N_ELEMENTS(searchresultTypes));
   
