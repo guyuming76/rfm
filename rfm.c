@@ -2028,7 +2028,6 @@ static void refresh_store(RFM_ctx *rfmCtx)
    
    gtk_widget_hide(rfm_main_box);
    if (scroll_window) {gtk_widget_destroy(scroll_window); icon_or_tree_view=NULL;}
-  
 
    gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, FALSE);
    clear_store();
@@ -2037,8 +2036,6 @@ static void refresh_store(RFM_ctx *rfmCtx)
    if (curPath_is_git_repo) load_GitTrackedFiles_into_HashTable();
 #endif
 
-   gtk_tree_sortable_set_default_sort_func(GTK_TREE_SORTABLE(store), sort_func, NULL, NULL);
-   gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(store), current_sort_column_id, current_sorttype);
    gchar * title;
    if (SearchResultViewInsteadOfDirectoryView) {
      if (SearchResultTypeIndexForCurrentExistingSearchResult>=0){
@@ -2053,10 +2050,14 @@ static void refresh_store(RFM_ctx *rfmCtx)
      title=g_strdup_printf(PipeTitle, currentFileNum,SearchResultFileNameListLength,PageSize_SearchResultView);
      fill_fileAttributeList_with_filenames_from_search_result_and_then_insert_into_store();
      icon_or_tree_view = add_view(rfmCtx);//add view have to be called after showSearchResultExtColumnsBasedOnHashTableValues()
+     gtk_tree_sortable_set_default_sort_func(GTK_TREE_SORTABLE(store), sort_func, NULL, NULL);
+     gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(store), current_sort_column_id, current_sorttype);
      In_refresh_store=FALSE;
      gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
    } else {
      icon_or_tree_view = add_view(rfmCtx);//call add_view earlier for directory view so that user won't see a blank window for long.
+     gtk_tree_sortable_set_default_sort_func(GTK_TREE_SORTABLE(store), sort_func, NULL, NULL);
+     gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(store), current_sort_column_id, current_sorttype);
      fileAttributeID=1;
      GDir *dir=NULL;
      dir=g_dir_open(rfm_curPath, 0, NULL);
