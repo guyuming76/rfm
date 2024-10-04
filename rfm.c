@@ -1094,8 +1094,8 @@ static gboolean g_spawn_wrapper(const char **action, GList *file_list, int run_o
   return g_spawn_wrapper_(file_list,dest_path,child_attribs);
 }
 
-/* Load and update a thumbnail from disk cache: key is the md5 hash of the required thumbnail */
-static int load_thumbnail(gchar *key, gboolean show_Thumbnail_Itself_InsteadOf_As_Thumbnail_For_Original_Picture, gboolean check_tEXt)
+/* Load and update a thumbnail from disk cache */
+static int load_thumbnail(gchar *thumbname, gboolean show_Thumbnail_Itself_InsteadOf_As_Thumbnail_For_Original_Picture, gboolean check_tEXt)
 {
    GtkTreeIter iter;
    GdkPixbuf *pixbuf=NULL;
@@ -1106,16 +1106,16 @@ static int load_thumbnail(gchar *key, gboolean show_Thumbnail_Itself_InsteadOf_A
    gint64 mtime_file=0;
    gint64 mtime_thumb=1;
 
-   reference=g_hash_table_lookup(thumb_hash, key);
+   reference=g_hash_table_lookup(thumb_hash, thumbname);
    if (reference==NULL) return 1;  /* Key not found */
 
    treePath=gtk_tree_row_reference_get_path(reference);
    if (treePath == NULL)
-      return 1;   /* Tree path not found */
+      return 2;   /* Tree path not found */
       
    gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, treePath);
    gtk_tree_path_free(treePath);
-   thumb_path=g_build_filename(rfm_thumbDir, key, NULL);
+   thumb_path=g_build_filename(rfm_thumbDir, thumbname, NULL);
 #ifdef RFM_CACHE_THUMBNAIL_IN_MEM
    pixbuf=g_hash_table_lookup(pixbuf_hash, key);
 #endif
@@ -1123,7 +1123,7 @@ static int load_thumbnail(gchar *key, gboolean show_Thumbnail_Itself_InsteadOf_A
       pixbuf=gdk_pixbuf_new_from_file(thumb_path, NULL);
       if (pixbuf==NULL){
 	g_free(thumb_path);
-	return 2;   /* Can't load thumbnail */
+	return 3;   /* Can't load thumbnail */
       }
 #ifdef RFM_CACHE_THUMBNAIL_IN_MEM
       g_hash_table_insert(pixbuf_hash, key, pixbuf);
@@ -1144,7 +1144,7 @@ static int load_thumbnail(gchar *key, gboolean show_Thumbnail_Itself_InsteadOf_A
 	 g_hash_table_remove(pixbuf_hash, key);
 #endif
 	 g_object_unref(pixbuf);
-	 return 3; /* Thumbnail out of date */
+	 return 4; /* Thumbnail out of date */
 #ifdef Allow_Thumbnail_Without_tExtThumbMTime
        }
 #endif
