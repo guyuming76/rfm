@@ -1,12 +1,13 @@
 #!/bin/bash
 
-ggbFile=$1
-thumbnailFile=$2
-## TODO: use thumbnail size definition in config.h
-## add $$ in path to avoid conflict on local machine with multiple instance running
+thumbnailsize_str=$1
+ggbFile=$2
+thumbnailFile=$3
+
+# add $$ in path to avoid conflict on local machine with multiple instance running
 mkdir /tmp/$$
 #echo $ggbFile >> /tmp/$$/log.txt
 #echo $thumbnailFile >> /tmp/$$/log.txt
 unzip "$ggbFile" geogebra_thumbnail.png -d /tmp/$$
-convert /tmp/$$/geogebra_thumbnail.png -thumbnail 128x128^ -gravity center -extent 128x128 "$thumbnailFile"
+convert /tmp/$$/geogebra_thumbnail.png -thumbnail $thumbnailsize_str -gravity center -extent $thumbnailsize_str "$thumbnailFile"
 rm -f /tmp/$$

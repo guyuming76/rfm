@@ -77,8 +77,8 @@ static const char *audioSpect[] = { "/usr/local/bin/spectrogram.sh", NULL };
 static const char *open_with[]  = { rfmBinPath "open_with_dmenu.sh", NULL };
 static const char *gnumeric[]   = { "/usr/bin/gnumeric", NULL };
 static const char *ftview[] = { "/usr/bin/ftview", "14", NULL }; /* pacman -S freetype2-demos */
-static const char *ffmpegThumb[] =  { "/usr/bin/ffmpeg", "-i",selected_filename_placeholder, "-frames", "1", "-s", "256x256",NULL  };
-static const char *geogebraThumb[] = { rfmBinPath "rfmMakeThumbnailForGGB.sh",NULL };
+static const char *ffmpegThumb[] =  { "/usr/bin/ffmpeg", "-i",selected_filename_placeholder, "-frames", "1", "-y","-s", thumbnailsize_str,NULL  };
+static const char *geogebraThumb[] = { rfmBinPath "rfmMakeThumbnailForGGB.sh",thumbnailsize_str,NULL };
 static const char *term_cmd[]  = { "$RFM_TERM", NULL };
 static const char *new_rfm[]  = { "$RFM_TERM", rfmBinPath "rfm", NULL };
 static const char *share_dir[] = { "$RFM_TERM", rfmBinPath "rfmShareDir.sh", NULL };
@@ -156,7 +156,6 @@ static RFM_MenuItem run_actions[] = {
    { "view archive", "application",    "x-xz-compressed-tar",  NULL,			NULL,			NULL,		list_archive,                   NULL },
    { "view archive", "application",    "x-zstd-compressed-tar",NULL,			NULL,			NULL,		list_archive,                   NULL },
    { "view archive", "application",    "zip",                  NULL,			NULL,			NULL,		list_archive,                   NULL },
-   {RunActionRefreshThumb,"application","zip",                 ".ggb",			NULL,			refreshThumbnail,NULL,		                NULL },
    { "view archive", "application",    "x-rpm",                NULL,			NULL,			NULL,		list_archive,                   NULL },
    { "extract",      "application",    "x-compressed-tar",     NULL,			NULL,			NULL,		extract_archive,  		NULL },
    { "extract",      "application",    "x-bzip-compressed-tar",NULL,			NULL,			NULL,		extract_archive,  		NULL },
@@ -184,6 +183,9 @@ static RFM_MenuItem run_actions[] = {
    { "Play",         "video",          "*",                    NULL,			NULL,			NULL,		play_video,       		NULL },
    { "info",         "video",          "*",                    NULL,			NULL,			NULL,		av_info,          		NULL },
    { "View",         "font",           "*",                    NULL,			NULL,			NULL,		ftview,           		NULL },
+   {RunActionRefreshThumb,"application","zip",                 ".ggb",			NULL,			refreshThumbnail,NULL,		                NULL },
+   {RunActionRefreshThumb,"video",     "mp4",                  NULL,			NULL,			refreshThumbnail,NULL,		                NULL },
+   {RunActionRefreshThumb,"image",     "*",                    NULL,			NULL,			refreshThumbnail,NULL,		                NULL },
 };
 
 /* Toolbar button definitions

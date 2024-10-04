@@ -98,6 +98,7 @@ static guint rfm_thumbLoadScheduler = 0; //
 static GtkTreeIter thumbnail_load_iter;
 static int rfm_thumbnail_wd;  /* Thumbnail watch */
 static GHashTable *thumb_hash=NULL; /* Thumbnails in the current view */
+static char thumbnailsize_str[8];
 #ifdef RFM_CACHE_THUMBNAIL_IN_MEM
 static GHashTable *pixbuf_hash = NULL;
 #endif
@@ -3553,8 +3554,10 @@ static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * p
         }else if (g_strcmp0(parsed_msg->we_wordv[0], "thumbnailsize")==0){
 	  if (parsed_msg->we_wordc==2){
 	    guint ts = atoi(parsed_msg->we_wordv[1]);
-	    if (ts>0) RFM_THUMBNAIL_SIZE=ts;
-	    else g_warning("invalid thumbnailsize");
+	    if (ts>0) {
+	      RFM_THUMBNAIL_SIZE=ts;
+	      sprintf(thumbnailsize_str, "%3dx%3d",RFM_THUMBNAIL_SIZE,RFM_THUMBNAIL_SIZE);
+	    }else g_warning("invalid thumbnailsize");
 	  }else printf("%d\n",RFM_THUMBNAIL_SIZE);
 	}else if (g_strcmp0(parsed_msg->we_wordv[0], "showcolumn")==0 || g_strcmp0(parsed_msg->we_wordv[0], "showcolumns")==0 ){
 	  if (parsed_msg->we_wordc==1){
@@ -3961,10 +3964,12 @@ int main(int argc, char *argv[])
    for(int i=0;i<=NUM_Ext_Columns;i++) {
      ExtColumnHashTable[i]=NULL;
    }
+   //init some variables
    memcpy(SearchResultViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
    memcpy(DirectoryViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
    sprintf(selected_filename_placeholder_in_space," %s ",selected_filename_placeholder);
    sprintf(selected_filename_placeholder_in_quotation, "'%s'",selected_filename_placeholder);
+   sprintf(thumbnailsize_str, "%3dx%3d",RFM_THUMBNAIL_SIZE,RFM_THUMBNAIL_SIZE);
    
    PROG_NAME = strdup(argv[0]);
    int c=1;
@@ -4038,8 +4043,10 @@ int main(int argc, char *argv[])
       case 'T':
 	thumbnailsize =argv[c] + 2 * sizeof(gchar); // remove the '-T' prefix in argv[c]
 	int ts=atoi(thumbnailsize);
-	if (ts!=0) RFM_THUMBNAIL_SIZE=ts;
-	else die("-T should be followd with custom RFM_THUMBNAIL_SIZE, for example: -T256");
+	if (ts!=0) {
+	  RFM_THUMBNAIL_SIZE=ts;
+	  sprintf(thumbnailsize_str, "%3dx%3d",RFM_THUMBNAIL_SIZE,RFM_THUMBNAIL_SIZE);
+	}else die("-T should be followd with custom RFM_THUMBNAIL_SIZE, for example: -T256");
 	break;
       case '-': //-- for long argument
 	char* longArgument=argv[c] + 2 * sizeof(gchar);
