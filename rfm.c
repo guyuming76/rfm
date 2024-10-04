@@ -1198,32 +1198,28 @@ static gint find_thumbnailer(gchar *mime_root, gchar *mime_sub_type, gchar *file
 static void rfm_saveThumbnail(GdkPixbuf *thumb, RFM_ThumbQueueData *thumbData)
 {
    GdkPixbuf *thumbAlpha=NULL;
-   gchar *mtime_tmp;
-   gchar *tmp_thumb_file;
+   gchar *mtime;
    gchar *thumb_path;
-
+   int ld=0;
    thumbAlpha=gdk_pixbuf_add_alpha(thumb, FALSE, 0, 0, 0);  /* Add a transparency channel: some software expects this */
-
+   thumb_path=g_build_filename(rfm_thumbDir, thumbData->thumb_name, NULL);
    if (thumbAlpha!=NULL) {
-      thumb_path=g_build_filename(rfm_thumbDir, thumbData->thumb_name, NULL);
-      tmp_thumb_file=g_strdup_printf("%s-%s-%ld", thumb_path, PROG_NAME, (long)thumbData->rfm_pid); /* check pid_t type: echo | gcc -E -xc -include 'unistd.h' - | grep 'typedef.*pid_t' */
-      mtime_tmp=g_strdup_printf("%"G_GINT64_FORMAT, thumbData->mtime_file);
-      if (tmp_thumb_file!=NULL && mtime_tmp!=NULL) {
-         gdk_pixbuf_save(thumbAlpha, tmp_thumb_file, "png", NULL,
-            "tEXt::Thumb::MTime", mtime_tmp,
+      mtime=g_strdup_printf("%"G_GINT64_FORMAT, thumbData->mtime_file);
+      if (mtime!=NULL) {
+	if (gdk_pixbuf_save(thumbAlpha, thumb_path, "png", NULL,
+            "tEXt::Thumb::MTime", mtime,
             "tEXt::Thumb::URI", thumbData->uri,
             "tEXt::Software", PROG_NAME,
-            NULL);
-         if (chmod(tmp_thumb_file, S_IRUSR | S_IWUSR)==-1)
-            g_warning("rfm_saveThumbnail: Failed to chmod %s\n", tmp_thumb_file);
-         if (rename(tmp_thumb_file, thumb_path)!=0)
-            g_warning("rfm_saveThumbnail: Failed to rename %s\n", tmp_thumb_file);
-      }
+			    NULL)){
+	  if (chmod(thumb_path, S_IRUSR | S_IWUSR)==-1) g_warning("rfm_saveThumbnail: Failed to chmod %s\n", thumb_path);
+	  else if ((ld=load_thumbnail(thumbData->thumb_name, FALSE, FALSE))!=0) g_warning("load_thumbnail failed with code:%d for %s",ld, thumb_path);
+	}g_warning("rfm_saveThumbnail: gdk_pixbuf_save failed for %s\n", thumb_path);
+      }else g_warning("rfm_saveThumbnail: mtime null for %s\n", thumb_path);
+      
       g_free(thumb_path);
-      g_free(mtime_tmp);
-      g_free(tmp_thumb_file);
+      g_free(mtime);
       g_object_unref(thumbAlpha);
-   }
+   }else g_warning("rfm_saveThumbnail: add Alpha failed for %s\n", thumb_path);
 }
 
 //called by gtk idle time scheduler and create one thumbnail a time for the enqueued in rfm_thumbQueue;
@@ -1238,7 +1234,7 @@ static gboolean mkThumb()
       thumb=gdk_pixbuf_new_from_file_at_scale(thumbData->path, thumbData->thumb_size, thumbData->thumb_size, TRUE, &pixbufErr);
       if (thumb!=NULL) {
 	rfm_saveThumbnail(thumb, thumbData);
-	g_debug("thumbnail saved for %s",thumbData->thumb_name);
+	g_log(RFM_LOG_DATA_THUMBNAIL,G_LOG_LEVEL_DEBUG, "thumbnail saved for %s",thumbData->thumb_name);
 	g_object_unref(thumb);
       }else{
 	if (pixbufErr==NULL)
@@ -1249,15 +1245,15 @@ static gboolean mkThumb()
 	}
       }
    }else {
-      //TODO: for thumbnail created with rfm_saveThumbnail above, tmp filename used and renamed next, in inotify handler, create and move event are both captured
-      //but here, we don't have this rename operation, but why Rodney use rename?
       gchar *thumb_path=g_build_filename(rfm_thumbDir, thumbData->thumb_name, NULL);
       GList * input_files=NULL;
+      int ld=0;
       input_files=g_list_prepend(input_files, g_strdup(thumbData->path));
-      g_spawn_wrapper(thumbnailers[thumbData->t_idx].thumbCmd, input_files, G_SPAWN_STDOUT_TO_DEV_NULL, thumb_path, FALSE, NULL, NULL,FALSE);
-      g_list_free(input_files);
+      if (g_spawn_wrapper(thumbnailers[thumbData->t_idx].thumbCmd, input_files, G_SPAWN_STDOUT_TO_DEV_NULL, thumb_path, FALSE, NULL, NULL,FALSE)) if ((ld=load_thumbnail(thumbData->thumb_name, FALSE, FALSE))!=0) g_warning("load_thumbnail failed with code:%d for %s",ld, thumb_path);
+      g_list_free_full(input_files, (GDestroyNotify)g_free);
+      g_free(thumb_path);
    }
-   
+
    if (rfm_thumbQueue->next!=NULL) {   /* More items in queue */
       rfm_thumbQueue=g_list_next(rfm_thumbQueue);
       g_debug("mkThumb return TRUE after:%s",thumbData->thumb_name);
@@ -2958,19 +2954,15 @@ static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer user_d
    while (i<len) {
       struct inotify_event *event=(struct inotify_event *) (buffer+i);
 
-      if (SearchResultViewInsteadOfDirectoryView && event->wd!=rfm_thumbnail_wd) return TRUE;
+      if (SearchResultViewInsteadOfDirectoryView && event->wd!=rfm_thumbnail_wd) {
+	g_log(RFM_LOG_DATA_THUMBNAIL,G_LOG_LEVEL_DEBUG,"Event unhandled since only event from thumbnail dir will be handled in search result view.");
+	return TRUE;
+      }
       
       if (event->len && !ignored_filename(event->name)) {
          if (event->wd==rfm_thumbnail_wd) {
-            /* Update thumbnails in the current view */
-            if (event->mask & IN_MOVED_TO || event->mask & IN_CREATE) { /* Only update thumbnail move - not interested in temporary files */
-              load_thumbnail(event->name, FALSE, FALSE); //我们假设thumbnail只会被mkthumb更新,show_Thumbnail_Itself_InsteadOf_As_Thumbnail_For_Original_Picture 时,不会触发enque mkthumb, 也就不会触发这里在Inotify_handler里load_thumbnail. 也就是说这里load_thumbnail, 不是为show_Thumbnail_Itself_InsteadOf_As_Thumbnail_For_Original_Picture,所以这里参数为FALSE
-
-	      g_debug("thumbnail %s loaded in inotify_handler",event->name);
-
-            }
-         }
-         else {   /* Must be from rfm_curPath_wd */
+	    g_log(RFM_LOG_DATA_THUMBNAIL,G_LOG_LEVEL_DEBUG, "unhandled event %s in thumbnail dir",event->name);
+         }else {   /* Must be from rfm_curPath_wd */
             if (event->mask & IN_CREATE)
                inotify_insert_item(event->name, event->mask & IN_ISDIR);
             else
