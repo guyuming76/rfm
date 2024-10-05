@@ -40,6 +40,13 @@
 #define BuiltInCmd_showcolumns_Description     "alias of showcolumn"
 #define BuiltInCmd_setenv                      "setenv"
 #define BuiltInCmd_setenv_Description          "set environment varaiable for rfm, input setenv to see usage"
+#define BuiltInCmd_cd                          "cd"
+#define BuiltInCmd_cd_Description              "\n" \
+"    cd address  go to address, note that PWD is not changed, just open address in rfm. can also be used to select file in rfm window.\n" \
+"    cd ..       go up to parent directory.\n" \
+"    cd -        go to directory in OLDPWD environment variable, that is, previously opened directory.\n" \
+"    cd          cd followed by space key with directory selected will enter that directory, and will enter parent directory of a file if file selected.\n" \
+"                cd without parameter or space just output current directory, which can be different from the output of pwd command.\n"
 
 #define builtinCMD_Help \
 "\n##system views:##\n" \
@@ -53,11 +60,6 @@
 "    prompt won't update when selection changes in rfm view, press Enter to refresh\n" \
 "    prompt b*],b>,b?] differ with explanation above only in that commands inputted in stdin is started in gtk thread instead of readline thread. When ] is displayed instead of >, gtk window will not refresh and file selection cannot be changed when command is executing(such as when selected file is being editted).\n" \
 "\n##rfm builtin commands:##\n" \
-"    cd address  go to address, note that PWD is not changed, just open address in rfm. can also be used to select file in rfm window.\n" \
-"    cd ..       go up to parent directory.\n" \
-"    cd -        go to directory in OLDPWD environment variable, that is, previously opened directory.\n" \
-"    cd          cd followed by space key with directory selected will enter that directory, and will enter parent directory of a file if file selected.\n" \
-"                cd without parameter or space just output current directory, which can be different from the output of pwd command.\n" \
 "    quit        quit rfm\n" \
 "    help        print this message\n" \
 "    press Enter key two times (double enter) to refresh rfm view\n" \

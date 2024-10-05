@@ -40,6 +40,14 @@
 #define BuiltInCmd_showcolumns_Description     "showcolumn别名"
 #define BuiltInCmd_setenv                      "setenv"
 #define BuiltInCmd_setenv_Description          "设置rfm进程环境变量值,输入setenv命令查看使用方法"
+#define BuiltInCmd_cd                          "cd"
+#define BuiltInCmd_cd_Description              "\n" \
+"    cd 地址     跳转到地址, 注意 PWD 环境变量值不会改变.也可用来在rfm窗口选中地址对应的文件名.\n" \
+"    cd ..       进入当前目录父目录\n" \
+"    cd -        进入OLDPWD环境变量对于目录,即上次打开的目录\n" \
+"    cd空格      选中目录, cd加空格进入此目录; 选中文件,cd加空格进入此文件所在目录\n" \
+"    cd不加空格  单独cd命令不接参数或空格输出当前所在目录,注意和pwd命令区别\n"
+
 
 #define builtinCMD_Help \
 "\n##系统视图:##\n" \
@@ -53,11 +61,6 @@
 "    命令提示不随文件选中或取消自动更新, 用户可按回车键刷新\n" \
 "    提示符 b*],b>,b?] 分别同上解释,区别在与,此时输入命令会由gtk窗口线程启动,而不是readline线程;也就是说,此时输入命令执行期间(比如编辑选中文件时),文件视图不会刷新,也不能更改选项\n" \
 "\n##rfm内置命令:##\n" \
-"    cd 地址     跳转到地址, 注意 PWD 环境变量值不会改变.也可用来在rfm窗口选中地址对应的文件名.\n" \
-"    cd ..       进入当前目录父目录\n" \
-"    cd -        进入OLDPWD环境变量对于目录,即上次打开的目录\n" \
-"    cd空格      选中目录, cd加空格进入此目录; 选中文件,cd加空格进入此文件所在目录\n" \
-"    cd不加空格  单独cd命令不接参数或空格输出当前所在目录,注意和pwd命令区别\n" \
 "    quit        退出rfm\n" \
 "    help        输出本帮助信息\n" \
 "    连按两次回车键刷新rfm显示内容\n" \

@@ -413,6 +413,7 @@ static void Update_Store_ExtColumns(RFM_ChildAttribs *childAttribs);
 static gchar* getExtColumnValueFromHashTable(guint fileAttributeId, guint ExtColumnHashTableIndex);
 static void set_rfm_curPath(gchar *path);
 static void set_rfm_curPath_internal(gchar* path);
+static void cmd_cd(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
 #ifdef GitIntegration
 // value " M " for modified
 // value "M " for staged
@@ -3509,6 +3510,7 @@ static void cmd_setenv(wordexp_t *parsed_msg, GString *readline_result_string_af
 	  else printf(SETENV_USAGE);
 }
 
+
 static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution){
 
         for(int i=0;i<G_N_ELEMENTS(builtinCMD);i++){
@@ -3521,7 +3523,26 @@ static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * p
 	  }
 	}
 
-        if (g_strcmp0(parsed_msg->we_wordv[0],"cd")==0){
+        if (g_strcmp0(parsed_msg->we_wordv[0],"setpwd")==0) {
+	  setenv("PWD",rfm_curPath,1);
+	  printf("%s\n",getenv("PWD"));
+        }else if (g_strcmp0(parsed_msg->we_wordv[0],"pwd")==0) {
+	  printf("%s\n",getenv("PWD"));
+        }else if (g_strcmp0(parsed_msg->we_wordv[0],"quit")==0) {
+	  cleanup(NULL,rfmCtx);
+        }else if (g_strcmp0(parsed_msg->we_wordv[0],"help")==0) {
+	  stdin_command_help();
+        }else if (g_strcmp0(parsed_msg->we_wordv[0],"/")==0) {
+	  switch_iconview_treeview(rfmCtx);
+	}else if (g_strcmp0(parsed_msg->we_wordv[0],"//")==0) {
+	  Switch_SearchResultView_DirectoryView(NULL, rfmCtx);
+
+        }else return FALSE; // parsed_msg->we_wordv[0] does not match any build command
+
+	return TRUE; //execution reaches here if parsed_msg->we_wordv[0] matchs any keyword, and have finished the corresponding logic
+}
+
+static void cmd_cd(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution) {
 	  if (parsed_msg->we_wordc==2){
 	    gchar * addr=parsed_msg->we_wordv[1];
 	    g_debug("cd %s", addr);
@@ -3548,8 +3569,6 @@ static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * p
 		}
 		set_rfm_curPath(addr);
 		g_free(addr);
-		add_history(readline_result_string_after_file_name_substitution->str);
-		history_entry_added++;
 	      }
 	      g_free(full_addr);
 	    }
@@ -3579,24 +3598,8 @@ static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * p
 	  //The answer is we should not, since we sometime, with need PWD, which child process will inherit, to be different from the directory of files selected that will be used by child process.
 	  //Instead, we use the setpwd command.
 	  }//end cd without parameter
-        }else if (g_strcmp0(parsed_msg->we_wordv[0],"setpwd")==0) {
-	  setenv("PWD",rfm_curPath,1);
-	  printf("%s\n",getenv("PWD"));
-        }else if (g_strcmp0(parsed_msg->we_wordv[0],"pwd")==0) {
-	  printf("%s\n",getenv("PWD"));
-        }else if (g_strcmp0(parsed_msg->we_wordv[0],"quit")==0) {
-	  cleanup(NULL,rfmCtx);
-        }else if (g_strcmp0(parsed_msg->we_wordv[0],"help")==0) {
-	  stdin_command_help();
-        }else if (g_strcmp0(parsed_msg->we_wordv[0],"/")==0) {
-	  switch_iconview_treeview(rfmCtx);
-	}else if (g_strcmp0(parsed_msg->we_wordv[0],"//")==0) {
-	  Switch_SearchResultView_DirectoryView(NULL, rfmCtx);
-
-        }else return FALSE; // parsed_msg->we_wordv[0] does not match any build command
-
-	return TRUE; //execution reaches here if parsed_msg->we_wordv[0] matchs any keyword, and have finished the corresponding logic
 }
+
 
 static void toggle_exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread(){
   exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread = !exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread;
