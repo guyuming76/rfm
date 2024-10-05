@@ -34,6 +34,10 @@
 #define BuiltInCmd_sort_Description            "show or set sorting column"
 #define BuiltInCmd_glog                        "glog"
 #define BuiltInCmd_glog_Description            "开/关glib log在命令行窗口的显示,命令glog off关闭日志输出,glog on打开. 作用主要是日志输出有时会干扰编辑器如nano的显示"
+#define BuiltInCmd_showcolumn                  "showcolumn"
+#define BuiltInCmd_showcolumns                 "showcolumns"
+#define BuiltInCmd_showcolumn_Description      "show or hide column (if currently in listview); current treeview column layout will be added in to command history if no parameter follows showcolumn"
+#define BuiltInCmd_showcolumns_Description     "alias of showcolumn"
 
 #define builtinCMD_Help \
 "\n##system views:##\n" \
@@ -60,7 +64,6 @@
 "    pwd         get rfm env PWD\n" \
 "    setpwd      set rfm env PWD with current directory\n" \
 "    setenv      set environment varaiable for rfm, input setenv to see usage\n" \
-"    showcolumn  show or hide column (if currently in listview); current treeview column layout will be added in to command history if no parameter follows showcolumn\n" \
 "\n##Shell commands:##\n" \
 "    non-builtin commands will be sent to shell to execute.\n" \
 "    if there is ending space in command entered, selected filename(s) will be appended at the end. for example, you can view currently selected maildir mail file with `mu view `, with ending space before return.\n" \

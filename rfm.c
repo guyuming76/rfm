@@ -503,7 +503,7 @@ static enum RFM_treeviewCol get_available_ExtColumn(enum RFM_treeviewCol col);
 static gchar* get_showcolumn_cmd_from_currently_displaying_columns();
 static void show_hide_treeview_columns_in_order(gchar *order_sequence);
 static void show_hide_treeview_columns_enum(int count, ...);
-
+static void cmd_showcolumn(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
 /******TreeView column related definitions end*******/
 /****************************************************/
 /******View Selection related definitions************/
@@ -3493,6 +3493,16 @@ static void cmd_glog(wordexp_t *parsed_msg, GString *readline_result_string_afte
 	    printf("Usage: glog off|on\n");
 }
 
+static void cmd_showcolumn(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution) {
+	  if (parsed_msg->we_wordc==1){
+	    print_columns_status(parsed_msg);
+	  }else{
+            for(guint i=1;i<parsed_msg->we_wordc;i++){
+	      show_hide_treeview_columns_in_order(parsed_msg->we_wordv[i]);
+	    }
+	  }
+}
+
 static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution){
 
         for(int i=0;i<G_N_ELEMENTS(builtinCMD);i++){
@@ -3582,16 +3592,6 @@ static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * p
 	  switch_iconview_treeview(rfmCtx);
 	}else if (g_strcmp0(parsed_msg->we_wordv[0],"//")==0) {
 	  Switch_SearchResultView_DirectoryView(NULL, rfmCtx);
-	}else if (g_strcmp0(parsed_msg->we_wordv[0], "showcolumn")==0 || g_strcmp0(parsed_msg->we_wordv[0], "showcolumns")==0 ){
-	  if (parsed_msg->we_wordc==1){
-	    print_columns_status(parsed_msg);
-	  }else{
-            for(guint i=1;i<parsed_msg->we_wordc;i++){
-	      show_hide_treeview_columns_in_order(parsed_msg->we_wordv[i]);
-	    }
-	  }
-	  add_history(readline_result_string_after_file_name_substitution->str);
-	  history_entry_added++;
 
         }else return FALSE; // parsed_msg->we_wordv[0] does not match any build command
 

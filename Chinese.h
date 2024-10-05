@@ -34,6 +34,10 @@
 #define BuiltInCmd_sort_Description            "设置排序列,效果等同点击列标题"
 #define BuiltInCmd_glog                        "glog"
 #define BuiltInCmd_glog_Description            "开/关glib log在命令行窗口的显示,命令glog off关闭日志输出,glog on打开. 作用主要是日志输出有时会干扰编辑器如nano的显示"
+#define BuiltInCmd_showcolumn                  "showcolumn"
+#define BuiltInCmd_showcolumns                 "showcolumns"
+#define BuiltInCmd_showcolumn_Description      "显示或隐藏列(若当前在列表视图), 并且当参数为空的时候,把当前列表视图列设置作为一条showcolumn命令加入命令历史,方便通过命令历史记录恢复当前列设置"
+#define BuiltInCmd_showcolumns_Description     "showcolumn别名"
 
 #define builtinCMD_Help \
 "\n##系统视图:##\n" \
@@ -60,7 +64,6 @@
 "    pwd         获取rfm进程 PWD 环境变量值\n" \
 "    setpwd      设置rfm PWD 为当前显示目录\n" \
 "    setenv      设置rfm进程环境变量值,输入setenv命令查看使用方法\n" \
-"    showcolumn  显示或隐藏列(若当前在列表视图), 并且当参数为空的时候,把当前列表视图列设置作为一条showcolumn命令加入命令历史,方便通过命令历史记录恢复当前列设置\n" \
 "\n##创建Shell子进程执行的命令:##\n" \
 "    非rfm内置命令会被发送到操作系统Shell执行,可在config.h内配置shell类型如bash, nushell等.\n" \
 "    如果命令末尾有空格字符, 当前rfm视图选中文件会被添加到命令末尾. 例如你选中一个maildir目录里的邮件文件, 输入 mu view 并在回车前以空格结尾, 则可以查看选中邮件内容.\n" \

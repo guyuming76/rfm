@@ -118,6 +118,8 @@ static RFM_builtinCMD builtinCMD[] = {
 	{BuiltInCmd_pagesize,                   cmdPagesize,                            BuiltInCmd_pagesize_Description},
 	{BuiltInCmd_sort,                       cmdSort,                                BuiltInCmd_sort_Description},
 	{BuiltInCmd_glog,                       cmd_glog,                               BuiltInCmd_glog_Description},
+	{BuiltInCmd_showcolumn,                 cmd_showcolumn,                         BuiltInCmd_showcolumn_Description},
+	{BuiltInCmd_showcolumns,                cmd_showcolumn,                         BuiltInCmd_showcolumns_Description},
 };
 
 /* Menu Items
