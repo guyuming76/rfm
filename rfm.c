@@ -57,63 +57,6 @@ static int setup(RFM_ctx *rfmCtx);
 static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx);
 
 /****************************************************/
-/******Thumbnail related definitions*****************/
-typedef struct {
-   gchar *path;
-   gchar *thumb_name;
-   gchar *md5;
-   gchar *uri;
-   gint64 mtime_file;
-   gint t_idx;
-   pid_t rfm_pid;
-   gint thumb_size; 
-} RFM_ThumbQueueData;
-
-typedef struct {
-   gchar *thumbRoot;
-   gchar *thumbSub;
-   gchar *filenameSuffix;
-  //GdkPixbuf *(*func)(RFM_ThumbQueueData * thumbData);
-   const gchar **thumbCmd;
-  gboolean check_tEXt;
-} RFM_Thumbnailer;
-
-typedef struct {
-   GdkPixbuf *file, *dir;
-   GdkPixbuf *symlinkDir;
-   GdkPixbuf *symlinkFile;
-   GdkPixbuf *unmounted;
-   GdkPixbuf *mounted;
-   GdkPixbuf *symlink;
-   GdkPixbuf *broken;
-} RFM_defaultPixbufs;
-
-static RFM_defaultPixbufs *defaultPixbufs=NULL;
-static GtkIconTheme *icon_theme;
-static gchar *rfm_thumbDir;         /* Users thumbnail directory */
-static gint rfm_do_thumbs;          /* Show thumbnail images of files: 0: disabled; 1: enabled; 2: disabled for current dir */
-static GList *rfm_thumbQueue=NULL;
-static guint rfm_thumbScheduler = 0; // this is for mkthumb
-static guint rfm_thumbLoadScheduler = 0; //
-static GtkTreeIter thumbnail_load_iter;
-static GHashTable *thumb_hash=NULL; /* Thumbnails in the current view */
-static char thumbnailsize_str[8];
-#ifdef RFM_CACHE_THUMBNAIL_IN_MEM
-static GHashTable *pixbuf_hash = NULL;
-#endif
-static void load_thumbnail_or_enqueue_thumbQueue_for_store_row(GtkTreeIter *iter);
-static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter);
-static gint find_thumbnailer(gchar *mime_root, gchar *mime_sub_type, gchar *filepath);
-static int load_thumbnail(gchar *key, gboolean show_Thumbnail_Itself_InsteadOf_As_Thumbnail_For_Original_Picture, gboolean check_tEXt);
-static void rfm_saveThumbnail(GdkPixbuf *thumb, RFM_ThumbQueueData *thumbData);
-static gboolean mkThumb();
-static void free_thumbQueueData(RFM_ThumbQueueData *thumbData);
-static RFM_defaultPixbufs *load_default_pixbufs(void);
-static void free_default_pixbufs(RFM_defaultPixbufs *defaultPixbufs);
-static void refreshThumbnail();
-static void cmdThumbnailsize(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
-/******Thumbnail related definitions end*************/
-/****************************************************/
 /******Terminal Emulator related definitions*********/
 #ifdef PythonEmbedded
 #define PY_SSIZE_T_CLEAN
@@ -251,6 +194,7 @@ typedef struct RFM_ChildAttributes{
 } RFM_ChildAttribs;
 
 static GList *rfm_childList = NULL;
+static int rfm_childListLength = 0;
 static gchar** env_for_g_spawn=NULL;
 static void free_child_attribs(RFM_ChildAttribs *child_attribs);
 static void g_spawn_wrapper_for_selected_fileList_(RFM_ChildAttribs *childAttribs);
@@ -273,6 +217,64 @@ static int read_char_pipe(gint fd, ssize_t block_size, char **buffer);
 static void GSpawnChildSetupFunc_setenv(gpointer user_data);
 static void set_env_to_pass_into_child_process(GtkTreeIter *iter, gchar*** env_for_g_spawn);
 /******Process spawn related definitions end*********/
+/****************************************************/
+/******Thumbnail related definitions*****************/
+typedef struct {
+   gchar *path;
+   gchar *thumb_name;
+   gchar *md5;
+   gchar *uri;
+   gint64 mtime_file;
+   gint t_idx;
+   pid_t rfm_pid;
+   gint thumb_size; 
+} RFM_ThumbQueueData;
+
+typedef struct {
+   gchar *thumbRoot;
+   gchar *thumbSub;
+   gchar *filenameSuffix;
+  //GdkPixbuf *(*func)(RFM_ThumbQueueData * thumbData);
+   const gchar **thumbCmd;
+  gboolean check_tEXt;
+} RFM_Thumbnailer;
+
+typedef struct {
+   GdkPixbuf *file, *dir;
+   GdkPixbuf *symlinkDir;
+   GdkPixbuf *symlinkFile;
+   GdkPixbuf *unmounted;
+   GdkPixbuf *mounted;
+   GdkPixbuf *symlink;
+   GdkPixbuf *broken;
+} RFM_defaultPixbufs;
+
+static RFM_defaultPixbufs *defaultPixbufs=NULL;
+static GtkIconTheme *icon_theme;
+static gchar *rfm_thumbDir;         /* Users thumbnail directory */
+static gint rfm_do_thumbs;          /* Show thumbnail images of files: 0: disabled; 1: enabled; 2: disabled for current dir */
+static GList *rfm_thumbQueue=NULL;
+static guint rfm_thumbScheduler = 0; // this is for mkthumb
+static guint rfm_thumbLoadScheduler = 0; //
+static GtkTreeIter thumbnail_load_iter;
+static GHashTable *thumb_hash=NULL; /* Thumbnails in the current view */
+static char thumbnailsize_str[8];
+#ifdef RFM_CACHE_THUMBNAIL_IN_MEM
+static GHashTable *pixbuf_hash = NULL;
+#endif
+static void load_thumbnail_or_enqueue_thumbQueue_for_store_row(GtkTreeIter *iter);
+static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter);
+static gint find_thumbnailer(gchar *mime_root, gchar *mime_sub_type, gchar *filepath);
+static int load_thumbnail(gchar *key, gboolean show_Thumbnail_Itself_InsteadOf_As_Thumbnail_For_Original_Picture, gboolean check_tEXt);
+static int load_thumbnail_as_asyn_callback(RFM_ChildAttribs *childAttribs);
+static void rfm_saveThumbnail(GdkPixbuf *thumb, RFM_ThumbQueueData *thumbData);
+static gboolean mkThumb();
+static void free_thumbQueueData(RFM_ThumbQueueData *thumbData);
+static RFM_defaultPixbufs *load_default_pixbufs(void);
+static void free_default_pixbufs(RFM_defaultPixbufs *defaultPixbufs);
+static void refreshThumbnail();
+static void cmdThumbnailsize(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
+/******Thumbnail related definitions end*************/
 /****************************************************/
 /******GtkListStore and refresh definitions**********/
 enum RFM_treeviewCol{
@@ -788,6 +790,7 @@ static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_
 
    if (child_attribs->stdErr!=NULL && strlen(child_attribs->stdErr)>0) g_warning("g_spawn_async_with_wrapper_child_supervisor: %s",child_attribs->stdErr);
    rfm_childList=g_list_remove(rfm_childList, child_attribs);
+   rfm_childListLength--;
    /* if (rfm_childList==NULL) */
    /*    gtk_widget_set_sensitive(GTK_WIDGET(info_button), FALSE); */
 
@@ -973,6 +976,7 @@ static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *ch
          g_timeout_add(100, (GSourceFunc)g_spawn_async_with_pipes_wrapper_child_supervisor, (void*)child_attribs);
          g_child_watch_add(child_attribs->pid, (GChildWatchFunc)child_handler_to_set_finished_status_for_child_supervisor, child_attribs);
          rfm_childList=g_list_prepend(rfm_childList, child_attribs);
+	 rfm_childListLength++;
          //gtk_widget_set_sensitive(GTK_WIDGET(info_button), TRUE);
       }else{
 	g_warning("g_spawn_async_with_pipe error:%s",err->message);
@@ -1092,6 +1096,14 @@ static gboolean g_spawn_wrapper(const char **action, GList *file_list, int run_o
   child_attribs->output_read_by_program=output_read_by_program;
 	
   return g_spawn_wrapper_(file_list,dest_path,child_attribs);
+}
+
+//g_spawn 异步调用回调函数只支持一个参数,就做了这个wrapper;并且作为异步调用thumbData->thumbnail可能在本函数工作前就跟随thumbqueue被free了,这里thumbnail是strdup进来的,要释放
+static int load_thumbnail_as_asyn_callback(RFM_ChildAttribs *childAttribs){
+  gchar *thumbname=((RFM_ChildAttribs *)childAttribs)->customCallbackUserData;
+  int ld = load_thumbnail(thumbname, FALSE, FALSE);
+  if (ld!=0) g_warning("load_thumbnail failed with code:%d for %s",ld, thumbname);
+  g_free(thumbname);
 }
 
 /* Load and update a thumbnail from disk cache */
@@ -1249,7 +1261,7 @@ static gboolean mkThumb()
       GList * input_files=NULL;
       int ld=0;
       input_files=g_list_prepend(input_files, g_strdup(thumbData->path));
-      if (g_spawn_wrapper(thumbnailers[thumbData->t_idx].thumbCmd, input_files, G_SPAWN_STDOUT_TO_DEV_NULL, thumb_path, FALSE, NULL, NULL,FALSE)) if ((ld=load_thumbnail(thumbData->thumb_name, FALSE, FALSE))!=0) g_warning("load_thumbnail failed with code:%d for %s",ld, thumb_path);
+      g_spawn_wrapper(thumbnailers[thumbData->t_idx].thumbCmd, input_files, G_SPAWN_STDOUT_TO_DEV_NULL, thumb_path, TRUE, load_thumbnail_as_asyn_callback, g_strdup(thumbData->thumb_name),FALSE);
       g_list_free_full(input_files, (GDestroyNotify)g_free);
       g_free(thumb_path);
    }
@@ -1278,7 +1290,10 @@ static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter)
    if (fileAttributes->is_dir) return NULL;
    
    thumbData=calloc(1, sizeof(RFM_ThumbQueueData));
-   if (thumbData==NULL) return NULL;
+   if (thumbData==NULL) {
+     g_warning("calloc for RFM_ThumbQueueData failed");
+     return NULL;
+   }
 
    thumbData->t_idx=find_thumbnailer(fileAttributes->mime_root, fileAttributes->mime_sub_type, fileAttributes->path);
    if (thumbData->t_idx==-1) {
@@ -1302,6 +1317,7 @@ static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter)
    /* Map thumb path to model reference for inotify */
    treePath=gtk_tree_model_get_path(GTK_TREE_MODEL(store), iter);
    g_hash_table_insert(thumb_hash, g_strdup(thumbData->thumb_name), gtk_tree_row_reference_new(GTK_TREE_MODEL(store), treePath));
+   g_log(RFM_LOG_DATA_THUMBNAIL, G_LOG_LEVEL_DEBUG, "thumbname %s inserted into thumb_hash for %s",thumbData->thumb_name, thumbData->path);
    gtk_tree_path_free(treePath);
 
    return thumbData;
@@ -1519,7 +1535,7 @@ static void iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_and_l
 
 
 static void load_thumbnail_or_enqueue_thumbQueue_for_store_row(GtkTreeIter *iter){
-   RFM_ThumbQueueData *thumbData=NULL;
+      RFM_ThumbQueueData *thumbData=NULL;
       thumbData=get_thumbData(iter); /* Returns NULL if thumbnail not handled */
       if (thumbData!=NULL) {
          /* Try to load any existing thumbnail */
