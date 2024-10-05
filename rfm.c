@@ -431,6 +431,7 @@ static void load_gitCommitMsg_for_store_row(GtkTreeIter *iter);
 #endif
 static void set_terminal_window_title(char* title);
 static void set_Titles(gchar * title);
+static void cmdToggleInotifyHandler(wordexp_t *parsed_msg,GString *readline_result_string_after_file_name_substitution);
 /******GtkListStore and refresh definitions end******/
 /****************************************************/
 /******Search Result related definitions*************/
@@ -3459,6 +3460,11 @@ static void cmdThumbnailsize(wordexp_t * parsed_msg, GString* readline_result_st
 	}else printf("%d\n",RFM_THUMBNAIL_SIZE);
 }
 
+static void cmdToggleInotifyHandler(wordexp_t *parsed_msg,GString *readline_result_string_after_file_name_substitution) {
+	  pauseInotifyHandler = !pauseInotifyHandler;
+	  if (pauseInotifyHandler) printf("InotifyHandler Off\n"); else printf("InotifyHandler On\n");        
+}
+
 static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution){
 
         for(int i=0;i<G_N_ELEMENTS(builtinCMD);i++){
@@ -3544,11 +3550,6 @@ static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * p
 	  cleanup(NULL,rfmCtx);
         }else if (g_strcmp0(parsed_msg->we_wordv[0],"help")==0) {
 	  stdin_command_help();
-        }else if (g_strcmp0(parsed_msg->we_wordv[0],"toggleInotifyHandler")==0) {
-	  pauseInotifyHandler = !pauseInotifyHandler;
-	  if (pauseInotifyHandler) printf("InotifyHandler Off\n"); else printf("InotifyHandler On\n");
-	  add_history(readline_result_string_after_file_name_substitution->str);
-	  history_entry_added++;
         }else if (g_strcmp0(parsed_msg->we_wordv[0],"/")==0) {
 	  switch_iconview_treeview(rfmCtx);
 	}else if (g_strcmp0(parsed_msg->we_wordv[0],"//")==0) {

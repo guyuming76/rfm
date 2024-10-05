@@ -25,7 +25,9 @@
 #define BuiltInCmd_SearchResultColumnSeperator_Description "例如设置搜索结果列分割符为'&':  SearchResultColumnSeperator \"&\"   .不带参数则显示当前列分割符."
 #define BuiltInCmd_toggleBlockGUI_Description "切换在gtk窗口线程或readline线程执行输入的命令,命令提示符相应显示 ] 或 > , ] 表示命令执行会阻塞图形窗口刷新"
 #define BuiltInCmd_thumbnailsize               "thumbnailsize"
-#define BuiltInCmd_thumbnailsize_Description  "设置文件图标(缩略图)大小,接受整数参数,如64,128或256"
+#define BuiltInCmd_thumbnailsize_Description  "set thumbnail size in icon view with integer such as 64,128 or 256"
+#define BuiltInCmd_toggleInotifyHandler        "toggleInotifyHandler"
+#define BuiltInCmd_toggleInotifyHandler_Description  "stop/start auto refresh, when you are view /dev directory for example"
 
 #define builtinCMD_Help \
 "\n##system views:##\n" \
@@ -53,10 +55,8 @@
 "    setpwd      set rfm env PWD with current directory\n" \
 "    setenv      set environment varaiable for rfm, input setenv to see usage\n" \
 "    pagesize    set files shown per page in search result view. for example, pagesize 100\n" \
-"    thumbnailsize  set thumbnail size in icon view. \n" \
 "    showcolumn  show or hide column (if currently in listview); current treeview column layout will be added in to command history if no parameter follows showcolumn\n" \
 "    sort        show or set sorting column\n" \
-"    toggleInotifyHandler  stop/start auto refresh, when you are view /dev directory for example\n" \
 "\n##Shell commands:##\n" \
 "    non-builtin commands will be sent to shell to execute.\n" \
 "    if there is ending space in command entered, selected filename(s) will be appended at the end. for example, you can view currently selected maildir mail file with `mu view `, with ending space before return.\n" \
