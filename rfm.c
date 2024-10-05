@@ -3437,7 +3437,7 @@ static void cmdThumbnailsize(wordexp_t * parsed_msg, GString* readline_result_st
 	    guint ts = atoi(parsed_msg->we_wordv[1]);
 	    if (ts>0) {
 	      RFM_THUMBNAIL_SIZE=ts;
-	      sprintf(thumbnailsize_str, "%3dx%3d",RFM_THUMBNAIL_SIZE,RFM_THUMBNAIL_SIZE);
+	      sprintf(thumbnailsize_str, "%dx%d",RFM_THUMBNAIL_SIZE,RFM_THUMBNAIL_SIZE);
 	    }else g_warning("invalid thumbnailsize");
 	}else printf("%d\n",RFM_THUMBNAIL_SIZE);
 }
@@ -3946,7 +3946,7 @@ int main(int argc, char *argv[])
    memcpy(DirectoryViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
    sprintf(selected_filename_placeholder_in_space," %s ",selected_filename_placeholder);
    sprintf(selected_filename_placeholder_in_quotation, "'%s'",selected_filename_placeholder);
-   sprintf(thumbnailsize_str, "%3dx%3d",RFM_THUMBNAIL_SIZE,RFM_THUMBNAIL_SIZE);
+   sprintf(thumbnailsize_str, "%dx%d",RFM_THUMBNAIL_SIZE,RFM_THUMBNAIL_SIZE);
    
    PROG_NAME = strdup(argv[0]);
    int c=1;
@@ -4022,7 +4022,7 @@ int main(int argc, char *argv[])
 	int ts=atoi(thumbnailsize);
 	if (ts!=0) {
 	  RFM_THUMBNAIL_SIZE=ts;
-	  sprintf(thumbnailsize_str, "%3dx%3d",RFM_THUMBNAIL_SIZE,RFM_THUMBNAIL_SIZE);
+	  sprintf(thumbnailsize_str, "%dx%d",RFM_THUMBNAIL_SIZE,RFM_THUMBNAIL_SIZE);
 	}else die("-T should be followd with custom RFM_THUMBNAIL_SIZE, for example: -T256");
 	break;
       case '-': //-- for long argument
