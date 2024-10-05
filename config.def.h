@@ -115,6 +115,7 @@ static RFM_builtinCMD builtinCMD[] = {
 	{"toggleBlockGUI", toggle_exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread, BuiltInCmd_toggleBlockGUI_Description},
 	{BuiltInCmd_thumbnailsize,              cmdThumbnailsize,                       BuiltInCmd_thumbnailsize_Description},
 	{BuiltInCmd_toggleInotifyHandler,       cmdToggleInotifyHandler,                BuiltInCmd_toggleInotifyHandler_Description},
+	{BuiltInCmd_pagesize,                   cmdPagesize,                            BuiltInCmd_pagesize_Description},
 };
 
 /* Menu Items

@@ -471,6 +471,7 @@ static int CallMatchingProcessorForSearchResultLine(char *oneline, gboolean new_
 static void cmdSearchResultColumnSeperator(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
 static int MatchSearchResultType(gchar *readlineResult);
 static void set_DisplayingPageSize_ForFileNameListFromPipesStdIn(uint pagesize);
+static void cmdPagesize(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
 /******Search Result related definitions end*********/
 /****************************************************/
 /******TreeView column related definitions***********/
@@ -3465,6 +3466,13 @@ static void cmdToggleInotifyHandler(wordexp_t *parsed_msg,GString *readline_resu
 	  if (pauseInotifyHandler) printf("InotifyHandler Off\n"); else printf("InotifyHandler On\n");        
 }
 
+static void cmdPagesize(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution){
+        if (parsed_msg->we_wordc==2){
+	  guint ps = atoi(parsed_msg->we_wordv[1]); 
+	  if (ps > 0) set_DisplayingPageSize_ForFileNameListFromPipesStdIn(ps);
+	}else printf("%d\n",PageSize_SearchResultView);
+}
+
 static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution){
 
         for(int i=0;i<G_N_ELEMENTS(builtinCMD);i++){
@@ -3554,9 +3562,6 @@ static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * p
 	  switch_iconview_treeview(rfmCtx);
 	}else if (g_strcmp0(parsed_msg->we_wordv[0],"//")==0) {
 	  Switch_SearchResultView_DirectoryView(NULL, rfmCtx);
-        }else if (g_strcmp0(parsed_msg->we_wordv[0], "pagesize")==0 && parsed_msg->we_wordc==2){
-	  guint ps = atoi(parsed_msg->we_wordv[1]); 
-	  if (ps > 0) set_DisplayingPageSize_ForFileNameListFromPipesStdIn(ps);
 	}else if (g_strcmp0(parsed_msg->we_wordv[0], "showcolumn")==0 || g_strcmp0(parsed_msg->we_wordv[0], "showcolumns")==0 ){
 	  if (parsed_msg->we_wordc==1){
 	    print_columns_status(parsed_msg);

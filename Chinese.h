@@ -28,6 +28,8 @@
 #define BuiltInCmd_thumbnailsize_Description  "设置文件图标(缩略图)大小,接受整数参数,如64,128或256"
 #define BuiltInCmd_toggleInotifyHandler        "toggleInotifyHandler"
 #define BuiltInCmd_toggleInotifyHandler_Description  "关/开自动刷新,比如当你浏览/dev目录时"
+#define BuiltInCmd_pagesize                    "pagesize"
+#define BuiltInCmd_pagesize_Description        "设置文件搜素结果视图每葉文件数, 如 pagesize 100"
 
 #define builtinCMD_Help \
 "\n##系统视图:##\n" \
@@ -54,7 +56,6 @@
 "    pwd         获取rfm进程 PWD 环境变量值\n" \
 "    setpwd      设置rfm PWD 为当前显示目录\n" \
 "    setenv      设置rfm进程环境变量值,输入setenv命令查看使用方法\n" \
-"    pagesize    设置文件搜素结果视图每葉文件数, 如 pagesize 100\n" \
 "    showcolumn  显示或隐藏列(若当前在列表视图), 并且当参数为空的时候,把当前列表视图列设置作为一条showcolumn命令加入命令历史,方便通过命令历史记录恢复当前列设置\n" \
 "    sort        设置排序列,效果等同点击列标题\n" \
 "\n##创建Shell子进程执行的命令:##\n" \

@@ -28,6 +28,8 @@
 #define BuiltInCmd_thumbnailsize_Description  "set thumbnail size in icon view with integer such as 64,128 or 256"
 #define BuiltInCmd_toggleInotifyHandler        "toggleInotifyHandler"
 #define BuiltInCmd_toggleInotifyHandler_Description  "stop/start auto refresh, when you are view /dev directory for example"
+#define BuiltInCmd_pagesize                    "pagesize"
+#define BuiltInCmd_pagesize_Description        "set files shown per page in search result view. for example, pagesize 100"
 
 #define builtinCMD_Help \
 "\n##system views:##\n" \
@@ -54,7 +56,6 @@
 "    pwd         get rfm env PWD\n" \
 "    setpwd      set rfm env PWD with current directory\n" \
 "    setenv      set environment varaiable for rfm, input setenv to see usage\n" \
-"    pagesize    set files shown per page in search result view. for example, pagesize 100\n" \
 "    showcolumn  show or hide column (if currently in listview); current treeview column layout will be added in to command history if no parameter follows showcolumn\n" \
 "    sort        show or set sorting column\n" \
 "\n##Shell commands:##\n" \
