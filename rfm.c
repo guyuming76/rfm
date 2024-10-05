@@ -111,6 +111,7 @@ static void free_thumbQueueData(RFM_ThumbQueueData *thumbData);
 static RFM_defaultPixbufs *load_default_pixbufs(void);
 static void free_default_pixbufs(RFM_defaultPixbufs *defaultPixbufs);
 static void refreshThumbnail();
+static void cmdThumbnailsize(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
 /******Thumbnail related definitions end*************/
 /****************************************************/
 /******Terminal Emulator related definitions*********/
@@ -3431,6 +3432,16 @@ static void cmdSearchResultColumnSeperator(wordexp_t * parsed_msg, GString* read
 	else sprintf(SearchResultColumnSeperator,"%s",parsed_msg->we_wordv[1]);
 }
 
+static void cmdThumbnailsize(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution){
+	if (parsed_msg->we_wordc==2){
+	    guint ts = atoi(parsed_msg->we_wordv[1]);
+	    if (ts>0) {
+	      RFM_THUMBNAIL_SIZE=ts;
+	      sprintf(thumbnailsize_str, "%3dx%3d",RFM_THUMBNAIL_SIZE,RFM_THUMBNAIL_SIZE);
+	    }else g_warning("invalid thumbnailsize");
+	}else printf("%d\n",RFM_THUMBNAIL_SIZE);
+}
+
 static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution){
 
         for(int i=0;i<G_N_ELEMENTS(builtinCMD);i++){
@@ -3528,14 +3539,6 @@ static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * p
         }else if (g_strcmp0(parsed_msg->we_wordv[0], "pagesize")==0 && parsed_msg->we_wordc==2){
 	  guint ps = atoi(parsed_msg->we_wordv[1]); 
 	  if (ps > 0) set_DisplayingPageSize_ForFileNameListFromPipesStdIn(ps);
-        }else if (g_strcmp0(parsed_msg->we_wordv[0], "thumbnailsize")==0){
-	  if (parsed_msg->we_wordc==2){
-	    guint ts = atoi(parsed_msg->we_wordv[1]);
-	    if (ts>0) {
-	      RFM_THUMBNAIL_SIZE=ts;
-	      sprintf(thumbnailsize_str, "%3dx%3d",RFM_THUMBNAIL_SIZE,RFM_THUMBNAIL_SIZE);
-	    }else g_warning("invalid thumbnailsize");
-	  }else printf("%d\n",RFM_THUMBNAIL_SIZE);
 	}else if (g_strcmp0(parsed_msg->we_wordv[0], "showcolumn")==0 || g_strcmp0(parsed_msg->we_wordv[0], "showcolumns")==0 ){
 	  if (parsed_msg->we_wordc==1){
 	    print_columns_status(parsed_msg);

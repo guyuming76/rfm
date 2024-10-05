@@ -113,6 +113,7 @@ static RFM_builtinCMD builtinCMD[] = {
 	{"onebyone",toggle_insert_fileAttributes_into_store_one_by_one,"toggle loading file one by one"},
         {BuiltInCmd_SearchResultColumnSeperator,cmdSearchResultColumnSeperator,BuiltInCmd_SearchResultColumnSeperator_Description},
 	{"toggleBlockGUI", toggle_exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread, BuiltInCmd_toggleBlockGUI_Description},
+	{BuiltInCmd_thumbnailsize,              cmdThumbnailsize,                       BuiltInCmd_thumbnailsize_Description},
 };
 
 /* Menu Items

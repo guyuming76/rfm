@@ -24,6 +24,8 @@
 #define BuiltInCmd_SearchResultColumnSeperator "SearchResultColumnSeperator"
 #define BuiltInCmd_SearchResultColumnSeperator_Description "例如设置搜索结果列分割符为'&':  SearchResultColumnSeperator \"&\"   .不带参数则显示当前列分割符."
 #define BuiltInCmd_toggleBlockGUI_Description "切换在gtk窗口线程或readline线程执行输入的命令,命令提示符相应显示 ] 或 > , ] 表示命令执行会阻塞图形窗口刷新"
+#define BuiltInCmd_thumbnailsize               "thumbnailsize"
+#define BuiltInCmd_thumbnailsize_Description  "设置文件图标(缩略图)大小,接受100~999整数参数,通常为128或256"
 
 #define builtinCMD_Help \
 "\n##system views:##\n" \
