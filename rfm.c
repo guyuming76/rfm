@@ -526,8 +526,10 @@ static gboolean path_is_selected(GtkWidget *widget, gboolean treeview, GtkTreePa
 static GtkSortType current_sorttype=GTK_SORT_ASCENDING;
 static gint current_sort_column_id = GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID;
 static void sort_on_column_header(RFM_treeviewColumn *rfmCol);
+static void sort_on_column(wordexp_t * parsed_msg);
 static void view_column_header_clicked(GtkTreeViewColumn* tree_column, gpointer user_data);
 static gint sort_func(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, gpointer user_data);
+static void cmdSort(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
 /******View sort related definitions end*************/
 /****************************************************/
 /******FileChooser related definitions***************/
@@ -3411,6 +3413,7 @@ static void print_columns_status(wordexp_t * parsed_msg){
 	    printf(SHOWCOLUMN_USAGE);
 	    gchar* cmd=get_showcolumn_cmd_from_currently_displaying_columns();
 	    add_history(cmd);
+	    history_entry_added++;
 	    g_free(cmd);  
 }
 
@@ -3471,6 +3474,11 @@ static void cmdPagesize(wordexp_t * parsed_msg, GString* readline_result_string_
 	  guint ps = atoi(parsed_msg->we_wordv[1]); 
 	  if (ps > 0) set_DisplayingPageSize_ForFileNameListFromPipesStdIn(ps);
 	}else printf("%d\n",PageSize_SearchResultView);
+}
+
+static void cmdSort(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution){
+	  if (parsed_msg->we_wordc==1) print_columns_status(parsed_msg);
+	  else sort_on_column(parsed_msg);
 }
 
 static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution){
@@ -3572,13 +3580,7 @@ static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * p
 	  }
 	  add_history(readline_result_string_after_file_name_substitution->str);
 	  history_entry_added++;
-	}else if (g_strcmp0(parsed_msg->we_wordv[0], "sort")==0){
-	  if (parsed_msg->we_wordc==1)
-	    print_columns_status(parsed_msg);
-	  else
-	    sort_on_column(parsed_msg);
-	  add_history(readline_result_string_after_file_name_substitution->str);
-	  history_entry_added++;
+
 	}else if (g_strcmp0(parsed_msg->we_wordv[0], "glog")==0){
 	  if (parsed_msg->we_wordc>1){
 	    if (g_strcmp0(parsed_msg->we_wordv[1],"off")==0)

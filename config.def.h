@@ -116,6 +116,7 @@ static RFM_builtinCMD builtinCMD[] = {
 	{BuiltInCmd_thumbnailsize,              cmdThumbnailsize,                       BuiltInCmd_thumbnailsize_Description},
 	{BuiltInCmd_toggleInotifyHandler,       cmdToggleInotifyHandler,                BuiltInCmd_toggleInotifyHandler_Description},
 	{BuiltInCmd_pagesize,                   cmdPagesize,                            BuiltInCmd_pagesize_Description},
+	{BuiltInCmd_sort,                       cmdSort,                                BuiltInCmd_sort_Description},
 };
 
 /* Menu Items

@@ -30,6 +30,8 @@
 #define BuiltInCmd_toggleInotifyHandler_Description  "stop/start auto refresh, when you are view /dev directory for example"
 #define BuiltInCmd_pagesize                    "pagesize"
 #define BuiltInCmd_pagesize_Description        "set files shown per page in search result view. for example, pagesize 100"
+#define BuiltInCmd_sort                        "sort"
+#define BuiltInCmd_sort_Description            "show or set sorting column"
 
 #define builtinCMD_Help \
 "\n##system views:##\n" \
@@ -57,7 +59,6 @@
 "    setpwd      set rfm env PWD with current directory\n" \
 "    setenv      set environment varaiable for rfm, input setenv to see usage\n" \
 "    showcolumn  show or hide column (if currently in listview); current treeview column layout will be added in to command history if no parameter follows showcolumn\n" \
-"    sort        show or set sorting column\n" \
 "\n##Shell commands:##\n" \
 "    non-builtin commands will be sent to shell to execute.\n" \
 "    if there is ending space in command entered, selected filename(s) will be appended at the end. for example, you can view currently selected maildir mail file with `mu view `, with ending space before return.\n" \
