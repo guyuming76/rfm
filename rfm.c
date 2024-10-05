@@ -3429,9 +3429,6 @@ static void show_hide_treeview_columns_enum(int count, ...){
 static void cmdSearchResultColumnSeperator(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution){
 	if (parsed_msg->we_wordc==1) printf("%s\n",SearchResultColumnSeperator);
 	else sprintf(SearchResultColumnSeperator,"%s",parsed_msg->we_wordv[1]);
-
-	add_history(readline_result_string_after_file_name_substitution->str);
-	history_entry_added++;
 }
 
 static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution){
