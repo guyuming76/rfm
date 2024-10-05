@@ -96,7 +96,6 @@ static GList *rfm_thumbQueue=NULL;
 static guint rfm_thumbScheduler = 0; // this is for mkthumb
 static guint rfm_thumbLoadScheduler = 0; //
 static GtkTreeIter thumbnail_load_iter;
-static int rfm_thumbnail_wd;  /* Thumbnail watch */
 static GHashTable *thumb_hash=NULL; /* Thumbnails in the current view */
 static char thumbnailsize_str[8];
 #ifdef RFM_CACHE_THUMBNAIL_IN_MEM
@@ -2954,20 +2953,16 @@ static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer user_d
    while (i<len) {
       struct inotify_event *event=(struct inotify_event *) (buffer+i);
 
-      if (SearchResultViewInsteadOfDirectoryView && event->wd!=rfm_thumbnail_wd) {
-	g_log(RFM_LOG_DATA_THUMBNAIL,G_LOG_LEVEL_DEBUG,"Event unhandled since only event from thumbnail dir will be handled in search result view.");
+      if (SearchResultViewInsteadOfDirectoryView) {
+	g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"Inotify event unhandled in search result view.");
 	return TRUE;
       }
       
       if (event->len && !ignored_filename(event->name)) {
-         if (event->wd==rfm_thumbnail_wd) {
-	    g_log(RFM_LOG_DATA_THUMBNAIL,G_LOG_LEVEL_DEBUG, "unhandled event %s in thumbnail dir",event->name);
-         }else {   /* Must be from rfm_curPath_wd */
             if (event->mask & IN_CREATE)
                inotify_insert_item(event->name, event->mask & IN_ISDIR);
             else
                refreshDelayed=TRUE; /* Item IN_CLOSE_WRITE, deleted or moved */
-         }
       }
       if (event->mask & IN_IGNORED) /* Watch changed i.e. rfm_curPath changed */
          refreshImediately=TRUE;
@@ -3009,15 +3004,8 @@ static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer user_d
 static gboolean init_inotify(RFM_ctx *rfmCtx)
 {
    rfm_inotify_fd = inotify_init();
-   if ( rfm_inotify_fd < 0 )
-      return FALSE;
-   else {
-      g_unix_fd_add(rfm_inotify_fd, G_IO_IN, inotify_handler, rfmCtx);
-      if (rfm_do_thumbs==1) {
-         rfm_thumbnail_wd=inotify_add_watch(rfm_inotify_fd, rfm_thumbDir, IN_MOVE|IN_CREATE);
-         if (rfm_thumbnail_wd < 0) g_warning("init_inotify: Failed to add watch on dir %s\n", rfm_thumbDir);
-      }
-   }
+   if ( rfm_inotify_fd < 0 ) return FALSE;
+   else g_unix_fd_add(rfm_inotify_fd, G_IO_IN, inotify_handler, rfmCtx);
    return TRUE;
 }
 
@@ -3905,9 +3893,6 @@ static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx)
 
    //https://unix.stackexchange.com/questions/534657/do-inotify-watches-automatically-stop-when-a-program-ends
    inotify_rm_watch(rfm_inotify_fd, rfm_curPath_wd);
-   if (rfm_do_thumbs==1) {
-      inotify_rm_watch(rfm_inotify_fd, rfm_thumbnail_wd);
-   }
    close(rfm_inotify_fd);
    if (e=append_history(history_entry_added, rfm_historyFileLocation)){
      if (e!=2) g_warning("failed to append_history(%d,%s) error code:%d",history_entry_added,rfm_historyFileLocation,e);
