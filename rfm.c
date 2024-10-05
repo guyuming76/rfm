@@ -145,6 +145,7 @@ static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * p
 static void toggle_exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread();
 static void add_history_after_stdin_command_execution(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
 static void stdin_command_help();
+static void cmd_glog(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
 static gchar shell_cmd_buffer[ARG_MAX]; //TODO: notice that this is shared single instance. But we only run shell command in sync mode now. so, no more than one thread will use this
 static gchar* stdin_cmd_template_bash[]={"/bin/bash","-i","-c", shell_cmd_buffer, NULL};
 static gchar* stdin_cmd_template_nu[]={"nu","-c", shell_cmd_buffer, NULL};
@@ -3481,6 +3482,17 @@ static void cmdSort(wordexp_t * parsed_msg, GString* readline_result_string_afte
 	  else sort_on_column(parsed_msg);
 }
 
+static void cmd_glog(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution) {
+	  if (parsed_msg->we_wordc>1){
+	    if (g_strcmp0(parsed_msg->we_wordv[1],"off")==0)
+	      g_log_set_handler (G_LOG_DOMAIN, G_LOG_LEVEL_MASK | G_LOG_FLAG_FATAL| G_LOG_FLAG_RECURSION, null_log_handler, NULL);
+	    else if (g_strcmp0(parsed_msg->we_wordv[1],"on")==0)
+	      g_log_set_handler (G_LOG_DOMAIN, G_LOG_LEVEL_MASK | G_LOG_FLAG_FATAL| G_LOG_FLAG_RECURSION, g_log_default_handler, NULL);
+	    else printf("Usage: glog off|on\n");
+	  }else
+	    printf("Usage: glog off|on\n");
+}
+
 static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution){
 
         for(int i=0;i<G_N_ELEMENTS(builtinCMD);i++){
@@ -3581,15 +3593,6 @@ static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * p
 	  add_history(readline_result_string_after_file_name_substitution->str);
 	  history_entry_added++;
 
-	}else if (g_strcmp0(parsed_msg->we_wordv[0], "glog")==0){
-	  if (parsed_msg->we_wordc>1){
-	    if (g_strcmp0(parsed_msg->we_wordv[1],"off")==0)
-	      g_log_set_handler (G_LOG_DOMAIN, G_LOG_LEVEL_MASK | G_LOG_FLAG_FATAL| G_LOG_FLAG_RECURSION, null_log_handler, NULL);
-	    else if (g_strcmp0(parsed_msg->we_wordv[1],"on")==0)
-	      g_log_set_handler (G_LOG_DOMAIN, G_LOG_LEVEL_MASK | G_LOG_FLAG_FATAL| G_LOG_FLAG_RECURSION, g_log_default_handler, NULL);
-	    else printf("Usage: glog off|on\n");
-	  }else
-	    printf("Usage: glog off|on\n");
         }else return FALSE; // parsed_msg->we_wordv[0] does not match any build command
 
 	return TRUE; //execution reaches here if parsed_msg->we_wordv[0] matchs any keyword, and have finished the corresponding logic

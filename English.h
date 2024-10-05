@@ -32,6 +32,8 @@
 #define BuiltInCmd_pagesize_Description        "set files shown per page in search result view. for example, pagesize 100"
 #define BuiltInCmd_sort                        "sort"
 #define BuiltInCmd_sort_Description            "show or set sorting column"
+#define BuiltInCmd_glog                        "glog"
+#define BuiltInCmd_glog_Description            "开/关glib log在命令行窗口的显示,命令glog off关闭日志输出,glog on打开. 作用主要是日志输出有时会干扰编辑器如nano的显示"
 
 #define builtinCMD_Help \
 "\n##system views:##\n" \
