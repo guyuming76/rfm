@@ -38,6 +38,8 @@
 #define BuiltInCmd_showcolumns                 "showcolumns"
 #define BuiltInCmd_showcolumn_Description      "show or hide column (if currently in listview); current treeview column layout will be added in to command history if no parameter follows showcolumn"
 #define BuiltInCmd_showcolumns_Description     "alias of showcolumn"
+#define BuiltInCmd_setenv                      "setenv"
+#define BuiltInCmd_setenv_Description          "set environment varaiable for rfm, input setenv to see usage"
 
 #define builtinCMD_Help \
 "\n##system views:##\n" \
@@ -63,7 +65,6 @@
 "    //          to switch between current directory and search result view, with data refreshed\n" \
 "    pwd         get rfm env PWD\n" \
 "    setpwd      set rfm env PWD with current directory\n" \
-"    setenv      set environment varaiable for rfm, input setenv to see usage\n" \
 "\n##Shell commands:##\n" \
 "    non-builtin commands will be sent to shell to execute.\n" \
 "    if there is ending space in command entered, selected filename(s) will be appended at the end. for example, you can view currently selected maildir mail file with `mu view `, with ending space before return.\n" \

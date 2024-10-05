@@ -38,6 +38,8 @@
 #define BuiltInCmd_showcolumns                 "showcolumns"
 #define BuiltInCmd_showcolumn_Description      "显示或隐藏列(若当前在列表视图), 并且当参数为空的时候,把当前列表视图列设置作为一条showcolumn命令加入命令历史,方便通过命令历史记录恢复当前列设置"
 #define BuiltInCmd_showcolumns_Description     "showcolumn别名"
+#define BuiltInCmd_setenv                      "setenv"
+#define BuiltInCmd_setenv_Description          "设置rfm进程环境变量值,输入setenv命令查看使用方法"
 
 #define builtinCMD_Help \
 "\n##系统视图:##\n" \
@@ -63,7 +65,6 @@
 "    //          在当前目录和搜索结果视图间切换,此操作包含数据刷新\n" \
 "    pwd         获取rfm进程 PWD 环境变量值\n" \
 "    setpwd      设置rfm PWD 为当前显示目录\n" \
-"    setenv      设置rfm进程环境变量值,输入setenv命令查看使用方法\n" \
 "\n##创建Shell子进程执行的命令:##\n" \
 "    非rfm内置命令会被发送到操作系统Shell执行,可在config.h内配置shell类型如bash, nushell等.\n" \
 "    如果命令末尾有空格字符, 当前rfm视图选中文件会被添加到命令末尾. 例如你选中一个maildir目录里的邮件文件, 输入 mu view 并在回车前以空格结尾, 则可以查看选中邮件内容.\n" \
