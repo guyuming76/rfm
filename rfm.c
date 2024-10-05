@@ -200,6 +200,7 @@ static void free_child_attribs(RFM_ChildAttribs *child_attribs);
 static void g_spawn_wrapper_for_selected_fileList_(RFM_ChildAttribs *childAttribs);
 /* instantiate childAttribs and call g_spawn_wrapper_ */
 /* caller should g_list_free(file_list), but usually not g_list_free_full, since the file char* is usually owned by rfm_fileattributes */
+/* callbackfuncUserData can be pointer of any type, but callbackfunc should take RFM_ChildAttribs* as input parameter, and retrieve callbackfuncUserData with (RFM_ChildAttribs *)->customCallbackUserData; */
 static gboolean g_spawn_wrapper(const char **action, GList *file_list, int run_opts, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData,gboolean output_read_by_program);
 /* call build_cmd_vector to create the argv parameter for g_spawn_* */
 /* call different g_spawn_* functions based on child_attribs->spawn_async and child_attribs->runOpts */
@@ -1100,7 +1101,7 @@ static gboolean g_spawn_wrapper(const char **action, GList *file_list, int run_o
 
 //g_spawn 异步调用回调函数只支持一个参数,就做了这个wrapper;并且作为异步调用thumbData->thumbnail可能在本函数工作前就跟随thumbqueue被free了,这里thumbnail是strdup进来的,要释放
 static int load_thumbnail_as_asyn_callback(RFM_ChildAttribs *childAttribs){
-  gchar *thumbname=((RFM_ChildAttribs *)childAttribs)->customCallbackUserData;
+  gchar *thumbname = childAttribs->customCallbackUserData;
   int ld = load_thumbnail(thumbname, FALSE, FALSE);
   if (ld!=0) g_warning("load_thumbnail failed with code:%d for %s",ld, thumbname);
   g_free(thumbname);
