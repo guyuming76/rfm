@@ -154,19 +154,19 @@ static gchar* stdin_cmd_template_bash_newVT_nonHold[] = { "$RFM_TERM", "/bin/bas
 static gchar* stdin_cmd_template_nu_inNewVT_nonHold[] = { "$RFM_TERM", "nu", "-c", shell_cmd_buffer, NULL };
 static gchar** stdin_command_bash(gchar* user_input_cmd, gboolean inNewVT) {
   if (inNewVT){
-    sprintf(shell_cmd_buffer,"set -o history; %s;read -p '\033[33m%s\033[0m'; exit 2>/dev/null", strdup(user_input_cmd), strdup(PRESS_ENTER_TO_CLOSE_WINDOW));
+    sprintf(shell_cmd_buffer,"set -o history; %s;read -p '\033[33m%s\033[0m'; exit 2>/dev/null", user_input_cmd, PRESS_ENTER_TO_CLOSE_WINDOW);
     //without set -o history and "bash -i", bash builtin history command will not show results.
     //Seems to be by design, but why? for the nu shell, nu -c "history" just works
     //without exit, rfm will quit after commands such as ls, nano, but commands such as echo 1 will work. if you change exit to sleep 20, even echo 1 will make rfm terminate. Are there any race condition here?
     return stdin_cmd_template_bash_newVT_nonHold;
   }else {
-    sprintf(shell_cmd_buffer,"set -o history; %s; exit 2>/dev/null",strdup(user_input_cmd));
+    sprintf(shell_cmd_buffer,"set -o history; %s; exit 2>/dev/null",user_input_cmd);
     return stdin_cmd_template_bash;
   }
 }
 static gchar** stdin_command_nu(gchar* user_input_cmd, gboolean inNewVT) {
 //TODO: add read -p into shell_cmd_buffer when inNewVT like stdin_command_bash
-  sprintf(shell_cmd_buffer,"%s",g_strdup(user_input_cmd));
+  sprintf(shell_cmd_buffer,"%s",user_input_cmd);
   return inNewVT? stdin_cmd_template_nu_inNewVT_nonHold : stdin_cmd_template_nu;
 }
 static void null_log_handler(const gchar *log_domain,GLogLevelFlags log_level,const gchar *message,gpointer user_data){
