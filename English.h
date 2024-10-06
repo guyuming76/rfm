@@ -66,7 +66,7 @@
 "    if there is \033[33mending space\033[0m in command entered, selected filename(s) will be appended at the end. for example, you can view currently selected maildir mail file with `mu view `, with ending space before return.\n" \
 "    continue with the example above, if you want to view with less, you can use `mu view %s|less `. although \033[33m%s\033[0m in the command is replaced with selected filename, you still have to end the whole command line with space to trigger the filename replacing. one %s for one selected filename, if you choose multiple filenames, you can add more %s. %s can be configured in config.h" \
 "    append \033[33m>\033[0m0 to commands that output filename list, for example: locate 202309|grep png >0 , it will be displayed in rfm, the same effect as starting rfm after pipeline: locate 202309|grep png|rfm\n" \
-"    add \033[33m&\033[0m suffix at the end of non-builtin commands discussed above, a new terminal emulator will be opened to run this command. Note that this is rfm custom behavior. The linux default behavior for & suffix in command line means running command in background. For commands such as ls&, the new VT will close immediately after open, you can run ls;read& instead, to wait for additional Enter key press. & can be configured in config.h\n" \
+"    add \033[33m&\033[0m suffix at the end of non-builtin commands discussed above, a new terminal emulator will be opened to run this command. Note that this is rfm defined behavior. The linux default behavior for & suffix in command line means running command in background. & can be configured in config.h\n" \
 "\n\033[32m rfm builtin commands: \033[0m\n" \
 "    quit        quit rfm\n" \
 "    help        print this message\n" \
