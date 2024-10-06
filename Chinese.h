@@ -47,7 +47,8 @@
 "    cd -        进入OLDPWD环境变量对于目录,即上次打开的目录\n" \
 "    cd空格      选中目录, cd加空格进入此目录; 选中文件,cd加空格进入此文件所在目录\n" \
 "    cd不加空格  单独cd命令不接参数或空格输出当前所在目录,注意和pwd命令区别\n"
-
+#define BuiltInCmd_help                        "help"
+#define BuiltInCmd_help_Description            "显示命令帮助,加命令名参数则仅显示这条命令的帮助"
 
 #define builtinCMD_Help \
 "\n# 系统视图: #\n" \

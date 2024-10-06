@@ -144,7 +144,7 @@ static void parse_and_exec_stdin_command_in_gtk_thread(gchar *msg);
 static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * parsed_msg, GString* readline_result_string);
 static void toggle_exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread();
 static void add_history_after_stdin_command_execution(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
-static void stdin_command_help();
+static void stdin_command_help(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
 static void cmd_glog(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
 static void cmd_setenv(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
 static gchar shell_cmd_buffer[ARG_MAX]; //TODO: notice that this is shared single instance. But we only run shell command in sync mode now. so, no more than one thread will use this
@@ -3181,13 +3181,14 @@ static void readlineInSeperateThread(GString * readlineResultStringFromPreviousR
   }
 }
 
-static void stdin_command_help() {
-	  printf("%s",builtinCMD_Help);
+static void stdin_command_help(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution){
+          gboolean for_specific_command = (parsed_msg!=NULL && (parsed_msg->we_wordc!=1));
+          if (!for_specific_command) printf("%s",builtinCMD_Help);
 	  for(int i=0;i<G_N_ELEMENTS(builtinCMD);i++){
-	        printf("    \033[33m%s\033[0m   %s\n", builtinCMD[i].cmd, builtinCMD[i].help_msg); //黄色打印命令名
+	    if (!for_specific_command || (for_specific_command && strcmp(parsed_msg->we_wordv[1], builtinCMD[i].cmd)==0)) printf("    \033[33m%s\033[0m   %s\n", builtinCMD[i].cmd, builtinCMD[i].help_msg); //黄色打印命令名
 	  }
 	  for(int i=0;i<G_N_ELEMENTS(stdin_cmd_interpretors);i++){
-	        printf("    \033[33m%s\033[0m   %s\n", stdin_cmd_interpretors[i].activationKey, stdin_cmd_interpretors[i].name);
+	    if (!for_specific_command || (for_specific_command && strcmp(parsed_msg->we_wordv[1], builtinCMD[i].cmd)==0)) printf("    \033[33m%s\033[0m   %s\n", stdin_cmd_interpretors[i].activationKey, stdin_cmd_interpretors[i].name);
 	  }
 }
 
@@ -3522,7 +3523,8 @@ static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * p
 		return TRUE;
 	  }
 	}
-
+	
+	//i don't want to call add_history for the following short builtin commands, so i do not move them into the builtinCMD array
         if (g_strcmp0(parsed_msg->we_wordv[0],"setpwd")==0) {
 	  setenv("PWD",rfm_curPath,1);
 	  printf("%s\n",getenv("PWD"));
@@ -3530,8 +3532,6 @@ static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * p
 	  printf("%s\n",getenv("PWD"));
         }else if (g_strcmp0(parsed_msg->we_wordv[0],"quit")==0) {
 	  cleanup(NULL,rfmCtx);
-        }else if (g_strcmp0(parsed_msg->we_wordv[0],"help")==0) {
-	  stdin_command_help();
         }else if (g_strcmp0(parsed_msg->we_wordv[0],"/")==0) {
 	  switch_iconview_treeview(rfmCtx);
 	}else if (g_strcmp0(parsed_msg->we_wordv[0],"//")==0) {
@@ -3876,7 +3876,7 @@ static int setup(RFM_ctx *rfmCtx)
    OLD_rl_attempted_completion_function = rl_attempted_completion_function;
    rl_attempted_completion_function = rfm_filename_completion;
 
-   if (showHelpOnStart && startWithVT() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)) stdin_command_help();
+   if (showHelpOnStart && startWithVT() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)) stdin_command_help(NULL,NULL);
    if (auto_execution_command_after_rfm_start==NULL){
      refresh_store(rfmCtx);
      if(startWithVT() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)){

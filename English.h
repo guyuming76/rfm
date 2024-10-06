@@ -47,6 +47,8 @@
 "    cd -        go to directory in OLDPWD environment variable, that is, previously opened directory.\n" \
 "    cd          cd followed by space key with directory selected will enter that directory, and will enter parent directory of a file if file selected.\n" \
 "                cd without parameter or space just output current directory, which can be different from the output of pwd command.\n"
+#define BuiltInCmd_help                        "help"
+#define BuiltInCmd_help_Description            "显示命令帮助,加命令名参数则仅显示这条命令的帮助"
 
 #define builtinCMD_Help \
 "\n# system views: #\n" \
