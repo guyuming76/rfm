@@ -68,13 +68,13 @@
 "    append \033[33m>\033[0m0 to commands that output filename list, for example: locate 202309|grep png >0 , it will be displayed in rfm, the same effect as starting rfm after pipeline: locate 202309|grep png|rfm\n" \
 "    add \033[33m&\033[0m suffix at the end of non-builtin commands discussed above, a new terminal emulator will be opened to run this command. Note that this is rfm defined behavior. The linux default behavior for & suffix in command line means running command in background. & can be configured in config.h\n" \
 "\n\033[32m rfm builtin commands: \033[0m\n" \
-"    quit        quit rfm\n" \
-"    help        print this message\n" \
-"    press Enter key two times (double enter) to refresh rfm view\n" \
-"    /           to switch between icon/list view, data not refreshed\n" \
-"    //          to switch between current directory and search result view, with data refreshed\n" \
-"    pwd         get rfm env PWD\n" \
-"    setpwd      set rfm env PWD with current directory\n" \
+"    \033[33mquit\033[0m        quit rfm\n" \
+"    \033[33mhelp\033[0m        print this message\n" \
+"    \033[33mpress Enter key twice (double enter)\033[0m to refresh rfm view\n" \
+"    \033[33m/\033[0m           to switch between icon/list view, data not refreshed\n" \
+"    \033[33m//\033[0m          to switch between current directory and search result view, with data refreshed\n" \
+"    \033[33mpwd\033[0m         get rfm env PWD\n" \
+"    \033[33msetpwd\033[0m      set rfm env PWD with current directory\n" \
 
 #define rfmLaunchHelp \
 "This is the help for command line argumants you can use to launch program with, there is another help in command window for commands you can use there.\n" \
