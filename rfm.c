@@ -3184,10 +3184,10 @@ static void readlineInSeperateThread(GString * readlineResultStringFromPreviousR
 static void stdin_command_help() {
 	  printf("%s",builtinCMD_Help);
 	  for(int i=0;i<G_N_ELEMENTS(builtinCMD);i++){
-	  	printf("    %s   %s\n", builtinCMD[i].cmd, builtinCMD[i].help_msg);
+	        printf("    \033[33m%s\033[0m   %s\n", builtinCMD[i].cmd, builtinCMD[i].help_msg); //黄色打印命令名
 	  }
 	  for(int i=0;i<G_N_ELEMENTS(stdin_cmd_interpretors);i++){
-	        printf("    %s   %s\n", stdin_cmd_interpretors[i].activationKey, stdin_cmd_interpretors[i].name);
+	        printf("    \033[33m%s\033[0m   %s\n", stdin_cmd_interpretors[i].activationKey, stdin_cmd_interpretors[i].name);
 	  }
 }
 
