@@ -1977,6 +1977,13 @@ static gboolean fill_fileAttributeList_with_filenames_from_search_result_and_the
   rfm_fileAttributeList=g_list_reverse(rfm_fileAttributeList);
 
   showSearchResultExtColumnsBasedOnHashTableValues();
+
+  icon_or_tree_view = add_view(rfmCtx);//add view have to be called after showSearchResultExtColumnsBasedOnHashTableValues()
+  //commit ab8f8c2f832bc32b431ced50bda21de36b9314d5 里, 我发现 add_view 需要在showSearchResultExtColumnsBasedOnHashTableValues()后面调用,就在那个commit 里面移动了add_view 的位置,否则会出现一个问题:运行 locate .rfmTODO.md>TODO.md 后,只有filename列显示,需要连续回车刷新下才会显示ext列. 究其原因,可能和第 3334 行代码有关, 也就是说,在调用 show_hide_treeview_column 时,需要 icon_or_tree_view值有效,否则gtkcolumn不会被设置成显示
+  //但commit ab8f8c2f832bc32b431ced50bda21de36b9314d5 造成了新的问题, Iterate_through_fileAttribute_list_to_insert_into_store() 调用会自动选择刷新前选中的行,这功能需要 icon_or_tree_view 变量值有效,也就是add_view 要发生在Iterate_through_fileAttribute_list_to_insert_into_store()调用前
+  gtk_tree_sortable_set_default_sort_func(GTK_TREE_SORTABLE(store), sort_func, NULL, NULL);
+  gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(store), current_sort_column_id, current_sorttype);
+
   //We can load thumbnail and gitCommitMsg one by one right after one row of store inserted, as we do in read_one_DirItem_into_fileAttributeList_and_insert_into_store_in_each_cal. But since for pipeline, we have the paging mechanism, we won't have too much rows loaded in a batch, so, we keep the old way of loading thumbnails and gitCommitMsg in batch here. 
   Iterate_through_fileAttribute_list_to_insert_into_store();
   if (rfm_do_thumbs == 1 && g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR))
@@ -2070,9 +2077,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
      fileAttributeID=currentFileNum;
      title=g_strdup_printf(PipeTitle, currentFileNum,SearchResultFileNameListLength,PageSize_SearchResultView);
      fill_fileAttributeList_with_filenames_from_search_result_and_then_insert_into_store();
-     icon_or_tree_view = add_view(rfmCtx);//add view have to be called after showSearchResultExtColumnsBasedOnHashTableValues()
-     gtk_tree_sortable_set_default_sort_func(GTK_TREE_SORTABLE(store), sort_func, NULL, NULL);
-     gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(store), current_sort_column_id, current_sorttype);
+
      In_refresh_store=FALSE;
      gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
    } else {
