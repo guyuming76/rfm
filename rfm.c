@@ -4542,15 +4542,15 @@ char** rfmFileChooser(enum rfmTerminal startWithVirtualTerminal, char* search_cm
 
 static gchar** rfmFileChooser_CMD(enum rfmTerminal startWithVT, gchar* search_cmd, gchar** defaultFileSelection, gchar* rfmFileChooserReturnSelectionIntoFilename){
     if (search_cmd == NULL || g_strcmp0(search_cmd,"")==0)
-    	sprintf(shell_cmd_buffer, "rfm.sh -r %s", g_strdup(rfmFileChooserReturnSelectionIntoFilename));
+    	sprintf(shell_cmd_buffer, "rfm.sh -r %s", rfmFileChooserReturnSelectionIntoFilename);
     else
-	sprintf(shell_cmd_buffer, "exec %s | rfm.sh -r %s -p", g_strdup(search_cmd), g_strdup(rfmFileChooserReturnSelectionIntoFilename));
+	sprintf(shell_cmd_buffer, "exec %s | rfm.sh -r %s -p", search_cmd, rfmFileChooserReturnSelectionIntoFilename);
 
     if (defaultFileSelection != NULL){
-      strcat(shell_cmd_buffer, strdup(" -d"));
+      strcat(shell_cmd_buffer, " -d");
       for(int i=0; i<G_N_ELEMENTS(defaultFileSelection); i++)
 	if (defaultFileSelection[i]!=NULL && strlen(defaultFileSelection[i])>0){
-	  strcat(shell_cmd_buffer, strdup(" "));
+	  strcat(shell_cmd_buffer, " ");
 	  strcat(shell_cmd_buffer, defaultFileSelection[i]);
 	};
     };
@@ -4558,7 +4558,7 @@ static gchar** rfmFileChooser_CMD(enum rfmTerminal startWithVT, gchar* search_cm
     if (startWithVT == NEW_TERMINAL){
 	return stdin_cmd_template_bash_newVT_nonHold;
     }else if (startWithVT == NO_TERMINAL){
-	strcat(shell_cmd_buffer, strdup(" -t"));
+	strcat(shell_cmd_buffer, " -t");
         return stdin_cmd_template_bash;
     }else return stdin_cmd_template_bash;
 }
