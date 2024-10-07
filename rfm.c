@@ -230,7 +230,8 @@ typedef struct {
    gint64 mtime_file;
    gint t_idx;
    pid_t rfm_pid;
-   gint thumb_size; 
+   gint thumb_size;
+   guint g_source_id_for_load_thumbnail;
 } RFM_ThumbQueueData;
 
 typedef struct {
@@ -257,8 +258,9 @@ static GtkIconTheme *icon_theme;
 static gchar *rfm_thumbDir;         /* Users thumbnail directory */
 static gint rfm_do_thumbs;          /* Show thumbnail images of files: 0: disabled; 1: enabled; 2: disabled for current dir */
 static GList *rfm_thumbQueue=NULL;
-static guint rfm_thumbScheduler = 0; // this is for mkthumb
 static guint rfm_thumbLoadScheduler = 0; // this used to be a gsourceid, but now, only a normal flag
+static GList *rfm_thumbQueue_for_mkThumb=NULL; //rfm_thumbQueue is appended in gtk main thread, use a special pointer for mkThumb to avoid race condition
+static GThread *mkThumb_thread=NULL;
 static GtkTreeIter thumbnail_load_iter;
 static GHashTable *thumb_hash=NULL; /* Thumbnails in the current view */
 static char thumbnailsize_str[8];
@@ -268,10 +270,12 @@ static GHashTable *pixbuf_hash = NULL;
 static void load_thumbnail_or_enqueue_thumbQueue_for_store_row(GtkTreeIter *iter);
 static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter);
 static gint find_thumbnailer(gchar *mime_root, gchar *mime_sub_type, gchar *filepath);
-static int load_thumbnail(gchar *key, gboolean show_Thumbnail_Itself_InsteadOf_As_Thumbnail_For_Original_Picture, gboolean check_tEXt);
+static int load_thumbnail(RFM_ThumbQueueData *thumbdata, gboolean show_Thumbnail_Itself_InsteadOf_As_Thumbnail_For_Original_Picture, gboolean check_tEXt);
 static int load_thumbnail_as_asyn_callback(RFM_ChildAttribs *childAttribs);
+static int load_thumbnail_when_idle_in_gtk_main_loop(RFM_ThumbQueueData *thumbdata);
 static void rfm_saveThumbnail(GdkPixbuf *thumb, RFM_ThumbQueueData *thumbData);
 static gboolean mkThumb();
+static void mkThumbLoop();
 static void free_thumbQueueData(RFM_ThumbQueueData *thumbData);
 static RFM_defaultPixbufs *load_default_pixbufs(void);
 static void free_default_pixbufs(RFM_defaultPixbufs *defaultPixbufs);
@@ -715,6 +719,7 @@ char * get_drwxrwxrwx(mode_t st_mode){
 
 static void free_thumbQueueData(RFM_ThumbQueueData *thumbData)
 {
+   if (thumbData->g_source_id_for_load_thumbnail>0) g_source_remove(thumbData->g_source_id_for_load_thumbnail);
    g_free(thumbData->uri);
    g_free(thumbData->path);
    g_free(thumbData->md5);
@@ -739,9 +744,6 @@ static void rfm_stop_all(RFM_ctx *rfmCtx) {
    if (rfm_readDirSheduler>0)
       g_source_remove(rfm_readDirSheduler);
 
-   if (rfm_thumbScheduler>0)
-      g_source_remove(rfm_thumbScheduler);
-
    if (rfm_extColumnScheduler>0) g_source_remove(rfm_extColumnScheduler);
 #ifdef GitIntegration
    if (rfm_gitCommitMsgScheduler>0) g_source_remove(rfm_gitCommitMsgScheduler);
@@ -749,7 +751,6 @@ static void rfm_stop_all(RFM_ctx *rfmCtx) {
 
    rfmCtx->delayedRefresh_GSourceID=0;
    rfm_readDirSheduler=0;
-   rfm_thumbScheduler=0;
    rfm_thumbLoadScheduler=0;
    rfm_extColumnScheduler=0;
 #ifdef GitIntegration
@@ -757,6 +758,10 @@ static void rfm_stop_all(RFM_ctx *rfmCtx) {
 #endif
    g_list_free_full(rfm_thumbQueue, (GDestroyNotify)free_thumbQueueData);
    rfm_thumbQueue=NULL;
+   if (mkThumb_thread) {
+     g_thread_join(mkThumb_thread);
+     mkThumb_thread=NULL;
+   }
    gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
 }
 
@@ -1105,14 +1110,16 @@ static gboolean g_spawn_wrapper(const char **action, GList *file_list, int run_o
 
 //g_spawn 异步调用回调函数只支持一个参数,就做了这个wrapper;并且作为异步调用thumbData->thumbnail可能在本函数工作前就跟随thumbqueue被free了,这里thumbnail是strdup进来的,要释放
 static int load_thumbnail_as_asyn_callback(RFM_ChildAttribs *childAttribs){
-  gchar *thumbname = childAttribs->customCallbackUserData;
-  int ld = load_thumbnail(thumbname, FALSE, FALSE);
-  if (ld!=0) g_warning("load_thumbnail failed with code:%d for %s",ld, thumbname);
-  g_free(thumbname);
+  RFM_ThumbQueueData *thumbdata = childAttribs->customCallbackUserData;
+  thumbdata->g_source_id_for_load_thumbnail = g_idle_add_once(load_thumbnail_when_idle_in_gtk_main_loop, thumbdata);
+}
+
+static int load_thumbnail_when_idle_in_gtk_main_loop(RFM_ThumbQueueData *thumbdata){
+  return load_thumbnail(thumbdata, FALSE, FALSE);
 }
 
 /* Load and update a thumbnail from disk cache */
-static int load_thumbnail(gchar *thumbname, gboolean show_Thumbnail_Itself_InsteadOf_As_Thumbnail_For_Original_Picture, gboolean check_tEXt)
+static int load_thumbnail(RFM_ThumbQueueData* thumbdata, gboolean show_Thumbnail_Itself_InsteadOf_As_Thumbnail_For_Original_Picture, gboolean check_tEXt)
 {
    GtkTreeIter iter;
    GdkPixbuf *pixbuf=NULL;
@@ -1123,16 +1130,21 @@ static int load_thumbnail(gchar *thumbname, gboolean show_Thumbnail_Itself_Inste
    gint64 mtime_file=0;
    gint64 mtime_thumb=1;
 
-   reference=g_hash_table_lookup(thumb_hash, thumbname);
-   if (reference==NULL) return 1;  /* Key not found */
-
+   thumbdata->g_source_id_for_load_thumbnail=0;
+   
+   reference=g_hash_table_lookup(thumb_hash, thumbdata->thumb_name);
+   if (reference==NULL){
+     g_warning("load_thumbnail failed for %s: thumb_hash key not found",thumbdata->thumb_name);
+     return 1;  /* Key not found */
+   }
    treePath=gtk_tree_row_reference_get_path(reference);
-   if (treePath == NULL)
-      return 2;   /* Tree path not found */
-      
+   if (treePath == NULL){
+     g_warning("load_thumbnail failed for %s: GtkTreePath not found",thumbdata->thumb_name);
+     return 2;   /* Tree path not found */
+   }
    gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, treePath);
    gtk_tree_path_free(treePath);
-   thumb_path=g_build_filename(rfm_thumbDir, thumbname, NULL);
+   thumb_path=g_build_filename(rfm_thumbDir, thumbdata->thumb_name, NULL);
 #ifdef RFM_CACHE_THUMBNAIL_IN_MEM
    pixbuf=g_hash_table_lookup(pixbuf_hash, key);
 #endif
@@ -1140,6 +1152,7 @@ static int load_thumbnail(gchar *thumbname, gboolean show_Thumbnail_Itself_Inste
       pixbuf=gdk_pixbuf_new_from_file(thumb_path, NULL);
       if (pixbuf==NULL){
 	g_free(thumb_path);
+	g_log(RFM_LOG_DATA_THUMBNAIL,G_LOG_LEVEL_DEBUG, "load_thumbnail failed for %s: gdk_pixbuf_new_from_file returned NULL",thumbdata->thumb_name);
 	return 3;   /* Can't load thumbnail */
       }
 #ifdef RFM_CACHE_THUMBNAIL_IN_MEM
@@ -1161,6 +1174,7 @@ static int load_thumbnail(gchar *thumbname, gboolean show_Thumbnail_Itself_Inste
 	 g_hash_table_remove(pixbuf_hash, key);
 #endif
 	 g_object_unref(pixbuf);
+	 g_log(RFM_LOG_DATA_THUMBNAIL,G_LOG_LEVEL_DEBUG, "load_thumbnail failed for %s: Thumbnail out of date",thumbdata->thumb_name);
 	 return 4; /* Thumbnail out of date */
 #ifdef Allow_Thumbnail_Without_tExtThumbMTime
        }
@@ -1229,14 +1243,19 @@ static void rfm_saveThumbnail(GdkPixbuf *thumb, RFM_ThumbQueueData *thumbData)
             "tEXt::Software", PROG_NAME,
 			    NULL)){
 	  if (chmod(thumb_path, S_IRUSR | S_IWUSR)==-1) g_warning("rfm_saveThumbnail: Failed to chmod %s\n", thumb_path);
-	  else if ((ld=load_thumbnail(thumbData->thumb_name, FALSE, FALSE))!=0) g_warning("load_thumbnail failed with code:%d for %s",ld, thumb_path);
-	}g_warning("rfm_saveThumbnail: gdk_pixbuf_save failed for %s\n", thumb_path);
+	  else thumbData->g_source_id_for_load_thumbnail = g_idle_add_once(load_thumbnail_when_idle_in_gtk_main_loop, thumbData);
+	}else g_warning("rfm_saveThumbnail: gdk_pixbuf_save failed for %s\n", thumb_path);
       }else g_warning("rfm_saveThumbnail: mtime null for %s\n", thumb_path);
       
       g_free(thumb_path);
       g_free(mtime);
       g_object_unref(thumbAlpha);
    }else g_warning("rfm_saveThumbnail: add Alpha failed for %s\n", thumb_path);
+}
+
+static void mkThumbLoop(){
+  rfm_thumbQueue_for_mkThumb = rfm_thumbQueue;//严格来讲,这一句加在g_thread_new 前面,也就是在gtk_main thread里执行比较好,但那样就要在好几处添加,加在这里我也还没想象出啥情况会出错,就先放在这里了
+  while(mkThumb());
 }
 
 //called by gtk idle time scheduler and create one thumbnail a time for the enqueued in rfm_thumbQueue;
@@ -1246,7 +1265,9 @@ static gboolean mkThumb()
    GdkPixbuf *thumb=NULL;
    GError *pixbufErr=NULL;
 
-   thumbData=(RFM_ThumbQueueData*)rfm_thumbQueue->data;
+   if (rfm_thumbQueue_for_mkThumb==NULL) return G_SOURCE_REMOVE;
+   thumbData=(RFM_ThumbQueueData*)rfm_thumbQueue_for_mkThumb->data;
+
    if (thumbnailers[thumbData->t_idx].thumbCmd==NULL){
       thumb=gdk_pixbuf_new_from_file_at_scale(thumbData->path, thumbData->thumb_size, thumbData->thumb_size, TRUE, &pixbufErr);
       if (thumb!=NULL) {
@@ -1266,20 +1287,16 @@ static gboolean mkThumb()
       GList * input_files=NULL;
       int ld=0;
       input_files=g_list_prepend(input_files, g_strdup(thumbData->path));
-      g_spawn_wrapper(thumbnailers[thumbData->t_idx].thumbCmd, input_files, G_SPAWN_STDOUT_TO_DEV_NULL, thumb_path, TRUE, load_thumbnail_as_asyn_callback, g_strdup(thumbData->thumb_name),FALSE);
+      g_spawn_wrapper(thumbnailers[thumbData->t_idx].thumbCmd, input_files, G_SPAWN_STDOUT_TO_DEV_NULL, thumb_path, TRUE, load_thumbnail_as_asyn_callback,thumbData,FALSE);
       g_list_free_full(input_files, (GDestroyNotify)g_free);
       g_free(thumb_path);
    }
 
-   if (rfm_thumbQueue->next!=NULL) {   /* More items in queue */
-      rfm_thumbQueue=g_list_next(rfm_thumbQueue);
-      g_debug("mkThumb return TRUE after:%s",thumbData->thumb_name);
+   if (rfm_thumbQueue_for_mkThumb->next!=NULL) {   /* More items in queue */
+      rfm_thumbQueue_for_mkThumb=g_list_next(rfm_thumbQueue_for_mkThumb);
+      g_log(RFM_LOG_DATA_THUMBNAIL,G_LOG_LEVEL_DEBUG,"mkThumb return TRUE after:%s",thumbData->thumb_name);
       return G_SOURCE_CONTINUE;
    }
-   
-   g_list_free_full(rfm_thumbQueue, (GDestroyNotify)free_thumbQueueData);
-   rfm_thumbQueue=NULL;
-   rfm_thumbScheduler=0;
    g_debug("mkThumb return FALSE,which means mkThumb finished");
    return G_SOURCE_REMOVE;  /* Finished thumb queue */
 }
@@ -1340,7 +1357,7 @@ static void refreshThumbnail() {
 
          listElement=g_list_next(listElement);
   }
-  if (rfm_thumbQueue && rfm_thumbScheduler==0) rfm_thumbScheduler=g_idle_add((GSourceFunc)mkThumb, NULL);
+  if (rfm_thumbQueue && mkThumb_thread==NULL) mkThumb_thread = g_thread_new("mkThumbnail", mkThumbLoop, NULL);
 }
 
 static void free_fileAttributes(RFM_FileAttributes *fileAttributes) {
@@ -1496,7 +1513,7 @@ static gboolean iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_o
   load_thumbnail_or_enqueue_thumbQueue_for_store_row(iter);
   if (gtk_tree_model_iter_next(treemodel, iter)) return G_SOURCE_CONTINUE;
   else {
-    if (rfm_thumbQueue!=NULL) rfm_thumbScheduler=g_idle_add((GSourceFunc)mkThumb, NULL);
+    if (rfm_thumbQueue && mkThumb_thread==NULL) mkThumb_thread = g_thread_new("mkThumbnail", mkThumbLoop, NULL);
     rfm_thumbLoadScheduler=0;
     if (rfm_gitCommitMsgScheduler==0){
       In_refresh_store = FALSE;
@@ -1535,8 +1552,8 @@ static void iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_and_l
 #endif
      valid=gtk_tree_model_iter_next(treemodel, &iter);
    }
-   if (rfm_thumbQueue!=NULL)
-      rfm_thumbScheduler=g_idle_add((GSourceFunc)mkThumb, NULL);
+
+   if (rfm_thumbQueue && mkThumb_thread==NULL) mkThumb_thread = g_thread_new("mkThumbnail", mkThumbLoop, NULL);
 }
 
 
@@ -1545,7 +1562,7 @@ static void load_thumbnail_or_enqueue_thumbQueue_for_store_row(GtkTreeIter *iter
       thumbData=get_thumbData(iter); /* Returns NULL if thumbnail not handled */
       if (thumbData!=NULL) {
          /* Try to load any existing thumbnail */
-	int ld=load_thumbnail(thumbData->thumb_name, (strncmp(rfm_thumbDir, thumbData->path, strlen(rfm_thumbDir))==0), thumbnailers[thumbData->t_idx].check_tEXt); //如同get_thumbData函数里面同样的逻辑, thumbData->path 在 rfm_thumbDir, 就视为显示thumbnail本身,而不是将其视作其他图片的thumbnail
+	int ld=load_thumbnail(thumbData, (strncmp(rfm_thumbDir, thumbData->path, strlen(rfm_thumbDir))==0), thumbnailers[thumbData->t_idx].check_tEXt); //如同get_thumbData函数里面同样的逻辑, thumbData->path 在 rfm_thumbDir, 就视为显示thumbnail本身,而不是将其视作其他图片的thumbnail
 	 if ( ld == 0) { /* Success: thumbnail exists in cache and is valid */
 	   g_log(RFM_LOG_DATA_THUMBNAIL,G_LOG_LEVEL_DEBUG,"thumbnail %s exists for %s",thumbData->thumb_name, thumbData->path);
            free_thumbQueueData(thumbData);
@@ -1910,7 +1927,7 @@ static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store_if
       return G_SOURCE_CONTINUE;   /* Return TRUE if more items */
    }
    else if (insert_fileAttributes_into_store_one_by_one) {
-       if (rfm_thumbQueue!=NULL) rfm_thumbScheduler=g_idle_add((GSourceFunc)mkThumb, NULL);
+       if (rfm_thumbQueue && mkThumb_thread==NULL) mkThumb_thread = g_thread_new("mkThumbnail", mkThumbLoop, NULL);
        In_refresh_store = FALSE;
        gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
    }
@@ -3166,6 +3183,7 @@ static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlin
 }
 
 static void readlineInSeperateThread(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution) {
+  g_debug("readlineInSeperateThread");
   if (!exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread && !execStdinCmdInNewVT) exec_stdin_command(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
 
   execStdinCmdInNewVT = FALSE;
