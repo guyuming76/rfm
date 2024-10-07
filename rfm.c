@@ -258,7 +258,7 @@ static gchar *rfm_thumbDir;         /* Users thumbnail directory */
 static gint rfm_do_thumbs;          /* Show thumbnail images of files: 0: disabled; 1: enabled; 2: disabled for current dir */
 static GList *rfm_thumbQueue=NULL;
 static guint rfm_thumbScheduler = 0; // this is for mkthumb
-static guint rfm_thumbLoadScheduler = 0; //
+static guint rfm_thumbLoadScheduler = 0; // this used to be a gsourceid, but now, only a normal flag
 static GtkTreeIter thumbnail_load_iter;
 static GHashTable *thumb_hash=NULL; /* Thumbnails in the current view */
 static char thumbnailsize_str[8];
@@ -398,8 +398,6 @@ static void Iterate_through_fileAttribute_list_to_insert_into_store();
 static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,GtkTreeIter *iter);
 static void Insert_fileAttributes_into_store_with_thumbnail_and_more(RFM_FileAttributes* fileAttributes);
 //called in dir view when onebyone off
-static gboolean iterate_through_store_to_load_gitCommitMsg_one_by_one_when_idle(GtkTreeIter *iter);
-//called in dir view when onebyone off
 static gboolean iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_one_by_one_when_idle(GtkTreeIter *iter);
 //called in search result view
 static void iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_and_load_gitCommitMsg_ifdef_GitIntegration(void);
@@ -431,6 +429,8 @@ static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpoin
 static void readGitCommitMsgFromGitLogCmdAndUpdateStore(RFM_ChildAttribs * childAttribs);
 static void load_GitTrackedFiles_into_HashTable();
 static void load_gitCommitMsg_for_store_row(GtkTreeIter *iter);
+//called in dir view when onebyone off
+static gboolean iterate_through_store_to_load_gitCommitMsg_one_by_one_when_idle(GtkTreeIter *iter);
 #endif
 static void set_terminal_window_title(char* title);
 static void set_Titles(gchar * title);
@@ -741,9 +741,6 @@ static void rfm_stop_all(RFM_ctx *rfmCtx) {
 
    if (rfm_thumbScheduler>0)
       g_source_remove(rfm_thumbScheduler);
-
-   if (rfm_thumbLoadScheduler>0)
-     g_source_remove(rfm_thumbLoadScheduler);
 
    if (rfm_extColumnScheduler>0) g_source_remove(rfm_extColumnScheduler);
 #ifdef GitIntegration
@@ -1509,10 +1506,11 @@ static gboolean iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_o
   }
 }
 
+#ifdef GitIntegration
 static gboolean iterate_through_store_to_load_gitCommitMsg_one_by_one_when_idle(GtkTreeIter *iter)
 {
      load_gitCommitMsg_for_store_row(iter);
-     if (gtk_tree_model_iter_next(treemodel, iter)) return G_SOURCE_CONTINUE;
+     if (get_treeviewColumnByEnum(COL_GIT_COMMIT_MSG)->Show && gtk_tree_model_iter_next(treemodel, iter)) return G_SOURCE_CONTINUE;
      else {
        rfm_gitCommitMsgScheduler=0;
        if (rfm_thumbLoadScheduler==0){
@@ -1522,7 +1520,7 @@ static gboolean iterate_through_store_to_load_gitCommitMsg_one_by_one_when_idle(
        return G_SOURCE_REMOVE;
      }
 }
-
+#endif
 
 static void iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_and_load_gitCommitMsg_ifdef_GitIntegration(void)
 {
