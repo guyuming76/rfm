@@ -2,7 +2,7 @@
 
 include config.mk
 
-VERSION = 1.9.4
+VERSION = 2.0.0
 ifneq ($(RFM_FILE_CHOOSER),)
 LINKERNAME = librfm.so
 SONAME = librfm.so.1
