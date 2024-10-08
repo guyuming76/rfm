@@ -1403,7 +1403,7 @@ static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guin
    gchar *is_mounted=NULL;
    gint i;
    RFM_FileAttributes *fileAttributes=malloc_fileAttributes();
-   fileAttributes->id = fileAttributeID++;
+   fileAttributes->id = fileAttributeID;
    gchar *absoluteaddr;
    if (name[0]=='/')
      absoluteaddr = g_build_filename(name, NULL); /*if mlocate index not updated with updatedb, address returned by locate will return NULL after canonicalize */
@@ -1916,6 +1916,7 @@ static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store_if
      g_log(RFM_LOG_DATA, G_LOG_LEVEL_DEBUG, "read_one_file_in_g_idle_start, counter:%d", read_one_file_couter);
      if (!ignored_filename(name)) {
          fileAttributes=get_fileAttributes_for_a_file(name, mtimeThreshold, mount_hash);
+	 fileAttributeID++;//fileAttributeID 目的是为了应对查询结果里面同一个文件返回多条记录的情况,如不同行,在当前目录视图里面是没多大用的,但我们还是累加下
          if (fileAttributes!=NULL){
 	   if (insert_fileAttributes_into_store_one_by_one) Insert_fileAttributes_into_store_with_thumbnail_and_more(fileAttributes);
 	   else rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
@@ -1986,6 +1987,7 @@ static gboolean fill_fileAttributeList_with_filenames_from_search_result_and_the
       if (SearchResultViewInsteadOfDirectoryView && SearchResultTypeIndexForCurrentExistingSearchResult>=0)
 	searchresultTypes[SearchResultTypeIndexForCurrentExistingSearchResult].SearchResultLineProcessingFunc((gchar*)(name->data), FALSE, searchresultTypes[SearchResultTypeIndexForCurrentExistingSearchResult].cmdTemplate, fileAttributes);
     }
+    fileAttributeID++;//上面SearchResultLineProcessingFunc里面会使用fileAttributeID作为hashtable的key, commit ab8f8c2f832bc32b431ced50bda21de36b9314d5 之前是分两次从fileAttributeID=1开始遍历文件名列表的,但commit ab8f8c2f832bc32b431ced50bda21de36b9314d5 和并成了现在的一次遍历, 造成了一个bug: 之前在 get_fileAttributes_for_a_file 调用fileAttributeID++, 后面的SearchResultLineProcessingFunc里fileAttributeID值就错了,所以现在改在这里调用 fileAttributeID++
     name=g_list_next(name);
     i++;
   }
