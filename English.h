@@ -36,7 +36,7 @@
 #define BuiltInCmd_glog_Description            "开/关glib log在命令行窗口的显示,命令glog off关闭日志输出,glog on打开. 作用主要是日志输出有时会干扰编辑器如nano的显示"
 #define BuiltInCmd_showcolumn                  "showcolumn"
 #define BuiltInCmd_showcolumns                 "showcolumns"
-#define BuiltInCmd_showcolumn_Description      "show or hide column (if currently in listview); current treeview column layout will be added in to command history if no parameter follows showcolumn"
+#define BuiltInCmd_showcolumn_Description      "show or hide column (if currently in listview), or change column displaying order; current treeview column layout will be added in to command history if no parameter follows showcolumn"
 #define BuiltInCmd_showcolumns_Description     "alias of showcolumn"
 #define BuiltInCmd_setenv                      "setenv"
 #define BuiltInCmd_setenv_Description          "set environment varaiable for rfm, input setenv to see usage"
@@ -132,7 +132,8 @@ BuiltInCmd_SearchResultColumnSeperator \
 "      locate /etc/portage|xargs grep -ns emacs>default"
 
 #define SearchResultType_gkeyfile "首先调用default查询结果类型获取命令输出行列,再用gtk keyfile 文件格式(等号分割的键值对行)解析首列文件内容,键名显示为列名,键值为列值. 每个keyfile文件内可包含不同的键名.命令举例,在rfm项目git仓库下,我建了一个devPicAndVideo子仓库,里面包含项目开发过程中的以下文档,可用下面命令查询问题列表:\n" \
-"      locate .rfmTODO.gkeyfile>gkeyfile"
+"      locate .rfmTODO.gkeyfile>gkeyfile\n" \
+"    至此,提到两种我们称之为\033[32m扩展列\033[0m(相对于文件系统内置的文件元数据,如权限,修改时间,文件大小等)的来源,一是程序标准输出里包含的除文件路径名之外的列,二是解析自文件内容的键值对数据.这里我们顺便提一下还有第三种来源:可以在config.h里面定义,然后通过showcolumn命令添加到显示,如现有的ImageSize列,这种列定义会包含一个取值bash命令或是c语言函数,根据传入的文件路径名,获取列值"
 
 #define SearchResultType_muview "首先调用default查询结果类型获取命令输出行列,再使用 mu view 命令读取首列邮件文件内容,把邮件头,转换成前面keyfile要求的键值对格式,最后如同gkeyfile结果类型一样显示.命令举例(注意:Maidir中的文件名会包含冒号,同默认的SearchResultColumnSeperator冲突,要给文件名加引号解决.另外,下面我用cd 加ls而不是locate主要是考虑输出顺序, 而下面{}里的cd是运行于rfm创建的shell子进程,并不是前述rfm内置cd命令):\n" \
 "      { cd /home/guyuming/Mail/139INBOX/cur; ls -1td \"$PWD\"/*; }>muview\n" \
@@ -143,4 +144,5 @@ BuiltInCmd_SearchResultColumnSeperator \
 "      locate .rfmTODO.md>TODO.md"
 
 #define SearchResultType_multitype "首先调用default结果类型,然后使用首列文件的MIME类型和文件名后缀去匹配同名的查询结果类型,调用匹配到的查询结果类型去处理此行,以达到在同一个结果页面显示多种文件格式内容的目的.命令举例:\n" \
-"      locate .rfmTODO.>multitype"
+"      locate .rfmTODO.>multitype\n" \
+"    最后,在查询结果视图选中一条文件, 执行前述rfm内置的cd后接空格命令,就可以直接切换到包含此文件的目录.上面例子里文件是一条rfm TODO 事项描述文件,目录可以是为此事项专门建立,用以保存此事项相关图片等文档. 对比常见的关系数据库应用,查询结果里的扩展列相当于表字段; 我们用来在locate命令里匹配文件路径名的字符串起着关系数据库名及表名的作用; 两条不同表的记录的关联可以通过多种方式实现,最简单直观的就是两个文件位于同一文件目录下面. 上面例子若是在电子邮件系统里实现, rfmTODO 事项描述文件内容通常放在邮件正文里, 而事项相关文档都需要通过附件形式打包到邮件内, 也不如在rfm里面简单放在一个文件目录下方便."
