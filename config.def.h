@@ -339,16 +339,16 @@ static char SearchResultColumnSeperator[32]={':',NULL}; //this is the default va
 static gchar* EmptyShowColumn[] = { NULL };
 static gchar* MailColumns[] = { "-FileName",",From,Subject,Date,Attachments",NULL };
 static RFM_SearchResultType searchresultTypes[] = {
-//name	       SearchResultLineProcessingFunc                  showcolumn     SearchResultColumnSeperator  cmdTemplate
-  {"default",  ProcessOnelineForSearchResult,                  EmptyShowColumn, NULL, NULL                                         }, //default searchresult, contain only filename list such as returned by locate, or filename followed by additional info such as returned by grep
-  {"gkeyfile", ProcessKeyValuePairInFilesFromSearchResult,     EmptyShowColumn, NULL, NULL                                         },
+//name	       SearchResultLineProcessingFunc                  showcolumn     SearchResultColumnSeperator  cmdTemplate Description
+  {"default",  ProcessOnelineForSearchResult,                  EmptyShowColumn, NULL, NULL,                            SearchResultType_default }, //default searchresult, contain only filename list such as returned by locate, or filename followed by additional info such as returned by grep
+  {"gkeyfile", ProcessKeyValuePairInFilesFromSearchResult,     EmptyShowColumn, NULL, NULL,                            SearchResultType_gkeyfile},
 #ifdef MU_VIEW
-  {"muview",   ProcessKeyValuePairInCmdOutputFromSearchResult, MailColumns    , "&" , "mu view %s | rfmGetMailHeaderWithMuView.sh" }, //%s in cmdTemplate will be replaced by filename in searchresult
+  {"muview",   ProcessKeyValuePairInCmdOutputFromSearchResult, MailColumns    , "&" , "mu view %s | rfmGetMailHeaderWithMuView.sh",SearchResultType_muview }, //%s in cmdTemplate will be replaced by filename in searchresult
 #endif
 #ifdef extractKeyValuePairFromMarkdown
-  {"TODO.md",  ProcessKeyValuePairInCmdOutputFromSearchResult, EmptyShowColumn, NULL, "extractKeyValuePairFromMarkdown 0 %s 简述 问题状态"},
+  {"TODO.md",  ProcessKeyValuePairInCmdOutputFromSearchResult, EmptyShowColumn, NULL, "extractKeyValuePairFromMarkdown 0 %s 简述 问题状态",SearchResultType_TODO_md},
 #endif
-  {"multitype",CallMatchingProcessorForSearchResultLine,       EmptyShowColumn, NULL, NULL                                        },
+  {"multitype",CallMatchingProcessorForSearchResultLine,       EmptyShowColumn, NULL, NULL,                            SearchResultType_multitype },
 };
 
 /* Thumbnailers

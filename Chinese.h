@@ -65,7 +65,6 @@
 "    非rfm内置命令会被发送到操作系统Shell执行,可在config.h内配置shell类型如bash, nushell等.\n" \
 "    如果\033[33m命令末尾有空格\033[0m字符, 当前rfm视图选中文件会被添加到命令末尾. 例如你选中一个maildir目录里的邮件文件, 输入 mu view 并在回车前以空格结尾, 则可以查看选中邮件内容.\n" \
 "    继续上面例子,如果你希望less查看邮件内容,可以选中邮件文件后输入 mu view %s|less .注意,回车前还是要以空格结束命令行,虽然实际替换文件名的位置在%s处,另外每个\033[33m%s\033[0m替换一个选中文件,若需多个文件名,可多加几个%s. 字符串%s也可以在config.h里定制成别的.\n" \
-"    在输出文件名列表的命令后加上 \033[33m>\033[0m0, 如 locate 202309|grep png >0 , 则可以在rfm内显示,效果等同启动rfm时前面有管道输入:locate 202309|grep png|rfm\n" \
 "    在上述非rfm内置命令后面加上\033[33m&\033[0m后缀,会打开新的终端模拟器窗口来执行此命令.注意这里&后缀的作用是rfm定制的,不是linux默认的把命令放在后台执行.也可以在config.h文件里把默认的&换成别的字符串\n" \
 "\n\033[32m rfm内置命令: \033[0m\n" \
 "    \033[33mquit\033[0m        退出rfm\n" \
@@ -124,3 +123,25 @@ BuiltInCmd_SearchResultColumnSeperator \
 "获取当前值:\n" \
 "       env |grep G_MESSAGES_DEBUG\n" \
 "       注意,env命令实际是在子进程执行的,返回的实际上是子进程环境变量值.但每次命令执行都会创建子进程,并继承父进程的环境变量,因此可以通过子进程的环境变量值来推断父进程的值\n"
+
+#define RFM_SEARCH_RESULT_TYPES "查询结果类型"
+#define RFM_SEARCH_RESULT_TYPES_HELP "    在输出文件名列表的命令后加上 \033[33m>\033[0m0, 如 locate 202309|grep png >0 , 则可以在文件搜索结果视图显示文件列表,效果等同启动rfm时前面有管道输入:locate 202309|grep png|rfm\n 这里>符号是rfm定制的,不是shell的文件输出重定向,可以在config.h里面换成别的字符串. 0表示下面default的查询结果类型,序号为0. \n" \
+"    类似MIME类型和文件名后缀,查询结果类型也可以在config.h中用来定义文件上下文菜单项和默认打开选中文件的方式,比如在下面muview查询结果类型显示里,选中一封邮件回车会自动用mu view 命令查看邮件.\n" \
+"    下面是全部的查询结果类型:"
+
+#define SearchResultType_default "0号查询结果类型读取命令输出的行,每行可由分隔符分成多列(类似csv格式,config.h里包含分隔符默认值,可由内置命令或rfm启动参数动态定制,以配合不同的命令输出). 所有行包含列数相同. 首列必须是文件路径名. 命令输出不包含标题行,除首列文件名外,后续列在查询结果视图里依次自动分配列名C1,C2,C3....命令举例:下面命令输出第二列是行号,选中一个文件回车打开文本编辑器会跳转到此行,是因为创建shell子进程执行文件操作时会生成同名环境变量C1,C2...把列值传递到子进程,打开文本编辑器的脚本可以使用继承的环境变量\n" \
+"      locate /etc/portage|xargs grep -ns emacs>default"
+
+#define SearchResultType_gkeyfile "首先调用default查询结果类型获取命令输出行列,再用gtk keyfile 文件格式(等号分割的键值对行)解析首列文件内容,键名显示为列名,键值为列值. 每个keyfile文件内可包含不同的键名.命令举例,在rfm项目git仓库下,我建了一个devPicAndVideo子仓库,里面包含项目开发过程中的以下文档,可用下面命令查询问题列表:\n" \
+"      locate .rfmTODO.gkeyfile>gkeyfile"
+
+#define SearchResultType_muview "首先调用default查询结果类型获取命令输出行列,再使用 mu view 命令读取首列邮件文件内容,把邮件头,转换成前面keyfile要求的键值对格式,最后如同gkeyfile结果类型一样显示.命令举例(注意:Maidir中的文件名会包含冒号,同默认的SearchResultColumnSeperator冲突,要给文件名加引号解决.另外,下面我用cd 加ls而不是locate主要是考虑输出顺序, 而下面{}里的cd是运行于rfm创建的shell子进程,并不是前述rfm内置cd命令):\n" \
+"      { cd /home/guyuming/Mail/139INBOX/cur; ls -1td \"$PWD\"/*; }>muview\n" \
+"      上面命令也可以简化成如下形式,我这里保留上面作为一个使用bash {} 语法执行命令序列的备忘\n" \
+"      ls -1td \"/home/guyuming/Mail/139INBOX/cur\"/*>muview"
+
+#define SearchResultType_TODO_md "首先调用default结果类型获取命令输出行列,再使用rfm自带的独立程序extractKeyValuePairFromMarkdown,以markdown格式解析首列文件内容. extractKeyValuePairFromMarkdown 程序包含参数列表,以匹配markdown文件的一级标题,并输出gkeyfile格式键值对: 匹配到的markdown一级标题=一级标题下第一行内容. 最后同gkeyfile结果类型显示. 这里TODO.md类型会去匹配'简述'和'问题状态'这两个一级标题. 类似地,可以在config.h中定义新的查询结果类型,显示不同的markdown文件一级标题下的内容. 命令举例:\n" \
+"      locate .rfmTODO.md>TODO.md"
+
+#define SearchResultType_multitype "首先调用default结果类型,然后使用首列文件的MIME类型和文件名后缀去匹配同名的查询结果类型,调用匹配到的查询结果类型去处理此行,以达到在同一个结果页面显示多种文件格式内容的目的.命令举例:\n" \
+"      locate .rfmTODO.>multitype"
