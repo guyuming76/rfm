@@ -3559,15 +3559,13 @@ static void cmd_setenv(wordexp_t *parsed_msg, GString *readline_result_string_af
 	  else printf(SETENV_USAGE);
 }
 
-
+//返回TRUE表示成功匹配为BuiltInCmd并被执行,无论执行成功与否,都不需要在调用Shell来执行了;返回false表示未能识别为builtInCmd,需要进一步处理. 返回true后, GString*参数内存被释放,但调用者仍需将其设为NULL,因为后续处理根据其是否为NULL来判断是否需要继续处理(比如是否需要发送到Shell执行)
 static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution){
 
         for(int i=0;i<G_N_ELEMENTS(builtinCMD);i++){
 	  if (g_strcmp0(parsed_msg->we_wordv[0], builtinCMD[i].cmd)==0) {
 	        builtinCMD[i].action(parsed_msg,readline_result_string_after_file_name_substitution);
-		add_history(readline_result_string_after_file_name_substitution->str);
-		history_entry_added++;
-		//TODO:在统一返回TRUE前调用g_free_string 后, 把上面两行改成调用 add_history_after_stdin_command_execution, 这样,本函数返回后就无需调用 g_free_string 了, 防止double free, 但返回后要把gstring设为NULL. 如果在 add_history_after_stdin_command_execution 里先free,再设NULL会很好,这样要把gstring* 改成 gstring**.
+		add_history_after_stdin_command_execution(readline_result_string_after_file_name_substitution);
 		return TRUE;
 	  }
 	}
@@ -3586,7 +3584,7 @@ static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * p
 	  Switch_SearchResultView_DirectoryView(NULL, rfmCtx);
 
         }else return FALSE; // parsed_msg->we_wordv[0] does not match any build command
-
+	g_string_free(readline_result_string_after_file_name_substitution,TRUE);
 	return TRUE; //execution reaches here if parsed_msg->we_wordv[0] matchs any keyword, and have finished the corresponding logic
 }
 
@@ -3760,7 +3758,6 @@ static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult)
 	      wordexp_t parsed_msg;
 	      int wordexp_retval = wordexp(readlineResult,&parsed_msg,0);
 	      if (wordexp_retval==0 && parse_and_exec_stdin_builtin_command_in_gtk_thread(&parsed_msg, readlineResultString)){ //wordexp_retval 0 means success
-		g_string_free(readlineResultString,TRUE);
 		readlineResultString=NULL; //since readlineInseperatethread function will check this, we must clear it here after cmd already been executed.
 	      }
 	      if (wordexp_retval == 0) wordfree(&parsed_msg);
