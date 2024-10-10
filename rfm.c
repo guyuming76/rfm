@@ -3146,8 +3146,7 @@ static void add_history_after_stdin_command_execution(GString * readlineResultSt
 	  add_history(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str);
 	  add_history_timestamp();
           history_entry_added++;
-	  if (OriginalReadlineResult!=NULL){ //with rfm -x , Originalreadlineresult can be null here
-	    //TODO: investigation add_history, what if Originalreadlineresult equals readlineresultstring?
+	  if (OriginalReadlineResult!=NULL && g_strcmp0(OriginalReadlineResult, readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str)!=0){ //with rfm -x , Originalreadlineresult can be null here
 	    add_history(OriginalReadlineResult);
 	    add_history_timestamp();
             history_entry_added++;
