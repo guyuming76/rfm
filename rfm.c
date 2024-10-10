@@ -1995,7 +1995,7 @@ static gboolean fill_fileAttributeList_with_filenames_from_search_result_and_the
   }
   rfm_fileAttributeList=g_list_reverse(rfm_fileAttributeList);
 
-  showSearchResultExtColumnsBasedOnHashTableValues();
+  if (SearchResultTypeIndexForCurrentExistingSearchResult>=0) showSearchResultExtColumnsBasedOnHashTableValues();
 
   icon_or_tree_view = add_view(rfmCtx);//add view have to be called after showSearchResultExtColumnsBasedOnHashTableValues()
   //commit ab8f8c2f832bc32b431ced50bda21de36b9314d5 里, 我发现 add_view 需要在showSearchResultExtColumnsBasedOnHashTableValues()后面调用,就在那个commit 里面移动了add_view 的位置,否则会出现一个问题:运行 locate .rfmTODO.md>TODO.md 后,只有filename列显示,需要连续回车刷新下才会显示ext列. 究其原因,可能和第 3334 行代码有关, 也就是说,在调用 show_hide_treeview_column 时,需要 icon_or_tree_view值有效,否则gtkcolumn不会被设置成显示
