@@ -61,6 +61,10 @@
 "    b?> means in refreshing and file selection cannot be determined, try press enter after refresh.\n" \
 "    prompt won't update when selection changes in rfm view, press Enter to refresh\n" \
 "    prompt b*],b>,b?] differ with explanation above only in that commands inputted in stdin is started in gtk thread instead of readline thread. When ] is displayed instead of >, gtk window will not refresh and file selection cannot be changed when command is executing(such as when selected file is being editted).\n" \
+"\n\033[32m 命令历史记录: \033[0m\n" \
+"    命令历史记录保存在~/.rfm_history文件,当前活动rfm进程输入的命令历史保持在内存中,退出rfm时才写入文件,下次启动rfm时再读入内存.\n" \
+"    在命令输入窗口使用上下箭头按键可以获取命令历史,也可以输入命令部分前缀缩小查找范围.\n" \
+"    使用grep命令浏览或搜索命令历史记录: grep -nh \"\" ~/.rfm_history\n" \
 "\n\033[32m Shell commands: \033[0m\n" \
 "    non-builtin commands will be sent to shell to execute.\n" \
 "    if there is \033[33mending space\033[0m in command entered, selected filename(s) will be appended at the end. for example, you can view currently selected maildir mail file with `mu view `, with ending space before return.\n" \

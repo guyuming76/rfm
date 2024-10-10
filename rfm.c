@@ -143,6 +143,7 @@ static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlin
 static void parse_and_exec_stdin_command_in_gtk_thread(gchar *msg);
 static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * parsed_msg, GString* readline_result_string);
 static void toggle_exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread();
+static void add_history_timestamp();
 static void add_history_after_stdin_command_execution(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
 static void stdin_command_help(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
 static void cmd_glog(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
@@ -2233,6 +2234,7 @@ static void set_rfm_curPath(gchar* path)
 
    if (path==NULL) return;
    add_history(g_strconcat("cd ", path, NULL));
+   add_history_timestamp();
    history_entry_added++;
    //TODO: i want to add this path into ~/.rfm_historyDirectory file as well as current history list, so that it can be use by 'read -e' in bash scripts. How?
    //TODO: in future if we need some directory specific history file, we may check that if the directory contains .rfm_history file, it will use this local history, otherwise, use the default global history file.
@@ -3125,13 +3127,30 @@ static void free_default_pixbufs(RFM_defaultPixbufs *defaultPixbufs)
    g_free(defaultPixbufs);
 }
 
+static void add_history_timestamp(){
+    time_t now;
+    struct tm *local;
+    char iso_date[30];
+ 
+    // 获取当前时间
+    time(&now);
+    // 转换为本地时间
+    local = localtime(&now);
+    // 格式化为ISO日期时间
+    if (strftime(iso_date, sizeof(iso_date), "%Y-%m-%dT%H:%M:%S%z", local) == 0) {
+        g_warning("strftime failed\n");
+    }else add_history_time(iso_date);
+}
+
 static void add_history_after_stdin_command_execution(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution){
 	  add_history(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str);
-	  history_entry_added++;
+	  add_history_timestamp();
+          history_entry_added++;
 	  if (OriginalReadlineResult!=NULL){ //with rfm -x , Originalreadlineresult can be null here
 	    //TODO: investigation add_history, what if Originalreadlineresult equals readlineresultstring?
 	    add_history(OriginalReadlineResult);
-	    history_entry_added++;
+	    add_history_timestamp();
+            history_entry_added++;
 	  }
           g_string_free(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution,TRUE);
 }
@@ -3446,7 +3465,8 @@ static void print_columns_status(wordexp_t * parsed_msg){
 	    printf(SHOWCOLUMN_USAGE);
 	    gchar* cmd=get_showcolumn_cmd_from_currently_displaying_columns();
 	    add_history(cmd);
-	    history_entry_added++;
+	    add_history_timestamp();
+            history_entry_added++;
 	    g_free(cmd);  
 }
 
@@ -3890,6 +3910,7 @@ static int setup(RFM_ctx *rfmCtx)
    stifle_history(RFM_HISTORY_SIZE);
    rfm_historyFileLocation = g_build_filename(getenv("HOME"),".rfm_history", NULL);
    rfm_historyDirectory_FileLocation = g_build_filename(getenv("HOME"),".rfm_history_directory", NULL);
+   history_write_timestamps=TRUE;
    int e;
    if (e=read_history(rfm_historyFileLocation))
      g_warning("failed to read_history(%s) error code:%d.",rfm_historyFileLocation,e);
