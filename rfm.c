@@ -3721,9 +3721,11 @@ static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult)
 	    stdin_cmd_ending_space = (stdin_cmd_ending_space || (len>=1 && readlineResult[len-1]==' '));
 	    while (len>=1 && readlineResult[len-1]==' ') { readlineResult[len-1]='\0'; len--; } //remove ending space
 
-	    SearchResultTypeIndex = MatchSearchResultType(readlineResult);
-	    len = strlen(readlineResult);
-	    if (SearchResultTypeIndex>=0) SearchResultTypeIndexForCurrentExistingSearchResult=SearchResultTypeIndex;
+	    if (!execStdinCmdInNewVT){
+	      SearchResultTypeIndex = MatchSearchResultType(readlineResult);
+	      len = strlen(readlineResult);
+	      if (SearchResultTypeIndex>=0) SearchResultTypeIndexForCurrentExistingSearchResult=SearchResultTypeIndex;
+	    }
 
 	    stdin_cmd_ending_space = (stdin_cmd_ending_space || (len>=1 && readlineResult[len-1]==' '));
 	    while (len>=1 && readlineResult[len-1]==' ') { readlineResult[len-1]='\0'; len--; } //remove ending space
