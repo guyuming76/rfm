@@ -478,6 +478,7 @@ static int ProcessKeyValuePairInCmdOutputFromSearchResult(char *oneline, gboolea
 static int ProcessKeyValuePairInData(GKeyFile* keyfile, char *groupname);
 static int CallMatchingProcessorForSearchResultLine(char *oneline, gboolean new_search, char *cmdtemplate, RFM_FileAttributes* fileAttributes);
 static void cmdSearchResultColumnSeperator(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
+//matched search result type suffix will be removed from readlineResults
 static int MatchSearchResultType(gchar *readlineResult);
 static void set_DisplayingPageSize_ForFileNameListFromPipesStdIn(uint pagesize);
 static void cmdPagesize(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
@@ -3712,11 +3713,17 @@ static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult)
 	      readlineResult[len-1] = '\0'; //remove ending '&'
       	      len = strlen(readlineResult);
 	    }
-	    
+
+	    //if we have searchresulttypesuffix in command, the ending space rule can be confusing: shall we have space after searchresulttype or before searchresulttype? Both will be considered as ending space!
 	    stdin_cmd_ending_space = (readlineResult[len-1]==' ');
 	    while (readlineResult[len-1]==' ') { readlineResult[len-1]='\0'; len--; } //remove ending space
+
 	    SearchResultTypeIndex = MatchSearchResultType(readlineResult);
+	    len = strlen(readlineResult);
 	    if (SearchResultTypeIndex>=0) SearchResultTypeIndexForCurrentExistingSearchResult=SearchResultTypeIndex;
+
+	    stdin_cmd_ending_space = (stdin_cmd_ending_space || (readlineResult[len-1]==' '));
+	    while (readlineResult[len-1]==' ') { readlineResult[len-1]='\0'; len--; } //remove ending space
 
             readlineResultString=g_string_new(strdup(readlineResult));
 
