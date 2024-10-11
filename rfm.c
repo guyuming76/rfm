@@ -3708,6 +3708,9 @@ static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult)
 	      }
 	    }
 
+    	    stdin_cmd_ending_space = (len>=1 && readlineResult[len-1]==' ');
+	    while (len>=1 && readlineResult[len-1]==' ') { readlineResult[len-1]='\0'; len--; } //remove ending space
+
             if (g_str_has_suffix(readlineResult, run_cmd_in_new_terminal_emulator_suffix)){
 	      execStdinCmdInNewVT = TRUE;
 	      readlineResult[len-1] = '\0'; //remove ending '&'
@@ -3715,7 +3718,7 @@ static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult)
 	    }
 
 	    //if we have searchresulttypesuffix in command, the ending space rule can be confusing: shall we have space after searchresulttype or before searchresulttype? Both will be considered as ending space!
-	    stdin_cmd_ending_space = (len>=1 && readlineResult[len-1]==' ');
+	    stdin_cmd_ending_space = (stdin_cmd_ending_space || (len>=1 && readlineResult[len-1]==' '));
 	    while (len>=1 && readlineResult[len-1]==' ') { readlineResult[len-1]='\0'; len--; } //remove ending space
 
 	    SearchResultTypeIndex = MatchSearchResultType(readlineResult);
