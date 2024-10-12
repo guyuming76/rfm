@@ -184,6 +184,7 @@ typedef struct RFM_ChildAttributes{
    const gchar **RunCmd;
    GSpawnFlags  runOpts;
    GPid  pid;
+   gint  stdIn_fd;
    gint  stdOut_fd;
    gint  stdErr_fd;
    char *stdOut;
@@ -212,6 +213,7 @@ static gboolean g_spawn_wrapper_(GList *file_list, char *dest_path, RFM_ChildAtt
 /* create argv parameter for g_spawn functions  */
 /* The char* in file_list will be used (WITHOUT strdup) in returned gchar** v and owned by rfm_FileAttributelist before */
 static gchar **build_cmd_vector(const char **cmd, GList *file_list, char *dest_path);
+//caller will free v, child_attribs will free in ExecCallback_freeChildAttribs function if return TRUE, otherwize caller free child_attribs
 static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *child_attribs);
 static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_data);
 static void child_handler_to_set_finished_status_for_child_supervisor(GPid pid, gint status, RFM_ChildAttribs *child_attribs);
@@ -464,6 +466,7 @@ static gint SearchResultFileNameListLength=0;
 static gint currentFileNum=0;
 static GList *CurrentPage_SearchResultView=NULL;
 static gint PageSize_SearchResultView=100;
+static gboolean SearchResultAsInput=FALSE;
 static int SearchResultTypeIndex=-1; // we need to pass this status from exec_stdin_command to readlineInSeperatedThread, however, we can only pass one parameter in g_thread_new, so, i use a global variable here.
 static int SearchResultTypeIndexForCurrentExistingSearchResult=-1;//The value above will be override by next command, which can be a non-search command, we need this variable to preserve the current displaying searchresulttype
 //如要分配新的自定义列,此变量记录分配的列名,按C1,C2..顺序,分配后,用键值替换原始的Cx列名
@@ -486,6 +489,7 @@ static void cmdSearchResultColumnSeperator(wordexp_t * parsed_msg, GString* read
 static int MatchSearchResultType(gchar *readlineResult);
 static void set_DisplayingPageSize_ForFileNameListFromPipesStdIn(uint pagesize);
 static void cmdPagesize(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
+static void writeSearchResultIntoFD(gint *fd);
 /******Search Result related definitions end*********/
 /****************************************************/
 /******TreeView column related definitions***********/
@@ -976,7 +980,9 @@ static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *ch
 				  //本commit 是revert 3d53359fdb97498a895a0cec97e3076558908a02 消除冲突后的结果，注意上一行|child_attribs->runOpts 是保留3d53359fdb97498a895a0cec97e3076558908a02改动的
 
 				  GSpawnChildSetupFunc_setenv,child_attribs,
-                                  &child_attribs->pid, NULL, ((child_attribs->stdOut_fd<=0)? &child_attribs->stdOut_fd: NULL), // stdOut_fd>0, means we use existing fd to read result from, so we pass in NULL, otherwise stdout_fd will be overwriten. For example, we use existing fd in rfmFileChooser
+                                  &child_attribs->pid,
+				  (child_attribs->stdIn_fd==0 ? NULL: &(child_attribs->stdIn_fd)), //we use calloc to new child_attribs, stdIn_fd will default to 0
+				  ((child_attribs->stdOut_fd<=0)? &child_attribs->stdOut_fd: NULL), // stdOut_fd>0, means we use existing fd to read result from, so we pass in NULL, otherwise stdout_fd will be overwriten. For example, we use existing fd in rfmFileChooser
                                   &child_attribs->stdErr_fd, &err);
       
       if (rv==TRUE) {
@@ -3189,18 +3195,29 @@ static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlin
 	  }
 #endif
 	  GError *err = NULL;
-	  if (SearchResultTypeIndex>=0 && g_spawn_sync(rfm_curPath, 
+
+	  if (SearchResultTypeIndex>=0 && !SearchResultAsInput && g_spawn_sync(rfm_curPath, 
 						       stdin_cmd_interpretors[current_stdin_cmd_interpretor].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE),
 					      env_for_g_spawn_used_by_exec_stdin_command,
 					      G_SPAWN_SEARCH_PATH|G_SPAWN_CHILD_INHERITS_STDIN|G_SPAWN_CHILD_INHERITS_STDERR,
-					      NULL,NULL,&stdout_read_by_search_result,NULL,NULL,&err)){ //remove the ending ">0" in cmd with g_string_erase
+					      NULL,NULL,&stdout_read_by_search_result,NULL,NULL,&err)){ 
 	      g_idle_add_once(update_SearchResultFileNameList_and_refresh_store, (gpointer)stdout_read_by_search_result);
-	  } else if (SearchResultTypeIndex<0 && g_spawn_sync(rfm_curPath,
+	  } else if (SearchResultTypeIndex<0 && !SearchResultAsInput && g_spawn_sync(rfm_curPath,
 							     stdin_cmd_interpretors[current_stdin_cmd_interpretor].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE), env_for_g_spawn_used_by_exec_stdin_command,
                            G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN |
                                G_SPAWN_CHILD_INHERITS_STDOUT |
                                G_SPAWN_CHILD_INHERITS_STDERR,
 			   NULL, NULL, NULL, NULL, NULL, &err)) {
+
+          } else if (SearchResultAsInput){
+	    RFM_ChildAttribs *childAttribs = calloc(1, sizeof(RFM_ChildAttribs));
+	    childAttribs->RunCmd = stdin_cmd_interpretors[current_stdin_cmd_interpretor].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE);
+	    childAttribs->runOpts = G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR;
+	    childAttribs->stdIn_fd = -1; //set to non-zero, and will be set to a valid fd by g_spawn_async_with_pipes
+	    if (!g_spawn_async_with_pipes_wrapper(childAttribs->RunCmd, childAttribs)) free_child_attribs(childAttribs);
+	    else if (exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread) writeSearchResultIntoFD(&(childAttribs->stdIn_fd));//如果当前是gtk main thread, 则直接调用; 否则,使用g_idle_add_once, 因为writeSearchResult用到treeview也就是gtk对象,不是thread dsafe
+	    else g_idle_add_once(writeSearchResultIntoFD, &(childAttribs->stdIn_fd));
+
 	  } else {
               g_warning("%d;%s", err->code, err->message);
 	      g_error_free(err);
@@ -3210,11 +3227,19 @@ static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlin
   g_strfreev(env_for_g_spawn_used_by_exec_stdin_command);env_for_g_spawn_used_by_exec_stdin_command=NULL;
 }
 
+
+static void writeSearchResultIntoFD(gint *fd){
+  g_debug("writeSearchResultIntoFD(%d)",*fd);
+  dprintf(*fd,"test\n");
+  close(*fd);
+}
+
 static void readlineInSeperateThread(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution) {
   g_debug("readlineInSeperateThread");
   if (!exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread && !execStdinCmdInNewVT) exec_stdin_command(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
 
   execStdinCmdInNewVT = FALSE;
+  SearchResultAsInput = FALSE;
   
   if(startWithVT() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)){
     gchar prompt[5]="";
@@ -3224,7 +3249,8 @@ static void readlineInSeperateThread(GString * readlineResultStringFromPreviousR
     else if (ItemSelected==0) strcat(prompt,exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread ? "]":">");
     else strcat(prompt,exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread ? "*]":"*>");
     g_free(OriginalReadlineResult);
-    while ((OriginalReadlineResult = readline(prompt))==NULL);
+    int i=0;
+    while ((OriginalReadlineResult = readline(prompt))==NULL){ g_debug("readline return null, %d",i++);}
 
     stdin_command_Scheduler = g_idle_add_once(parse_and_exec_stdin_command_in_gtk_thread, strdup(OriginalReadlineResult));
   }
@@ -3735,6 +3761,10 @@ static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult)
 	    stdin_cmd_ending_space = (stdin_cmd_ending_space || (len>=1 && readlineResult[len-1]==' '));
 	    while (len>=1 && readlineResult[len-1]==' ') { readlineResult[len-1]='\0'; len--; } //remove ending space
 
+	    if (g_str_has_prefix(readlineResult, RFM_SEARCH_RESULT_AS_INPUT_PREFIX)) {
+		SearchResultAsInput=TRUE;
+		for (int i=0;i<len;i++) readlineResult[i]=readlineResult[i + strlen(RFM_SEARCH_RESULT_AS_INPUT_PREFIX)]; //remove the prefix SearchResult|, which has 13 char
+	    }
             readlineResultString=g_string_new(strdup(readlineResult));
 
 	      // combine runCmd with selected files to get gchar** v

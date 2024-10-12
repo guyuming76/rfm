@@ -16,6 +16,7 @@
 #define RFM_AUTOSELECT_OLDPWD_IN_VIEW TRUE
 #define RFM_FILE_CHOOSER_NAMED_PIPE_PREFIX "/tmp/rfmFileChooser_"
 #define RFM_ENV_VAR_NAME_PREFIX ""  //change this if your extented column name conflicts with existing ENV Variable name
+#define RFM_SEARCH_RESULT_AS_INPUT_PREFIX "SearchResult|"
 
 static char selected_filename_placeholder[32] = {'%', 's', NULL };
 static char run_cmd_in_new_terminal_emulator_suffix[32] = { '&', NULL };
