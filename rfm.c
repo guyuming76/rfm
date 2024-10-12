@@ -2121,10 +2121,11 @@ static void refresh_store(RFM_ctx *rfmCtx)
        if (get_treeviewColumnByEnum(COL_GIT_COMMIT_MSG)->Show && gtk_tree_model_get_iter_first(treemodel, &gitMsg_load_iter)) rfm_gitCommitMsgScheduler=g_idle_add((GSourceFunc)iterate_through_store_to_load_gitCommitMsg_one_by_one_when_idle, &gitMsg_load_iter);
 #endif
 
-       if (rfm_do_thumbs == 1 && g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR) && gtk_tree_model_get_iter_first(treemodel, &thumbnail_load_iter))
+       if (rfm_do_thumbs == 1 && g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR) && gtk_tree_model_get_iter_first(treemodel, &thumbnail_load_iter)){
 	 //rfm_thumbLoadScheduler=g_idle_add((GSourceFunc)iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_one_by_one_when_idle, &thumbnail_load_iter);
 	 rfm_thumbLoadScheduler=1;
 	 while(iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_one_by_one_when_idle(&thumbnail_load_iter)){};
+       }
      }
   }
 #ifdef GitIntegration
