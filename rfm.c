@@ -3230,7 +3230,37 @@ static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlin
 
 static void writeSearchResultIntoFD(gint *fd){
   g_debug("writeSearchResultIntoFD(%d)",*fd);
-  dprintf(*fd,"test\n");
+  if (SearchResultViewInsteadOfDirectoryView){
+    gboolean firstColumn=TRUE;
+    GList* columns=NULL;
+    for (int i=0; i<G_N_ELEMENTS(treeviewColumns);i++){
+      if (TREEVIEW_COLUMNS[i].Show && TREEVIEW_COLUMNS[i].enumCol!=NUM_COLS && TREEVIEW_COLUMNS[i].gtkCol){
+	if (firstColumn){
+	  dprintf(*fd, "%s", TREEVIEW_COLUMNS[i].title); //首列输出列标题
+	  firstColumn=FALSE;
+	}else dprintf(*fd, "%s%s",SearchResultColumnSeperator,TREEVIEW_COLUMNS[i].title); //非首列输出 分隔符 加列标题
+      columns=g_list_prepend(columns, &(TREEVIEW_COLUMNS[i].enumCol));
+      }
+    }
+    columns=g_list_reverse(columns);
+    GtkTreeIter iter;
+    if (gtk_tree_model_get_iter_first (GTK_TREE_MODEL(store), &iter) && columns){
+      do{
+	GList* c=columns;
+	do{
+	  GValue val = G_VALUE_INIT;
+	  gtk_tree_model_get_value(GTK_TREE_MODEL(store), &iter, *((enum RFM_treeviewCol *)(c->data)), &val);
+  	  gchar * str_value = g_value_get_string(&val);
+	  if (c==columns)//this means the first column
+	    dprintf(*fd, "\n%s", str_value? str_value:""); //首列输出回车 加 值
+	  else dprintf(*fd, "%s%s",SearchResultColumnSeperator, str_value?str_value:""); //非首列输出 分隔符 加值
+	  if (str_value) g_free(str_value);
+	}while(c=g_list_next(c));
+
+      }while (gtk_tree_model_iter_next(GTK_TREE_MODEL(store), &iter));
+    }else g_warning("empty search result view!");
+    g_list_free(columns);
+  }else g_warning("currently not in search result view!");
   close(*fd);
 }
 
