@@ -472,6 +472,8 @@ static int currentPageStartingColumnTitleIndex;
 static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamelist);
 static void showSearchResultExtColumnsBasedOnHashTableValues();
 static int ProcessOnelineForSearchResult(gchar *oneline, gboolean new_search);
+static int ProcessOnelineForSearchResult_internel(char* oneline, gboolean new_search, gboolean firt_line_column_title);
+static int ProcessOnelineForSearchResult_with_title(char* oneline, gboolean new_search);
 static void CallDefaultSearchResultFunctionForNewSearch(char *one_line_in_search_result);
 static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline, gboolean new_search);
 static int ProcessKeyValuePairInCmdOutputFromSearchResult(char *oneline, gboolean new_search, char *cmdtemplate);
@@ -4139,11 +4141,20 @@ int main(int argc, char *argv[])
    return 0;
 }
 
+static int ProcessOnelineForSearchResult(char* oneline, gboolean new_search){
+  ProcessOnelineForSearchResult_internel(oneline, new_search, FALSE);
+}
+
+static int ProcessOnelineForSearchResult_with_title(char* oneline, gboolean new_search){
+  ProcessOnelineForSearchResult_internel(oneline, new_search, TRUE);
+}
+
 // default search result processing function
 // 处理通过pipeline 或者内置 >0 方式获得的用分隔符分开的字符串行
 // 同一searchresult包含的多行结果分隔符数相同,类似 csv 格式
-// 搜索结果第一行不包含表头,显示C1,C2,C3,...的顺序列名
-static int ProcessOnelineForSearchResult(char* oneline, gboolean new_search){
+// first_line_column_title 为FALSE时,搜索结果第一行不包含表头,显示C1,C2,C3,...的顺序列名
+// first_line_column_title 为TRUE的时候,第一行为表头,且只能用于扩展列,不会去查找现有同名列
+static int ProcessOnelineForSearchResult_internel(char* oneline, gboolean new_search, gboolean firt_line_column_title){
            if (oneline == NULL || !new_search) return;
 	   char* key=calloc(10, sizeof(char));
 	   uint seperatorPositionAfterCurrentExtColumnValue = strcspn(oneline, SearchResultColumnSeperator);
@@ -4159,7 +4170,10 @@ static int ProcessOnelineForSearchResult(char* oneline, gboolean new_search){
 	       RFM_treeviewColumn* col = get_treeviewColumnByTitle(currentColumnTitle);
 	       // Column Titles will always be C1, C2, C3, ..., that is, continuous with no gap, and start from C1
 	       // but current_Ext_Column and currentExtColumnHashTable Ext can have gap: it can be COL_Ext2, COL_Ext4,...,
-	       // current_Ext_Column 对应的COL_ExtX,中X下标总是等于 currentExtColumnHashTableIndex-1
+	       // 上面一行的假设 current_Ext_Column 有空缺,我想象中可能会是用户通过 showcolumn 命令占用了一些扩展列.但这只是我在写这段代码时想象中可能出现的情况,并未在测试中实际遇到过
+	       // 到目前为止,实际测试中 current_Ext_column 也是连续的
+	       // 这个假设对目前代码的影响就是 用currentColumnTitleIndex 这样一个连续编号,得到 C1, C2,... 这样的连续编号列名, 然后再通过 get_treeviewColumnByTitle 找到列
+	       // current_Ext_Column 对应的COL_ExtX,中X下标总是等于 currentExtColumnHashTableIndex + 1
 
 	       if (fileAttributeID==1){ //bind to available extended column for the first line.
 		    g_assert(col->enumCol==NUM_COLS);
