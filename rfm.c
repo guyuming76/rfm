@@ -4233,8 +4233,6 @@ static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline, gboolean ne
      CallDefaultSearchResultFunctionForNewSearch(oneline);
      return;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
    }
-   //下面判断表示当前搜索结果页第一行
-   //if (fileAttributeID==currentFileNum) currentPageStartingColumnTitleIndex=currentSearchResultTypeStartingColumnTitleIndex;
 
    GKeyFile *keyfile=g_key_file_new();
    GError *error=NULL;
@@ -4244,7 +4242,7 @@ static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline, gboolean ne
    }else{
      ProcessKeyValuePairInData(keyfile, dumb_keyfile_groupname);
      g_key_file_free(keyfile);
-   }//end if g_key_file_load_from_file successfully
+   }
 }
 
 static int ProcessKeyValuePairInCmdOutputFromSearchResult(char *oneline, gboolean new_search, char* cmdtemplate){
@@ -4262,7 +4260,6 @@ static int ProcessKeyValuePairInCmdOutputFromSearchResult(char *oneline, gboolea
    const char** cmd = stdin_cmd_interpretors[current_stdin_cmd_interpretor].cmdTransformer(mailHeadCmd, FALSE);
 
    if (!g_spawn_sync(rfm_curPath, cmd, env_for_g_spawn, G_SPAWN_SEARCH_PATH, NULL, NULL, &cmdOutput, &cmdError, NULL, &error)){
-   //if (!g_spawn_command_line_sync(cmd, &cmdOutput, &cmdError, NULL, &error)){
      g_warning("error executing cmd %s, error:%s",mailHeadCmd, error==NULL?"":error->message);
      if (error) g_error_free(error);
    }else{
