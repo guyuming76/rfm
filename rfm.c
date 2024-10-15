@@ -470,6 +470,7 @@ static int SearchResultTypeIndexForCurrentExistingSearchResult=-1;//The value ab
 static int currentSearchResultTypeStartingColumnTitleIndex;
 static int currentPageStartingColumnTitleIndex;
 static gboolean first_line_column_title=FALSE;
+static gchar* stdout_read_by_search_result=NULL;
 static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamelist);
 static void showSearchResultExtColumnsBasedOnHashTableValues();
 static int ProcessOnelineForSearchResult(gchar *oneline, gboolean new_search);
@@ -3188,13 +3189,12 @@ static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlin
 	  }
 #endif
 	  GError *err = NULL;
-	  gchar* cmd_stdout;	  
 	  if (SearchResultTypeIndex>=0 && g_spawn_sync(rfm_curPath, 
 						       stdin_cmd_interpretors[current_stdin_cmd_interpretor].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE),
 					      env_for_g_spawn_used_by_exec_stdin_command,
 					      G_SPAWN_SEARCH_PATH|G_SPAWN_CHILD_INHERITS_STDIN|G_SPAWN_CHILD_INHERITS_STDERR,
-					      NULL,NULL,&cmd_stdout,NULL,NULL,&err)){ //remove the ending ">0" in cmd with g_string_erase
-	      g_idle_add_once(update_SearchResultFileNameList_and_refresh_store, (gpointer)cmd_stdout);
+					      NULL,NULL,&stdout_read_by_search_result,NULL,NULL,&err)){ //remove the ending ">0" in cmd with g_string_erase
+	      g_idle_add_once(update_SearchResultFileNameList_and_refresh_store, (gpointer)stdout_read_by_search_result);
 	  } else if (SearchResultTypeIndex<0 && g_spawn_sync(rfm_curPath,
 							     stdin_cmd_interpretors[current_stdin_cmd_interpretor].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE), env_for_g_spawn_used_by_exec_stdin_command,
                            G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN |
