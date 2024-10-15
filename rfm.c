@@ -140,6 +140,7 @@ static void readlineInSeperateThread();
 static void ReadFromPipeStdinIfAny(char *fd);
 static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
 static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
+static void g_spawn_async_callback_to_new_readline_thread(gpointer child_attribs);
 static void parse_and_exec_stdin_command_in_gtk_thread(gchar *msg);
 static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * parsed_msg, GString* readline_result_string);
 static void toggle_exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread();
@@ -3214,9 +3215,9 @@ static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlin
 	    childAttribs->RunCmd = stdin_cmd_interpretors[current_stdin_cmd_interpretor].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE);
 	    childAttribs->runOpts = G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR;
 	    childAttribs->stdIn_fd = -1; //set to non-zero, and will be set to a valid fd by g_spawn_async_with_pipes
+	    childAttribs->customCallBackFunc = g_spawn_async_callback_to_new_readline_thread;
 	    if (!g_spawn_async_with_pipes_wrapper(childAttribs->RunCmd, childAttribs)) free_child_attribs(childAttribs);
-	    else if (exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread) writeSearchResultIntoFD(&(childAttribs->stdIn_fd));//如果当前是gtk main thread, 则直接调用; 否则,使用g_idle_add_once, 因为writeSearchResult用到treeview也就是gtk对象,不是thread dsafe
-	    else g_idle_add_once(writeSearchResultIntoFD, &(childAttribs->stdIn_fd));
+	    else writeSearchResultIntoFD(&(childAttribs->stdIn_fd));//SearchResultAsInput 时exec_stdin_command 总是在gtk main thread 执行
 
 	  } else {
               g_warning("%d;%s", err->code, err->message);
@@ -3227,6 +3228,10 @@ static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlin
   g_strfreev(env_for_g_spawn_used_by_exec_stdin_command);env_for_g_spawn_used_by_exec_stdin_command=NULL;
 }
 
+
+static void g_spawn_async_callback_to_new_readline_thread(gpointer child_attribs){
+  readlineThread=g_thread_new("readline", readlineInSeperateThread, NULL);//这种情况下,新的readlineThread下不会再运行exec_stdin_command, 所以命令参数直接传NULL过去就可以了
+}
 
 static void writeSearchResultIntoFD(gint *fd){
   g_debug("writeSearchResultIntoFD(%d)",*fd);
@@ -3266,7 +3271,7 @@ static void writeSearchResultIntoFD(gint *fd){
 
 static void readlineInSeperateThread(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution) {
   g_debug("readlineInSeperateThread");
-  if (!exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread && !execStdinCmdInNewVT) exec_stdin_command(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
+  if (!exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread && !execStdinCmdInNewVT && !SearchResultAsInput) exec_stdin_command(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
 
   execStdinCmdInNewVT = FALSE;
   SearchResultAsInput = FALSE;
@@ -3851,10 +3856,11 @@ static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult)
         g_free (readlineResult);
 
 	if(startWithVT() || auto_execution_command_after_rfm_start!=NULL){
-	  if (exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread && !execStdinCmdInNewVT) exec_stdin_command(readlineResultString);
+	  if ((exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread && !execStdinCmdInNewVT) || SearchResultAsInput ) exec_stdin_command(readlineResultString);
 	  if (auto_execution_command_after_rfm_start==NULL) g_thread_join(readlineThread);//we won't have more than one readlineThread running at the same time since we join before new thread here
 	  if (execStdinCmdInNewVT) exec_stdin_command_in_new_VT(readlineResultString);
-	  readlineThread=g_thread_new("readline", readlineInSeperateThread, readlineResultString);
+
+	  if (!SearchResultAsInput) readlineThread=g_thread_new("readline", readlineInSeperateThread, readlineResultString);
 	}
 }
 
