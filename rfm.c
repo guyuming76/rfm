@@ -4200,8 +4200,7 @@ static int ProcessOnelineForSearchResult_internel(char* oneline, gboolean new_se
 		    currentExtColumnValue[seperatorPositionAfterCurrentExtColumnValue] = 0; //ending NULL for currentExtColumnValue
 		    g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"Insert column %s into ExtColumnHashTable[%d]: fileAttributeID as key %s,value %s", currentColumnTitle, currentExtColumnHashTableIndex,key,currentExtColumnValue);
 		    g_hash_table_insert(ExtColumnHashTable[currentExtColumnHashTableIndex], strdup(key), strdup(currentExtColumnValue));
-		    //free(currentExtColumnValue);// the will cause exception
-		    //TODO:这个currentExtColumnValue源自oneline,然后用0切成一段一段的,如何free?
+
 		    currentExtColumnValue = currentExtColumnValue + seperatorPositionAfterCurrentExtColumnValue + 1; //moving char pointer
 
       		    currentColumnTitleIndex++;
@@ -4230,7 +4229,7 @@ static int ProcessOnelineForSearchResult_internel(char* oneline, gboolean new_se
 	   }
 	   free(key);
 	   if (!(fileAttributeID==1 && first_line_column_title)){
-	     SearchResultFileNameList=g_list_prepend(SearchResultFileNameList, oneline);
+	     SearchResultFileNameList=g_list_prepend(SearchResultFileNameList, strdup(oneline));
 	     SearchResultFileNameListLength++;
 	     g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"appended into SearchResultFileNameList:%s", oneline);
 	   }
@@ -4501,7 +4500,7 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
   }
   SearchResultFileNameListLength=0;
   fileAttributeID=1;
-  g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"update_SearchResultFileNameList, length: %d charactor(s)",strlen((gchar*)filenamelist));
+  g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"update_SearchResultFileNameList, length: %d charactor(s)",filenamelist?strlen((gchar*)filenamelist):0);
   gchar * oneline=strtok((gchar*)filenamelist,"\n");
   while (oneline!=NULL){
     searchresultTypes[SearchResultTypeIndex].SearchResultLineProcessingFunc(oneline, TRUE, searchresultTypes[SearchResultTypeIndex].cmdTemplate,NULL);
@@ -4520,6 +4519,8 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
   FirstPage(rfmCtx);
   if (old_filenamelist!=NULL) g_list_free(old_filenamelist);
   for(int i=0;i<=NUM_Ext_Columns;i++) if (old_ExtColumnHashTable[i]!=NULL) g_hash_table_destroy(old_ExtColumnHashTable[i]);
+
+  g_free(filenamelist);
 }
 
 
