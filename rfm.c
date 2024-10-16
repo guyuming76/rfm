@@ -55,6 +55,7 @@ static void show_msgbox(gchar *msg, gchar *title, gint type);
 static void die(const char *errstr, ...);
 static int setup(RFM_ctx *rfmCtx);
 static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx);
+gpointer transferPointerOwnership(gpointer *newOwner, gpointer *oldOwner);
 
 /****************************************************/
 /******Terminal Emulator related definitions*********/
@@ -3251,14 +3252,27 @@ static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlin
 static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution){
 	    RFM_ChildAttribs *childAttribs = calloc(1, sizeof(RFM_ChildAttribs));
 	    childAttribs->RunCmd = stdin_cmd_interpretors[current_stdin_cmd_interpretor].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE);
-	    childAttribs->runOpts = G_SPAWN_DEFAULT|G_SPAWN_CHILD_INHERITS_STDOUT;
 	    childAttribs->stdIn_fd = -1; //set to non-zero, and will be set to a valid fd by g_spawn_async_with_pipes
 	    childAttribs->customCallBackFunc = g_spawn_async_callback_to_new_readline_thread;
+	    if (SearchResultTypeIndex>=0) {
+	      childAttribs->output_read_by_program = TRUE;
+	      childAttribs->customCallbackUserData = update_SearchResultFileNameList_and_refresh_store;
+	    }else childAttribs->runOpts = G_SPAWN_CHILD_INHERITS_STDOUT;
 	    if (!g_spawn_async_with_pipes_wrapper(childAttribs->RunCmd, childAttribs)) free_child_attribs(childAttribs);
 	    else writeSearchResultIntoFD(&(childAttribs->stdIn_fd));//SearchResultAsInput 时exec_stdin_command 总是在gtk main thread 执行
 }
 
+gpointer transferPointerOwnership(gpointer *newOwner, gpointer *oldOwner)
+{
+  *newOwner=*oldOwner;
+  *oldOwner=NULL;
+  return *newOwner;
+}
+
 static void g_spawn_async_callback_to_new_readline_thread(gpointer child_attribs){
+  RFM_ChildAttribs *childAttribs = (RFM_ChildAttribs*)child_attribs;
+  if (childAttribs->customCallbackUserData == update_SearchResultFileNameList_and_refresh_store)
+    update_SearchResultFileNameList_and_refresh_store(transferPointerOwnership(&stdout_read_by_search_result, &(childAttribs->stdOut))); //这里假定当前方法是在gtk main thread 上运行的,如不是,就得用g_idle_add_once
   readlineThread=g_thread_new("readline", readlineInSeperateThread, NULL);//这种情况下,新的readlineThread下不会再运行exec_stdin_command, 所以命令参数直接传NULL过去就可以了
 }
 
