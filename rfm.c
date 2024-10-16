@@ -3260,6 +3260,8 @@ static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResult
 	    }else childAttribs->runOpts = G_SPAWN_CHILD_INHERITS_STDOUT;
 	    if (!g_spawn_async_with_pipes_wrapper(childAttribs->RunCmd, childAttribs)) free_child_attribs(childAttribs);
 	    else writeSearchResultIntoFD(&(childAttribs->stdIn_fd));//SearchResultAsInput 时exec_stdin_command 总是在gtk main thread 执行
+
+	    add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
 }
 
 gpointer transferPointerOwnership(gpointer *newOwner, gpointer *oldOwner)
