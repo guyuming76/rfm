@@ -799,18 +799,35 @@ static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_
 {
    RFM_ChildAttribs *child_attribs=(RFM_ChildAttribs*)user_data;
 
-   if ((child_attribs->runOpts & G_SPAWN_STDOUT_TO_DEV_NULL)!=G_SPAWN_STDOUT_TO_DEV_NULL) read_char_pipe(child_attribs->stdOut_fd, PIPE_SZ, &child_attribs->stdOut);
-   read_char_pipe(child_attribs->stdErr_fd, PIPE_SZ, &child_attribs->stdErr);
-   
-   if (!child_attribs->output_read_by_program && (child_attribs->runOpts & G_SPAWN_STDOUT_TO_DEV_NULL)!=G_SPAWN_STDOUT_TO_DEV_NULL) show_child_output(child_attribs);
-   //TODO: devPicAndVideo submodule commit f746eaf096827adda06cb2a085787027f1dca027 的错误起源于上面一行代码和RFM_EXEC_FILECHOOSER 的引入。
-   if (child_attribs->status==-1)
-       return TRUE;
+/* https://docs.gtk.org/glib/func.spawn_async_with_pipes_and_fds.html */
+/* g_spawn_async_with_pipes_and_fds(${1:const gchar *working_directory}, ${2:const gchar *const *argv}, ${3:const gchar *const *envp}, ${4:GSpawnFlags flags}, ${5:GSpawnChildSetupFunc child_setup}, ${6:gpointer user_data}, ${7:gint stdin_fd}, ${8:gint stdout_fd}, ${9:gint stderr_fd}, ${10:const gint *source_fds}, ${11:const gint *target_fds}, ${12:gsize n_fds}, ${13:GPid *child_pid_out}, ${14:gint *stdin_pipe_out}, ${15:gint *stdout_pipe_out}, ${16:gint *stderr_pipe_out}, ${17:GError **error}) */
 
-   g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_DEBUG, "child_supervisor for pid %d, will close stdout_fd:%d",child_attribs->pid,child_attribs->stdOut_fd);
-   close(child_attribs->stdOut_fd);
-   g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_DEBUG, "child_supervisor for pid %d, will close stderr_fd:%d",child_attribs->pid,child_attribs->stdErr_fd);
-   close(child_attribs->stdErr_fd);
+/* G_SPAWN_STDOUT_TO_DEV_NULL means that the child’s standard output will be discarded (by default, it goes to the same location as the parent’s standard output). G_SPAWN_CHILD_INHERITS_STDOUT explicitly imposes the default behavior. Both flags cannot be enabled at the same time and, in both cases, the stdout_pipe_out argument is ignored. */
+   
+/* If stdout_pipe_out is NULL, the child’s standard output goes to the same location as the parent’s standard output unless G_SPAWN_STDOUT_TO_DEV_NULL is set. */
+
+/* https://docs.gtk.org/glib/func.spawn_async_with_pipes.html */
+/* g_spawn_async_with_pipes(${1:const gchar *working_directory}, ${2:gchar **argv}, ${3:gchar **envp}, ${4:GSpawnFlags flags}, ${5:GSpawnChildSetupFunc child_setup}, ${6:gpointer user_data}, ${7:GPid *child_pid}, ${8:gint *standard_input}, ${9:gint *standard_output}, ${10:gint *standard_error}, ${11:GError **error}) */
+/* Identical to g_spawn_async_with_pipes_and_fds() but with n_fds set to zero, so no FD assignments are used. */
+   
+   if (child_attribs->output_read_by_program || (((child_attribs->runOpts & G_SPAWN_CHILD_INHERITS_STDOUT)!=G_SPAWN_CHILD_INHERITS_STDOUT) && ((child_attribs->runOpts & G_SPAWN_STDOUT_TO_DEV_NULL)!=G_SPAWN_STDOUT_TO_DEV_NULL)))
+     read_char_pipe(child_attribs->stdOut_fd, PIPE_SZ, &child_attribs->stdOut);
+
+   if (((child_attribs->runOpts & G_SPAWN_CHILD_INHERITS_STDERR)!=G_SPAWN_CHILD_INHERITS_STDERR) && ((child_attribs->runOpts & G_SPAWN_STDERR_TO_DEV_NULL)!=G_SPAWN_STDERR_TO_DEV_NULL))
+     read_char_pipe(child_attribs->stdErr_fd, PIPE_SZ, &child_attribs->stdErr);
+   
+   if (!child_attribs->output_read_by_program && (child_attribs->stdOut && strlen(child_attribs->stdOut)>0)) show_child_output(child_attribs);
+   //TODO: devPicAndVideo submodule commit f746eaf096827adda06cb2a085787027f1dca027 的错误起源于上面一行代码和RFM_EXEC_FILECHOOSER 的引入。
+   if (child_attribs->status==-1) return G_SOURCE_CONTINUE;
+
+   if (((child_attribs->runOpts & G_SPAWN_CHILD_INHERITS_STDOUT)!=G_SPAWN_CHILD_INHERITS_STDOUT) && ((child_attribs->runOpts & G_SPAWN_STDOUT_TO_DEV_NULL)!=G_SPAWN_STDOUT_TO_DEV_NULL)){
+     g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_DEBUG, "child_supervisor for PID %d, will close stdOut_fd:%d",child_attribs->pid,child_attribs->stdOut_fd);
+     close(child_attribs->stdOut_fd);
+   }
+   if (((child_attribs->runOpts & G_SPAWN_CHILD_INHERITS_STDERR)!=G_SPAWN_CHILD_INHERITS_STDERR) && ((child_attribs->runOpts & G_SPAWN_STDERR_TO_DEV_NULL!=G_SPAWN_STDERR_TO_DEV_NULL))){
+     g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_DEBUG, "child_supervisor for PID %d, will close stdErr_fd:%d",child_attribs->pid,child_attribs->stdErr_fd);
+     close(child_attribs->stdErr_fd);
+   }
    g_spawn_close_pid(child_attribs->pid);
 
    if (child_attribs->stdErr!=NULL && strlen(child_attribs->stdErr)>0) g_warning("g_spawn_async_with_wrapper_child_supervisor: %s",child_attribs->stdErr);
@@ -839,7 +856,7 @@ static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_
    }
 
    ExecCallback_freeChildAttribs(child_attribs);
-   return FALSE;
+   return G_SOURCE_REMOVE;
 }
 
 static void child_handler_to_set_finished_status_for_child_supervisor(GPid pid, gint status, RFM_ChildAttribs *child_attribs)
@@ -853,11 +870,17 @@ static void show_child_output(RFM_ChildAttribs *child_attribs)
    
    /* Show any output we have regardless of error status */
    if (child_attribs->stdOut!=NULL && child_attribs->stdOut[0]!=0) {
-     if (child_attribs->runOpts==RFM_EXEC_STDOUT || strlen(child_attribs->stdOut) > RFM_MX_MSGBOX_CHARS)
-       printf("PID %i:%s",child_attribs->pid,child_attribs->stdOut);
+     if (startWithVT()){
+       printf("%s",child_attribs->stdOut);
+       g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_DEBUG, "output of strlen %d from child PID %d shown", strlen(child_attribs->stdOut), child_attribs->pid);
        //TODO: if not startwithVT(), user won't see printf, but user also will not see all those g_warnings. maybe we can add some indicator on UI and guide user to some log file. When not startwithVT, redirect stdout and stderr to some log file
-     else
+     }else if (strlen(child_attribs->stdOut) <= RFM_MX_MSGBOX_CHARS)
          show_msgbox(child_attribs->stdOut, child_attribs->name, GTK_MESSAGE_INFO);
+     else{
+         msg=g_strdup_printf("output of strlen %d from child PID %d greater that RFM_MX_MSGBOX_CHARS %d, cannot show in msgbox", strlen(child_attribs->stdOut), child_attribs->pid,RFM_MX_MSGBOX_CHARS);
+	 show_msgbox(msg, child_attribs->name, GTK_MESSAGE_WARNING);
+	 g_free(msg);
+     }
      child_attribs->stdOut[0]=0;
    }
 
@@ -979,7 +1002,8 @@ static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *ch
    if (child_attribs!=NULL) {
       child_attribs->pid=-1;
       GError* err = NULL;
-
+/* https://docs.gtk.org/glib/func.spawn_async_with_pipes_and_fds.html */
+/*       If non-NULL, the stdin_pipe_out, stdout_pipe_out, stderr_pipe_out locations will be filled with file descriptors for writing to the child’s standard input or reading from its standard output or standard error. The caller of g_spawn_async_with_pipes() must close these file descriptors when they are no longer in use. If these parameters are NULL, the corresponding pipe won’t be created. */
       rv=g_spawn_async_with_pipes(rfm_curPath, v, env_for_g_spawn, G_SPAWN_DO_NOT_REAP_CHILD | G_SPAWN_SEARCH_PATH | child_attribs->runOpts,
 				  //本commit 是revert 3d53359fdb97498a895a0cec97e3076558908a02 消除冲突后的结果，注意上一行|child_attribs->runOpts 是保留3d53359fdb97498a895a0cec97e3076558908a02改动的
 
@@ -3227,7 +3251,7 @@ static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlin
 static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution){
 	    RFM_ChildAttribs *childAttribs = calloc(1, sizeof(RFM_ChildAttribs));
 	    childAttribs->RunCmd = stdin_cmd_interpretors[current_stdin_cmd_interpretor].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE);
-	    childAttribs->runOpts = G_SPAWN_DEFAULT;
+	    childAttribs->runOpts = G_SPAWN_DEFAULT|G_SPAWN_CHILD_INHERITS_STDOUT;
 	    childAttribs->stdIn_fd = -1; //set to non-zero, and will be set to a valid fd by g_spawn_async_with_pipes
 	    childAttribs->customCallBackFunc = g_spawn_async_callback_to_new_readline_thread;
 	    if (!g_spawn_async_with_pipes_wrapper(childAttribs->RunCmd, childAttribs)) free_child_attribs(childAttribs);
