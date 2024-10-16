@@ -806,8 +806,10 @@ static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_
    //TODO: devPicAndVideo submodule commit f746eaf096827adda06cb2a085787027f1dca027 的错误起源于上面一行代码和RFM_EXEC_FILECHOOSER 的引入。
    if (child_attribs->status==-1)
        return TRUE;
-   
+
+   g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_DEBUG, "child_supervisor for pid %d, will close stdout_fd:%d",child_attribs->pid,child_attribs->stdOut_fd);
    close(child_attribs->stdOut_fd);
+   g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_DEBUG, "child_supervisor for pid %d, will close stderr_fd:%d",child_attribs->pid,child_attribs->stdErr_fd);
    close(child_attribs->stdErr_fd);
    g_spawn_close_pid(child_attribs->pid);
 
@@ -3225,7 +3227,7 @@ static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlin
 static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution){
 	    RFM_ChildAttribs *childAttribs = calloc(1, sizeof(RFM_ChildAttribs));
 	    childAttribs->RunCmd = stdin_cmd_interpretors[current_stdin_cmd_interpretor].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE);
-	    childAttribs->runOpts = G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR;
+	    childAttribs->runOpts = G_SPAWN_DEFAULT;
 	    childAttribs->stdIn_fd = -1; //set to non-zero, and will be set to a valid fd by g_spawn_async_with_pipes
 	    childAttribs->customCallBackFunc = g_spawn_async_callback_to_new_readline_thread;
 	    if (!g_spawn_async_with_pipes_wrapper(childAttribs->RunCmd, childAttribs)) free_child_attribs(childAttribs);
@@ -3758,7 +3760,7 @@ static int MatchSearchResultType(gchar* readlineResult){
 //this runs in gtk thread
 static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult)
 {
-        static gboolean SearchResultAsInput=FALSE;
+        gboolean SearchResultAsInput=FALSE;
 	
         gint len = strlen(readlineResult);
 	g_debug ("readline return length %u: %s", len, readlineResult);
