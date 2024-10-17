@@ -3293,8 +3293,15 @@ static void writeSearchResultIntoFD(gint *fd){
       }
     }
     columns=g_list_reverse(columns);
+
     GtkTreeIter iter;
-    if (gtk_tree_model_get_iter_first (GTK_TREE_MODEL(store), &iter) && columns){
+    GList *selectedListElement=NULL;
+    stdin_cmd_selection_list = get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
+    if (stdin_cmd_selection_list) selectedListElement=g_list_first(stdin_cmd_selection_list);
+        
+    if (stdin_cmd_selection_list?
+	gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, selectedListElement->data)
+	:gtk_tree_model_get_iter_first (GTK_TREE_MODEL(store), &iter) && columns){
       do{
 	GList* c=columns;
 	do{
@@ -3307,9 +3314,12 @@ static void writeSearchResultIntoFD(gint *fd){
 	  if (str_value) g_free(str_value);
 	}while(c=g_list_next(c));
 
-      }while (gtk_tree_model_iter_next(GTK_TREE_MODEL(store), &iter));
+      }while (stdin_cmd_selection_list?
+	      ((selectedListElement=g_list_next(selectedListElement)) && gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, selectedListElement->data))
+	      :gtk_tree_model_iter_next(GTK_TREE_MODEL(store), &iter));
     }else g_warning("empty search result view!");
     g_list_free(columns);
+    if (stdin_cmd_selection_list) g_list_free_full(stdin_cmd_selection_list, (GDestroyNotify)gtk_tree_path_free);
   }else g_warning("currently not in search result view!");
   close(*fd);
 }
