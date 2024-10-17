@@ -70,6 +70,7 @@
 "    if there is \033[33mending space\033[0m in command entered, selected filename(s) will be appended at the end. for example, you can view currently selected maildir mail file with `mu view `, with ending space before return.\n" \
 "    continue with the example above, if you want to view with less, you can use `mu view %s|less `. although \033[33m%s\033[0m in the command is replaced with selected filename, you still have to end the whole command line with space to trigger the filename replacing. one %s for one selected filename, if you choose multiple filenames, you can add more %s. %s can be configured in config.h" \
 "    add \033[33m&\033[0m suffix at the end of non-builtin commands discussed above, a new terminal emulator will be opened to run this command. Note that this is rfm defined behavior. The linux default behavior for & suffix in command line means running command in background. & can be configured in config.h\n" \
+"    命令前缀\033[33mSearchResult|\033[0m, 表示把当前文件搜索结果视图内容(若有选中行,则只包括选中行)作为输入传递给后面的命令. 如 SearchResult|tee>test1.txt 表示将查询结果输出保存到test1.txt文件内.\n" \
 "\n\033[32m rfm builtin commands: \033[0m\n" \
 "    \033[33mquit\033[0m        quit rfm\n" \
 "    \033[33mhelp\033[0m        print this message\n" \
