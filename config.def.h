@@ -122,7 +122,6 @@ static RFM_builtinCMD builtinCMD[] = {
 	{BuiltInCmd_sort,                       cmdSort,                                BuiltInCmd_sort_Description},
 	{BuiltInCmd_glog,                       cmd_glog,                               BuiltInCmd_glog_Description},
 	{BuiltInCmd_showcolumn,                 cmd_showcolumn,                         BuiltInCmd_showcolumn_Description},
-	{BuiltInCmd_showcolumns,                cmd_showcolumn,                         BuiltInCmd_showcolumns_Description},
 	{BuiltInCmd_setenv,                     cmd_setenv,                             BuiltInCmd_setenv_Description},
 };
 
@@ -389,4 +388,9 @@ static stdin_cmd_interpretor stdin_cmd_interpretors[] = {
 #ifdef PythonEmbedded
 	{"PythonEmbedded", "p>",                  "p",              NULL               },
 #endif
+};
+
+static RFM_cmd_regex_rule regex_rules[] = {
+  { "^SearchResult |",     "SearchResult|",                     NULL },
+  { "^showcolumns ",       "showcolumn ",                       NULL },
 };

@@ -31,6 +31,7 @@
 #include <readline/history.h>
 #include <wordexp.h>
 #include <stdarg.h>
+#include <regex.h>
 
 #define INOTIFY_MASK IN_MOVE|IN_CREATE|IN_CLOSE_WRITE|IN_DELETE|IN_DELETE_SELF|IN_MOVE_SELF
 #define PIPE_SZ 65535      /* Kernel pipe size */
@@ -56,6 +57,7 @@ static void die(const char *errstr, ...);
 static int setup(RFM_ctx *rfmCtx);
 static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx);
 gpointer transferPointerOwnership(gpointer *newOwner, gpointer *oldOwner);
+gboolean str_regex_replace(char **str, const char *pattern, const char *replacement);
 
 /****************************************************/
 /******Terminal Emulator related definitions*********/
@@ -89,6 +91,12 @@ enum rfmTerminal {
   NEW_TERMINAL,
   INHERIT_TERMINAL,
 };
+
+typedef struct {
+  gchar* pattern;
+  gchar* replacement;
+  void (*action)(void);
+} RFM_cmd_regex_rule;
 
 typedef struct {
   gchar *cmd;
@@ -3823,6 +3831,10 @@ static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult)
             }else
                 lastEnter=now_time;
 	}else{
+	    for (int i=0;i<G_N_ELEMENTS(regex_rules);i++){
+	      if (str_regex_replace(&readlineResult, regex_rules[i].pattern, regex_rules[i].replacement) && regex_rules[i].action) (regex_rules[i].action)();
+	    }
+	    
             for(int i=0;i<G_N_ELEMENTS(stdin_cmd_interpretors);i++){
 	      if (g_strcmp0(readlineResult, stdin_cmd_interpretors[i].activationKey)==0){
 		current_stdin_cmd_interpretor = i;
@@ -4768,3 +4780,49 @@ static gchar** rfmFileChooser_CMD(enum rfmTerminal startWithVT, gchar* search_cm
     }else return stdin_cmd_template_bash;
 }
 #endif
+
+
+gboolean str_regex_replace(char **str, const char *pattern, const char *replacement) {
+    regex_t regex;
+    gboolean ret=FALSE;
+    int c;
+    if (!(c = regcomp(&regex, pattern, 0))){
+      regmatch_t pm[1];
+      size_t len = strlen(*str);
+      size_t nmatch = 1;
+      size_t rc = regexec(&regex, *str, nmatch, pm, 0);
+ 
+      while (rc == 0) {
+	ret = TRUE;
+        regoff_t soff = pm[0].rm_so;
+        regoff_t eoff = pm[0].rm_eo;
+ 
+        len += strlen(replacement) - (eoff - soff);
+        char* buffer = calloc(len + 1, sizeof(char));
+
+	g_debug("before regex replace:%s",*str);
+	memcpy(buffer, *str, soff);
+	memcpy(buffer + soff, replacement, strlen(replacement));
+	memcpy(buffer + soff + strlen(replacement), *str + eoff, len - eoff + 1); //位移是否要+1这个问题我总是拿不准, 为了防止复制越界, calloc 的时候我多申请1个, 这样总不会越界了吧, 如果少复制了字符,下面的g_debug 输出里容易看出来
+	g_debug("after regex replace:%s",buffer);
+
+	free(*str);
+	*str = buffer;
+	
+        rc = regexec(&regex, buffer + eoff, nmatch, pm, 0);
+      }
+      regfree(&regex);
+    }else{
+		/************************************************************************/
+		/*  正则表达式编译出错输出错误信息                                      */
+		/*  调用 regerror 将错误信息输出到 regerrbuf 中                         */
+		/*  regerrbuf 末尾置0,确保上面调用regerror 导致 regerrbuf 溢出的情况下, */
+		/*  字符串仍有有结尾0                                                   */
+		/************************************************************************/
+                char regerrbuf[256];
+                regerror(c, &regex, regerrbuf, sizeof(regerrbuf));
+		regerrbuf[sizeof(regerrbuf) - 1] = '\0';
+		g_warning("%s", regerrbuf);
+    }
+    return ret;
+}
