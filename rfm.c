@@ -57,7 +57,7 @@ static void die(const char *errstr, ...);
 static int setup(RFM_ctx *rfmCtx);
 static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx);
 gpointer transferPointerOwnership(gpointer *newOwner, gpointer *oldOwner);
-gboolean str_regex_replace(char **str, const char *pattern, const char *replacement);
+gboolean str_regex_replace(char **str, const regex_t *pattern_compiled, const char *replacement);
 
 /****************************************************/
 /******Terminal Emulator related definitions*********/
@@ -96,6 +96,7 @@ typedef struct {
   gchar* pattern;
   gchar* replacement;
   void (*action)(void);
+  regex_t *pattern_compiled;
 } RFM_cmd_regex_rule;
 
 typedef struct {
@@ -3832,7 +3833,7 @@ static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult)
                 lastEnter=now_time;
 	}else{
 	    for (int i=0;i<G_N_ELEMENTS(regex_rules);i++){
-	      if (str_regex_replace(&readlineResult, regex_rules[i].pattern, regex_rules[i].replacement) && regex_rules[i].action) (regex_rules[i].action)();
+	      if (regex_rules[i].pattern_compiled && str_regex_replace(&readlineResult, regex_rules[i].pattern_compiled, regex_rules[i].replacement) && regex_rules[i].action) (regex_rules[i].action)();
 	    }
 	    
             for(int i=0;i<G_N_ELEMENTS(stdin_cmd_interpretors);i++){
@@ -4178,6 +4179,25 @@ int main(int argc, char *argv[])
    sprintf(selected_filename_placeholder_in_space," %s ",selected_filename_placeholder);
    sprintf(selected_filename_placeholder_in_quotation, "'%s'",selected_filename_placeholder);
    sprintf(thumbnailsize_str, "%dx%d",RFM_THUMBNAIL_SIZE,RFM_THUMBNAIL_SIZE);
+
+   for(int i=0;i<G_N_ELEMENTS(regex_rules);i++){
+       regex_t *regex = calloc(1, sizeof(regex_t));
+       int c;
+       if (c = regcomp(regex, regex_rules[i].pattern, 0)){
+		/************************************************************************/
+		/*  正则表达式编译出错输出错误信息                                      */
+		/*  调用 regerror 将错误信息输出到 regerrbuf 中                         */
+		/*  regerrbuf 末尾置0,确保上面调用regerror 导致 regerrbuf 溢出的情况下, */
+		/*  字符串仍有有结尾0                                                   */
+		/************************************************************************/
+                char regerrbuf[256];
+                regerror(c, &regex, regerrbuf, sizeof(regerrbuf));
+		regerrbuf[sizeof(regerrbuf) - 1] = '\0';
+		g_warning("%s", regerrbuf);
+		regfree(regex);
+       }else regex_rules[i].pattern_compiled = regex;
+   }
+
    
    PROG_NAME = strdup(argv[0]);
    int c=1;
@@ -4782,15 +4802,12 @@ static gchar** rfmFileChooser_CMD(enum rfmTerminal startWithVT, gchar* search_cm
 #endif
 
 
-gboolean str_regex_replace(char **str, const char *pattern, const char *replacement) {
-    regex_t regex;
-    gboolean ret=FALSE;
-    int c;
-    if (!(c = regcomp(&regex, pattern, 0))){
+gboolean str_regex_replace(char **str, const regex_t *pattern_compiled, const char *replacement) {
+      gboolean ret = FALSE;
       regmatch_t pm[1];
       size_t len = strlen(*str);
       size_t nmatch = 1;
-      size_t rc = regexec(&regex, *str, nmatch, pm, 0);
+      size_t rc = regexec(pattern_compiled, *str, nmatch, pm, 0);
  
       while (rc == 0) {
 	ret = TRUE;
@@ -4809,20 +4826,8 @@ gboolean str_regex_replace(char **str, const char *pattern, const char *replacem
 	free(*str);
 	*str = buffer;
 	
-        rc = regexec(&regex, buffer + eoff, nmatch, pm, 0);
+        rc = regexec(pattern_compiled, buffer + eoff, nmatch, pm, 0);
       }
-      regfree(&regex);
-    }else{
-		/************************************************************************/
-		/*  正则表达式编译出错输出错误信息                                      */
-		/*  调用 regerror 将错误信息输出到 regerrbuf 中                         */
-		/*  regerrbuf 末尾置0,确保上面调用regerror 导致 regerrbuf 溢出的情况下, */
-		/*  字符串仍有有结尾0                                                   */
-		/************************************************************************/
-                char regerrbuf[256];
-                regerror(c, &regex, regerrbuf, sizeof(regerrbuf));
-		regerrbuf[sizeof(regerrbuf) - 1] = '\0';
-		g_warning("%s", regerrbuf);
-    }
-    return ret;
+
+      return ret;
 }

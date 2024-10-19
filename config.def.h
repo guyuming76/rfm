@@ -391,6 +391,7 @@ static stdin_cmd_interpretor stdin_cmd_interpretors[] = {
 };
 
 static RFM_cmd_regex_rule regex_rules[] = {
-  { "^SearchResult |",     "SearchResult|",                     NULL },
-  { "^showcolumns ",       "showcolumn ",                       NULL },
+  { "^SearchResult |",     "SearchResult|",                     NULL,NULL },
+  { "^showcolumns ",       "showcolumn ",                       NULL,NULL },
+  { "^showcolumns$",       "showcolumn",                        NULL,NULL },
 };
