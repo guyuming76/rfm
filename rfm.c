@@ -151,6 +151,7 @@ static void ReadFromPipeStdinIfAny(char *fd);
 static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
 static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
 static void g_spawn_async_callback_to_new_readline_thread(gpointer child_attribs);
+static void regcomp_for_regex_rules();
 static void parse_and_exec_stdin_command_in_gtk_thread(gchar *msg);
 static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * parsed_msg, GString* readline_result_string);
 static void toggle_exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread();
@@ -4152,6 +4153,28 @@ static void die(const char *errstr, ...) {
 }
 
 
+static void regcomp_for_regex_rules(){
+   for(int i=0;i<G_N_ELEMENTS(regex_rules);i++){
+       regex_t *regex = calloc(1, sizeof(regex_t));
+       int c;
+       //https://www.gnu.org/software/sed/manual/html_node/Character-Classes-and-Bracket-Expressions.html#Character-Classes-and-Bracket-Expressions
+       //https://www.gnu.org/software/sed/manual/html_node/BRE-syntax.html#BRE-syntax
+       if (c = regcomp(regex, regex_rules[i].pattern, 0)){
+		/************************************************************************/
+		/*  正则表达式编译出错输出错误信息                                      */
+		/*  调用 regerror 将错误信息输出到 regerrbuf 中                         */
+		/*  regerrbuf 末尾置0,确保上面调用regerror 导致 regerrbuf 溢出的情况下, */
+		/*  字符串仍有有结尾0                                                   */
+		/************************************************************************/
+                char regerrbuf[256];
+                regerror(c, &regex, regerrbuf, sizeof(regerrbuf));
+		regerrbuf[sizeof(regerrbuf) - 1] = '\0';
+		g_warning("%s", regerrbuf);
+		regfree(regex);
+       }else regex_rules[i].pattern_compiled = regex;
+   }
+}
+
 int main(int argc, char *argv[])
 {
    struct stat statbuf;
@@ -4180,26 +4203,7 @@ int main(int argc, char *argv[])
    sprintf(selected_filename_placeholder_in_quotation, "'%s'",selected_filename_placeholder);
    sprintf(thumbnailsize_str, "%dx%d",RFM_THUMBNAIL_SIZE,RFM_THUMBNAIL_SIZE);
 
-   for(int i=0;i<G_N_ELEMENTS(regex_rules);i++){
-       regex_t *regex = calloc(1, sizeof(regex_t));
-       int c;
-       //https://www.gnu.org/software/sed/manual/html_node/Character-Classes-and-Bracket-Expressions.html#Character-Classes-and-Bracket-Expressions
-       //https://www.gnu.org/software/sed/manual/html_node/BRE-syntax.html#BRE-syntax
-       if (c = regcomp(regex, regex_rules[i].pattern, 0)){
-		/************************************************************************/
-		/*  正则表达式编译出错输出错误信息                                      */
-		/*  调用 regerror 将错误信息输出到 regerrbuf 中                         */
-		/*  regerrbuf 末尾置0,确保上面调用regerror 导致 regerrbuf 溢出的情况下, */
-		/*  字符串仍有有结尾0                                                   */
-		/************************************************************************/
-                char regerrbuf[256];
-                regerror(c, &regex, regerrbuf, sizeof(regerrbuf));
-		regerrbuf[sizeof(regerrbuf) - 1] = '\0';
-		g_warning("%s", regerrbuf);
-		regfree(regex);
-       }else regex_rules[i].pattern_compiled = regex;
-   }
-
+   regcomp_for_regex_rules();
    
    PROG_NAME = strdup(argv[0]);
    int c=1;
