@@ -3851,6 +3851,10 @@ static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult)
 	      }
 	    }
 
+	    //下面 stdin_cmd_ending_space, execStdinCmdInNewVT, SearchResultAsInput 应该也可以通过正则表达式匹配实现.
+	    //一方面之前写这些代码的时候还没添加正则表达式匹配的功能
+	    //再者有些人可能不喜欢正则表达式,而这些又是对rfm来说比较核心的功能,所以就暂不改用正则表达式识别
+	    //目前正则表达式匹配主要是解决一些字母大小写,消除空格等,把用户输入命令规范化成统一定义的格式
     	    stdin_cmd_ending_space = (len>=1 && readlineResult[len-1]==' ');
 	    while (len>=1 && readlineResult[len-1]==' ') { readlineResult[len-1]='\0'; len--; } //remove ending space
 
