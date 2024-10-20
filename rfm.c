@@ -4183,6 +4183,8 @@ int main(int argc, char *argv[])
    for(int i=0;i<G_N_ELEMENTS(regex_rules);i++){
        regex_t *regex = calloc(1, sizeof(regex_t));
        int c;
+       //https://www.gnu.org/software/sed/manual/html_node/Character-Classes-and-Bracket-Expressions.html#Character-Classes-and-Bracket-Expressions
+       //https://www.gnu.org/software/sed/manual/html_node/BRE-syntax.html#BRE-syntax
        if (c = regcomp(regex, regex_rules[i].pattern, 0)){
 		/************************************************************************/
 		/*  正则表达式编译出错输出错误信息                                      */
