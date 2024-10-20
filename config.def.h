@@ -391,6 +391,7 @@ static stdin_cmd_interpretor stdin_cmd_interpretors[] = {
 };
 
 static RFM_cmd_regex_rule regex_rules[] = {
+  { "^ \\+",                        "",                                  set_stdin_cmd_leading_space_true,NULL},
   { "^[S|s]earch[R|r]esult \\+|",   "SearchResult|",                     NULL,NULL },// \\+ 中第一个\是字符串里面用来escape第二个\的,\+是basic regular expression 要求的,相当于extended regular express 里面的+,表示一个或多个
   { "^[S|s]how[C|c]olumns* ",       "showcolumn ",                       NULL,NULL },
   { "^[S|s]how[C|c]olumns*$",       "showcolumn",                        NULL,NULL },

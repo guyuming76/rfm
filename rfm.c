@@ -130,6 +130,7 @@ static gboolean execStdinCmdInNewVT = FALSE;
 static time_t lastEnter;
 //used by exec_stdin_command and exec_stdin_command_builtin to share status
 static gboolean stdin_cmd_ending_space = FALSE;
+static gboolean stdin_cmd_leading_space = FALSE;
 static enum rfmTerminal rfmStartWithVirtualTerminal = INHERIT_TERMINAL;
 static guint stdin_command_Scheduler=0;
 static GThread * readlineThread=NULL;
@@ -152,6 +153,7 @@ static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPrevi
 static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
 static void g_spawn_async_callback_to_new_readline_thread(gpointer child_attribs);
 static void regcomp_for_regex_rules();
+static void set_stdin_cmd_leading_space_true();
 static void parse_and_exec_stdin_command_in_gtk_thread(gchar *msg);
 static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * parsed_msg, GString* readline_result_string);
 static void toggle_exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread();
@@ -3817,10 +3819,15 @@ static int MatchSearchResultType(gchar* readlineResult){
 	    return -1;
 }
 
+static void set_stdin_cmd_leading_space_true(){
+  stdin_cmd_leading_space=TRUE;
+}
+
 //this runs in gtk thread
 static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult)
 {
         gboolean SearchResultAsInput=FALSE;
+	stdin_cmd_leading_space=FALSE;
 	
         gint len = strlen(readlineResult);
 	g_debug ("readline return length %u: %s", len, readlineResult);
