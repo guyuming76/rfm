@@ -4807,7 +4807,7 @@ static gchar** rfmFileChooser_CMD(enum rfmTerminal startWithVT, gchar* search_cm
 gboolean str_regex_replace(char **str, const regex_t *pattern_compiled, const char *replacement) {
       gboolean ret = FALSE;
       regmatch_t pm[1];
-      size_t len = strlen(*str);
+      size_t str_len = strlen(*str);
       size_t nmatch = 1;
       size_t rc = regexec(pattern_compiled, *str, nmatch, pm, 0);
  
@@ -4816,17 +4816,18 @@ gboolean str_regex_replace(char **str, const regex_t *pattern_compiled, const ch
         regoff_t soff = pm[0].rm_so;
         regoff_t eoff = pm[0].rm_eo;
  
-        len += strlen(replacement) - (eoff - soff);
-        char* buffer = calloc(len + 1, sizeof(char));
+        size_t buffer_len = str_len + strlen(replacement) - (eoff - soff);
+        char* buffer = calloc(buffer_len + 1, sizeof(char));
 
 	g_debug("before regex replace:%s",*str);
 	memcpy(buffer, *str, soff);
 	memcpy(buffer + soff, replacement, strlen(replacement));
-	memcpy(buffer + soff + strlen(replacement), *str + eoff, len - eoff + 1); //位移是否要+1这个问题我总是拿不准, 为了防止复制越界, calloc 的时候我多申请1个, 这样总不会越界了吧, 如果少复制了字符,下面的g_debug 输出里容易看出来
+	memcpy(buffer + soff + strlen(replacement), *str + eoff, str_len - eoff + 1); //位移是否要+1这个问题我总是拿不准, 为了防止复制越界, calloc 的时候我多申请1个, 这样总不会越界了吧, 如果少复制了字符,下面的g_debug 输出里容易看出来
 	g_debug("after regex replace:%s",buffer);
 
 	free(*str);
 	*str = buffer;
+	str_len = strlen(*str);
 	
         rc = regexec(pattern_compiled, buffer + eoff, nmatch, pm, 0);
       }
