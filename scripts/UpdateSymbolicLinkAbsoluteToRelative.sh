@@ -1,4 +1,5 @@
 #!/bin/bash
+#本脚本把使用绝对路径的符号链接更新为使用相对路径
 
 #本脚用法,比如在mineral目录下,运行下面这行, 找到所有链接文件,通过管道传递给本程序
 # find images/spImg -type l |  ~/rfm/scripts/UpdateSymbolicLinkAbsoluteToRelative.sh
