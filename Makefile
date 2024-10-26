@@ -130,6 +130,9 @@ endif
 	@cp -f scripts/extractArchive.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmGetMailHeaderWithMuView.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmMakeThumbnailForGGB.sh ${DESTDIR}${PREFIX}/bin
+	@cp -f scripts/rfmMoveDirAndUpdateSymbolicLinks.sh ${DESTDIR}${PREFIX}/bin
+	@cp -f scripts/rfmCopyDirAndUpdateSymbolicLinks.sh ${DESTDIR}${PREFIX}/bin
+	@cp -f scripts/rfm_Update_If_SymbolicLink_PointTo_FileUnderSpecificDir.sh ${DESTDIR}${PREFIX}/bin
 
 ifneq ($(CalledByEbuild),YES)
 # the CalledByEbuild variable is exported in rfm ebuild
@@ -168,6 +171,9 @@ endif
 	@chmod +x ${DESTDIR}${PREFIX}/bin/extractArchive.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmGetMailHeaderWithMuView.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmMakeThumbnailForGGB.sh
+	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmMoveDirAndUpdateSymbolicLinks.sh
+	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmCopyDirAndUpdateSymbolicLinks.sh
+	@chmod +x ${DESTDIR}${PREFIX}/bin/rfm_Update_If_SymbolicLink_PointTo_FileUnderSpecificDir.sh
 endif
 	@echo
 	@echo "***please copy the .inputrc file into your home directory (~/your_username) manually."
@@ -204,6 +210,10 @@ endif
 	@rm -f ${DESTDIR}${PREFIX}/bin/extractArchive.sh
 	@rm -r ${DESTDIR}${PREFIX}/bin/rfmGetMailHeaderWithMuView.sh
 	@rm -r ${DESTDIR}${PREFIX}/bin//rfmMakeThumbnailForGGB.sh
+	@rm -r ${DESTDIR}${PREFIX}/bin/rfmMoveDirAndUpdateSymbolicLinks.sh
+	@rm -r ${DESTDIR}${PREFIX}/bin/rfmCopyDirAndUpdateSymbolicLinks.sh
+	@rm -r ${DESTDIR}${PREFIX}/bin/rfm_Update_If_SymbolicLink_PointTo_FileUnderSpecificDir.sh
+
 ifneq ($(CalledByEbuild),YES)
 	-xdg-desktop-menu uninstall rfm.desktop
 	-update-desktop-database
