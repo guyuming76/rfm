@@ -3329,6 +3329,7 @@ static void writeSearchResultIntoFD(gint *fd){
       }while (stdin_cmd_selection_list?
 	      ((selectedListElement=g_list_next(selectedListElement)) && gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, selectedListElement->data))
 	      :gtk_tree_model_iter_next(GTK_TREE_MODEL(store), &iter));
+      dprintf(*fd, "\n");
     }else g_warning("empty search result view!");
     g_list_free(columns);
     if (stdin_cmd_selection_list) g_list_free_full(stdin_cmd_selection_list, (GDestroyNotify)gtk_tree_path_free);
