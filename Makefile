@@ -140,7 +140,7 @@ ifneq ($(CalledByEbuild),YES)
 	-xdg-mime default rfm.desktop inode/directory
 	-update-desktop-database
 	ldconfig
-
+endif
 ifneq ($(RFM_FILE_CHOOSER),)
 	@chmod 755 ${DESTDIR}${PREFIX}/lib64/${LIBNAME}
 endif
@@ -174,7 +174,7 @@ endif
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmMoveDirAndUpdateSymbolicLinks.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmCopyDirAndUpdateSymbolicLinks.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfm_Update_If_SymbolicLink_PointTo_FileUnderSpecificDir.sh
-endif
+
 	@echo
 	@echo "***please copy the .inputrc file into your home directory (~/your_username) manually."
 
