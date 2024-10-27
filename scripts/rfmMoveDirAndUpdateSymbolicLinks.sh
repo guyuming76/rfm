@@ -8,7 +8,13 @@
 Source=$1
 Destination=$2
 
+if [[ ${Source:0:1} != "/" || ${Destination:0:1} != "/" ]]; then
+	echo "absolute address is required for parameters" >&2
+	exit 1;
+fi
+
 # 获取查找范围,参见rfmFindLinksToTheSameFile_Chinese.h.sh
+# rfmFindScope 会是绝对路径形式
 rfmFindScope=$(git rev-parse --show-toplevel 2>/dev/null)
 if [[ -z  "$rfmFindScope" ]]; then
        	rfmFindScope="/"
@@ -16,6 +22,7 @@ fi
 
 #if [[ -d "$Source" ]]; then
 	# 下面 SpecificDir 实际指的是 Source
+	# 因为 $rfmFindScope 是绝对路径形式, find 的输出也是绝对路径形式
 	find "$rfmFindScope" -type l -exec rfm_Update_If_SymbolicLink_PointTo_FileUnderSpecificDir.sh "$Destination" "$Source" {} \;
 #fi
 
