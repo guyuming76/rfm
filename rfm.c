@@ -874,7 +874,9 @@ static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_
 
 static void child_handler_to_set_finished_status_for_child_supervisor(GPid pid, gint status, RFM_ChildAttribs *child_attribs)
 {
+   int oldstatus = child_attribs->status;
    child_attribs->status=status; /* show_child_output() is called from child_supervisor() in case there is any data left in the pipes */
+   g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_DEBUG, "child Pid %i status changed from %d to %d", child_attribs->pid, oldstatus, child_attribs->status);
 }
 
 static void show_child_output(RFM_ChildAttribs *child_attribs)
