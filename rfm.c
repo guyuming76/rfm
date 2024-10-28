@@ -829,7 +829,7 @@ static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_
    if (((child_attribs->runOpts & G_SPAWN_CHILD_INHERITS_STDERR)!=G_SPAWN_CHILD_INHERITS_STDERR) && ((child_attribs->runOpts & G_SPAWN_STDERR_TO_DEV_NULL)!=G_SPAWN_STDERR_TO_DEV_NULL))
      read_char_pipe(child_attribs->stdErr_fd, PIPE_SZ, &child_attribs->stdErr);
    
-   if (!child_attribs->output_read_by_program && (child_attribs->stdOut && strlen(child_attribs->stdOut)>0)) show_child_output(child_attribs);
+   if (!child_attribs->output_read_by_program && ((child_attribs->stdOut && strlen(child_attribs->stdOut)>0) || child_attribs->stdErr && strlen(child_attribs->stdErr)>0)) show_child_output(child_attribs);
    //TODO: devPicAndVideo submodule commit f746eaf096827adda06cb2a085787027f1dca027 的错误起源于上面一行代码和RFM_EXEC_FILECHOOSER 的引入。
    if (child_attribs->status==-1) return G_SOURCE_CONTINUE;
 
@@ -843,7 +843,9 @@ static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_
    }
    g_spawn_close_pid(child_attribs->pid);
 
-   if (child_attribs->stdErr!=NULL && strlen(child_attribs->stdErr)>0) g_warning("g_spawn_async_with_wrapper_child_supervisor: %s",child_attribs->stdErr);
+   //TODO: 之前, stdErr 都是child结束后g_warning 显示的, 但现在, 在!child_attribs->output_read_by_program 的情况下, stdErr 是在 show_child_output 里和output 类似处理的, 但output_read_by_program的情况,暂时还是保留之前处理方式吧, 有啥别的办法? 
+   if (child_attribs->output_read_by_program && child_attribs->stdErr!=NULL && strlen(child_attribs->stdErr)>0) g_warning("g_spawn_async_with_wrapper_child_supervisor: %s",child_attribs->stdErr);
+   
    rfm_childList=g_list_remove(rfm_childList, child_attribs);
    rfm_childListLength--;
    /* if (rfm_childList==NULL) */
@@ -855,19 +857,30 @@ static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_
    //for g_spawn_sync, the lass parameter is GError *, so why pass in NULL there and get it here instead?
    /* if (g_spawn_check_wait_status(child_attribs->status, &err) && child_attribs->runOpts==RFM_EXEC_MOUNT) */
    /*    set_rfm_curPath(RFM_MOUNT_MEDIA_PATH); */
-   g_spawn_check_wait_status(child_attribs->status, &err);
+   //https://docs.gtk.org/glib/func.spawn_check_wait_status.html
+   if (!g_spawn_check_wait_status(child_attribs->status, &err)){; //TRUE if child exited successfully, FALSE otherwise (and error will be set).
    //TODO: after i change runOpts to GSpawnFlags, RFM_EXEC_MOUNT won't work, i don't understand what it for, maybe later, we can use fields such as runCmd or some naming conventions in runaction or childAttribs to indicate this type.
+     if (err!=NULL) {
+       if (g_error_matches(err, G_SPAWN_ERROR, G_SPAWN_ERROR_FAILED)) { //If the process was terminated by some means other than an exit status (for example if it was killed by a signal), the domain will be G_SPAWN_ERROR and the code will be G_SPAWN_ERROR_FAILED.
+	 child_attribs->exitcode = -1; // to prevent customcallbackfunc from execution
+	 msg=g_strdup_printf("%s (pid: %i): stopped: %s\n", child_attribs->name, child_attribs->pid, err->message);
+       }else { //The special semantics are that the actual exit code will be the code set in error, and the domain will be G_SPAWN_EXIT_ERROR. This allows you to differentiate between different exit codes.
+	 child_attribs->exitcode = err->code;
+	 msg=g_strdup_printf("%s (pid: %i): finished with exit code %i.\n%s\n", child_attribs->name, child_attribs->pid, child_attribs->exitcode, child_attribs->stdErr);
+       }
+       if (startWithVT()){
+	 fprintf(stderr, msg);
+       }else{
+	 if (strlen(msg) > RFM_MX_MSGBOX_CHARS){
+	   memcpy(msg[RFM_MX_MSGBOX_CHARS - 35],"......message too long to show\0",31);
+	 }
+	 show_msgbox(msg, child_attribs->name, GTK_MESSAGE_ERROR);
+       }
 
-   if (err!=NULL) {
-      child_attribs->exitcode = err->code;
-      if (g_error_matches(err, G_SPAWN_ERROR, G_SPAWN_ERROR_FAILED)) {
-	 msg=g_strdup_printf("%s (pid: %i): stopped: %s", child_attribs->name, child_attribs->pid, err->message);
-         show_msgbox(msg, child_attribs->name, GTK_MESSAGE_ERROR);
-         g_free(msg);
-      }
-      g_error_free(err);
+       g_free(msg);
+       g_error_free(err);
+     }else g_warning("g_spawn_check_wait_status return FALSE but GError NULL");
    }
-
    ExecCallback_freeChildAttribs(child_attribs);
    return G_SOURCE_REMOVE;
 }
@@ -899,16 +912,19 @@ static void show_child_output(RFM_ChildAttribs *child_attribs)
      child_attribs->stdOut[0]=0;
    }
 
-   if (child_attribs->stdErr!=NULL && child_attribs->stdErr[0]!=0 && strlen(child_attribs->stdErr)>0) {
-      if (child_attribs->runOpts==RFM_EXEC_STDOUT || strlen(child_attribs->stdErr) > RFM_MX_MSGBOX_CHARS){
-         msg=g_strdup_printf("%s (%i): Finished with exit code %i.\n%s", child_attribs->name, child_attribs->pid, child_attribs->exitcode, child_attribs->stdErr);
-	 g_warning("%s",msg);
-      } else {
-         msg=g_strdup_printf("%s (%i): Finished with exit code %i.\n\n%s", child_attribs->name, child_attribs->pid, child_attribs->exitcode, child_attribs->stdErr);
-         show_msgbox(msg, child_attribs->name, GTK_MESSAGE_ERROR);
-      }
-      g_free(msg);
-      child_attribs->stdErr[0]=0;
+   if (child_attribs->stdErr!=NULL && child_attribs->stdErr[0]!=0) {
+     if (startWithVT()){
+       fprintf(stderr, "%s",child_attribs->stdErr);
+       g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_WARNING, "error of strlen %d from child PID %d shown", strlen(child_attribs->stdErr), child_attribs->pid);
+       //TODO: if not startwithVT(), user won't see printf, but user also will not see all those g_warnings. maybe we can add some indicator on UI and guide user to some log file. When not startwithVT, redirect stdout and stderr to some log file
+     }else if (strlen(child_attribs->stdErr) <= RFM_MX_MSGBOX_CHARS)
+         show_msgbox(child_attribs->stdErr, child_attribs->name, GTK_MESSAGE_INFO);
+     else{
+         msg=g_strdup_printf("error of strlen %d from child PID %d greater that RFM_MX_MSGBOX_CHARS %d, cannot show in msgbox", strlen(child_attribs->stdErr), child_attribs->pid,RFM_MX_MSGBOX_CHARS);
+	 show_msgbox(msg, child_attribs->name, GTK_MESSAGE_WARNING);
+	 g_free(msg);
+     }
+     child_attribs->stdErr[0]=0;
    }
 }
 
@@ -1037,7 +1053,6 @@ static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *ch
 
          if(child_attribs->name==NULL) child_attribs->name=g_strdup(v[0]);
          child_attribs->status=-1;  /* -1 indicates child is running; set to wait wstatus on exit */
-	 child_attribs->exitcode=0;
 
          g_timeout_add(100, (GSourceFunc)g_spawn_async_with_pipes_wrapper_child_supervisor, (void*)child_attribs);
          g_child_watch_add(child_attribs->pid, (GChildWatchFunc)child_handler_to_set_finished_status_for_child_supervisor, child_attribs);
@@ -1124,7 +1139,6 @@ static gboolean g_spawn_wrapper_(GList *file_list, char *dest_path, RFM_ChildAtt
 	           ret = FALSE;
                };
       } else {
-	       child_attribs->exitcode=0;
 	       child_attribs->status=-1;
 /* (rfm:11714): GLib-CRITICAL **: 14:05:51.441: g_spawn_sync: assertion 'standard_output == NULL || !(flags & G_SPAWN_STDOUT_TO_DEV_NULL)' failed */
 
@@ -1134,7 +1148,7 @@ static gboolean g_spawn_wrapper_(GList *file_list, char *dest_path, RFM_ChildAtt
 	            g_warning("g_spawn_sync %s failed to execute. Check command in config.h!", argv);
 	            free_child_attribs(child_attribs);
 	            ret = FALSE;
-	       }else
+	       }else //TODO: why show_child_output not called here?
 	            ExecCallback_freeChildAttribs(child_attribs);
       }
       g_free(argv);
