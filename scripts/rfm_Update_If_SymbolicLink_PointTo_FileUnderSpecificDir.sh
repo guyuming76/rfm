@@ -34,11 +34,21 @@ if [[ -L "$SymbolicLink" ]]; then
 		exit 2
 	fi
 
+	#echo "check symbolic link: " "$SymbolicLink" >&2
+	#echo "  link target full:  " "$link_target_fullpath" >&2
+	#echo "  ?under OldAddress: " "$OldAddress" >&2
+
+
 	# 下面 \; 里的\用来防止shell expansion 处理了; 而;这里是find命令读取,用来标记 -exec的终止的,参见 man find
 	# 因为 $OldAdress 是绝对路径, 所以假定 {} 也是绝对路径
 	#if find "$OldAddress" -exec test "$link_target_fullpath"={} \; -print | read -r fileUnderOldAddress; then
 	# 下面这一步 if find 就是为了判断 $link_target_fullpath 是否位于 $OldAddress 目录下,包括 $OldAddress 本身, 有没有简单些的写法?比如路径左边匹配?
-	if find "$OldAddress" -exec bash -c 'if [[ "$0" == "$link_target_fullpath" ]]; then echo "$0"; fi' {} \; | read; then
+	#if find "$OldAddress" -exec bash -c 'if [[ "$0" == "$link_target_fullpath" ]]; then echo "$0"; fi' {} \; | read; then
+
+	#前面 if find -exec \; | read; 各种尝试都不行,还是下面grep
+	echo "$link_target_fullpath" | grep -q "^$OldAddress"
+	#如果上面令返回 0
+	if [ $? -eq 0 ]; then
 		echo "update symbolic link:" "$SymbolicLink" >&2
 		echo "  link target:       " "$link_target" >&2
 		echo "  link target full:  " "$link_target_fullpath" >&2

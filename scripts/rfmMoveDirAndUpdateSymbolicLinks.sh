@@ -11,6 +11,9 @@ Destination=$2
 if [[ ${Source:0:1} != "/" || ${Destination:0:1} != "/" ]]; then
 	echo "absolute address is required for parameters" >&2
 	exit 1;
+else
+	echo "----------------------------"
+	echo "Source:" "$Source" "     Destination:" "$Destination" >&2
 fi
 
 # 获取查找范围,参见rfmFindLinksToTheSameFile_Chinese.h.sh
