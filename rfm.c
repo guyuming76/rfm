@@ -3269,7 +3269,9 @@ static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResult
 	    if (SearchResultTypeIndex>=0) {
 	      childAttribs->output_read_by_program = TRUE;
 	      childAttribs->customCallbackUserData = update_SearchResultFileNameList_and_refresh_store;
-	    }else childAttribs->runOpts = G_SPAWN_CHILD_INHERITS_STDOUT;
+	      //}else childAttribs->runOpts = G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR;
+	      //不能保证writeSearchResultIntoFD执行的时候不向命令窗口输出内容,不知道子进程输出和writeSearchResultIntoFD同时争抢命令窗口会发生什么. 所以不如让 child_supervisor 读取子进程输出 fd 后再显示,至少都是在 gtk main loop 里面输出
+	    }
 	    if (!g_spawn_async_with_pipes_wrapper(childAttribs->RunCmd, childAttribs)) free_child_attribs(childAttribs);
 	    else writeSearchResultIntoFD(&(childAttribs->stdIn_fd));//SearchResultAsInput 时exec_stdin_command 总是在gtk main thread 执行
 
