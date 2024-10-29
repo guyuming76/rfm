@@ -73,7 +73,7 @@ if [[ -L "$SymbolicLink" ]]; then
 			new_link_target_fullpath=$(echo "$link_target_fullpath" | sed "s:^""$Source"":""$NewAddress"":")
 		fi
 		#TODO:目前的使用场景都是在git仓库内部,所以下面建立符号链接使用相对地址,如有需求扩展,再做增强
-		ln -srf "$new_link_target_fullpath" "$SymbolicLink"
+		ln -srfT "$new_link_target_fullpath" "$SymbolicLink"
 		echo "  new target full:   " "$new_link_target_fullpath" >&2
 	fi
 fi

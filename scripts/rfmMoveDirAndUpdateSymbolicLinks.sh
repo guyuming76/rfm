@@ -26,7 +26,7 @@ fi
 #if [[ -d "$Source" ]]; then
 	# 下面 SpecificDir 实际指的是 Source
 	# 因为 $rfmFindScope 是绝对路径形式, find 的输出也是绝对路径形式
-	find "$rfmFindScope" -type l -exec rfm_Update_If_SymbolicLink_PointTo_FileUnderSpecificDir.sh "$Destination" "$Source" {} \;
+	find "$rfmFindScope" -type l -exec rfm_Update_affected_SymbolicLinks_for_move_or_copy.sh "$Destination" "$Source" {} \;
 #fi
 
 if [[ "$rfmFindScope"=="/" ]]; then

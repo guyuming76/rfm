@@ -132,7 +132,7 @@ endif
 	@cp -f scripts/rfmMakeThumbnailForGGB.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmMoveDirAndUpdateSymbolicLinks.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmCopyDirAndUpdateSymbolicLinks.sh ${DESTDIR}${PREFIX}/bin
-	@cp -f scripts/rfm_Update_If_SymbolicLink_PointTo_FileUnderSpecificDir.sh ${DESTDIR}${PREFIX}/bin
+	@cp -f scripts/rfm_Update_affected_SymbolicLinks_for_move_or_copy.sh ${DESTDIR}${PREFIX}/bin
 
 ifneq ($(CalledByEbuild),YES)
 # the CalledByEbuild variable is exported in rfm ebuild
@@ -173,7 +173,7 @@ endif
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmMakeThumbnailForGGB.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmMoveDirAndUpdateSymbolicLinks.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmCopyDirAndUpdateSymbolicLinks.sh
-	@chmod +x ${DESTDIR}${PREFIX}/bin/rfm_Update_If_SymbolicLink_PointTo_FileUnderSpecificDir.sh
+	@chmod +x ${DESTDIR}${PREFIX}/bin/rfm_Update_affected_SymbolicLinks_for_move_or_copy.sh
 
 	@echo
 	@echo "***please copy the .inputrc file into your home directory (~/your_username) manually."
@@ -212,7 +212,7 @@ endif
 	@rm -r ${DESTDIR}${PREFIX}/bin//rfmMakeThumbnailForGGB.sh
 	@rm -r ${DESTDIR}${PREFIX}/bin/rfmMoveDirAndUpdateSymbolicLinks.sh
 	@rm -r ${DESTDIR}${PREFIX}/bin/rfmCopyDirAndUpdateSymbolicLinks.sh
-	@rm -r ${DESTDIR}${PREFIX}/bin/rfm_Update_If_SymbolicLink_PointTo_FileUnderSpecificDir.sh
+	@rm -r ${DESTDIR}${PREFIX}/bin/rfm_Update_affected_SymbolicLinks_for_move_or_copy.sh
 
 ifneq ($(CalledByEbuild),YES)
 	-xdg-desktop-menu uninstall rfm.desktop
