@@ -23,14 +23,20 @@ if [[ -z  "$rfmFindScope" ]]; then
        	rfmFindScope="/"
 fi
 
-#if [[ -d "$Source" ]]; then
+
 	# 下面 SpecificDir 实际指的是 Source
 	# 因为 $rfmFindScope 是绝对路径形式, find 的输出也是绝对路径形式
-	find "$rfmFindScope" -type l -exec rfm_Update_affected_SymbolicLinks_for_move_or_copy.sh "$Destination" "$Source" {} \;
-#fi
+find "$rfmFindScope" -type l -exec rfm_Update_affected_SymbolicLinks_for_move_or_copy.sh "$Destination" "$Source" {} \;
 
 if [[ "$rfmFindScope"=="/" ]]; then
 	mv "$Source" "$Destination"
 else
 	git mv "$Source" "$Destination"
 fi
+
+# 移动过后,把$Destination下面上一步换成绝对路径的符号链接再用相对路径重建
+#find "$Destination" -type l -exec bash -c 'ln -srfn "$(readlink \"$0\")" "$0"' {} \;
+#find "$Destination" -type l -exec ln -srfn "$(readlink {})"  {} \;
+
+echo "###########################"
+find "$Destination" -type l | while read -r symlink; do echo "#####:" "$symlink" >&2; symlink_target=$(readlink "$symlink"); echo "$symlink_target" >&2;ln -srfn "$symlink_target" "$symlink"; done

@@ -46,6 +46,7 @@ if [[ -L "$SymbolicLink" ]]; then
 	#if find "$OldAddress" -exec bash -c 'if [[ "$0" == "$link_target_fullpath" ]]; then echo "$0"; fi' {} \; | read; then
 
 	#前面 if find -exec \; | read; 各种尝试都不行,还是下面grep
+	# 如果 $link_target_fullpath 以 $OldAddress 开头
 	echo "$link_target_fullpath" | grep -q "^$OldAddress"
 	#如果上面令返回 0
 	if [ $? -eq 0 ]; then
@@ -72,8 +73,28 @@ if [[ -L "$SymbolicLink" ]]; then
 			echo "  to dir:            " "$NewAddress" >&2
 			new_link_target_fullpath=$(echo "$link_target_fullpath" | sed "s:^""$Source"":""$NewAddress"":")
 		fi
-		#TODO:目前的使用场景都是在git仓库内部,所以下面建立符号链接使用相对地址,如有需求扩展,再做增强
-		ln -srfT "$new_link_target_fullpath" "$SymbolicLink"
+		#TODO:目前的使用场景都是在git仓库内部,所以下面建立符号链接使用相对地址, 但如果$SymbolicLink位于OldAddress下面,也就是说结下来会被移动或复制,那么移动后的符号链接相对路径就失效了,所以我们用绝对路径,移动后再更新为相对路径
+		#即使现在mv还没有发生, new_link_target_fullpath 文件还不存在, 但我运行下来以这个还不存在的路径作为目标建立符号链接是可以的
 		echo "  new target full:   " "$new_link_target_fullpath" >&2
+		echo "$SymbolicLink" | grep -q "^$OldAddress"
+		if [ $? -eq 0 ]; then
+			ln -sfT "$new_link_target_fullpath" "$SymbolicLink"
+			echo "  target to be changed to relative after move or copy" >&2
+		else
+			ln -srfT "$new_link_target_fullpath" "$SymbolicLink"
+			echo "  new relativ target:" $(readlink "$SymbolicLink") >&2
+		fi
+
+	else
+		echo "$SymbolicLink" | grep -q "^$OldAddress"
+		# 如果SymbolicLink本身位于$OldAddress下面,尽管不是指向$OldAddress下面,也需要重建,因为目前在git仓库里,我们都使用相对路径建立符号链接
+		# TODO: 目前,我们假定OldAddress会被move,在mv之前,先把符号链接更新为绝对路径, 移动之后,再更新为相对路径,否则咋搞? 若是copy, 复制完后,两份符号链接都得再改回相对路径
+		if [ $? -eq 0 ]; then
+			ln -sfT "$link_target_fullpath" "$SymbolicLink"
+			echo "recreate symlink before move:  " "$SymbolicLink" >&2
+			echo "  old relative target:         " "$link_target" >&2
+			echo "  new fullpath target:         " $(readlink "$SymbolicLink") >&2
+			echo "  target to be changed to relative after move or copy" >&2
+		fi
 	fi
 fi
