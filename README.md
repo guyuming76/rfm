@@ -254,6 +254,11 @@ https://blog.gtk.org/2017/05/04/logging-and-more/
 
 ![fg jobNO](截图_选择区域_20240521113640.png)
 
+## rfm窗口使用黑色主题 ##
+编辑文件 /etc/gtk-3.0/settings.ini
+或 `locate gtk-3.0/settings.ini` 找到其他配置文件
+在settings组下面设置 gtk-application-prefer-dark-theme = 1
+
 # 计划更改备忘 #
 
 # 赞助和付费服务 #
