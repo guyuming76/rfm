@@ -176,7 +176,7 @@ endif
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfm_Update_affected_SymbolicLinks_for_move_or_copy.sh
 
 	@echo
-	@echo "***please copy the .inputrc file into your home directory (~/your_username) manually."
+	@echo "***please copy the .inputrc file into your home directory (~) manually."
 
 uninstall:
 	@echo removing files from ${DESTDIR}${PREFIX}/{bin,lib}
