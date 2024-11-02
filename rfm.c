@@ -276,8 +276,8 @@ static gchar *rfm_thumbDir;         /* Users thumbnail directory */
 static gint rfm_do_thumbs;          /* Show thumbnail images of files: 0: disabled; 1: enabled; 2: disabled for current dir */
 static GList *rfm_thumbQueue=NULL;
 static guint rfm_thumbLoadScheduler = 0; // this used to be a gsourceid, but now, only a normal flag
-static GList *rfm_thumbQueue_for_mkThumb=NULL; //rfm_thumbQueue is appended in gtk main thread, use a special pointer for mkThumb to avoid race condition
 static GThread *mkThumb_thread=NULL;
+static gboolean mkThumb_stop=FALSE;
 static GtkTreeIter thumbnail_load_iter;
 static GHashTable *thumb_hash=NULL; /* Thumbnails in the current view */
 static char thumbnailsize_str[8];
@@ -782,12 +782,16 @@ static void rfm_stop_all(RFM_ctx *rfmCtx) {
 #ifdef GitIntegration
    rfm_gitCommitMsgScheduler=0;
 #endif
-   g_list_free_full(rfm_thumbQueue, (GDestroyNotify)free_thumbQueueData);
-   rfm_thumbQueue=NULL;
+
    if (mkThumb_thread) {
+     mkThumb_stop = TRUE;
      g_thread_join(mkThumb_thread);
      mkThumb_thread=NULL;
+     mkThumb_stop = FALSE;
    }
+   g_list_free_full(rfm_thumbQueue, (GDestroyNotify)free_thumbQueueData);
+   rfm_thumbQueue=NULL;
+
    gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
 }
 
@@ -1324,19 +1328,18 @@ static void rfm_saveThumbnail(GdkPixbuf *thumb, RFM_ThumbQueueData *thumbData)
 }
 
 static void mkThumbLoop(){
-  rfm_thumbQueue_for_mkThumb = rfm_thumbQueue;//严格来讲,这一句加在g_thread_new 前面,也就是在gtk_main thread里执行比较好,但那样就要在好几处添加,加在这里我也还没想象出啥情况会出错,就先放在这里了
-  while(mkThumb());
+  while(!mkThumb_stop && mkThumb());
 }
 
-//called by gtk idle time scheduler and create one thumbnail a time for the enqueued in rfm_thumbQueue;
+//运行在 mkThumbnail 线程里，rfm_thumbQueue 在gtk maim loop 里面被添加，在这里使用， 但 mkThumbnail 线程只有在 rfm_thumbQueue 被添加完成后才会被创建，而且在rfm_stop_all里会被清除。 也就是说不会存在 gtk main loop 和 mkThumbnail 线程对 rfm_thumbQueue 的竞争访问
 static gboolean mkThumb()
 {
    RFM_ThumbQueueData *thumbData;
    GdkPixbuf *thumb=NULL;
    GError *pixbufErr=NULL;
 
-   if (rfm_thumbQueue_for_mkThumb==NULL) return G_SOURCE_REMOVE;
-   thumbData=(RFM_ThumbQueueData*)rfm_thumbQueue_for_mkThumb->data;
+   if (rfm_thumbQueue==NULL) return G_SOURCE_REMOVE;
+   thumbData=(RFM_ThumbQueueData*)rfm_thumbQueue->data;
 
    if (thumbnailers[thumbData->t_idx].thumbCmd==NULL){
       thumb=gdk_pixbuf_new_from_file_at_scale(thumbData->path, thumbData->thumb_size, thumbData->thumb_size, TRUE, &pixbufErr);
@@ -1362,8 +1365,8 @@ static gboolean mkThumb()
       g_free(thumb_path);
    }
 
-   if (rfm_thumbQueue_for_mkThumb->next!=NULL) {   /* More items in queue */
-      rfm_thumbQueue_for_mkThumb=g_list_next(rfm_thumbQueue_for_mkThumb);
+   if (rfm_thumbQueue->next!=NULL) {   /* More items in queue */
+      rfm_thumbQueue=g_list_next(rfm_thumbQueue);
       g_log(RFM_LOG_DATA_THUMBNAIL,G_LOG_LEVEL_DEBUG,"mkThumb return TRUE after:%s",thumbData->thumb_name);
       return G_SOURCE_CONTINUE;
    }
