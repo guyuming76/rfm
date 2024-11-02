@@ -1485,46 +1485,43 @@ static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guin
    else
      absoluteaddr = g_build_filename(rfm_curPath, name, NULL);
      //address returned by find can be ./blabla, and g_build_filename return something like /rfm/./blabla, so, need to be canonicalized here
-   
-   if (canonicalize_file_name(absoluteaddr)==NULL){
-     g_warning("invalid address:%s",name);
-     fileAttributes->pixbuf=g_object_ref(defaultPixbufs->broken);
-     fileAttributes->file_name=g_strdup(name);
-     fileAttributes->path=absoluteaddr;
-     fileAttributes->mime_root=g_strdup("na");
-     fileAttributes->mime_sub_type=g_strdup("na");
-     return fileAttributes;
-   }else{
-     fileAttributes->path=absoluteaddr;
-     g_log(RFM_LOG_DATA,G_LOG_LEVEL_DEBUG,"fileAttributes->path:%s",fileAttributes->path);
-   }
+
+   fileAttributes->path=absoluteaddr;
+   g_log(RFM_LOG_DATA,G_LOG_LEVEL_DEBUG,"fileAttributes->path:%s",fileAttributes->path);
    //attibuteList=g_strdup_printf("%s,%s,%s,%s",G_FILE_ATTRIBUTE_STANDARD_TYPE, G_FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE, G_FILE_ATTRIBUTE_TIME_MODIFIED, G_FILE_ATTRIBUTE_STANDARD_IS_SYMLINK);
    file=g_file_new_for_path(fileAttributes->path);
    info=g_file_query_info(file, attibuteList, G_FILE_QUERY_INFO_NONE, NULL, NULL);
    //g_free(attibuteList);
    g_object_unref(file); file=NULL;
-
    if (info == NULL ) {
       g_warning("g_file_query_info return NULL for %s",fileAttributes->path);
       g_free(fileAttributes->path);
       g_free(fileAttributes);
       return NULL;
    }
-
    fileAttributes->file_mtime=g_file_info_get_modification_date_time(info);
    fileAttributes->file_atime=g_file_info_get_access_date_time(info);
    fileAttributes->file_ctime=g_file_info_get_creation_date_time(info);
-   fileAttributes->file_size=g_file_info_get_attribute_uint64(info, G_FILE_ATTRIBUTE_STANDARD_SIZE);
    fileAttributes->file_mode=g_file_info_get_attribute_uint32(info, G_FILE_ATTRIBUTE_UNIX_MODE);
    fileAttributes->file_mode_str=get_drwxrwxrwx(fileAttributes->file_mode);
-   fileAttributes->file_name=g_strdup(name);
-
    fileAttributes->is_symlink=g_file_info_get_is_symlink(info); // if the strmode function return l correctly for symlink instead of d as currently, does it mean that we don't need to call this function anymore, we can use fileAttributes->file_mode_str[0] directly?
    if (fileAttributes->is_symlink){
      //fileAttributes->file_mode_str[0]='l';
      fileAttributes->link_target_filename = g_strdup(g_file_info_get_symlink_target(info));
    }
+   fileAttributes->file_name=g_strdup(name);
+   fileAttributes->owner = g_file_info_get_attribute_as_string(info, G_FILE_ATTRIBUTE_OWNER_USER);
+   fileAttributes->group = g_file_info_get_attribute_as_string(info, G_FILE_ATTRIBUTE_OWNER_GROUP);
    
+   if (canonicalize_file_name(absoluteaddr)==NULL){
+     g_warning("invalid address:%s",name);
+     fileAttributes->pixbuf=g_object_ref(defaultPixbufs->broken);
+     fileAttributes->mime_root=g_strdup("na");
+     fileAttributes->mime_sub_type=g_strdup("na");
+     return fileAttributes;
+   }
+
+   fileAttributes->file_size=g_file_info_get_attribute_uint64(info, G_FILE_ATTRIBUTE_STANDARD_SIZE);
    fileType=g_file_info_get_file_type(info);
 
    switch (fileType) {
@@ -1572,9 +1569,6 @@ static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guin
          fileAttributes->pixbuf=g_object_ref(defaultPixbufs->broken);
       break;
    }
-
-   fileAttributes->owner = g_file_info_get_attribute_as_string(info, G_FILE_ATTRIBUTE_OWNER_USER);
-   fileAttributes->group = g_file_info_get_attribute_as_string(info, G_FILE_ATTRIBUTE_OWNER_GROUP);
 
    g_object_unref(info); info=NULL;
    return fileAttributes;
