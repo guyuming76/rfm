@@ -32,6 +32,8 @@ if [[ "$rfmFindScope"=="/" ]]; then
 	mv "$Source" "$Destination"
 else
 	git mv "$Source" "$Destination"
+# 在把 mineral/images/spImg 目录移动到  mineral/矿物名称 目录的案例中，我们需要先删除 矿物名称 符号链接，然后再选中 spImg 目录，调用文件上下文菜单 ”移动（改名）... 功能；尝试不删除符号链接，使用下面 git mv -f 移动，但未成功，可能是上面调用脚本里对 $Destination 的判断“
+#	git mv -f "$Source" "$Destination"
 fi
 
 # 移动过后,把$Destination下面上一步换成绝对路径的符号链接再用相对路径重建
