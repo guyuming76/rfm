@@ -11,9 +11,9 @@ Destination=$2
 if [[ ${Source:0:1} != "/" || ${Destination:0:1} != "/" ]]; then
 	echo "absolute address is required for parameters" >&2
 	exit 1;
-else
+elif [ -n "$G_MESSAGES_DEBUG" ]; then
 	echo "----------------------------"
-	echo "Source:" "$Source" "     Destination:" "$Destination" >&2
+	echo "Source:" "$Source" "     Destination:" "$Destination"
 fi
 
 # 获取查找范围,参见rfmFindLinksToTheSameFile_Chinese.h.sh
@@ -38,5 +38,10 @@ fi
 #find "$Destination" -type l -exec bash -c 'ln -srfn "$(readlink \"$0\")" "$0"' {} \;
 #find "$Destination" -type l -exec ln -srfn "$(readlink {})"  {} \;
 
-echo "###########################"
-find "$Destination" -type l | while read -r symlink; do echo "#####:" "$symlink" >&2; symlink_target=$(readlink "$symlink"); echo "$symlink_target" >&2;ln -srfn "$symlink_target" "$symlink"; done
+if [ -n "$G_MESSAGES_DEBUG" ]; then
+	echo "###########################"
+fi
+
+#find "$Destination" -type l | while read -r symlink; do symlink_target=$(readlink "$symlink"); if [ -n "$G_MESSAGES_DEBUG" ]; then echo "#####:" "$symlink"; echo "$symlink_target"; fi; ln -srfn "$symlink_target" "$symlink"; done
+# Destination 下面所有符号链接，若是使用绝对路径（以 / 开头）， 使用相对路径重建
+find "$Destination" -type l | while read -r symlink; do symlink_target=$(readlink "$symlink"); if [[ ${symlink_target:0:1} == "/" ]]; then ln -srfn "$symlink_target" "$symlink"; fi; done

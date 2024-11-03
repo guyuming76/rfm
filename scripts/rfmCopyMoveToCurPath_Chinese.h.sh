@@ -34,6 +34,9 @@ if [[ "$1" == "sl" ]];then
 	read -p "是否(y/n)使用相对路径创建软链接?默认是(y)" -r useRelativeInSL
 fi
 
+read -p "是否(y/n)检查移动或复制造成的符号链接破坏并修复?默认是(y)" -r check_and_update_symbolic_link
+
+
 if [[ ! -z "$source" ]];then
 
 	if [[ -d $source ]];then
@@ -82,11 +85,23 @@ else
 		if [[ "$1" == "cp" ]];then
 			cp -i -v -r $sourcefile $target
 		elif [[ "$1" == "mv" ]];then
-			mv -i -v $sourcefile $target
+		        if [[ -z "$check_and_update_symbolic_link" || "$check_and_update_symbolic_linj" == "y" || "$check_and_update_symbolic_link" == "Y" ]];then
+		                rfmMoveDirAndUpdateSymbolicLinks.sh $sourcefile $target
+			else
+			        mv -i -v $sourcefile $target
+			fi
 		elif [[ -z "$useRelativeInSL" || "$useRelativeInSL" == "y" || "$useRelativeInSL" == "Y" ]];then
 			ln -sr $sourcefile $(echo $target/$(basename $sourcefile))
 		else
 			ln -s $sourcefile $(echo $target/$(basename $sourcefile))
 		fi
 	done
+fi
+
+if [[ -z "$check_and_update_symbolic_link" || "$check_and_update_symbolic_linj" == "y" || "$check_and_update_symbolic_link" == "Y" ]];then
+        if [ -n "$G_MESSAGES_DEBUG" ];then
+	        echo
+	        echo -e "\e[1;33m 按回车关闭窗口 \e[0m"
+	        read
+	fi
 fi

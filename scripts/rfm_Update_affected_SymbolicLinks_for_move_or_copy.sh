@@ -16,6 +16,17 @@ if [[ ${NewAddress:0:1} != "/" || ${OldAddress:0:1} != "/" || ${SymbolicLink:0:1
         exit 1;
 fi
 
+#如果 NewAddress 存在且为目录，则表示 OldAddress 移入 NewAddress 下面，相当与 OldAddress 重命名为$NewAddress/$(basename "$OldAddress")
+#如果 NewAddress 不存在，则表示 OldAddress 重命名为 NewAddress
+if [[ -d "$NewAddress" ]];then
+        # 相当于 mv ~/mineral/images/spImg ~/mineral 这种情况， NewAddress 是 ～/mineral, DestinationWithOldBasename=～/mineral/spImg
+        DestinationWithBasename=$NewAddress/$(basename "$OldAddress")
+else
+        # 相当于 mv ~/mineral/images/spImg ~/mineral/矿物名称 这种情况，矿物名称目录还不存在。也可以理解为前一种情况加上 spImg 到 矿物名称的改名
+        DestinationWithBasename=$NewAddress
+fi
+
+
 #如果$3是符号链接; 事实上,这个判断总是为真,因为rfmMoveDirAndUpdateSymbolicLink.sh的find 循环里就限定了 -type l
 if [[ -L "$SymbolicLink" ]]; then
 	#link_target 为符号链接只解析一层,
@@ -34,9 +45,9 @@ if [[ -L "$SymbolicLink" ]]; then
 		exit 2
 	fi
 
-	#echo "check symbolic link: " "$SymbolicLink" >&2
-	#echo "  link target full:  " "$link_target_fullpath" >&2
-	#echo "  ?under OldAddress: " "$OldAddress" >&2
+	#echo "check symbolic link: " "$SymbolicLink"
+	#echo "  link target full:  " "$link_target_fullpath"
+	#echo "  ?under OldAddress: " "$OldAddress"
 
 
 	# 下面 \; 里的\用来防止shell expansion 处理了; 而;这里是find命令读取,用来标记 -exec的终止的,参见 man find
@@ -50,39 +61,38 @@ if [[ -L "$SymbolicLink" ]]; then
 	echo "$link_target_fullpath" | grep -q "^$OldAddress"
 	#如果上面令返回 0
 	if [ $? -eq 0 ]; then
-		echo "update symbolic link:" "$SymbolicLink" >&2
-		echo "  link target:       " "$link_target" >&2
-		echo "  link target full:  " "$link_target_fullpath" >&2
-		#echo "  =find {}:  " "$fileUnderOldAddress" >&2
-
+		if [ -n "$G_MESSAGES_DEBUG" ]; then
+			echo "update symbolic link:" "$SymbolicLink"
+			echo "  link target:       " "$link_target"
+			echo "  link target full:  " "$link_target_fullpath"
+		fi
 		# 如果移动的(OldAddress)是目录, 那么说有指向 OldAddress 目录内文件的符号链接都要被更新
 		# 此时 link_target_fullpath 可以等于 OldAddress, 但不一定, 也可以是 link_target_fullpath 位于 OldAddress 下面
-		if [[ -d "$OldAddress" ]]; then
-			echo "  duo to dir move:   " "$OldAddress" >&2
-			echo "  to dir:            " "$NewAddress" >&2
-
-			# sed 里面引用变量,算是疑难杂症, 下面用""表示双引号.
-			# 又因为变量值包含路径符号/, 所以sed 换用:作为分隔符
-			new_link_target_fullpath=$(echo "$link_target_fullpath" | sed "s:^""$OldAddress"":""$NewAddress"":")
-		# 如果移动的(OldAddress)是文件,
-		else
-			#当 OldAddress 是一个文件, 而不是目录时, 要替换的是 OldAddress 的parent目录
-			Source=$(dirname "$OldAddress")
-			echo "  duo to file move:  " "$OldAddress" >&2
-			echo "  from dir:          " "$Source" >&2
-			echo "  to dir:            " "$NewAddress" >&2
-			new_link_target_fullpath=$(echo "$link_target_fullpath" | sed "s:^""$Source"":""$NewAddress"":")
+		Source=$(dirname "$OldAddress")
+		if [ -n "$G_MESSAGES_DEBUG" ]; then
+			echo "  OldAddress:        " "$OldAddress"
+			echo "  Source:            " "$Source"
+			echo "  NewAddress:        " "$NewAddress"
+			echo "  Dest_WithBasename: " "$DestinationWithBasename"
+			echo "  By replacing OldAddress with DestinationWithBasename, we get:"
 		fi
+		new_link_target_fullpath=$(echo "$link_target_fullpath" | sed "s:^""$OldAddress"":""$DestinationWithBasename"":")
 		#TODO:目前的使用场景都是在git仓库内部,所以下面建立符号链接使用相对地址, 但如果$SymbolicLink位于OldAddress下面,也就是说结下来会被移动或复制,那么移动后的符号链接相对路径就失效了,所以我们用绝对路径,移动后再更新为相对路径
 		#即使现在mv还没有发生, new_link_target_fullpath 文件还不存在, 但我运行下来以这个还不存在的路径作为目标建立符号链接是可以的
-		echo "  new target full:   " "$new_link_target_fullpath" >&2
+		if [ -n "$G_MESSAGES_DEBUG" ]; then
+			echo "  new target full:   " "$new_link_target_fullpath"
+		fi
 		echo "$SymbolicLink" | grep -q "^$OldAddress"
 		if [ $? -eq 0 ]; then
 			ln -sfT "$new_link_target_fullpath" "$SymbolicLink"
-			echo "  target to be changed to relative after move or copy" >&2
+			if [ -n "$G_MESSAGES_DEBUG" ]; then
+				echo "  target to be changed to relative after move or copy"
+			fi
 		else
 			ln -srfT "$new_link_target_fullpath" "$SymbolicLink"
-			echo "  new relativ target:" $(readlink "$SymbolicLink") >&2
+			if [ -n "$G_MESSAGES_DEBUG" ]; then
+				echo "  new relativ target:" $(readlink "$SymbolicLink")
+			fi
 		fi
 
 	else
@@ -91,10 +101,12 @@ if [[ -L "$SymbolicLink" ]]; then
 		# TODO: 目前,我们假定OldAddress会被move,在mv之前,先把符号链接更新为绝对路径, 移动之后,再更新为相对路径,否则咋搞? 若是copy, 复制完后,两份符号链接都得再改回相对路径
 		if [ $? -eq 0 ]; then
 			ln -sfT "$link_target_fullpath" "$SymbolicLink"
-			echo "recreate symlink before move:  " "$SymbolicLink" >&2
-			echo "  old relative target:         " "$link_target" >&2
-			echo "  new fullpath target:         " $(readlink "$SymbolicLink") >&2
-			echo "  target to be changed to relative after move or copy" >&2
+			if [ -n "$G_MESSAGES_DEBUG" ]; then
+				echo "recreate symlink before move:  " "$SymbolicLink"
+				echo "  old relative target:         " "$link_target"
+				echo "  new fullpath target:         " "$link_target_fullpath"
+				echo "  target to be changed to relative after move or copy"
+			fi
 		fi
 	fi
 fi
