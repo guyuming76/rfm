@@ -60,26 +60,22 @@ if [[ -L "$SymbolicLink" ]]; then
 		fi
 		# 如果移动的(OldAddress)是目录, 那么所有指向 OldAddress 目录内文件的符号链接都要被更新
 		# 此时 link_target_fullpath 可以等于 OldAddress, 但不一定, 也可以是 link_target_fullpath 位于 OldAddress 下面
-		Source=$(dirname "$OldAddress")
+		new_link_target_fullpath=$(echo "$link_target_fullpath" | sed "s:^""$OldAddress"":""$DestinationWithBasename"":")
 		if [ -n "$G_MESSAGES_DEBUG" ]; then
 			echo "  OldAddress:        " "$OldAddress"
-			echo "  Source:            " "$Source"
 			echo "  NewAddress:        " "$NewAddress"
-			echo "  Dest_WithBasename: " "$DestinationWithBasename"
-			echo "  By replacing OldAddress with DestinationWithBasename, we get:"
-		fi
-		new_link_target_fullpath=$(echo "$link_target_fullpath" | sed "s:^""$OldAddress"":""$DestinationWithBasename"":")
-
-		if [ -n "$G_MESSAGES_DEBUG" ]; then
+			echo "  Destination:       " "$DestinationWithBasename"
+			echo "  By replacing OldAddress with Destination, we get:"
 			echo "  new target full:   " "$new_link_target_fullpath"
 		fi
+
 		echo "$SymbolicLink" | grep -q "^$OldAddress"
 		#目前的使用场景都是在git仓库内部,所以下面建立符号链接使用相对地址, 但如果$SymbolicLink位于OldAddress下面,也就是说结下来会被移动或复制,那么移动后的符号链接相对路径就失效了,所以我们用绝对路径,移动后再更新为相对路径
 		#即使现在mv还没有发生, new_link_target_fullpath 文件还不存在, 但我运行下来以这个还不存在的路径作为目标建立符号链接是可以的
 		if [ $? -eq 0 ]; then
 			ln -sfT "$new_link_target_fullpath" "$SymbolicLink"
 			if [ -n "$G_MESSAGES_DEBUG" ]; then
-				echo "  target to be changed to relative after move or copy"
+				echo "  target will be changed back to relative after move or copy"
 			fi
 		else
 			ln -srfT "$new_link_target_fullpath" "$SymbolicLink"
@@ -98,7 +94,7 @@ if [[ -L "$SymbolicLink" ]]; then
 				echo "recreate symlink before move:  " "$SymbolicLink"
 				echo "  old relative target:         " "$link_target"
 				echo "  new fullpath target:         " "$link_target_fullpath"
-				echo "  target to be changed to relative after move or copy"
+				echo "  target will be changed back to relative after move or copy"
 			fi
 		fi
 	fi
