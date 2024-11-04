@@ -36,10 +36,6 @@ else
 #	git mv -f "$Source" "$Destination"
 fi
 
-# 移动过后,把$Destination下面上一步换成绝对路径的符号链接再用相对路径重建
-#find "$Destination" -type l -exec bash -c 'ln -srfn "$(readlink \"$0\")" "$0"' {} \;
-#find "$Destination" -type l -exec ln -srfn "$(readlink {})"  {} \;
-
 if [ -n "$G_MESSAGES_DEBUG" ]; then
 	echo "###########################"
 fi
