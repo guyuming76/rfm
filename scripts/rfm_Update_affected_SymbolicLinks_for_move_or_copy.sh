@@ -83,6 +83,7 @@ if [[ -L "$SymbolicLink" ]]; then
 				echo "  target will be changed back to relative after move or copy"
 			fi
 		else
+		#TODO: 如果NewAddress已存在，也就是说在mv/cp后会被覆盖，这时生成的new relative target 会错误, 如devPicAndVideo/20241106_04h01m30s_grim.png 所示 
 			ln -srfT "$new_link_target_fullpath" "$SymbolicLink"
 			if [ -n "$G_MESSAGES_DEBUG" ]; then
 				echo "  new relativ target:" $(readlink "$SymbolicLink")

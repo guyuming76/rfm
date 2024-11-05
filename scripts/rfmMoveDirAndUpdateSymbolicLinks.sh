@@ -33,7 +33,10 @@ if [[ "$rfmFindScope"=="/" ]]; then
 	#TODO:考虑 $rfm_overwrite_destination
 	mv "$Source" "$Destination"
 else
-	#注意，git mv 和 mv 不同，没有 -t,-T 参数，但貌似用 -f 参数的作用类似 -T
+	#git mv 和 mv 不同，没有 -t,-T 参数, -f 参数的作用是否类似 -T?
+	#TODO: 如图 devPicAndVideo/20241106_04h15m16s_grim.png 和 20241106_04h30m04s_grim.png 所示
+	#当Destination已存在，并且恰好又指向Source的时候，git mv 似乎有问题
+        #顺便提一下，git mv 文档提到会保持 git log, 但我发现不是
 	git mv -f "$Source" "$Destination"
 fi
 
