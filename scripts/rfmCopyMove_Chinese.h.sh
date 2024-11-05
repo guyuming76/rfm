@@ -36,7 +36,7 @@ else
 	if [[ -e "$destination" ]]; then
 		if [[ -d "$destination" ]];then
 			autoselection=""
-			for i in ${@:2}; do
+			for i in "${@:2}"; do
 				autoselection+=" $destination/$(basename $i)"
 				# my test show destination returned from realpath do not end with /
 			done
@@ -59,11 +59,11 @@ else
 	elif [[ "$1" == "mv" ]];then
 		if [[ -z "$check_and_update_symbolic_link" || "$check_and_update_symbolic_linj" == "y" || "$check_and_update_symbolic_link" == "Y" ]];then
 			# 从第2个参数开始，每个参数循环一次
-			for sourcefile in ${@:2};do
+			for sourcefile in "${@:2}";do
 				rfmMoveDirAndUpdateSymbolicLinks.sh "$sourcefile" "$destination"
 			done
 		else
-			mv -v -i ${@:2} "$destination"
+			mv -v -i "${@:2}" "$destination"
 		fi
 	else
 		echo "parameter 1 should be either cp or mv" > 2
