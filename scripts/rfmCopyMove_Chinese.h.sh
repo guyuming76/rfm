@@ -37,8 +37,7 @@ else
 		if [[ -d "$destination" ]];then
 			autoselection=""
 			for i in "${@:2}"; do
-				basename_i=$(basename "$i")
-				autoselection+=" $destination/$basename_i"
+				autoselection+=" $destination/$(basename $i)"
 				# my test show destination returned from realpath do not end with /
 			done
 		else
