@@ -30,11 +30,11 @@ fi
 find "$rfmFindScope" -type l -exec rfm_Update_affected_SymbolicLinks_for_move_or_copy.sh "$Destination" "$Source" {} \;
 
 if [[ "$rfmFindScope"=="/" ]]; then
+	#TODO:考虑 $rfm_overwrite_destination
 	mv "$Source" "$Destination"
 else
-	git mv "$Source" "$Destination"
-# 在把 mineral/images/spImg 目录移动到  mineral/矿物名称 目录的案例中，我们需要先删除 矿物名称 符号链接，然后再选中 spImg 目录，调用文件上下文菜单 ”移动（改名）... 功能；尝试不删除符号链接，使用下面 git mv -f 移动，但未成功，可能是上面调用脚本里对 $Destination 的判断“
-#	git mv -f "$Source" "$Destination"
+	#注意，git mv 和 mv 不同，没有 -t,-T 参数，但貌似用 -f 参数的作用类似 -T
+	git mv -f "$Source" "$Destination"
 fi
 
 if [ -n "$G_MESSAGES_DEBUG" ]; then

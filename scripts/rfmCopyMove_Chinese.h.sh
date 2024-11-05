@@ -21,28 +21,26 @@ else
         # -s 表示不解析符号链接
 	destination="$(realpath -s $input_destination)";
 
-#	if [[ -z "$check_and_update_symbolic_link" || "$check_and_update_symbolic_linj" == "y" || "$check_and_update_symbolic_link" == "Y" ]];then
-#		if [[ -e $destination ]]; then
-#			echo "目标路径已存在"
-#			echo "若要使用'检查移动或复制造成的符号链接破坏并修复'功能"
-#			echo "请先删除目标路径再尝试"
-#			echo
-#			echo -e "\e[1;33m 按回车关闭窗口 \e[0m"
-#			read
-#			exit 0
-#		fi
-#	fi
+	export rfm_overwrite_destination
 
-	if [[ -e $destination ]]; then
-		if [[ -d $destination ]];then
-			autoselection=""
-			for i in ${@:2}; do
-				autoselection+=" $destination/$(basename $i)"
-				# my test show destination returned from realpath do not end with /
-			done
+	if [[ -e "$destination" ]]; then
+		if [ -d "$destination" ] && [ ! -L "$destination" ];then
+			read -p "目的路径存在且是目录，是否(y/n)覆盖?默认是(y)，否表示输入路径为目的父路径" -r rfm_overwrite_destination
+			# y 对应cp/mv -T, n 对应cp/mv -t?
+			if [[ -z "$rfm_overwrite_destination" || "$rfm_overwrite_destination" == "y" || "$rfm_overwrite_destination" == "Y" ]];then
+				autoselection="$destination"
+			else
+				autoselection=""
+				for i in ${@:2}; do
+					basename_i=$(basename "$i")
+					autoselection+=" $destination/$basename_i"
+					# my test show destination returned from realpath do not end with /
+				done
+			fi
 		else
-			# TODO: can we know whether user selected to overwrite existing file or not?
-			autoselection=$destination
+			# 如果目的地存在且不是目录，只能是覆盖，mv 命令后如果有 -f 则不提示，否则 mv 命令会提示
+			autoselection="$destination"
+
 		fi
 	elif [[ ! -z "$destination" ]]; then
 		# i ensure destination -z here to prevent that something wrong from transformation from input_destination to destination and cp use the last selected filename parameter as destination
@@ -55,15 +53,22 @@ else
 	fi
 
 	if [[ "$1" == "cp" ]];then
-		cp -p -r -i ${@:2} $destination
+		#TODO:考虑rfm_overwrite_destination
+		cp -p -r -i ${@:2} "$destination"
 	elif [[ "$1" == "mv" ]];then
 		if [[ -z "$check_and_update_symbolic_link" || "$check_and_update_symbolic_linj" == "y" || "$check_and_update_symbolic_link" == "Y" ]];then
 			# 从第2个参数开始，每个参数循环一次
 			for sourcefile in ${@:2};do
-				rfmMoveDirAndUpdateSymbolicLinks.sh "$sourcefile" "$destination"
+				if [[ -z "$rfm_overwrite_destination" || "$rfm_overwrite_destination" == "y" || "$rfm_overwrite_destination" == "Y" ]];then
+					rfmMoveDirAndUpdateSymbolicLinks.sh "$sourcefile" "$destination"
+				else
+					basename_sourcefile=$(basename "$sourcefile")
+					rfmMoveDirAndUpdateSymbolicLinks.sh "$sourcefile" "$destination/$basename_sourcefile"
+				fi
 			done
 		else
-			mv -v -i ${@:2} $destination
+			#TODO:考虑rfm_overwrite_destination
+			mv -v -i ${@:2} "$destination"
 		fi
 	else
 		echo "parameter 1 should be either cp or mv" > 2

@@ -19,8 +19,13 @@ fi
 #如果 NewAddress 存在且为目录，则表示 OldAddress 移入 NewAddress 下面，相当与 OldAddress 重命名为$NewAddress/$(basename "$OldAddress")
 #如果 NewAddress 不存在，则表示 OldAddress 重命名为 NewAddress
 if [[ -d "$NewAddress" ]];then
+	if [[ -z "$rfm_overwrite_destination" || "$rfm_overwrite_destination" == "y" || "$rfm_overwrite_destination" == "Y" ]];then
+        # 相当于 mv ~/mineral/images/spImg ~/mineral/矿物名称 这种情况，矿物名称 符号链接存在，会被 矿物名称 目录覆盖
+		DestinationWithBasename=$NewAddress
+	else
         # 相当于 mv ~/mineral/images/spImg ~/mineral 这种情况， NewAddress 是 ～/mineral, DestinationWithOldBasename=～/mineral/spImg
-        DestinationWithBasename=$NewAddress/$(basename "$OldAddress")
+		DestinationWithBasename=$NewAddress/$(basename "$OldAddress")
+	fi
 else
         # 相当于 mv ~/mineral/images/spImg ~/mineral/矿物名称 这种情况，矿物名称目录还不存在。也可以理解为前一种情况加上 spImg 到 矿物名称的改名
         DestinationWithBasename=$NewAddress
