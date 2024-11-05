@@ -50,12 +50,12 @@ else
 		# it's not possible to copy multiple source items into a non-existing destionation
 		autoselection="$destination"
 	else
-		echo "$input_destination;$destination" >&2
+		echo "$input_destination;$destination" > 2
 		exit 1
 	fi
 
 	if [[ "$1" == "cp" ]];then
-		cp -p -r -i "${@:2}" "$destination"
+		cp -p -r -i ${@:2} "$destination"
 	elif [[ "$1" == "mv" ]];then
 		if [[ -z "$check_and_update_symbolic_link" || "$check_and_update_symbolic_linj" == "y" || "$check_and_update_symbolic_link" == "Y" ]];then
 			# 从第2个参数开始，每个参数循环一次
@@ -66,7 +66,7 @@ else
 			mv -v -i ${@:2} "$destination"
 		fi
 	else
-		echo "parameter 1 should be either cp or mv" >&2
+		echo "parameter 1 should be either cp or mv" > 2
 		exit 2
 	fi
 
