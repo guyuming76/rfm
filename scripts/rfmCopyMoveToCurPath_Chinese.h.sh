@@ -16,12 +16,12 @@ fi
 sourcefiles=$(rfmFromClipboard.sh)
 
 clipboardContent=0
-for src in "$sourcefiles";do
-	echo "$src"
+for src in $sourcefiles;do
+	echo $src
 	clipboardContent+=1
 done
 
-if [[ "$clipboardContent" -eq 0 ]];then
+if [[ $clipboardContent -eq 0 ]];then
 	echo "请输入源路径(键盘上下箭头选取历史输入):"
 else
 	echo "直接回车从上面显示剪贴板内容读取源文件名;"
@@ -39,67 +39,61 @@ read -p "是否(y/n)检查移动或复制造成的符号链接破坏并修复?�
 
 if [[ ! -z "$source" ]];then
 
-	if [[ -d "$source" ]];then
+	if [[ -d $source ]];then
 		read -p "输入路径是个目录,为此目录新开rfm窗口以便选择源文件,还是复制整个目录(Y/n)?回车默认新开rfm,输入n复制整个目录" -r new_rfm
 	fi
 
-	if [[ -d "$source" && ( -z "$new_rfm" || "$new_rfm" == "Y" || "$new_rfm" == "y" ) ]];then
+	if [[ -d $source && ( -z "$new_rfm" || "$new_rfm" == "Y" || "$new_rfm" == "y" ) ]];then
 		export namedpipe="/tmp/rfmFileChooser_$$"
 		if [[ ! -p $namedpipe ]];then
 			#trap "rm -f $namedpipe" EXIT
-		        mkfifo "$namedpipe"; \
+		        mkfifo $namedpipe; \
 			while read line ;do \
-				basename_line=$(basename "$line")
-				target_with_basename_line=$(echo "$target"/"$basename_line")
 				if [[ "$1" == "cp" ]];then \
-					cp -v -r "$line" "$target"; \
+					cp -v -r $line $target; \
 				elif [[ "$1" == "mv" ]];then \
-					mv -v "$line" "$target"; \
+					mv -v $line $target; \
 				elif [[ -z "$useRelativeInSL" || "$useRelativeInSL" == "y" || "$useRelativeInSL" == "Y" ]];then \
-					ln -sr "$line $target_with_basename_line"; \
+					ln -sr $line $(echo $target/$(basename $line)); \
 				else \
-					ln -s "$line $target_with_basename_line"; \
+					ln -s $line $(echo $target/$(basename $line)); \
 				fi \
 			done <$namedpipe &
-			rfm -d "$source" -r $namedpipe
+			rfm -d $source -r $namedpipe
 			wait
 			rm -f $namedpipe
 		else
 			echo "$namedpipe already exists" >2
 			exit 4
 		fi
-	elif [[ -f "$source" || "$new_rfm" == "n" ]];then
-		basename_source=$(basename "$source")
-		target_with_basename_source=$(echo "$target"/"$basename_source")
+	elif [[ -f $source || "$new_rfm" == "n" ]];then
 		if [[ "$1" == "cp" ]];then
-			cp -i -v -r "$source" "$target"
+			cp -i -v -r $source $target
 		elif [[ "$1" == "mv" ]];then
-			mv -i -v "$source" "$target"
+			mv -i -v $source $target
 		elif [[ -z "$useRelativeInSL" || "$useRelativeInSL" == "y" || "$useRelativeInSL" == "Y" ]];then
-			ln -sr "$source" "$target_with_basename_source")
+			ln -sr $source $(echo $target/$(basename $source))
 		else
-			ln -s "$source" "$target_with_basename_source")
+			ln -s $source $(echo $target/$(basename $source))
 		fi
 	else
 		echo "$source not directory or file" >2
 		exit 3
 	fi
 else
-	for sourcefile in "$sourcefiles";do
-		basename_sourcefile=$(basename "$sourcefile")
-		target_with_basename_sourcefile=$(echo "$target"/"$basename_sourcefile")
+	for sourcefile in $sourcefiles;do
 		if [[ "$1" == "cp" ]];then
-			cp -i -v -r "$sourcefile" "$target"
+			cp -i -v -r $sourcefile $target
 		elif [[ "$1" == "mv" ]];then
 		        if [[ -z "$check_and_update_symbolic_link" || "$check_and_update_symbolic_linj" == "y" || "$check_and_update_symbolic_link" == "Y" ]];then
-		                rfmMoveDirAndUpdateSymbolicLinks.sh "$sourcefile" "$target"
+		                rfmMoveDirAndUpdateSymbolicLinks.sh $sourcefile $target
 			else
-			        mv -i -v "$sourcefile" "$target"
+			        mv -i -v $sourcefile $target
 			fi
 		elif [[ -z "$useRelativeInSL" || "$useRelativeInSL" == "y" || "$useRelativeInSL" == "Y" ]];then
-			ln -sr "$sourcefile" "$target_with_basename_sourcefile")
+			ln -sr $sourcefile $(echo $target/$(basename $sourcefile))
 		else
-			ln -s "$sourcefile" "$target_with_basename_sourcefile")
+			ln -s $sourcefile $(echo $target/$(basename $sourcefile))
 		fi
 	done
 fi
