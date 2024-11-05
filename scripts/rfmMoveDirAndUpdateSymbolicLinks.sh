@@ -2,8 +2,9 @@
 
 # Source 和 Destination 需要是不同的目录
 # 或者 Source 是文件, 而Destination 是目录,如同mv 命令参数
-# 从 Source 复制到 Destination
+# 从 Source 移动到 Destination
 # 把原指向 Source 目录内 (包括Source本身) 的符号链接更新指向 Desitination 目录内
+# Source 目录内的相对路径符号链移动前要使用绝对路径重建，移动后再使用相对路径重建
 
 Source=$1
 Destination=$2
