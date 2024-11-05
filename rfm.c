@@ -3859,6 +3859,7 @@ static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult)
 	    for (int i=0;i<G_N_ELEMENTS(regex_rules);i++){
 	      if (regex_rules[i].pattern_compiled && str_regex_replace(&readlineResult, regex_rules[i].pattern_compiled, regex_rules[i].replacement) && regex_rules[i].action) (regex_rules[i].action)();
 	    }
+	    len = strlen(readlineResult);
 	    
             for(int i=0;i<G_N_ELEMENTS(stdin_cmd_interpretors);i++){
 	      if (g_strcmp0(readlineResult, stdin_cmd_interpretors[i].activationKey)==0){
