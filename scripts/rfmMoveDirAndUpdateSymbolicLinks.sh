@@ -22,8 +22,17 @@ fi
 rfmFindScope=$(git rev-parse --show-toplevel 2>/dev/null)
 if [[ -z  "$rfmFindScope" ]]; then
        	rfmFindScope="/"
+else
+	#如图 devPicAndVideo/20241106_04h15m16s_grim.png 和 20241106_04h30m04s_grim.png 所示
+	#当Destination已存在，并且恰好又指向Source的时候，git mv 似乎有问题
+	#再结合 commit b070f502d70542efae1d0e2152c71c1938db0e02 里 rfm_Update_affected_SymbolicLinks_for_move_or_copy.sh 所描述问题
+	#所以先删掉Destination.
+	if [[ -d "$Destination" ]]; then
+		git rm -r "$Destination"
+	else
+		git rm "$Destination"
+	fi
 fi
-
 
 	# 下面 SpecificDir 实际指的是 Source
 	# 因为 $rfmFindScope 是绝对路径形式, find 的输出也是绝对路径形式
@@ -34,8 +43,6 @@ if [[ "$rfmFindScope"=="/" ]]; then
 	mv "$Source" "$Destination"
 else
 	#git mv 和 mv 不同，没有 -t,-T 参数, -f 参数的作用是否类似 -T?
-	#TODO: 如图 devPicAndVideo/20241106_04h15m16s_grim.png 和 20241106_04h30m04s_grim.png 所示
-	#当Destination已存在，并且恰好又指向Source的时候，git mv 似乎有问题
         #顺便提一下，git mv 文档提到会保持 git log, 但我发现不是
 	git mv -f "$Source" "$Destination"
 fi
