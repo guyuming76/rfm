@@ -27,10 +27,13 @@ else
 	#当Destination已存在，并且恰好又指向Source的时候，git mv 似乎有问题
 	#再结合 commit b070f502d70542efae1d0e2152c71c1938db0e02 里 rfm_Update_affected_SymbolicLinks_for_move_or_copy.sh 所描述问题
 	#所以先删掉Destination.
-	if [[ -d "$Destination" ]]; then
-		git rm -r "$Destination"
-	else
-		git rm "$Destination"
+	#TODO:这里实际上是处理 rfmCopyMove.sh 调用 rfm_overwrite_destination 用户选y的情况. rfmCopyMoveToCurPath.sh 调用本脚本的情况还没考虑，也有可能有同名需要覆盖的情况
+	if [[ -n "$rfm_overwrite_destination" ]] && [[ "$rfm_overwrite_destination" == "y" || "$rfm_overwrite_destination" == "Y" ]];then
+		if [[ -d "$Destination" ]]; then
+			git rm -r "$Destination"
+		else
+			git rm "$Destination"
+		fi
 	fi
 fi
 
