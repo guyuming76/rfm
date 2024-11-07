@@ -452,9 +452,9 @@ static gboolean show_gitMenus(RFM_FileAttributes * fileAttributes);
 static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpointer *child_attribs);
 static void readLatestGitLogForFileAndUpdateStore(RFM_ChildAttribs * childAttribs);
 static void load_GitTrackedFiles_into_HashTable();
-static void load_gitCommitMsg_for_store_row(GtkTreeIter *iter);
+static void load_latest_git_log_for_store_row(GtkTreeIter *iter);
 //called in dir view when onebyone off
-static gboolean iterate_through_store_to_load_gitCommitMsg_one_by_one_when_idle(GtkTreeIter *iter);
+static gboolean iterate_through_store_to_load_latest_git_log_one_by_one_when_idle(GtkTreeIter *iter);
 #endif
 static void set_terminal_window_title(char* title);
 static void set_Titles(gchar * title);
@@ -1594,9 +1594,9 @@ static gboolean iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_o
 }
 
 #ifdef GitIntegration
-static gboolean iterate_through_store_to_load_gitCommitMsg_one_by_one_when_idle(GtkTreeIter *iter)
+static gboolean iterate_through_store_to_load_latest_git_log_one_by_one_when_idle(GtkTreeIter *iter)
 {
-     load_gitCommitMsg_for_store_row(iter);
+     load_latest_git_log_for_store_row(iter);
      if (get_treeviewColumnByEnum(COL_GIT_COMMIT_MSG)->Show && gtk_tree_model_iter_next(treemodel, iter)) return G_SOURCE_CONTINUE;
      else {
        rfm_gitCommitMsgScheduler=0;
@@ -1618,7 +1618,7 @@ static void iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_and_l
    while (valid) {
      load_thumbnail_or_enqueue_thumbQueue_for_store_row(&iter);
 #ifdef GitIntegration
-     if (get_treeviewColumnByEnum(COL_GIT_COMMIT_MSG)->Show ||get_treeviewColumnByEnum(COL_GIT_COMMIT_ID)->Show || get_treeviewColumnByEnum(COL_GIT_COMMIT_DATE)->Show || get_treeviewColumnByEnum(COL_GIT_AUTHOR)->Show) load_gitCommitMsg_for_store_row(&iter);
+     if (get_treeviewColumnByEnum(COL_GIT_COMMIT_MSG)->Show ||get_treeviewColumnByEnum(COL_GIT_COMMIT_ID)->Show || get_treeviewColumnByEnum(COL_GIT_COMMIT_DATE)->Show || get_treeviewColumnByEnum(COL_GIT_AUTHOR)->Show) load_latest_git_log_for_store_row(&iter);
 #endif
      valid=gtk_tree_model_iter_next(treemodel, &iter);
    }
@@ -1646,7 +1646,7 @@ static void load_thumbnail_or_enqueue_thumbQueue_for_store_row(GtkTreeIter *iter
 }
 
 #ifdef GitIntegration
-static void load_gitCommitMsg_for_store_row(GtkTreeIter *iter){
+static void load_latest_git_log_for_store_row(GtkTreeIter *iter){
       if (curPath_is_git_repo){
 	//gchar* fullpath=calloc(PATH_MAX, sizeof(gchar));
 	GValue full_path=G_VALUE_INIT;
@@ -1655,7 +1655,7 @@ static void load_gitCommitMsg_for_store_row(GtkTreeIter *iter){
 	file_list = g_list_append(file_list,g_value_get_string(&full_path));
 	GtkTreeIter **iterPointerPointer=calloc(1, sizeof(GtkTreeIter**));//This will be passed into childAttribs, which will be freed in g_spawn_wrapper. but we shall not free iter, so i use pointer to pointer here.
 	*iterPointerPointer=iter;
-	if(!g_spawn_wrapper(git_commit_message_cmd, file_list, G_SPAWN_DEFAULT ,NULL, FALSE, readLatestGitLogForFileAndUpdateStore, iterPointerPointer,TRUE)){
+	if(!g_spawn_wrapper(git_latest_log_cmd, file_list, G_SPAWN_DEFAULT ,NULL, FALSE, readLatestGitLogForFileAndUpdateStore, iterPointerPointer,TRUE)){
 	  //if false returned here, g_warning would have been called in g_spawn_wrapper, so i write no log entry here
 	}
 	g_list_free(file_list);
@@ -1986,7 +1986,7 @@ static void Insert_fileAttributes_into_store_with_thumbnail_and_more(RFM_FileAtt
 	    if (rfm_do_thumbs==1 && g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR)){
 	      load_thumbnail_or_enqueue_thumbQueue_for_store_row(&iter);
 #ifdef GitIntegration
-              if (get_treeviewColumnByEnum(COL_GIT_COMMIT_MSG)->Show ||get_treeviewColumnByEnum(COL_GIT_COMMIT_ID)->Show || get_treeviewColumnByEnum(COL_GIT_COMMIT_DATE)->Show || get_treeviewColumnByEnum(COL_GIT_AUTHOR)->Show) load_gitCommitMsg_for_store_row(&iter);
+              if (get_treeviewColumnByEnum(COL_GIT_COMMIT_MSG)->Show ||get_treeviewColumnByEnum(COL_GIT_COMMIT_ID)->Show || get_treeviewColumnByEnum(COL_GIT_COMMIT_DATE)->Show || get_treeviewColumnByEnum(COL_GIT_AUTHOR)->Show) load_latest_git_log_for_store_row(&iter);
 #endif
 	    }
 }
@@ -2205,7 +2205,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
 
 #ifdef GitIntegration
        if ((get_treeviewColumnByEnum(COL_GIT_COMMIT_MSG)->Show ||get_treeviewColumnByEnum(COL_GIT_COMMIT_ID)->Show || get_treeviewColumnByEnum(COL_GIT_COMMIT_DATE)->Show || get_treeviewColumnByEnum(COL_GIT_AUTHOR)->Show)
-	   && gtk_tree_model_get_iter_first(treemodel, &gitMsg_load_iter)) rfm_gitCommitMsgScheduler=g_idle_add((GSourceFunc)iterate_through_store_to_load_gitCommitMsg_one_by_one_when_idle, &gitMsg_load_iter);
+	   && gtk_tree_model_get_iter_first(treemodel, &gitMsg_load_iter)) rfm_gitCommitMsgScheduler=g_idle_add((GSourceFunc)iterate_through_store_to_load_latest_git_log_one_by_one_when_idle, &gitMsg_load_iter);
 #endif
 
        if (rfm_do_thumbs == 1 && g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR) && gtk_tree_model_get_iter_first(treemodel, &thumbnail_load_iter)){
