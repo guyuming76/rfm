@@ -324,6 +324,9 @@ enum RFM_treeviewCol{
 #ifdef GitIntegration
    COL_GIT_STATUS_STR,
    COL_GIT_COMMIT_MSG,
+   COL_GIT_AUTHOR,
+   COL_GIT_COMMIT_DATE,
+   COL_GIT_COMMIT_ID,
 #endif
    COL_Ext1,COL_Ext2,COL_Ext3,COL_Ext4,COL_Ext5,COL_Ext6,COL_Ext7,COL_Ext8,COL_Ext9,
    COL_Ext10,COL_Ext11,COL_Ext12,COL_Ext13,COL_Ext14,COL_Ext15,COL_Ext16,COL_Ext17,COL_Ext18,COL_Ext19,
@@ -447,7 +450,7 @@ static void set_curPath_is_git_repo(gpointer *child_attribs);
 static gboolean show_gitColumns(RFM_FileAttributes * fileAttributes);
 static gboolean show_gitMenus(RFM_FileAttributes * fileAttributes);
 static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpointer *child_attribs);
-static void readGitCommitMsgFromGitLogCmdAndUpdateStore(RFM_ChildAttribs * childAttribs);
+static void readLatestGitLogForFileAndUpdateStore(RFM_ChildAttribs * childAttribs);
 static void load_GitTrackedFiles_into_HashTable();
 static void load_gitCommitMsg_for_store_row(GtkTreeIter *iter);
 //called in dir view when onebyone off
@@ -1615,7 +1618,7 @@ static void iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_and_l
    while (valid) {
      load_thumbnail_or_enqueue_thumbQueue_for_store_row(&iter);
 #ifdef GitIntegration
-     if (get_treeviewColumnByEnum(COL_GIT_COMMIT_MSG)->Show) load_gitCommitMsg_for_store_row(&iter);
+     if (get_treeviewColumnByEnum(COL_GIT_COMMIT_MSG)->Show ||get_treeviewColumnByEnum(COL_GIT_COMMIT_ID)->Show || get_treeviewColumnByEnum(COL_GIT_COMMIT_DATE)->Show || get_treeviewColumnByEnum(COL_GIT_AUTHOR)->Show) load_gitCommitMsg_for_store_row(&iter);
 #endif
      valid=gtk_tree_model_iter_next(treemodel, &iter);
    }
@@ -1652,7 +1655,7 @@ static void load_gitCommitMsg_for_store_row(GtkTreeIter *iter){
 	file_list = g_list_append(file_list,g_value_get_string(&full_path));
 	GtkTreeIter **iterPointerPointer=calloc(1, sizeof(GtkTreeIter**));//This will be passed into childAttribs, which will be freed in g_spawn_wrapper. but we shall not free iter, so i use pointer to pointer here.
 	*iterPointerPointer=iter;
-	if(!g_spawn_wrapper(git_commit_message_cmd, file_list, G_SPAWN_DEFAULT ,NULL, FALSE, readGitCommitMsgFromGitLogCmdAndUpdateStore, iterPointerPointer,TRUE)){
+	if(!g_spawn_wrapper(git_commit_message_cmd, file_list, G_SPAWN_DEFAULT ,NULL, FALSE, readLatestGitLogForFileAndUpdateStore, iterPointerPointer,TRUE)){
 	  //if false returned here, g_warning would have been called in g_spawn_wrapper, so i write no log entry here
 	}
 	g_list_free(file_list);
@@ -1820,12 +1823,28 @@ static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,
 
 
 #ifdef GitIntegration
-static void readGitCommitMsgFromGitLogCmdAndUpdateStore(RFM_ChildAttribs * childAttribs){
-   gchar * commitMsg=childAttribs->stdOut;
-   commitMsg[strcspn(commitMsg, "\n")] = 0;
-   g_log(RFM_LOG_DATA_GIT,G_LOG_LEVEL_DEBUG,"gitCommitMsg:%s",commitMsg);
+static void readLatestGitLogForFileAndUpdateStore(RFM_ChildAttribs * childAttribs){
+   gchar * cmdOutput=childAttribs->stdOut;
+   if (strlen(cmdOutput)<=7) return;
+   gchar * commitid=cmdOutput+7; //"commit " takes 7 char
+   size_t commitid_end_offset=strcspn(commitid, "\n");
+   gchar * Author=commitid + commitid_end_offset + 8; //"Auther: " takes 8 char
+   size_t Author_end_offset=strcspn(Author, "\n");
+   gchar * Date=Author + Author_end_offset + 8; // "Date:   " takes 8 char
+   size_t Date_end_offset=strcspn(Date, "\n");
+   gchar * commitMsg=Date + Date_end_offset + 1; // "\n"  takes 2 char
+
    GtkTreeIter *iter= *(GtkTreeIter**)(childAttribs->customCallbackUserData);
+
    gtk_list_store_set(store,iter,COL_GIT_COMMIT_MSG, commitMsg, -1);
+   *(Date + Date_end_offset)=0;
+   gtk_list_store_set(store,iter,COL_GIT_COMMIT_DATE, Date, -1);
+   *(Author + Author_end_offset)=0;
+   gtk_list_store_set(store,iter,COL_GIT_AUTHOR, Author, -1);
+   *(commitid + commitid_end_offset)=0;
+   gtk_list_store_set(store,iter,COL_GIT_COMMIT_ID, commitid, -1);
+   
+   g_log(RFM_LOG_DATA_GIT,G_LOG_LEVEL_DEBUG,"gitCommitid:%s",commitid);
 }
 
 static void load_GitTrackedFiles_into_HashTable()
@@ -1846,7 +1865,7 @@ static void load_GitTrackedFiles_into_HashTable()
     g_free(child_stdout);
     g_free(child_stderr);   
     return;
-  }    
+  }
   
   if (g_spawn_sync(rfm_curPath, git_ls_files_cmd, NULL, 0, NULL, NULL, &child_stdout, &child_stderr, 0, NULL)){
 
@@ -1967,9 +1986,9 @@ static void Insert_fileAttributes_into_store_with_thumbnail_and_more(RFM_FileAtt
 	    if (rfm_do_thumbs==1 && g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR)){
 	      load_thumbnail_or_enqueue_thumbQueue_for_store_row(&iter);
 #ifdef GitIntegration
-              if (get_treeviewColumnByEnum(COL_GIT_COMMIT_MSG)->Show) load_gitCommitMsg_for_store_row(&iter);
+              if (get_treeviewColumnByEnum(COL_GIT_COMMIT_MSG)->Show ||get_treeviewColumnByEnum(COL_GIT_COMMIT_ID)->Show || get_treeviewColumnByEnum(COL_GIT_COMMIT_DATE)->Show || get_treeviewColumnByEnum(COL_GIT_AUTHOR)->Show) load_gitCommitMsg_for_store_row(&iter);
 #endif
-	    }  
+	    }
 }
 
 static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store_if_onebyone(GDir *dir) {
@@ -2185,7 +2204,8 @@ static void refresh_store(RFM_ctx *rfmCtx)
        Iterate_through_fileAttribute_list_to_insert_into_store();
 
 #ifdef GitIntegration
-       if (get_treeviewColumnByEnum(COL_GIT_COMMIT_MSG)->Show && gtk_tree_model_get_iter_first(treemodel, &gitMsg_load_iter)) rfm_gitCommitMsgScheduler=g_idle_add((GSourceFunc)iterate_through_store_to_load_gitCommitMsg_one_by_one_when_idle, &gitMsg_load_iter);
+       if ((get_treeviewColumnByEnum(COL_GIT_COMMIT_MSG)->Show ||get_treeviewColumnByEnum(COL_GIT_COMMIT_ID)->Show || get_treeviewColumnByEnum(COL_GIT_COMMIT_DATE)->Show || get_treeviewColumnByEnum(COL_GIT_AUTHOR)->Show)
+	   && gtk_tree_model_get_iter_first(treemodel, &gitMsg_load_iter)) rfm_gitCommitMsgScheduler=g_idle_add((GSourceFunc)iterate_through_store_to_load_gitCommitMsg_one_by_one_when_idle, &gitMsg_load_iter);
 #endif
 
        if (rfm_do_thumbs == 1 && g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR) && gtk_tree_model_get_iter_first(treemodel, &thumbnail_load_iter)){
@@ -4057,6 +4077,9 @@ static int setup(RFM_ctx *rfmCtx)
 #ifdef GitIntegration
 			      G_TYPE_STRING, //GIT_STATUS_STR
 			      G_TYPE_STRING,     //git commit message
+			      G_TYPE_STRING, //git author
+			      G_TYPE_STRING, //git commit date
+			      G_TYPE_STRING, //git commit id
 #endif
 			      G_TYPE_STRING, //mime_sort
 			    G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING, //COL_Ext1..5
