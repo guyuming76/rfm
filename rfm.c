@@ -1597,7 +1597,7 @@ static gboolean iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_o
 static gboolean iterate_through_store_to_load_latest_git_log_one_by_one_when_idle(GtkTreeIter *iter)
 {
      load_latest_git_log_for_store_row(iter);
-     if (get_treeviewColumnByEnum(COL_GIT_COMMIT_MSG)->Show && gtk_tree_model_iter_next(treemodel, iter)) return G_SOURCE_CONTINUE;
+     if ((get_treeviewColumnByEnum(COL_GIT_COMMIT_MSG)->Show ||get_treeviewColumnByEnum(COL_GIT_COMMIT_ID)->Show || get_treeviewColumnByEnum(COL_GIT_COMMIT_DATE)->Show || get_treeviewColumnByEnum(COL_GIT_AUTHOR)->Show) && gtk_tree_model_iter_next(treemodel, iter)) return G_SOURCE_CONTINUE;
      else {
        rfm_gitCommitMsgScheduler=0;
        if (rfm_thumbLoadScheduler==0){
