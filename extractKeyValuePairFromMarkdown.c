@@ -74,6 +74,7 @@ int main(int argc, char *argv[]){
         printf("Usage:   %s debug MarkdownFilename HeadersToMatch\n", argv[0]);
 	printf("         0 or 1 for the debug option, 1 for debug\n");
 	printf("         HeadersToMatch is the list of markdown headers text to match, seperated with space\n");
+	printf("         All headers of level 1 will be in output if no HeadersToMatch is specified\n");
 	printf("example: %s 0 your_markdown_file.md Header_level1_text1 Header_level1_text2\n",argv[0]);
 	return 1;
     }
