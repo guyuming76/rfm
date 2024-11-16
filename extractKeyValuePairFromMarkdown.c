@@ -6,7 +6,7 @@
 int debug=0;
 char **HeadersToMatch = NULL;
 int HeadersToMatch_Count = 0;
-int heading_level_to_match = 1;
+int heading_level_to_match = 1;//TODO: parameterize this
 int current_heading_level = 0;
 int currently_in_matched_header = 0;
 int current_heading_finished_testing_HeadersToMatch = 0; //the first cmark_node_type_text is for header text, do not try for later text nodes
@@ -46,12 +46,18 @@ void print_node(cmark_node *node, cmark_event_type ev_type) {
         //free(literal);
 
 	if ( nodetype == CMARK_NODE_TEXT && current_heading_level == heading_level_to_match && !current_heading_finished_testing_HeadersToMatch){
-	  for (int i=0;i<HeadersToMatch_Count;i++){
-	    if (strcmp(literal, HeadersToMatch[i])==0){
-	      currently_in_matched_header = 1;
-	      currently_matched_header_finished_printing = 0;
-	      printf("%s=",HeadersToMatch[i]);// gkeyfile use = to seperate key and value
+	  if (HeadersToMatch_Count>0){
+	    for (int i=0;i<HeadersToMatch_Count;i++){
+	      if (strcmp(literal, HeadersToMatch[i])==0){
+		currently_in_matched_header = 1;
+		currently_matched_header_finished_printing = 0;
+		printf("%s=",HeadersToMatch[i]);// gkeyfile use = to seperate key and value
+	      }
 	    }
+	  }else{
+	    currently_in_matched_header = 1;
+	    currently_matched_header_finished_printing = 0;
+	    printf("%s=",literal);// gkeyfile use = to seperate key and value
 	  }
 	  current_heading_finished_testing_HeadersToMatch = 1;
 	}else if (currently_in_matched_header && !currently_matched_header_finished_printing){
@@ -63,7 +69,7 @@ void print_node(cmark_node *node, cmark_event_type ev_type) {
 
 
 int main(int argc, char *argv[]){
-    if (argc < 4) {
+    if (argc < 3) {
         printf("We parse a file specified by the MarkdownFilename argument with cmark, and output KeyValue pair lines. The HeadersToMatch arguments specify the keys, which are the level %d header text in the markdown file. The first line of literal text for the matched header will be the value for the key\n\n", heading_level_to_match);
         printf("Usage:   %s debug MarkdownFilename HeadersToMatch\n", argv[0]);
 	printf("         0 or 1 for the debug option, 1 for debug\n");
