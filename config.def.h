@@ -345,6 +345,7 @@ static RFM_SearchResultType searchresultTypes[] = {
 //name	       SearchResultLineProcessingFunc                  showcolumn     SearchResultColumnSeperator  cmdTemplate Description
   {"default",  ProcessOnelineForSearchResult,                  EmptyShowColumn, NULL, NULL,                            SearchResultType_default }, //default searchresult, contain only filename list such as returned by locate, or filename followed by additional info such as returned by grep
   {"gkeyfile", ProcessKeyValuePairInFilesFromSearchResult,     EmptyShowColumn, NULL, NULL,                            SearchResultType_gkeyfile},
+  {"markdown1",ProcessKeyValuePairInCmdOutputFromSearchResult, EmptyShowColumn, NULL, "extractKeyValuePairFromMarkdown 0 %s",SearchResultType_markdown1},
 #ifdef MU_VIEW
   {"muview",   ProcessKeyValuePairInCmdOutputFromSearchResult, MailColumns    , "&" , "mu view %s | rfmGetMailHeaderWithMuView.sh",SearchResultType_muview }, //%s in cmdTemplate will be replaced by filename in searchresult
 #endif

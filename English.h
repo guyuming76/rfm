@@ -138,6 +138,9 @@ BuiltInCmd_SearchResultColumnSeperator \
 "      locate .rfmTODO.gkeyfile>gkeyfile\n" \
 "    至此,提到两种我们称之为\033[32m扩展列\033[0m(相对于文件系统内置的文件元数据,如权限,修改时间,文件大小等)的来源,一是程序标准输出里包含的除文件路径名之外的列,二是解析自文件内容的键值对数据.这里我们顺便提一下还有第三种来源:可以在config.h里面定义,然后通过showcolumn命令添加到显示,如现有的ImageSize列,这种列定义会包含一个取值bash命令或是c语言函数,根据传入的文件路径名,获取列值"
 
+#define	SearchResultType_markdown1 "首先调用default结果类型获取命令输出行列,再使用rfm自带的独立程序extractKeyValuePairFromMarkdown,以markdown格式解析首列文件内容;以gkeyfile格式输出键值对：markdown文件一级标题=一级标题下面首行内容.最后同gkeyfile结果类型显示.命令举例:\n" \
+"      find -name *.TODO.md>markdown1"
+
 #define SearchResultType_muview "首先调用default查询结果类型获取命令输出行列,再使用 mu view 命令读取首列邮件文件内容,把邮件头,转换成前面keyfile要求的键值对格式,最后如同gkeyfile结果类型一样显示.命令举例(注意:Maidir中的文件名会包含冒号,同默认的SearchResultColumnSeperator冲突,要给文件名加引号解决.另外,下面我用cd 加ls而不是locate主要是考虑输出顺序, 而下面{}里的cd是运行于rfm创建的shell子进程,并不是前述rfm内置cd命令):\n" \
 "      { cd /home/guyuming/Mail/139INBOX/cur; ls -1td \"$PWD\"/*; }>muview\n" \
 "      上面命令也可以简化成如下形式,我这里保留上面作为一个使用bash {} 语法执行命令序列的备忘\n" \
