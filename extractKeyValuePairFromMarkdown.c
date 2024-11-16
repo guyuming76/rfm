@@ -51,17 +51,17 @@ void print_node(cmark_node *node, cmark_event_type ev_type) {
 	      if (strcmp(literal, HeadersToMatch[i])==0){
 		currently_in_matched_header = 1;
 		currently_matched_header_finished_printing = 0;
-		printf("%s=",HeadersToMatch[i]);// gkeyfile use = to seperate key and value
+		printf("\n%s=",HeadersToMatch[i]);// gkeyfile use = to seperate key and value
 	      }
 	    }
 	  }else{
 	    currently_in_matched_header = 1;
 	    currently_matched_header_finished_printing = 0;
-	    printf("%s=",literal);// gkeyfile use = to seperate key and value
+	    printf("\n%s=",literal);// gkeyfile use = to seperate key and value
 	  }
 	  current_heading_finished_testing_HeadersToMatch = 1;
 	}else if (currently_in_matched_header && !currently_matched_header_finished_printing){
-	      printf("%s\n",literal);
+	      printf("%s",literal);
 	      currently_matched_header_finished_printing = 1;
 	}
     }
@@ -92,6 +92,7 @@ int main(int argc, char *argv[]){
         cmark_node *cur = cmark_iter_get_node(iter);
         print_node(cur,ev_type);
     }
+    printf("\n");
     cmark_iter_free(iter);
 
     return 0;
