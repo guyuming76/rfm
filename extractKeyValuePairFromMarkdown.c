@@ -63,8 +63,6 @@ void print_node(cmark_node *node, cmark_event_type ev_type) {
 
 
 int main(int argc, char *argv[]){
-    //const char *markdown_text = "# This is a title #\n text under title line1\n text line2 \n ## This is a subtitle ##\n # title 2 #";
-    //cmark_node *root = cmark_parse_document(markdown_text, strlen(markdown_text), CMARK_OPT_DEFAULT);
     if (argc < 4) {
         printf("We parse a file specified by the MarkdownFilename argument with cmark, and output KeyValue pair lines. The HeadersToMatch arguments specify the keys, which are the level %d header text in the markdown file. The first line of literal text for the matched header will be the value for the key\n\n", heading_level_to_match);
         printf("Usage:   %s debug MarkdownFilename HeadersToMatch\n", argv[0]);
@@ -80,12 +78,6 @@ int main(int argc, char *argv[]){
     debug = atoi(argv[1]);
     HeadersToMatch = argv + 3;
     HeadersToMatch_Count = argc - 3;
-    /* cmark_node *child = cmark_node_first_child(root); */
-    /* print_heading(child); */
-    
-    /* while ((child = cmark_node_next(child))) { */
-    /*     print_heading(child);   */
-    /* } */
 
     printf("[https://discourse.gnome.org/t/gkeyfile-to-handle-conf-without-groupname/23080/3]\n");
     cmark_event_type ev_type;
