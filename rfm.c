@@ -1818,8 +1818,10 @@ static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,
 	  if (g_strcmp0(fileAttributes->path, selection_filepath_list->data)==0){
 	    g_debug("re-select file during refresh:%s",fileAttributes->path);
 	    treePath=gtk_tree_model_get_path(GTK_TREE_MODEL(store), iter);
-	    if (lastItemInSelectionList) gtk_tree_iter_free(lastItemInSelectionList);
-	    lastItemInSelectionList = gtk_tree_iter_copy(iter);
+	    if (lastItemInSelectionList==NULL) {
+	      if (!treeview) gtk_icon_view_set_cursor(GTK_ICON_VIEW(icon_or_tree_view),treePath,NULL,FALSE);
+	      lastItemInSelectionList = gtk_tree_iter_copy(iter);
+	    }
 	    set_view_selection(icon_or_tree_view, treeview, treePath);
 	    gtk_tree_path_free(treePath);
 	    //once item in filepath_lists_for_selection_on_view_clone matches and set_view_selection on view, it is removed from the list so that it will not be in the loop of comparison for the next file to Insert into store. This will decrease the total number of comparison and improve performance, but we have to re-clone the list at the begin of refresh.
