@@ -548,7 +548,7 @@ static void cmd_showcolumn(wordexp_t *parsed_msg, GString *readline_result_strin
 static GList * filepath_lists_for_selection_on_view[2] = {NULL,NULL};
 static GList * filepath_lists_for_selection_on_view_clone;
 //in iconview, select a folder down in the rear part of folder list, and click into the folder, then click up button in toolbar to go back, the original folder will still be selected, but scroll bar will not be scrolled to the selected folder. In treeview, scroll to selected folder works fine. So i use this variable to scroll to the selected item after store filled.
-static GtkTreeIter *lastItemInSelectionList=NULL;
+static GtkTreeIter *firstItemInSelectionList=NULL;
 static GList * stdin_cmd_selection_list=NULL; //selected files used in stdin cmd expansion(or we call it substitution) which replace ending space and %s with selected file names
 static RFM_FileAttributes *stdin_cmd_selection_fileAttributes;
 
@@ -1739,12 +1739,12 @@ static void Iterate_through_fileAttribute_list_to_insert_into_store()
    listElement=g_list_next(listElement);
    }
 
-   if (lastItemInSelectionList && !treeview){
-     GtkTreePath *treePath = gtk_tree_model_get_path(GTK_TREE_MODEL(store), lastItemInSelectionList);
+   if (firstItemInSelectionList && !treeview){
+     GtkTreePath *treePath = gtk_tree_model_get_path(GTK_TREE_MODEL(store), firstItemInSelectionList);
      gtk_icon_view_scroll_to_path(GTK_ICON_VIEW(icon_or_tree_view), treePath,TRUE, 1.0, 1.0);
      gtk_tree_path_free(treePath);
-     gtk_tree_iter_free(lastItemInSelectionList);
-     lastItemInSelectionList = NULL;
+     gtk_tree_iter_free(firstItemInSelectionList);
+     firstItemInSelectionList = NULL;
    }
 }
 
@@ -1818,9 +1818,9 @@ static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,
 	  if (g_strcmp0(fileAttributes->path, selection_filepath_list->data)==0){
 	    g_debug("re-select file during refresh:%s",fileAttributes->path);
 	    treePath=gtk_tree_model_get_path(GTK_TREE_MODEL(store), iter);
-	    if (lastItemInSelectionList==NULL) {
+	    if (firstItemInSelectionList==NULL) {
 	      if (!treeview) gtk_icon_view_set_cursor(GTK_ICON_VIEW(icon_or_tree_view),treePath,NULL,FALSE);
-	      lastItemInSelectionList = gtk_tree_iter_copy(iter);
+	      firstItemInSelectionList = gtk_tree_iter_copy(iter);
 	    }
 	    set_view_selection(icon_or_tree_view, treeview, treePath);
 	    gtk_tree_path_free(treePath);
@@ -2028,12 +2028,12 @@ static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store_if
    }
    else if (insert_fileAttributes_into_store_one_by_one) {
        if (rfm_thumbQueue && mkThumb_thread==NULL) mkThumb_thread = g_thread_new("mkThumbnail", mkThumbLoop, NULL);
-       if (lastItemInSelectionList && !treeview){
-	    GtkTreePath *treePath = gtk_tree_model_get_path(GTK_TREE_MODEL(store), lastItemInSelectionList);
+       if (firstItemInSelectionList && !treeview){
+	    GtkTreePath *treePath = gtk_tree_model_get_path(GTK_TREE_MODEL(store), firstItemInSelectionList);
 	    gtk_icon_view_scroll_to_path(GTK_ICON_VIEW(icon_or_tree_view), treePath,TRUE, 1.0, 1.0);
 	    gtk_tree_path_free(treePath);
-	    gtk_tree_iter_free(lastItemInSelectionList);
-	    lastItemInSelectionList = NULL;
+	    gtk_tree_iter_free(firstItemInSelectionList);
+	    firstItemInSelectionList = NULL;
        }
        In_refresh_store = FALSE;
        gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
@@ -2215,9 +2215,9 @@ static void refresh_store(RFM_ctx *rfmCtx)
      if (!dir) return;
      title=g_strdup(rfm_curPath);
      read_one_file_couter = 0;
-     if (lastItemInSelectionList){
-       gtk_tree_iter_free(lastItemInSelectionList);
-       lastItemInSelectionList=NULL;
+     if (firstItemInSelectionList){
+       gtk_tree_iter_free(firstItemInSelectionList);
+       firstItemInSelectionList=NULL;
      }
      if (insert_fileAttributes_into_store_one_by_one)
        rfm_readDirSheduler=g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, (GSourceFunc)read_one_DirItem_into_fileAttributeList_and_insert_into_store_if_onebyone, dir, (GDestroyNotify)g_dir_close);
