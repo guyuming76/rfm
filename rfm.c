@@ -1434,6 +1434,7 @@ static void refreshThumbnail() {
 
          listElement=g_list_next(listElement);
   }
+  g_list_free_full(selection_GtkTreePath_list, (GDestroyNotify)gtk_tree_path_free);
   if (rfm_thumbQueue && mkThumb_thread==NULL) mkThumb_thread = g_thread_new("mkThumbnail", mkThumbLoop, NULL);
 }
 
@@ -3023,7 +3024,7 @@ static void switch_iconview_treeview(RFM_ctx *rfmCtx) {
   gtk_widget_show_all(window);
   refresh_toolbar();
   set_view_selection_list(icon_or_tree_view, treeview, selectionList);
-  g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);//TODO: find-reference for get_view_selection_list, seems that still other returned list not freed
+  g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
 }
 
 static void Switch_SearchResultView_DirectoryView(GtkToolItem *item,RFM_ctx *rfmCtx)
