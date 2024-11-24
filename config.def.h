@@ -376,7 +376,7 @@ static const RFM_Thumbnailer thumbnailers[] = {
 #define MOD_KEY GDK_SUPER_MASK // the windows logo key
 //#define MOD_KEY GDK_META_MASK // the Alt key
 
-static gboolean ignored_filename(gchar *name){
+static gboolean ignored_filename(const gchar *name){
   if (name[0]=='.' && strstr(name,"./")==NULL) return TRUE; /* Don't show hidden files */
   if (strstr(name,"/.")!=NULL) return TRUE;
   if (strcmp(name, "gmon.out")==0) return TRUE;
