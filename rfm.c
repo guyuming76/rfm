@@ -3641,8 +3641,7 @@ static void sort_on_column(wordexp_t * parsed_msg){
     g_warning("invalid column:%s",parsed_msg->we_wordv[1]);
   else if (col->enumCol==NUM_COLS)
     g_warning("column %s don't have associated storage column", col->title);
-
-  sort_on_column_header(col);
+  else sort_on_column_header(col);
 }
 
 static void print_columns_status(wordexp_t * parsed_msg){
