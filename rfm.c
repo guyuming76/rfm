@@ -1309,7 +1309,6 @@ static void rfm_saveThumbnail(GdkPixbuf *thumb, RFM_ThumbQueueData *thumbData)
    GdkPixbuf *thumbAlpha=NULL;
    gchar *mtime;
    gchar *thumb_path;
-   int ld=0;
    thumbAlpha=gdk_pixbuf_add_alpha(thumb, FALSE, 0, 0, 0);  /* Add a transparency channel: some software expects this */
    thumb_path=g_build_filename(rfm_thumbDir, thumbData->thumb_name, NULL);
    if (thumbAlpha!=NULL) {
@@ -1362,7 +1361,6 @@ static gboolean mkThumb()
    }else {
       gchar *thumb_path=g_build_filename(rfm_thumbDir, thumbData->thumb_name, NULL);
       GList * input_files=NULL;
-      int ld=0;
       input_files=g_list_prepend(input_files, g_strdup(thumbData->path));
       g_spawn_wrapper(thumbnailers[thumbData->t_idx].thumbCmd, input_files, G_SPAWN_STDOUT_TO_DEV_NULL, thumb_path, FALSE, load_thumbnail_as_asyn_callback,thumbData,FALSE);//当async参数设为TRUE的时候,运行多个ffmpeg实例,会产生很多g_warning的错误,包含ffmpeg运行的信息.在之前branch里mkThumb运行于gtk main thread 的时候,也能看到这些g_warning,但没看到对rfm本身造成啥问题.但现在mkThumb运行在单独线程里,会造成rfm 读取标准输入命令出错, 会不停显示新的命令提示符,有时直接就rfm退出了,我不知道为啥.这里async改为false,就没看到这个问题了.
       g_list_free_full(input_files, (GDestroyNotify)g_free);
@@ -3642,7 +3640,7 @@ static void sort_on_column(wordexp_t * parsed_msg){
   if (col==NULL)
     g_warning("invalid column:%s",parsed_msg->we_wordv[1]);
   else if (col->enumCol==NUM_COLS)
-    g_warning("column %s don't have associated storage column");
+    g_warning("column %s don't have associated storage column", col->title);
 
   sort_on_column_header(col);
 }
