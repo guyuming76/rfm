@@ -119,8 +119,8 @@ static FILE *pipeStream=NULL;
 static gint ItemSelected = 0;
 static char *rfm_selection_completion = NULL;
 static GMutex rfm_selection_completion_lock;
-static char selected_filename_placeholder_in_space[32];       //" %s "  by default
-static char selected_filename_placeholder_in_quotation[32];   //"'%s'"  by default
+static char selected_filename_placeholder_in_space[34];       //" %s "  by default
+static char selected_filename_placeholder_in_quotation[34];   //"'%s'"  by default
 static gchar** env_for_g_spawn_used_by_exec_stdin_command=NULL;
 static uint current_stdin_cmd_interpretor = 0;
 static char cmd_to_set_terminal_title[PATH_MAX];
