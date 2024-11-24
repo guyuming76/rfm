@@ -4171,7 +4171,7 @@ static int setup(RFM_ctx *rfmCtx)
    return 0;
 }
 
-
+//别用这个函数参数，RFM_builtinCMD 里传过来的和 g_signal_connect 里传过来的不一样，这里声明的是最初g_signal_connect里用的，但后来RFM_builtinCMD里也用到这个函数了
 static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx)
 {
    int e;
