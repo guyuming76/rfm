@@ -837,7 +837,7 @@ static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_
    if (((child_attribs->runOpts & G_SPAWN_CHILD_INHERITS_STDERR)!=G_SPAWN_CHILD_INHERITS_STDERR) && ((child_attribs->runOpts & G_SPAWN_STDERR_TO_DEV_NULL)!=G_SPAWN_STDERR_TO_DEV_NULL))
      read_char_pipe(child_attribs->stdErr_fd, PIPE_SZ, &child_attribs->stdErr);
    
-   if (!child_attribs->output_read_by_program && ((child_attribs->stdOut && strlen(child_attribs->stdOut)>0) || child_attribs->stdErr && strlen(child_attribs->stdErr)>0)) show_child_output(child_attribs);
+   if (!child_attribs->output_read_by_program && ((child_attribs->stdOut && strlen(child_attribs->stdOut)>0) || (child_attribs->stdErr && strlen(child_attribs->stdErr)>0))) show_child_output(child_attribs);
    //TODO: devPicAndVideo submodule commit f746eaf096827adda06cb2a085787027f1dca027 的错误起源于上面一行代码和RFM_EXEC_FILECHOOSER 的引入。
    if (child_attribs->status==-1) return G_SOURCE_CONTINUE;
 
@@ -2297,7 +2297,7 @@ static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpoin
   gchar* title;
   if(child_StdOut!=NULL) {
     child_StdOut[strcspn(child_StdOut, "\n")] = 0;
-    g_debug("git current branch:%d",child_StdOut);
+    g_debug("git current branch:%s",child_StdOut);
     title=g_strdup_printf("%s [%s]",rfm_curPath,child_StdOut);
   }else{
     title=g_strdup_printf("%s [%s]",rfm_curPath,"detached HEAD");
@@ -2426,7 +2426,7 @@ static void set_env_to_pass_into_child_process(GtkTreeIter *iter, gchar*** env_f
     int i=get_treeviewColumnsIndexByEnum(c);
     if (i>0 && TREEVIEW_COLUMNS[i].Show){
       gchar* env_var_name = strcat(strdup(RFM_ENV_VAR_NAME_PREFIX), TREEVIEW_COLUMNS[i].title);
-      void* env_var_value = NULL;
+      gchar* env_var_value = NULL;
       gtk_tree_model_get(GTK_TREE_MODEL(store), iter, c, &env_var_value, -1);
       if(env_var_value!=NULL){
 	 g_log(RFM_LOG_GSPAWN,G_LOG_LEVEL_DEBUG,"g_environ_setenv %s %s",env_var_name,env_var_value);
