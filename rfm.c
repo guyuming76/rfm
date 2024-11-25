@@ -611,7 +611,7 @@ typedef struct {
 
 typedef struct {
   GtkWidget *toolbar;
-  GtkToolItem **buttons;
+  GtkWidget **buttons;
 } RFM_toolbar;
 
 static GtkWidget *window=NULL;      /* Main window */
