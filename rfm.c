@@ -3560,7 +3560,8 @@ static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
                     
 		    if (treeviewColumn_index_for_order_sequence_item_j<0) {
 		      g_warning("cannot find column %d.",col_enum_at_order_sequence_item_j);
-		      for(int f=j+1; f<G_N_ELEMENTS(order_seq_array);f++) g_free(order_seq_array[f]);
+		      guint c = g_strv_length(order_seq_array);
+		      for(guint f=j+1; f<c;f++) g_free(order_seq_array[f]);
 		      g_strfreev(order_seq_array);
 		      return;
 		    }
