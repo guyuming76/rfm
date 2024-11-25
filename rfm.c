@@ -834,18 +834,18 @@ static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_
    if (child_attribs->output_read_by_program || (((child_attribs->runOpts & G_SPAWN_CHILD_INHERITS_STDOUT)!=G_SPAWN_CHILD_INHERITS_STDOUT) && ((child_attribs->runOpts & G_SPAWN_STDOUT_TO_DEV_NULL)!=G_SPAWN_STDOUT_TO_DEV_NULL)))
      read_char_pipe(child_attribs->stdOut_fd, PIPE_SZ, &child_attribs->stdOut);
 
-   if (((child_attribs->runOpts & G_SPAWN_CHILD_INHERITS_STDERR)!=G_SPAWN_CHILD_INHERITS_STDERR) && ((child_attribs->runOpts & G_SPAWN_STDERR_TO_DEV_NULL)!=G_SPAWN_STDERR_TO_DEV_NULL))
+   if ((((child_attribs->runOpts) & G_SPAWN_CHILD_INHERITS_STDERR)!=G_SPAWN_CHILD_INHERITS_STDERR) && (((child_attribs->runOpts) & G_SPAWN_STDERR_TO_DEV_NULL)!=G_SPAWN_STDERR_TO_DEV_NULL))
      read_char_pipe(child_attribs->stdErr_fd, PIPE_SZ, &child_attribs->stdErr);
    
    if (!child_attribs->output_read_by_program && ((child_attribs->stdOut && strlen(child_attribs->stdOut)>0) || (child_attribs->stdErr && strlen(child_attribs->stdErr)>0))) show_child_output(child_attribs);
    //TODO: devPicAndVideo submodule commit f746eaf096827adda06cb2a085787027f1dca027 的错误起源于上面一行代码和RFM_EXEC_FILECHOOSER 的引入。
    if (child_attribs->status==-1) return G_SOURCE_CONTINUE;
 
-   if (((child_attribs->runOpts & G_SPAWN_CHILD_INHERITS_STDOUT)!=G_SPAWN_CHILD_INHERITS_STDOUT) && ((child_attribs->runOpts & G_SPAWN_STDOUT_TO_DEV_NULL)!=G_SPAWN_STDOUT_TO_DEV_NULL)){
+   if ((((child_attribs->runOpts) & G_SPAWN_CHILD_INHERITS_STDOUT)!=G_SPAWN_CHILD_INHERITS_STDOUT) && (((child_attribs->runOpts) & G_SPAWN_STDOUT_TO_DEV_NULL)!=G_SPAWN_STDOUT_TO_DEV_NULL)){
      g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_DEBUG, "child_supervisor for PID %d, will close stdOut_fd:%d",child_attribs->pid,child_attribs->stdOut_fd);
      close(child_attribs->stdOut_fd);
    }
-   if (((child_attribs->runOpts & G_SPAWN_CHILD_INHERITS_STDERR)!=G_SPAWN_CHILD_INHERITS_STDERR) && ((child_attribs->runOpts & G_SPAWN_STDERR_TO_DEV_NULL!=G_SPAWN_STDERR_TO_DEV_NULL))){
+   if ((((child_attribs->runOpts) & G_SPAWN_CHILD_INHERITS_STDERR)!=G_SPAWN_CHILD_INHERITS_STDERR) && (((child_attribs->runOpts) & G_SPAWN_STDERR_TO_DEV_NULL!=G_SPAWN_STDERR_TO_DEV_NULL))){
      g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_DEBUG, "child_supervisor for PID %d, will close stdErr_fd:%d",child_attribs->pid,child_attribs->stdErr_fd);
      close(child_attribs->stdErr_fd);
    }
