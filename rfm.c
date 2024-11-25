@@ -4138,7 +4138,7 @@ static int setup(RFM_ctx *rfmCtx)
    rfm_historyDirectory_FileLocation = g_build_filename(getenv("HOME"),".rfm_history_directory", NULL);
    history_write_timestamps=TRUE;
    int e;
-   if (e=read_history(rfm_historyFileLocation))
+   if ((e=read_history(rfm_historyFileLocation)))
      g_warning("failed to read_history(%s) error code:%d.",rfm_historyFileLocation,e);
 
    rfm_prePath= getenv("OLDPWD");
@@ -4201,7 +4201,7 @@ static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx)
    //https://unix.stackexchange.com/questions/534657/do-inotify-watches-automatically-stop-when-a-program-ends
    inotify_rm_watch(rfm_inotify_fd, rfm_curPath_wd);
    close(rfm_inotify_fd);
-   if (e=append_history(history_entry_added, rfm_historyFileLocation)){
+   if ((e=append_history(history_entry_added, rfm_historyFileLocation))){
      if (e!=2) g_warning("failed to append_history(%d,%s) error code:%d",history_entry_added,rfm_historyFileLocation,e);
      else if (e=write_history(rfm_historyFileLocation))
        g_warning("failed to write_history(%s) error code:%d", rfm_historyFileLocation,e);
@@ -4692,7 +4692,7 @@ static void showSearchResultExtColumnsBasedOnHashTableValues(){
 
   int i=0;
   gchar* column_sequence;
-  while (column_sequence = searchresultTypes[SearchResultTypeIndexForCurrentExistingSearchResult].showcolumn[i]){
+  while ((column_sequence = searchresultTypes[SearchResultTypeIndexForCurrentExistingSearchResult].showcolumn[i])){
     show_hide_treeview_columns_in_order(column_sequence);
     i++;
   }
