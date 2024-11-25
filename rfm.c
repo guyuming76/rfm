@@ -1276,7 +1276,7 @@ static gint find_thumbnailer(gchar *mime_root, gchar *mime_sub_type, gchar *file
    gint root_sub_idx=-1;
    gint root_idx=-1;
 
-   for(gint i=0;i<G_N_ELEMENTS(thumbnailers);i++) {
+   for(guint i=0;i<G_N_ELEMENTS(thumbnailers);i++) {
      if (thumbnailers[i].filenameSuffix){
        if (g_str_has_suffix(filepath, thumbnailers[i].filenameSuffix)){
 	 if (strcmp(mime_root, thumbnailers[i].thumbRoot)==0 && strcmp(mime_sub_type, thumbnailers[i].thumbSub)==0) {
@@ -2441,7 +2441,7 @@ static void set_env_to_pass_into_child_process(GtkTreeIter *iter, gchar*** env_f
 static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointer user_data)
 {
    GtkTreeIter iter;
-   long int i;
+   guint i;
    long int index_of_default_file_activation_action_based_on_mime_or_searchresultType=-1;
    gchar *msg;
    GList *activated_single_file_list=NULL;//although there is only one file, we need a list here to meet the requirement of g_spawn_wrapper parameter.
@@ -2672,7 +2672,7 @@ static void file_menu_exec(GtkMenuItem *menuitem, RFM_ChildAttribs *childAttribs
 
 
 static void setup_file_menu(RFM_ctx * rfmCtx){
-   gint i;
+   guint i;
    RFM_ChildAttribs *child_attribs;
    
    if (fileMenu.menu==NULL) {
@@ -2721,7 +2721,7 @@ static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx)
    GtkTreeIter iter;
    GList *selectionList;
    GList *listElement;
-   int i;
+   guint i;
    
    RFM_FileAttributes *selection_fileAttributes, *fileAttributes;
    gboolean match_mimeRoot=TRUE, match_mimeSub=TRUE;
@@ -3354,7 +3354,7 @@ static void writeSearchResultIntoFD(gint *fd){
   if (SearchResultViewInsteadOfDirectoryView){
     gboolean firstColumn=TRUE;
     GList* columns=NULL;
-    for (int i=0; i<G_N_ELEMENTS(treeviewColumns);i++){
+    for (guint i=0; i<G_N_ELEMENTS(treeviewColumns);i++){
       if (TREEVIEW_COLUMNS[i].Show && TREEVIEW_COLUMNS[i].enumCol!=NUM_COLS && TREEVIEW_COLUMNS[i].gtkCol){
 	if (firstColumn){
 	  dprintf(*fd, "%s", TREEVIEW_COLUMNS[i].title); //首列输出列标题
@@ -3420,15 +3420,15 @@ static void readlineInSeperateThread(GString * readlineResultStringFromPreviousR
 static void stdin_command_help(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution){
           gboolean for_specific_command = (parsed_msg!=NULL && (parsed_msg->we_wordc!=1));
           if (!for_specific_command) printf("%s",builtinCMD_Help);
-	  for(int i=0;i<G_N_ELEMENTS(builtinCMD);i++){
+	  for(guint i=0;i<G_N_ELEMENTS(builtinCMD);i++){
 	    if (!for_specific_command || (for_specific_command && strcmp(parsed_msg->we_wordv[1], builtinCMD[i].cmd)==0)) printf("    \033[33m%s\033[0m   %s\n", builtinCMD[i].cmd, builtinCMD[i].help_msg); //黄色打印命令名
 	  }
-	  for(int i=0;i<G_N_ELEMENTS(stdin_cmd_interpretors);i++){
+	  for(guint i=0;i<G_N_ELEMENTS(stdin_cmd_interpretors);i++){
 	    if (!for_specific_command || (for_specific_command && strcmp(parsed_msg->we_wordv[1], builtinCMD[i].cmd)==0)) printf("    \033[33m%s\033[0m   %s\n", stdin_cmd_interpretors[i].activationKey, stdin_cmd_interpretors[i].name);
 	  }
 	  printf("\n\033[32m %s\033[0m\n",RFM_SEARCH_RESULT_TYPES);
 	  printf("%s\n", RFM_SEARCH_RESULT_TYPES_HELP);
-	  for(int i=0;i<G_N_ELEMENTS(searchresultTypes);i++){
+	  for(guint i=0;i<G_N_ELEMENTS(searchresultTypes);i++){
 	    if (!for_specific_command || (for_specific_command && strcmp(parsed_msg->we_wordv[1], RFM_SEARCH_RESULT_TYPES)==0)) printf("    \033[34m%s\033[0m   %s\n",searchresultTypes[i].name,searchresultTypes[i].Description);
 	  }
 }
@@ -3472,39 +3472,39 @@ void move_array_item_a_after_b(void * array, int index_b, int index_a, uint32_t 
                 void* temp_array = malloc(array_item_size * array_length);
   
                 if ((index_b+1)>index_a){ //第一,第二种情况  比如 2,1 满足 2+1>1
-			for(guint k=0;k<index_a;k++){   // 0 <- 0    
+			for(int k=0;k<index_a;k++){   // 0 <- 0    
 			  memcpy(temp_array+k*array_item_size, array + k*array_item_size, array_item_size);
 			  g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"[%d] <- [%d]",k,k);
 			}
 			//k=1=col_index
-			for(guint k=index_a+1;k<index_b+1;k++){  // 1 <- 2
+			for(int k=index_a+1;k<index_b+1;k++){  // 1 <- 2
 			  memcpy(temp_array+(k-1)*array_item_size, array+k*array_item_size, array_item_size);
 			  g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"[%d] <- [%d]",k-1,k);
 			}
 			//上面最后一次memcpy,treeviewColumn[baseColumnIndex]也已经复制到了 temptreeviewcolumns[basecolumnindex-1]
 			memcpy(temp_array+index_b*array_item_size, array+index_a*array_item_size, array_item_size); // 2 <- 1
 			g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"[%d] <- [%d]",index_b,index_a);
-			for(guint k=index_b+1; k<array_length;k++){
+			for(int k=index_b+1; k<array_length;k++){
 			  memcpy(temp_array+k*array_item_size, array+k*array_item_size, array_item_size);
 			  g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"[%d] <- [%d]",k,k);
 			}
  		}else{//第四种情况, 比如 1,3 满足 1+1 < 3
-			for(guint k=0;k<index_b+1;k++){ // 0 <- 0   1 <- 1
+			for(int k=0;k<index_b+1;k++){ // 0 <- 0   1 <- 1
 			  memcpy(temp_array+k*array_item_size, array+k*array_item_size, array_item_size);
 			  g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"[%d] <- [%d]",k,k);
 			}
 			memcpy(temp_array+(index_b+1)*array_item_size, array+index_a*array_item_size, array_item_size); // 2 <- 3
 			g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"[%d] <- [%d]",index_b+1,index_a);
-			for(guint k=index_b+1;k<index_a;k++){
+			for(int k=index_b+1;k<index_a;k++){
 			  memcpy(temp_array+(k+1)*array_item_size, array+k*array_item_size, array_item_size); // 3 <- 2
 			  g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"[%d] <- [%d]",k+1,k);
 			}
-			for(guint k=index_a+1;k<array_length;k++){
+			for(int k=index_a+1;k<array_length;k++){
 			  memcpy(temp_array+k*array_item_size, array+k*array_item_size, array_item_size); // 4 <- 4
 			  g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"[%d] <- [%d]",k,k);
 			}
 		}
-		for(guint k=0;k<array_length;k++) //I think i cannot free treeviewcolumns because of the way it's defined in config.h, so i have to copy temptreeviewcolumns back. we may define treeviewcolumns[2,] and use treeviewcolumns[0,] treeviewcolumns[1,] in turn to eliminate this copy. But anyway, not big deal, current way is more readable.
+		for(int k=0;k<array_length;k++) //I think i cannot free treeviewcolumns because of the way it's defined in config.h, so i have to copy temptreeviewcolumns back. we may define treeviewcolumns[2,] and use treeviewcolumns[0,] treeviewcolumns[1,] in turn to eliminate this copy. But anyway, not big deal, current way is more readable.
 			memcpy(array+k*array_item_size, temp_array+k*array_item_size, array_item_size);
 
 		free(temp_array);
@@ -3755,7 +3755,7 @@ static void cmd_setenv(wordexp_t *parsed_msg, GString *readline_result_string_af
 //返回TRUE表示成功匹配为BuiltInCmd并被执行,无论执行成功与否,都不需要在调用Shell来执行了;返回false表示未能识别为builtInCmd,需要进一步处理. 返回true后, GString*参数内存被释放,但调用者仍需将其设为NULL,因为后续处理根据其是否为NULL来判断是否需要继续处理(比如是否需要发送到Shell执行)
 static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution){
 
-        for(int i=0;i<G_N_ELEMENTS(builtinCMD);i++){
+        for(guint i=0;i<G_N_ELEMENTS(builtinCMD);i++){
 	  if (g_strcmp0(parsed_msg->we_wordv[0], builtinCMD[i].cmd)==0) {
 	        builtinCMD[i].action(parsed_msg,readline_result_string_after_file_name_substitution);
 		add_history_after_stdin_command_execution(readline_result_string_after_file_name_substitution);
@@ -3851,7 +3851,7 @@ static int MatchSearchResultType(gchar* readlineResult){
             gint len = strlen(readlineResult);
 	    if (len<=2) return -1; // the shortest suffix is >0 or >1 ...
 
-	    for(int i=0; i<G_N_ELEMENTS(searchresultTypes); i++){
+	    for(guint i=0; i<G_N_ELEMENTS(searchresultTypes); i++){
 
 	      char* searchTypeNumberSuffix=calloc(256,sizeof(char));//RFM_SearchResultTypeNamePrefix can be long, but less then 256- 
 	      sprintf(searchTypeNumberSuffix,"%s%d",RFM_SearchResultTypeNamePrefix,i);
@@ -3899,12 +3899,12 @@ static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult)
             }else
                 lastEnter=now_time;
 	}else{
-	    for (int i=0;i<G_N_ELEMENTS(regex_rules);i++){
+	    for (guint i=0;i<G_N_ELEMENTS(regex_rules);i++){
 	      if (regex_rules[i].pattern_compiled && str_regex_replace(&readlineResult, regex_rules[i].pattern_compiled, regex_rules[i].replacement) && regex_rules[i].action) (regex_rules[i].action)();
 	    }
 	    len = strlen(readlineResult);
 	    
-            for(int i=0;i<G_N_ELEMENTS(stdin_cmd_interpretors);i++){
+            for(guint i=0;i<G_N_ELEMENTS(stdin_cmd_interpretors);i++){
 	      if (g_strcmp0(readlineResult, stdin_cmd_interpretors[i].activationKey)==0){
 		current_stdin_cmd_interpretor = i;
 		goto switchToReadlineThread;//如果当前输入命令是选择命令解释器,选择完后就直接进入一轮命令读取,无需再对当前输入命令进一步处理
@@ -4228,7 +4228,7 @@ static void die(const char *errstr, ...) {
 
 
 static void regcomp_for_regex_rules(){
-   for(int i=0;i<G_N_ELEMENTS(regex_rules);i++){
+   for(guint i=0;i<G_N_ELEMENTS(regex_rules);i++){
        regex_t *regex = calloc(1, sizeof(regex_t));
        int c;
        //https://www.gnu.org/software/sed/manual/html_node/Character-Classes-and-Bracket-Expressions.html#Character-Classes-and-Bracket-Expressions
@@ -4541,7 +4541,7 @@ static int ProcessKeyValuePairInData(GKeyFile *keyfile, char* groupname){
    char currentColumnOriginalTitle[10];
    sprintf(currentColumnOriginalTitle,"C%d", currentPageStartingColumnTitleIndex);
 
-   for(int i=0; i<size; i++){
+   for(gsize i=0; i<size; i++){
        RFM_treeviewColumn * col;
        enum RFM_treeviewCol current_Ext_Column;
        if (col=get_treeviewColumnByTitle(keys[i])){ //已经有同名列了
@@ -4588,7 +4588,7 @@ static int CallMatchingProcessorForSearchResultLine(char *oneline, gboolean new_
      return;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
    }
 
-   for(int i=0; i<G_N_ELEMENTS(searchresultTypes); i++){
+   for(guint i=0; i<G_N_ELEMENTS(searchresultTypes); i++){
      if (g_str_has_suffix(oneline, searchresultTypes[i].name) || g_strcmp0(fileAttributes->mime_sort, searchresultTypes[i].name)==0){
        searchresultTypes[i].SearchResultLineProcessingFunc(oneline,new_search,searchresultTypes[i].cmdTemplate, fileAttributes);
        break;
@@ -4767,8 +4767,10 @@ static gboolean startWithVT(){
 #ifdef RFM_FILE_CHOOSER
 GList* str_array_ToGList(char* a[]){
   GList * ret = NULL;
-  if (a!=NULL)
-    for(int i=0;i<G_N_ELEMENTS(a);i++) ret=g_list_prepend(ret, a[i]);
+  if (a!=NULL){
+    guint c=g_strv_length(a);
+    for(guint i=0;i<c;i++) ret=g_list_prepend(ret, a[i]);
+  }
   return ret;
 }
 
@@ -4865,7 +4867,8 @@ static gchar** rfmFileChooser_CMD(enum rfmTerminal startWithVT, gchar* search_cm
 
     if (defaultFileSelection != NULL){
       strcat(shell_cmd_buffer, " -d");
-      for(int i=0; i<G_N_ELEMENTS(defaultFileSelection); i++)
+      guint c = g_strv_length(defaultFileSelection);
+      for(guint i=0; i<c; i++)
 	if (defaultFileSelection[i]!=NULL && strlen(defaultFileSelection[i])>0){
 	  strcat(shell_cmd_buffer, " ");
 	  strcat(shell_cmd_buffer, defaultFileSelection[i]);
