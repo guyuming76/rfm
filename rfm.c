@@ -4684,7 +4684,7 @@ static void showSearchResultExtColumnsBasedOnHashTableValues(){
 	     show_hide_treeview_columns_enum(3, previousColumn,i,INT_MAX);
 	     if (first_line_column_title){
 	       RFM_treeviewColumn *col = get_treeviewColumnByEnum(i);
-	       sprintf(col->title,"%s",g_hash_table_lookup(ExtColumnHashTable[i-COL_Ext1], "1"));
+	       sprintf(col->title,"%s",(char*)g_hash_table_lookup(ExtColumnHashTable[i-COL_Ext1], "1"));
 	     }
 	     previousColumn = i;
 	   }
@@ -4737,7 +4737,7 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
   }
   SearchResultFileNameListLength=0;
   fileAttributeID=1;
-  g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"update_SearchResultFileNameList, length: %d charactor(s)",filenamelist?strlen((gchar*)filenamelist):0);
+  g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"update_SearchResultFileNameList, length: %ld charactor(s)",filenamelist?strlen((gchar*)filenamelist):0);
   gchar * oneline=strtok((gchar*)filenamelist,"\n");
   while (oneline!=NULL){
     searchresultTypes[SearchResultTypeIndex].SearchResultLineProcessingFunc(oneline, TRUE, searchresultTypes[SearchResultTypeIndex].cmdTemplate,NULL);
