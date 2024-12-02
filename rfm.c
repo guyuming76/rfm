@@ -3421,15 +3421,23 @@ static void stdin_command_help(wordexp_t * parsed_msg, GString* readline_result_
           gboolean for_specific_command = (parsed_msg!=NULL && (parsed_msg->we_wordc!=1));
           if (!for_specific_command) printf("%s",builtinCMD_Help);
 	  for(guint i=0;i<G_N_ELEMENTS(builtinCMD);i++){
-	    if (!for_specific_command || (for_specific_command && strcmp(parsed_msg->we_wordv[1], builtinCMD[i].cmd)==0)) printf("    \033[33m%s\033[0m   %s\n", builtinCMD[i].cmd, builtinCMD[i].help_msg); //黄色打印命令名
+	    if (!for_specific_command || (for_specific_command && strcmp(parsed_msg->we_wordv[1], builtinCMD[i].cmd)==0)) {
+	      printf("    \033[33m%s\033[0m   %s\n", builtinCMD[i].cmd, builtinCMD[i].help_msg); //黄色打印命令
+	    }
 	  }
 	  for(guint i=0;i<G_N_ELEMENTS(stdin_cmd_interpretors);i++){
-	    if (!for_specific_command || (for_specific_command && strcmp(parsed_msg->we_wordv[1], builtinCMD[i].cmd)==0)) printf("    \033[33m%s\033[0m   %s\n", stdin_cmd_interpretors[i].activationKey, stdin_cmd_interpretors[i].name);
+	    if (!for_specific_command){
+	      printf("    \033[33m%s\033[0m   %s\n", stdin_cmd_interpretors[i].activationKey, stdin_cmd_interpretors[i].name);
+	    }
 	  }
-	  printf("\n\033[32m %s\033[0m\n",RFM_SEARCH_RESULT_TYPES);
-	  printf("%s\n", RFM_SEARCH_RESULT_TYPES_HELP);
+          if (!for_specific_command){
+	    printf("\n\033[32m %s\033[0m\n",RFM_SEARCH_RESULT_TYPES);
+	    printf("%s\n", RFM_SEARCH_RESULT_TYPES_HELP);
+	  }
 	  for(guint i=0;i<G_N_ELEMENTS(searchresultTypes);i++){
-	    if (!for_specific_command || (for_specific_command && strcmp(parsed_msg->we_wordv[1], RFM_SEARCH_RESULT_TYPES)==0)) printf("    \033[34m%s\033[0m   %s\n",searchresultTypes[i].name,searchresultTypes[i].Description);
+	    if (!for_specific_command || (for_specific_command && strcmp(parsed_msg->we_wordv[1], searchresultTypes[i].name)==0)) {
+	      printf("    \033[34m%s\033[0m   %s\n",searchresultTypes[i].name,searchresultTypes[i].Description);
+	    }
 	  }
 }
 
