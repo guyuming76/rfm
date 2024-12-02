@@ -4612,7 +4612,7 @@ static void ReadFromPipeStdinIfAny(char * fd)
          if (initDir!=NULL && (SearchResultViewInsteadOfDirectoryView^1)) die("if you have -d specified, and read file name list from pipeline, -p parameter must goes BEFORE -d\n");
 	 SearchResultViewInsteadOfDirectoryView=1;
 	 SearchResultTypeIndex=1;
-	 SearchResultTypeIndexForCurrentExistingSearchResult=1;
+	 SearchResultTypeIndexForCurrentExistingSearchResult=0;
 	 fileAttributeID=1;
 	 gchar *oneline_stdin=calloc(1,PATH_MAX);
 	 FILE *pipeStream = stdin;
