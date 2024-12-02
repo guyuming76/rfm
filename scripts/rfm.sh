@@ -30,10 +30,10 @@ if [[ -z "$RFM_TERM" ]];then
 	done
 
 	export RFM_TERM=$(basename $(ps -p $current_pid -o cmd --no-header))
-	echo "env RFM_TERM set to current terminal emulator:" $RFM_TERM
+	echo "env RFM_TERM set to current terminal emulator:" $RFM_TERM  >&2
 
 else
-	echo "env RFM_TERM is: " $RFM_TERM
+	echo "env RFM_TERM is: " $RFM_TERM  >&2
 fi
 
 rfm "$@"
