@@ -1,0 +1,24 @@
+Expunge None
+Create Near
+SyncState *
+
+IMAPAccount 139
+Host imap.139.com
+User 136xxxxxxxx
+Pass xxxxxxxx
+SSLType IMAPS
+CertificateFile /etc/ssl/certs/ca-certificates.crt
+
+MaildirStore local
+Path ~/Mail/
+MapInbox Inbox
+Subfolders Verbatim
+
+IMAPStore 139
+Account 139
+
+Channel guyuming139
+Far :139:
+Near :local:139
+Patterns *
+CopyArrivalDate yes
