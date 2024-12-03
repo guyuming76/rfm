@@ -84,6 +84,8 @@ static const char *term_cmd[]  = { "$RFM_TERM", NULL };
 static const char *new_rfm[]  = { "$RFM_TERM", rfmBinPath "rfm", NULL };
 static const char *share_dir[] = { "$RFM_TERM", rfmBinPath "rfmShareDir.sh", NULL };
 static const char *muview[] = { "mu", "view", NULL };
+static const char *launch_desktop[] = { "dex", "--term", "$RFM_TERM", NULL };
+//TODO: to get thumbnail from .desktop file
 #ifdef GitIntegration
 static const char *git_inside_work_tree_cmd[] = {"/usr/bin/git", "rev-parse","--is-inside-work-tree", NULL};
 static const char *git_ls_files_cmd[] = {"/usr/bin/git", "ls-files", "--full-name",NULL};
@@ -153,6 +155,7 @@ static RFM_MenuItem run_actions[] = {
    { RunActionChangeOwner,"*",         "*",                    NULL,			NULL,			NULL,		change_owner,                   NULL },
    { "Open",         "message",        "rfc822",               NULL,			"muview",               NULL,		muview,                         NULL },
    { "Open",         "image",          "*",                    NULL,			NULL,			NULL,		show_image,       		NULL },
+   { "Open",         "application",    "x-desktop",            NULL,                    NULL,                   NULL,           launch_desktop,                 NULL },
    { "Open",         "application",    "vnd.oasis.opendocument.text",          NULL,	NULL,			NULL,		soffice,  			NULL },
    { "Open",         "application",    "vnd.oasis.opendocument.spreadsheet",   NULL,	NULL,			NULL,		soffice,  			NULL },
    { "Open",         "application",    "vnd.openxmlformats-officedocument.wordprocessingml.document",NULL, NULL,NULL,		soffice,  			NULL },
