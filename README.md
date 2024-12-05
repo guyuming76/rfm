@@ -107,6 +107,9 @@ rfm加 -r 参数就可以在退出时通过命名管道返回选中文件名列�
 
 # 使用rfm的一些场景 #
 
+## rfm开发测试问题列表 ##
+github, gitee 等自带的issue列表是和商业网站绑定的，如果有一天，你想换个地方host仓库，例如自己架设一个 gitolite 网站，原来的issue是带不走的。我在rfm代码仓库下面建了一个子仓库，用来保存文档，如开发测试中遇到的问题的截屏，同时用来展示rfm处理SearchResult的功能(参见rfm启动时显示的帮助)。rfm config.def.h里面定义了命令别名 rfmTODO, 在clone rfm代码仓库时使用--recurse-submodules参数，或者使用`git submodule update --init --recursive`命令把这个子仓库clone到本地，就可以在rfm里使用rfmTODO命令查看问题列表(你可能还需要运行sudo updatedb,因为rfmTODO使用了locate命令):![如图](20241205_18h03m17s_grim.png)
+
 ## https://gitee.com/guyuming76/mineral ##
 
 ## https://gitee.com/guyuming76/guyuming_garden ##
