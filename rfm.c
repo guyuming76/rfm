@@ -877,7 +877,7 @@ static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_
 	 msg=g_strdup_printf("%s (pid: %i): finished with exit code %i.\n%s\n", child_attribs->name, child_attribs->pid, child_attribs->exitcode, child_attribs->stdErr);
        }
        if (startWithVT()){
-	 fprintf(stderr, msg);
+	 fprintf(stderr,"%s", msg);
        }else{
 	 if (strlen(msg) > RFM_MX_MSGBOX_CHARS){
 	   memcpy(msg[RFM_MX_MSGBOX_CHARS - 35],"......message too long to show\0",31);
