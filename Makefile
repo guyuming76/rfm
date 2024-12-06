@@ -22,7 +22,7 @@ endif
 CPPFLAGS += -D_FILE_OFFSET_BITS=64
 
 INCS = -I. -I/usr/include
-LIBS += -L/usr/lib `pkg-config --libs ${GTK_VERSION} readline`
+LIBS += -L/usr/lib `pkg-config --libs ${GTK_VERSION} readline gio-unix-2.0`
 ifneq (${extractKeyValuePairFromMarkdown},)
 LIBS += `pkg-config --libs libcmark`
 endif

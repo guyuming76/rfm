@@ -32,6 +32,7 @@
 #include <wordexp.h>
 #include <stdarg.h>
 #include <regex.h>
+#include <gio/gdesktopappinfo.h>
 
 #define INOTIFY_MASK IN_MOVE|IN_CREATE|IN_CLOSE_WRITE|IN_DELETE|IN_DELETE_SELF|IN_MOVE_SELF
 #define PIPE_SZ 65535      /* Kernel pipe size */
@@ -249,6 +250,7 @@ typedef struct {
    pid_t rfm_pid;
    gint thumb_size;
    guint g_source_id_for_load_thumbnail;
+   GDesktopAppInfo *appInfoFromDesktopFile;
 } RFM_ThumbQueueData;
 
 typedef struct {
@@ -750,6 +752,7 @@ char * get_drwxrwxrwx(mode_t st_mode){
 static void free_thumbQueueData(RFM_ThumbQueueData *thumbData)
 {
    if (thumbData->g_source_id_for_load_thumbnail>0) g_source_remove(thumbData->g_source_id_for_load_thumbnail);
+   if (thumbData->appInfoFromDesktopFile) g_free(thumbData->appInfoFromDesktopFile);
    g_free(thumbData->uri);
    g_free(thumbData->path);
    g_free(thumbData->md5);
@@ -1395,6 +1398,19 @@ static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter)
      return NULL;
    }
 
+   if (strcmp(fileAttributes->mime_sub_type,"x-desktop")==0 && strcmp(fileAttributes->mime_root,"application")==0){
+     thumbData->appInfoFromDesktopFile = g_desktop_app_info_new (fileAttributes->file_name);
+     if (thumbData->appInfoFromDesktopFile)
+       g_log(RFM_LOG_DATA_THUMBNAIL, G_LOG_LEVEL_DEBUG, "create GDesktopAppInfo for desktop file:%s", fileAttributes->path);
+     else{
+       g_warning("Failed to create GDesktopAppInfo for desktop file:%s", fileAttributes->path);
+       //g_log(RFM_LOG_DATA_THUMBNAIL, G_LOG_LEVEL_DEBUG, "Failed to create GDesktopAppInfo for desktop file:%s", fileAttributes->path);
+       free(thumbData);
+       thumbData=NULL;
+     }
+     return thumbData;
+   }
+
    thumbData->t_idx=find_thumbnailer(fileAttributes->mime_root, fileAttributes->mime_sub_type, fileAttributes->path);
    if (thumbData->t_idx==-1) {
       free(thumbData);
@@ -1633,7 +1649,27 @@ static void iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_and_l
 static void load_thumbnail_or_enqueue_thumbQueue_for_store_row(GtkTreeIter *iter){
       RFM_ThumbQueueData *thumbData=NULL;
       thumbData=get_thumbData(iter); /* Returns NULL if thumbnail not handled */
-      if (thumbData!=NULL) {
+
+      if (thumbData && thumbData->appInfoFromDesktopFile) {
+	GIcon *appIcon = g_app_info_get_icon( thumbData->appInfoFromDesktopFile );
+	if (appIcon){
+	  const gchar *type_name = G_OBJECT_TYPE_NAME(appIcon);
+	  g_log(RFM_LOG_DATA_THUMBNAIL, G_LOG_LEVEL_DEBUG, "create %s for GDesktopAppInfo:%s", type_name? type_name:"NULL", g_desktop_app_info_get_filename(thumbData->appInfoFromDesktopFile));
+	  if (strcmp(type_name,"GThemedIcon")==0){
+	    char **icon_names = g_themed_icon_get_names(appIcon);
+	    if (icon_names){
+	      GdkPixbuf *pixbuf = gtk_icon_theme_load_icon(icon_theme, icon_names[0], RFM_ICON_SIZE, GTK_ICON_LOOKUP_GENERIC_FALLBACK, NULL);
+	      g_log(RFM_LOG_DATA_THUMBNAIL, G_LOG_LEVEL_DEBUG, "create GdkPixbuf for themed icon:%s", icon_names[0]);
+	      if (pixbuf){
+		gtk_list_store_set (store, iter, COL_PIXBUF, pixbuf, -1);
+		g_object_unref(pixbuf);
+	      }
+	    }
+	  }
+	}
+	free_thumbQueueData(thumbData);
+
+      }else if (thumbData){
          /* Try to load any existing thumbnail */
 	int ld=load_thumbnail(thumbData, (strncmp(rfm_thumbDir, thumbData->path, strlen(rfm_thumbDir))==0), thumbnailers[thumbData->t_idx].check_tEXt); //如同get_thumbData函数里面同样的逻辑, thumbData->path 在 rfm_thumbDir, 就视为显示thumbnail本身,而不是将其视作其他图片的thumbnail
 	 if ( ld == 0) { /* Success: thumbnail exists in cache and is valid */
