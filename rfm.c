@@ -4435,7 +4435,7 @@ static int ProcessOnelineForSearchResult(char* oneline, gboolean new_search){
 
 static int ProcessOnelineForSearchResult_with_title(char* oneline, gboolean new_search){
   first_line_column_title = TRUE;
-  ProcessOnelineForSearchResult_internel(oneline, new_search, first_line_column_title);
+  return ProcessOnelineForSearchResult_internel(oneline, new_search, first_line_column_title);
 }
 
 // default search result processing function
