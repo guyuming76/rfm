@@ -4394,7 +4394,7 @@ int main(int argc, char *argv[])
 
 static int ProcessOnelineForSearchResult(char* oneline, gboolean new_search){
   first_line_column_title = FALSE;
-  ProcessOnelineForSearchResult_internel(oneline, new_search, first_line_column_title);
+  return ProcessOnelineForSearchResult_internel(oneline, new_search, first_line_column_title);
 }
 
 static int ProcessOnelineForSearchResult_with_title(char* oneline, gboolean new_search){
