@@ -793,8 +793,11 @@ static void rfm_stop_all(RFM_ctx *rfmCtx) {
      mkThumb_thread=NULL;
      mkThumb_stop = FALSE;
    }
-   g_list_free_full(rfm_thumbQueue, (GDestroyNotify)free_thumbQueueData);
-   rfm_thumbQueue=NULL;
+   if (rfm_thumbQueue){
+     rfm_thumbQueue = g_list_first(rfm_thumbQueue);
+     g_list_free_full(rfm_thumbQueue, (GDestroyNotify)free_thumbQueueData);
+     rfm_thumbQueue=NULL;
+   }
 
    gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
 }
