@@ -11,7 +11,7 @@
 #define RunActionGitStage "git stage"
 #define RunActionRefreshThumb "Refresh Thumbnail"
 #define Paste "Paste"
-#define MoveTo "MoveToHere"
+#define MoveTo "MoveHere"
 #define LinkTo "SoftLink"
 #define RunActionChangeOwner "ChangeOwner"
 #define SwitchPipeDir  "Pipe/Dir"
