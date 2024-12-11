@@ -51,6 +51,8 @@
 #define builtinCMD_Help \
 "\n\033[32m system views: \033[0m\n" \
 "    with difference in data source, two types of view can be shown, one is current directory view, with the left-most toolbar button showing its path(and git branch). The other is search result view. You can switch between these two views with the left-most toolbar button.\n" \
+"    hidden files will not appear in current directory view, to see them, use command ls -a>0to show them in search result view.\n" \
+"    search result view show files in pages, if some directory contains to many files, view them in search result view to improve performance. \n" \
 "    with difference in layout, there are also two types of view: icon view and list view, icons such as picture thumbnails are shown in icon view.\n" \
 "\n\033[32m command prompt: \033[0m\n" \
 "    b*> means there is selected file(s) in rfm view, and current command interpreter is Bash, which can be configured in config.h\n" \
