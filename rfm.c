@@ -621,7 +621,6 @@ static GtkWidget *rfm_main_box;
 static GtkWidget *scroll_window = NULL;
 static GtkWidget * PathAndRepositoryNameDisplay;
 static RFM_toolbar *tool_bar = NULL;
-static GtkAccelGroup *agMain = NULL;
 
 static void up_clicked(gpointer user_data);
 static void home_clicked(gpointer user_data);
@@ -2870,7 +2869,19 @@ static gboolean view_key_press(GtkWidget *widget, GdkEvent *event,RFM_ctx *rfmCt
     return TRUE;
   } else if (ek->keyval == GDK_KEY_Tab){
     g_message("This is the command window");
+  } else {
+    for (int i = 0; i < G_N_ELEMENTS(tool_buttons); i++) {
+      if (tool_buttons[i].Accel &&
+	  ek->keyval == tool_buttons[i].Accel &&
+          (ek->state & GDK_MOD1_MASK) == GDK_MOD1_MASK &&
+          ((SearchResultViewInsteadOfDirectoryView && tool_buttons[i].showInSearchResultView) || (!SearchResultViewInsteadOfDirectoryView && tool_buttons[i].showInDirectoryView)) &&
+          (tool_buttons[i].showCondition == NULL || tool_buttons[i].showCondition())) {
+        tool_buttons[i].func(rfmCtx);
+        return TRUE;
+      }
+    }
   }
+
   return FALSE;
 }
 
@@ -2948,9 +2959,6 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
    gtk_toolbar_set_style(GTK_TOOLBAR(tool_bar->toolbar), GTK_TOOLBAR_ICONS);
    gtk_box_pack_start(GTK_BOX(rfm_main_box), tool_bar->toolbar, FALSE, FALSE, 0);
 
-   if (!agMain) agMain = gtk_accel_group_new();
-   gtk_window_add_accel_group(GTK_WINDOW(window), agMain);
-
    //we add the following toolbutton here instead of define in config.def.h because we need its global reference.
    PathAndRepositoryNameDisplay = gtk_tool_button_new(NULL,rfm_curPath);
    gtk_toolbar_insert(GTK_TOOLBAR(tool_bar->toolbar), PathAndRepositoryNameDisplay, -1);
@@ -2968,8 +2976,6 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
 
        tool_bar->buttons[i]=gtk_tool_button_new(buttonImage, tool_buttons[i].buttonName);
        gtk_toolbar_insert(GTK_TOOLBAR(tool_bar->toolbar), tool_bar->buttons[i], -1);
-       //https://discourse.gnome.org/t/hotkey-defined-with-gtk-widget-add-accelerator-wont-work-when-button-collapsed/23203
-       if(tool_buttons[i].Accel) gtk_widget_add_accelerator(GTK_WIDGET(tool_bar->buttons[i]), "clicked", agMain,tool_buttons[i].Accel, MOD_KEY, GTK_ACCEL_VISIBLE);
        if(tool_buttons[i].tooltip!=NULL) gtk_tool_item_set_tooltip_text(tool_bar->buttons[i],tool_buttons[i].tooltip);
 
       RFM_ChildAttribs *child_attribs = calloc(1,sizeof(RFM_ChildAttribs));
