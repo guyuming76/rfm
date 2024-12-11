@@ -677,6 +677,8 @@ typedef struct {
 
 RFM_fileMenu fileMenu;
 
+#define SHOW_TOOLBAR_BUTTON(i) (((SearchResultViewInsteadOfDirectoryView && tool_buttons[i].showInSearchResultView) || (!SearchResultViewInsteadOfDirectoryView && tool_buttons[i].showInDirectoryView)) && (tool_buttons[i].showCondition == NULL || tool_buttons[i].showCondition()))
+
 /**************gtk UI, filemenu, toolbar end**************************/
 
 
@@ -2874,8 +2876,7 @@ static gboolean view_key_press(GtkWidget *widget, GdkEvent *event,RFM_ctx *rfmCt
       if (tool_buttons[i].Accel &&
 	  ek->keyval == tool_buttons[i].Accel &&
           (ek->state & GDK_MOD1_MASK) == GDK_MOD1_MASK &&
-          ((SearchResultViewInsteadOfDirectoryView && tool_buttons[i].showInSearchResultView) || (!SearchResultViewInsteadOfDirectoryView && tool_buttons[i].showInDirectoryView)) &&
-          (tool_buttons[i].showCondition == NULL || tool_buttons[i].showCondition())) {
+          SHOW_TOOLBAR_BUTTON(i)) {
         tool_buttons[i].func(rfmCtx);
         return TRUE;
       }
@@ -2934,13 +2935,8 @@ static void refresh_toolbar()
 {
    gtk_widget_show(PathAndRepositoryNameDisplay);
    for (guint i = 0; i < G_N_ELEMENTS(tool_buttons); i++) {
-     if ((SearchResultViewInsteadOfDirectoryView && tool_buttons[i].showInSearchResultView) || (!SearchResultViewInsteadOfDirectoryView && tool_buttons[i].showInDirectoryView)){
-       if (tool_buttons[i].showCondition == NULL || tool_buttons[i].showCondition())
-	 gtk_widget_show(tool_bar->buttons[i]);
-       else
-	 gtk_widget_hide(tool_bar->buttons[i]);
-     }else
-       gtk_widget_hide(tool_bar->buttons[i]);
+     if (SHOW_TOOLBAR_BUTTON(i)) gtk_widget_show(tool_bar->buttons[i]);
+     else gtk_widget_hide(tool_bar->buttons[i]);
    }
 }
 
