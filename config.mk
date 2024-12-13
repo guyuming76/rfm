@@ -5,8 +5,8 @@ rfmBinPath =\"${PREFIX}/bin/\"
 #rfmBinPath = \"\"
 # you can set rfmBinPath to \"\" if you want to use executable or scripts in search path
 
-languageInclude = Chinese.h
-#languageInclude = English.h
+#languageInclude = Chinese.h
+languageInclude = English.h
 
 GitIntegration = -DGitIntegration
 #GitIntegration =

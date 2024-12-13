@@ -1,3 +1,14 @@
+This read me is still in Chinese, I don't have enough time/motivation to keep English readme now. Anyway, there is English UI and help, which is kept in English.h file, you can view the help after launching with rfm.sh. And you can refer to https://github.com/padgettr/rfm , the project i forked
+
+# installation #
+after git clone
+
+```
+make
+make install
+```
+
+
 # 视频链接 #
 https://www.bilibili.com/video/BV1vM411d7pu/?share_source=copy_web&vd_source=69ac2f08a55f7029fc7026bcf6b55e11
 
