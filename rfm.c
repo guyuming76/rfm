@@ -2957,6 +2957,7 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
 
    //we add the following toolbutton here instead of define in config.def.h because we need its global reference.
    PathAndRepositoryNameDisplay = gtk_tool_button_new(NULL,rfm_curPath);
+   gtk_tool_item_set_tooltip_text(PathAndRepositoryNameDisplay, TOOL_TIP_PathAndRepositoryNameDisplay);
    gtk_toolbar_insert(GTK_TOOLBAR(tool_bar->toolbar), PathAndRepositoryNameDisplay, -1);
    g_signal_connect(PathAndRepositoryNameDisplay, "clicked", G_CALLBACK(Switch_SearchResultView_DirectoryView),rfmCtx);
    

@@ -19,6 +19,8 @@
 
 #define PipeTitle "当前:%d/总数:%d, 每葉:%d"
 
+#define TOOL_TIP_PathAndRepositoryNameDisplay "点击在目录视图和搜索结果间切换，或使用//命令; pagesize 命令设置每葉条数"
+
 #define PRESS_ENTER_TO_CLOSE_WINDOW "按回车键关闭当前窗口"
 
 #define BuiltInCmd_SearchResultColumnSeperator "SearchResultColumnSeperator"
