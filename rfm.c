@@ -27,8 +27,13 @@
 #include <glib-unix.h>
 #include <mntent.h>
 #include <icons.h>
+#ifdef GNU_readline
 #include <readline/readline.h>
 #include <readline/history.h>
+#endif
+#ifdef LINENOISE
+#include <linenoise.h>
+#endif
 #include <wordexp.h>
 #include <stdarg.h>
 #include <regex.h>
@@ -142,8 +147,14 @@ static guint history_entry_added=0;
 static char *rfm_historyFileLocation;
 static char *rfm_historyDirectory_FileLocation;
 static gboolean showHelpOnStart = TRUE;
+static char **rfm_filename_completion(const char *text);
+#ifdef GNU_readline
+static char** gnu_readline_completion(const char *text, int start, int end);
 static char** (*OLD_rl_attempted_completion_function)(const char *text, int start, int end);
-static char **rfm_filename_completion(const char *text, int start, int end);
+#endif
+#ifdef LINENOISE
+void linenoise_completion(const char *buf, linenoiseCompletions *lc);
+#endif
 void handle_commandline_argument(char* arg);
 int readlink_proc_self_fd_pipefd_and_confirm_pipefd_is_used_by_pipeline();
 void ensure_fd0_is_opened_for_stdin_inherited_from_parent_process_instead_of_used_by_pipeline_any_more();
@@ -2384,8 +2395,13 @@ static void set_rfm_curPath(gchar* path)
    //int e;
 
    if (path==NULL) return;
+#ifdef GNU_readline
    add_history(g_strconcat("cd ", path, NULL));
    add_history_timestamp();
+#endif
+#ifdef LINENOISE
+   linenoiseHistoryAdd(g_strconcat("cd ", path, NULL));
+#endif
    history_entry_added++;
    //TODO: i want to add this path into ~/.rfm_historyDirectory file as well as current history list, so that it can be use by 'read -e' in bash scripts. How?
    //TODO: in future if we need some directory specific history file, we may check that if the directory contains .rfm_history file, it will use this local history, otherwise, use the default global history file.
@@ -3281,6 +3297,7 @@ static void free_default_pixbufs(RFM_defaultPixbufs *defaultPixbufs)
    g_free(defaultPixbufs);
 }
 
+#ifdef GNU_readline
 static void add_history_timestamp(){
     time_t now;
     struct tm *local;
@@ -3295,14 +3312,25 @@ static void add_history_timestamp(){
         g_warning("strftime failed\n");
     }else add_history_time(iso_date);
 }
+#endif
 
 static void add_history_after_stdin_command_execution(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution){
-	  add_history(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str);
+#ifdef GNU_readline           
+          add_history(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str);
 	  add_history_timestamp();
+#endif
+#ifdef LINENOISE
+          linenoiseHistoryAdd(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str);
+#endif
           history_entry_added++;
 	  if (OriginalReadlineResult!=NULL && g_strcmp0(OriginalReadlineResult, readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str)!=0){ //with rfm -x , Originalreadlineresult can be null here
+#ifdef GNU_readline
 	    add_history(OriginalReadlineResult);
 	    add_history_timestamp();
+#endif
+#ifdef LINENOISE
+            linenoiseHistoryAdd(OriginalReadlineResult);
+#endif
             history_entry_added++;
 	  }
           g_string_free(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution,TRUE);
@@ -3453,7 +3481,14 @@ static void readlineInSeperateThread(GString * readlineResultStringFromPreviousR
     else strcat(prompt,exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread ? "*]":"*>");
     g_free(OriginalReadlineResult);
     int i=0;
-    while ((OriginalReadlineResult = readline(prompt))==NULL){ g_debug("readline return null, %d",i++);}
+    while ((OriginalReadlineResult = 
+#ifdef GNU_readline
+      readline(prompt)
+#endif
+#ifdef LINENOISE
+      linenoise(prompt)
+#endif
+	    )==NULL){ g_debug("readline return null, %d",i++);}
 
     stdin_command_Scheduler = g_idle_add_once(parse_and_exec_stdin_command_in_gtk_thread, strdup(OriginalReadlineResult));
   }
@@ -3707,8 +3742,13 @@ static void print_columns_status(wordexp_t * parsed_msg){
 
 	    printf(SHOWCOLUMN_USAGE);
 	    gchar* cmd=get_showcolumn_cmd_from_currently_displaying_columns();
+#ifdef GNU_readline
 	    add_history(cmd);
 	    add_history_timestamp();
+#endif
+#ifdef LINENOISE
+            linenoiseHistoryAdd(cmd);
+#endif
             history_entry_added++;
 	    g_free(cmd);  
 }
@@ -4059,18 +4099,34 @@ static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult)
 }
 
 
-static char** rfm_filename_completion(const char *text, int start, int end){
+static char** rfm_filename_completion(const char *text){
   if (ItemSelected && (text==NULL || g_strcmp0(text, "")==0)) {
-    //rl_attempted_completion_over = 1;
-    rl_completion_suppress_append = 1;
     char** ret = calloc(2,sizeof(char*));
     g_mutex_lock(&rfm_selection_completion_lock);
     ret[0] = strdup(rfm_selection_completion);
     //see the update of rfm_selection_completion and usage of lock, it possible that when ItemSelected=0 here, we read the old rfm_selection_completion value, but i just prevent read just after rfm_selection_completion been freed here.
     g_mutex_unlock(&rfm_selection_completion_lock);
     return ret;
-  } else if (OLD_rl_attempted_completion_function!=NULL) return OLD_rl_attempted_completion_function(text,start,end);
+  }else return NULL;
 }
+
+#ifdef GNU_readline
+static char** gnu_readline_completion(const char *text, int start, int end){
+  char ** ret = rfm_filename_completion(text);
+  if (ret) {
+    //rl_attempted_completion_over = 1;
+    rl_completion_suppress_append = 1;    
+    return ret;
+  } else if (OLD_rl_attempted_completion_function!=NULL) return OLD_rl_attempted_completion_function(text,start,end);
+  else return NULL;
+}
+#endif
+#ifdef LINENOISE
+void linenoise_completion(const char *buf, linenoiseCompletions *lc) {
+  char** ret = rfm_filename_completion(buf);
+  if (ret) linenoiseAddCompletion(lc, ret);
+}
+#endif
 
 static int setup(RFM_ctx *rfmCtx)
 {
@@ -4183,14 +4239,22 @@ static int setup(RFM_ctx *rfmCtx)
    if (getcwd(cwd, sizeof(cwd)) == NULL) die("ERROR: %s: getcwd() failed.\n", PROG_NAME); /* getcwd returns NULL if cwd[] not big enough! */
    ReadFromPipeStdinIfAny(pipefd); //rfm_SearchResultPath may be filled with cwd here
 
-   using_history();
-   stifle_history(RFM_HISTORY_SIZE);
    rfm_historyFileLocation = g_build_filename(getenv("HOME"),".rfm_history", NULL);
    rfm_historyDirectory_FileLocation = g_build_filename(getenv("HOME"),".rfm_history_directory", NULL);
-   history_write_timestamps=TRUE;
+#ifdef GNU_readline  
    int e;
-   if ((e=read_history(rfm_historyFileLocation)))
-     g_warning("failed to read_history(%s) error code:%d.",rfm_historyFileLocation,e);
+   using_history();
+   stifle_history(RFM_HISTORY_SIZE);
+   history_write_timestamps=TRUE;
+   if ((e=read_history(rfm_historyFileLocation))) g_warning("failed to read_history(%s) error code:%d.",rfm_historyFileLocation,e);
+   OLD_rl_attempted_completion_function = rl_attempted_completion_function;
+   rl_attempted_completion_function = gnu_readline_completion;
+#endif
+#ifdef LINENOISE
+   linenoiseHistorySetMaxLen(RFM_HISTORY_SIZE);
+   if (linenoiseHistoryLoad(rfm_historyFileLocation)==-1); g_warning("failed to read_history(%s)",rfm_historyFileLocation);
+   linenoiseSetCompletionCallback(linenoise_completion);
+#endif
 
    rfm_prePath= getenv("OLDPWD");
    if (rfm_prePath!=NULL) rfm_prePath=strdup(rfm_prePath); //i don't remember exactly, but i think i do this because i read somewhere that getenv result is special and i should not free it.
@@ -4199,10 +4263,7 @@ static int setup(RFM_ctx *rfmCtx)
    set_rfm_curPath(initDir);
 
    add_toolbar(rfm_main_box, defaultPixbufs, rfmCtx);
-
-   OLD_rl_attempted_completion_function = rl_attempted_completion_function;
-   rl_attempted_completion_function = rfm_filename_completion;
-
+ 
    if (showHelpOnStart && startWithVT() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)) stdin_command_help(NULL,NULL);
    if (auto_execution_command_after_rfm_start==NULL){
      refresh_store(rfmCtx);
@@ -4252,14 +4313,18 @@ static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx)
    //https://unix.stackexchange.com/questions/534657/do-inotify-watches-automatically-stop-when-a-program-ends
    inotify_rm_watch(rfm_inotify_fd, rfm_curPath_wd);
    close(rfm_inotify_fd);
+#ifdef GNU_readline
    if ((e=append_history(history_entry_added, rfm_historyFileLocation))){
      if (e!=2) g_warning("failed to append_history(%d,%s) error code:%d",history_entry_added,rfm_historyFileLocation,e);
      else if (e=write_history(rfm_historyFileLocation))
        g_warning("failed to write_history(%s) error code:%d", rfm_historyFileLocation,e);
-   }
-
+   }  
    rl_attempted_completion_function = OLD_rl_attempted_completion_function;
-
+#endif
+#ifdef LINENOISE
+   if (linenoiseHistorySave(rfm_historyFileLocation)==-1) g_warning("linenoiseHistorySave(%s) failed", rfm_historyFileLocation);
+#endif
+  
 #ifdef PythonEmbedded
    endPythonEmbedding();
 #endif

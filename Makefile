@@ -13,7 +13,7 @@ endif
 # Edit below for extra libs (e.g. for thumbnailers etc.)
 #LIBS = -L./libdcmthumb -lm -ldcmthumb
 GTK_VERSION = gtk+-3.0
-CPPFLAGS = -DrfmBinPath=${rfmBinPath} --include ${languageInclude} -DG_LOG_DOMAIN=\"rfm\" ${GitIntegration} ${PythonEmbedded} ${RFM_FILE_CHOOSER} ${MU_VIEW}
+CPPFLAGS = -DrfmBinPath=${rfmBinPath} --include ${languageInclude} -DG_LOG_DOMAIN=\"rfm\" ${GitIntegration} ${PythonEmbedded} ${RFM_FILE_CHOOSER} ${MU_VIEW} ${READLINE_LIB}
 ifneq (${extractKeyValuePairFromMarkdown},)
 CPPFLAGS += -D${extractKeyValuePairFromMarkdown}
 endif
@@ -22,7 +22,13 @@ endif
 CPPFLAGS += -D_FILE_OFFSET_BITS=64
 
 INCS = -I. -I/usr/include
-LIBS += -L/usr/lib `pkg-config --libs ${GTK_VERSION} readline gio-unix-2.0`
+LIBS += -L/usr/lib `pkg-config --libs ${GTK_VERSION} gio-unix-2.0`
+ifeq (${READLINE_LIB},-DGNU_readline)
+LIBS += `pkg-config --libs readline`
+endif
+ifeq (${READLINE_LIB},-DLINENOISE)
+LIBS += -I/usr/local/include -L/usr/local/lib -llinenoise 
+endif
 ifneq (${extractKeyValuePairFromMarkdown},)
 LIBS += `pkg-config --libs libcmark`
 endif
