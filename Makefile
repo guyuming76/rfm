@@ -72,7 +72,7 @@ config.h:
 
 rfm: rfm.o
 	@echo CC -o $@
-	@${CC} -o $@ rfm.o ${LDFLAGS}
+	@${CC} -o $@ rfm.o -lstdc++ ${LDFLAGS}
 
 ifneq ($(RFM_FILE_CHOOSER),)
 ${LIBNAME}: rfm.o

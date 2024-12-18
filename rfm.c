@@ -4106,6 +4106,7 @@ static char** rfm_filename_completion(const char *text){
     ret[0] = strdup(rfm_selection_completion);
     //see the update of rfm_selection_completion and usage of lock, it possible that when ItemSelected=0 here, we read the old rfm_selection_completion value, but i just prevent read just after rfm_selection_completion been freed here.
     g_mutex_unlock(&rfm_selection_completion_lock);
+    g_debug("rfm_filename_completion return %s",ret[0]);
     return ret;
   }else return NULL;
 }
@@ -4124,7 +4125,7 @@ static char** gnu_readline_completion(const char *text, int start, int end){
 #ifdef LINENOISE
 void linenoise_completion(const char *buf, linenoiseCompletions *lc) {
   char** ret = rfm_filename_completion(buf);
-  if (ret) linenoiseAddCompletion(lc, ret);
+  if (ret) linenoiseAddCompletion(lc, ret[0]);
 }
 #endif
 
