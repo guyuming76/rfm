@@ -1,3 +1,7 @@
+This is just a delayed partial mirror.
+
+For latest update: please visit https://gitee.com/guyuming76/rfm
+
 This read me is still in Chinese, I don't have enough time/motivation to keep English readme now. Anyway, there is English UI and help, which is kept in English.h file, you can view the help after launching with rfm.sh. And you can refer to https://github.com/padgettr/rfm , the project i forked
 
 # installation #
