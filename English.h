@@ -19,7 +19,7 @@
 
 #define PipeTitle "Current:%d/Total:%d, PageSize:%d"
 
-#define TOOL_TIP_PathAndRepositoryNameDisplay "click to switch between directory and search result view, or use // command; pagesize command to set file number per page"
+#define TOOL_TIP_PathAndRepositoryNameDisplay "click to switch between directory and search result view, or use // command; \npagesize xxx command can set file number per page at search result view"
 
 #define PRESS_ENTER_TO_CLOSE_WINDOW   "Press Enter to close current window"
 
