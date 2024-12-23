@@ -136,6 +136,8 @@ endif
 
 ifneq ($(CalledByEbuild),YES)
 # the CalledByEbuild variable is exported in rfm ebuild
+# there will be sandbox error in gentoo ebuild run
+	-cp -f rfm.desktop /usr/share/applications/rfm.desktop
 	-xdg-desktop-menu install --novendor rfm.desktop
 	-xdg-mime default rfm.desktop inode/directory
 	-update-desktop-database
@@ -216,6 +218,7 @@ endif
 
 ifneq ($(CalledByEbuild),YES)
 	-xdg-desktop-menu uninstall rfm.desktop
+	-rm -f /usr/share/applications/rfm.desktop
 	-update-desktop-database
 	ldconfig
 endif
