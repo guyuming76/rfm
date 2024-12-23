@@ -208,11 +208,11 @@ endif
 #	@rm -f ${DESTDIR}${PREFIX}/bin/rfmNewFile.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmPressEnterToCloseWindowAfterCMD.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/extractArchive.sh
-	@rm -r ${DESTDIR}${PREFIX}/bin/rfmGetMailHeaderWithMuView.sh
-	@rm -r ${DESTDIR}${PREFIX}/bin//rfmMakeThumbnailForGGB.sh
-	@rm -r ${DESTDIR}${PREFIX}/bin/rfmMoveDirAndUpdateSymbolicLinks.sh
-	@rm -r ${DESTDIR}${PREFIX}/bin/rfmCopyDirAndUpdateSymbolicLinks.sh
-	@rm -r ${DESTDIR}${PREFIX}/bin/rfm_Update_affected_SymbolicLinks_for_move_or_copy.sh
+	@rm -f ${DESTDIR}${PREFIX}/bin/rfmGetMailHeaderWithMuView.sh
+	@rm -f ${DESTDIR}${PREFIX}/bin//rfmMakeThumbnailForGGB.sh
+	@rm -f ${DESTDIR}${PREFIX}/bin/rfmMoveDirAndUpdateSymbolicLinks.sh
+	@rm -f ${DESTDIR}${PREFIX}/bin/rfmCopyDirAndUpdateSymbolicLinks.sh
+	@rm -f ${DESTDIR}${PREFIX}/bin/rfm_Update_affected_SymbolicLinks_for_move_or_copy.sh
 
 ifneq ($(CalledByEbuild),YES)
 	-xdg-desktop-menu uninstall rfm.desktop
