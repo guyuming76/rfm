@@ -58,7 +58,7 @@
 "    with difference in layout, there are also two types of view: icon view and list view, icons such as picture thumbnails are shown in icon view.\n" \
 "\n\033[32m command prompt: \033[0m\n" \
 "    b*> means there is selected file(s) in rfm view, and current command interpreter is Bash, which can be configured in config.h\n" \
-"        press TAB with empty prefix will insert the current selected file fullpath; press TAB with non-empty prefix will call readline default completion function.\n" \
+"        press TAB with empty prefix will insert the current selected file fullpath; press TAB with non-empty prefix will match input with regular expressions defined in config.h and replace; call readline default if no regular expression matches.\n" \
 "    b>  means no selected files\n" \
 "    b?> means in refreshing and file selection cannot be determined, try press enter after refresh.\n" \
 "    prompt won't update when selection changes in rfm view, press Enter to refresh\n" \
@@ -124,7 +124,7 @@ BuiltInCmd_SearchResultColumnSeperator \
 #define SETENV_USAGE \
 "Usage:       setenv EnvVarName Value\n" \
 "For example: setenv G_MESSAGES_DEBUG rfm\n" \
-"             setenv G_MESSAGES_DEBUG rfm,rfm-data,rfm-data-ext,rfm-data-thumbnail,rfm-data-search,rfm-data-git,rfm-gspawn,rfm-column,rfm-column-verbose,rfm-gtk\n" \
+"             setenv G_MESSAGES_DEBUG rfm,rfm-data,rfm-data-ext,rfm-data-thumbnail,rfm-data-search,rfm-data-git,rfm-gspawn,rfm-column,rfm-column-verbose,rfm-gtk,rfm-readline\n" \
 "             setenv G_MESSAGES_DEBUG \"\"\n" \
 "Get current value with:\n" \
 "             env |grep G_MESSAGES_DEBUG\n" \

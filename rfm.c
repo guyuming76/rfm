@@ -4100,26 +4100,45 @@ static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult)
 
 
 static char** rfm_filename_completion(const char *text){
-  if (ItemSelected && (text==NULL || g_strcmp0(text, "")==0)) {
+  if (ItemSelected && (text==NULL || g_strcmp0(text, "")==0)) { //有文件被选中 且 当前光标上下文为空
     char** ret = calloc(2,sizeof(char*));
     g_mutex_lock(&rfm_selection_completion_lock);
     ret[0] = strdup(rfm_selection_completion);
     //see the update of rfm_selection_completion and usage of lock, it possible that when ItemSelected=0 here, we read the old rfm_selection_completion value, but i just prevent read just after rfm_selection_completion been freed here.
     g_mutex_unlock(&rfm_selection_completion_lock);
-    g_debug("rfm_filename_completion return %s",ret[0]);
+    g_log(RFM_LOG_READLINE,G_LOG_LEVEL_DEBUG,"rfm_filename_completion return %s",ret[0]);
     return ret;
   }else return NULL;
 }
 
 #ifdef GNU_readline
 static char** gnu_readline_completion(const char *text, int start, int end){
+  g_log(RFM_LOG_READLINE, G_LOG_LEVEL_DEBUG,"call gnu_readline_completion with %s, %d, %d",text, start, end);
   char ** ret = rfm_filename_completion(text);
   if (ret) {
     //rl_attempted_completion_over = 1;
     rl_completion_suppress_append = 1;    
     return ret;
-  } else if (OLD_rl_attempted_completion_function!=NULL) return OLD_rl_attempted_completion_function(text,start,end);
-  else return NULL;
+  } else if (text && strlen(text)>0){ //光标上下文不为空
+    char *newtext=strdup(text);
+    for (guint i=0;i<G_N_ELEMENTS(regex_rules);i++){
+      if (regex_rules[i].pattern_compiled && str_regex_replace(&newtext, regex_rules[i].pattern_compiled, regex_rules[i].replacement)){
+	g_log(RFM_LOG_READLINE, G_LOG_LEVEL_DEBUG,"%s matched with %s, newtext:%s",text, regex_rules[i].pattern,newtext);
+	if (strcmp(text,newtext)!=0){
+	  rl_replace_line(newtext,0);//TODO: input showcolumn and TAB, newtext will still be showcolumn, but nothing will be displayed if this is called. if ShowColumn is inputted, showcolumn will be displayed. why readline behave like this? This is why we compare text with newtext above
+	  rl_redisplay();
+	}
+	free(newtext);
+	return NULL;
+      }
+    }
+    free(newtext);
+  }
+
+  if (OLD_rl_attempted_completion_function) {
+    g_log(RFM_LOG_READLINE, G_LOG_LEVEL_DEBUG,"call OLD_rl_attempted_completion_function with %s, %d, %d",text, start, end);
+    return OLD_rl_attempted_completion_function(text,start,end);
+  }else return NULL;
 }
 #endif
 #ifdef LINENOISE
@@ -5001,7 +5020,7 @@ static gchar** rfmFileChooser_CMD(enum rfmTerminal startWithVT, gchar* search_cm
 }
 #endif
 
-
+//用replacement 替换 str 中匹配 pattern 的部分,匹配成功返回TRUE
 gboolean str_regex_replace(char **str, const regex_t *pattern_compiled, const char *replacement) {
       gboolean ret = FALSE;
       regmatch_t pm[1];

@@ -37,6 +37,7 @@ static char run_cmd_in_new_terminal_emulator_suffix[32] = { '&', 0 };
 #define RFM_LOG_COLUMN "rfm-column"
 #define RFM_LOG_COLUMN_VERBOSE "rfm-column-verbose"
 #define RFM_LOG_GTK "rfm-gtk"
+#define RFM_LOG_READLINE "rfm-readline"
 
 static gint RFM_THUMBNAIL_SIZE = 128; /* Maximum size for thumb dir normal is 128 */
 static gboolean UseTargetAddressWhenEnterSymbloicLinkForDir=TRUE;
@@ -398,6 +399,7 @@ static stdin_cmd_interpretor stdin_cmd_interpretors[] = {
 };
 
 static RFM_cmd_regex_rule regex_rules[] = {
+// pattern                          replacement                          action                           pattern_compiled
   { "^ \\+",                        "",                                  set_stdin_cmd_leading_space_true,NULL},
   { "^[S|s]earch[R|r]esult \\+|",   "SearchResult|",                     NULL,NULL },// \\+ 中第一个\是字符串里面用来escape第二个\的,\+是basic regular expression 要求的,相当于extended regular express 里面的+,表示一个或多个
   { "^[S|s]how[C|c]olumns* ",       "showcolumn ",                       NULL,NULL },

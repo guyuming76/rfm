@@ -52,13 +52,13 @@
 
 #define builtinCMD_Help \
 "\n\033[32m 系统视图: \033[0m\n" \
-"    按照数据源分两种: 一种是当前目录文件视图,此时,工具栏左边第一按钮显示目录路径(和git分支). 另一种是文件搜索结果视图,此时工具栏左边提示当前条/结果总数,每页条数, 点击此按钮在两种视图间切换.\n" \
+"    按照数据源分两种: 一种是当前目录文件视图,此时,工具栏左边第一按钮显示目录路径(和git分支). 另一种是文件搜索结果视图,此时工具栏左边提示当前条/结果总数,每葉条数, 点击此按钮在两种视图间切换.\n" \
 "    在当前文件目录视图，隐藏文件是不显示的，但是会显示在查询结果视图，可以使用命令 ls -a>0显示当前目录隐藏文件.\n" \
-"    查询结果视图的另一个好处是分页显示，如果某个目录包含文件太多，可以使用查询结果视图显示.\n" \
+"    查询结果视图的另一个好处是分葉显示，如果某个目录包含文件太多，可以使用查询结果视图显示.\n" \
 "    按显示布局分为 图标 和 列表两种,图标视图显示文件缩略图\n" \
 "\n\033[32m 命令提示: \033[0m\n" \
 "    b*> 表示rfm视图有文件选中,且当前命令执行程序是Bash(命令执行程序在config.h里面可配置).\n" \
-"        此时按TAB键,且TAB键前没有(非空格)文本,则自动插入当前选中文件完整路径, TAB前有非空字符,则调用readline默认的补全功能\n" \
+"        此时按TAB键,且TAB键前没有(非空格)文本,则自动插入当前选中文件完整路径； TAB前有非空字符,则先使用config.h中定义的正则表达式匹配输入，并替换; 若无法匹配，则调用readline默认的补全功能\n" \
 "    b>  表示没有文件选中\n" \
 "    b?> 表示正在刷新,无法确定选中文件数,刷新完成后回车重试\n" \
 "    命令提示不随文件选中或取消自动更新, 用户可按回车键刷新\n" \
@@ -125,7 +125,7 @@ BuiltInCmd_SearchResultColumnSeperator \
 #define SETENV_USAGE \
 "用法:  setenv EnvVarName Value\n" \
 "例子:  setenv G_MESSAGES_DEBUG rfm\n" \
-"       setenv G_MESSAGES_DEBUG rfm,rfm-data,rfm-data-ext,rfm-data-thumbnail,rfm-data-search,rfm-data-git,rfm-gspawn,rfm-column,rfm-column-verbose,rfm-gtk\n" \
+"       setenv G_MESSAGES_DEBUG rfm,rfm-data,rfm-data-ext,rfm-data-thumbnail,rfm-data-search,rfm-data-git,rfm-gspawn,rfm-column,rfm-column-verbose,rfm-gtk,rfm-readline\n" \
 "       setenv G_MESSAGES_DEBUG \"\"\n" \
 "获取当前值:\n" \
 "       env |grep G_MESSAGES_DEBUG\n" \
