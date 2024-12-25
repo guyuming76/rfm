@@ -4497,6 +4497,9 @@ int main(int argc, char *argv[])
 	if (g_strcmp0(longArgument, BuiltInCmd_SearchResultColumnSeperator)==0){
 	  printf("%s\n",SearchResultColumnSeperator);
 	  exit(Success);
+	}else if (g_strcmp0(longArgument, "help")==0){
+	  printf(rfmLaunchHelp, PROG_NAME);
+	  return 0;
 	}
 	break;
       default:
