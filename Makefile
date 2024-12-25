@@ -143,6 +143,8 @@ endif
 ifneq ($(CalledByEbuild),YES)
 # the CalledByEbuild variable is exported in rfm ebuild
 # there will be sandbox error in gentoo ebuild run
+	-cp -f rfm.svg /usr/share/icons/hicolor/scalable/apps/rfm.svg
+	-gtk-update-icon-cache -f /usr/share/icons/hicolor
 	-cp -f rfm.desktop /usr/share/applications/rfm.desktop
 	-xdg-desktop-menu install --novendor rfm.desktop
 	-xdg-mime default rfm.desktop inode/directory
@@ -225,6 +227,8 @@ endif
 ifneq ($(CalledByEbuild),YES)
 	-xdg-desktop-menu uninstall rfm.desktop
 	-rm -f /usr/share/applications/rfm.desktop
+	-rm -f /usr/share/icons/hicolor/scalable/apps/rfm.svg
+	-gtk-update-icon-cache -f /usr/share/icons/hicolor
 	-update-desktop-database
 	ldconfig
 endif

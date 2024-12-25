@@ -2,9 +2,9 @@
 Type=Application
 Name=rfm
 Comment=Launches the rfm file manager
-Icon=system-file-manager
+Icon=rfm
 Terminal=true
 Exec=rfm.sh -d
-Categories=System;FileTools;FileManager
+Categories=System
 MimeType=inode/directory;
 Keywords=File;Manager;Browser;Explorer;Launcher;
