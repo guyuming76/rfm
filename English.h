@@ -63,6 +63,7 @@
 "    b?> means in refreshing and file selection cannot be determined, try press enter after refresh.\n" \
 "    prompt won't update when selection changes in rfm view, press Enter to refresh\n" \
 "    prompt b*],b>,b?] differ with explanation above only in that commands inputted in stdin is started in gtk thread instead of readline thread. When ] is displayed instead of >, gtk window will not refresh and file selection cannot be changed when command is executing(such as when selected file is being editted).\n" \
+"    ctrl-z in command window will send rfm.sh to background, and the command prompt will change to the shell prompt before rfm.sh launch. fg command can bring rfm.sh back to foreground the the command prompt will change to rfm prompt described above.\n" \
 "\n\033[32m command history: \033[0m\n" \
 "    command history is saved in file ~/.rfm_history. command history for current running rfm is kept in memory and saved into file on quit, and will be read into memory on next launch.\n" \
 "    commond in history will be shown with uppper/down arrow key. enter command prefix can narrow down the scope.\n" \
