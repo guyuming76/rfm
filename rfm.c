@@ -4654,7 +4654,7 @@ static int ProcessKeyValuePairInCmdOutputFromSearchResult(char *oneline, gboolea
    gchar* cmdError=NULL;
    char mailHeadCmd[PATH_MAX];
    sprintf(mailHeadCmd,cmdtemplate,oneline);
-   const char** cmd = stdin_cmd_interpretors[current_stdin_cmd_interpretor].cmdTransformer(mailHeadCmd, FALSE);
+   char** cmd = stdin_cmd_interpretors[current_stdin_cmd_interpretor].cmdTransformer(mailHeadCmd, FALSE);
 
    if (!g_spawn_sync(rfm_curPath, cmd, env_for_g_spawn, G_SPAWN_SEARCH_PATH, NULL, NULL, &cmdOutput, &cmdError, NULL, &error)){
      g_warning("error executing cmd %s, error:%s",mailHeadCmd, error==NULL?"":error->message);
