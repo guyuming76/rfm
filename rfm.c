@@ -3453,7 +3453,7 @@ static void writeSearchResultIntoFD(gint *fd){
 	    dprintf(*fd, "\n%s", str_value? str_value:""); //首列输出回车 加 值
 	  else dprintf(*fd, "%s%s",SearchResultColumnSeperator, str_value?str_value:""); //非首列输出 分隔符 加值
 	  if (str_value) g_free(str_value);
-	}while(c=g_list_next(c));
+	}while((c=g_list_next(c)));
 
       }while (stdin_cmd_selection_list?
 	      ((selectedListElement=g_list_next(selectedListElement)) && gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, selectedListElement->data))
@@ -4686,7 +4686,7 @@ static int ProcessKeyValuePairInData(GKeyFile *keyfile, char* groupname){
    for(gsize i=0; i<size; i++){
        RFM_treeviewColumn * col;
        enum RFM_treeviewCol current_Ext_Column;
-       if (col=get_treeviewColumnByTitle(keys[i])){ //已经有同名列了
+       if ((col=get_treeviewColumnByTitle(keys[i]))){ //已经有同名列了
 	   current_Ext_Column=col->enumCol;
        }else{//新列名
 	   col = get_treeviewColumnByTitle(currentColumnOriginalTitle); //找到当前(空余,未被使用的)列名,如C1, C2, C3 ... 等等
