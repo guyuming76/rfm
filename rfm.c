@@ -2726,7 +2726,7 @@ static void file_menu_exec(GtkMenuItem *menuitem, RFM_ChildAttribs *childAttribs
   g_spawn_wrapper_for_selected_fileList_(child_attribs);
 }
 
-
+//fileMenu.menu, fileMenu.menuItem[] 仅在首次运行时被初始化，但fileMenu.childattribs_for_menuItem[], fileMenu.menuItemSignalHandlers[]每次都会被重置刷新
 static void setup_file_menu(RFM_ctx * rfmCtx){
    guint i;
    RFM_ChildAttribs *child_attribs;
@@ -4150,8 +4150,6 @@ void linenoise_completion(const char *buf, linenoiseCompletions *lc) {
 
 static int setup(RFM_ctx *rfmCtx)
 {
-   RFM_fileMenu *fileMenu=NULL;
-
    gtk_init(NULL, NULL);
 
    window=gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -4412,6 +4410,8 @@ int main(int argc, char *argv[])
    sprintf(selected_filename_placeholder_in_space," %s ",selected_filename_placeholder);
    sprintf(selected_filename_placeholder_in_quotation, "'%s'",selected_filename_placeholder);
    sprintf(thumbnailsize_str, "%dx%d",RFM_THUMBNAIL_SIZE,RFM_THUMBNAIL_SIZE);
+
+   fileMenu.menu = NULL;
 
    regcomp_for_regex_rules();
    
@@ -4678,7 +4678,7 @@ static int ProcessKeyValuePairInData(GKeyFile *keyfile, char* groupname){
    gchar** keys=NULL;
    GError *error=NULL;
    keys = g_key_file_get_keys(keyfile,groupname,&size, &error);
-   g_log(RFM_LOG_DATA, G_LOG_LEVEL_DEBUG, "number of keys:%d",size);
+   g_log(RFM_LOG_DATA, G_LOG_LEVEL_DEBUG, "number of keys:%ld",size);
 
    char currentColumnOriginalTitle[10];
    sprintf(currentColumnOriginalTitle,"C%d", currentPageStartingColumnTitleIndex);
