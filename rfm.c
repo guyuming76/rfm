@@ -207,7 +207,7 @@ static void null_log_handler(const gchar *log_domain,GLogLevelFlags log_level,co
 
 typedef struct RFM_ChildAttributes{
    gchar *name;
-   const gchar **RunCmd;
+   gchar **RunCmd;
    GSpawnFlags  runOpts;
    GPid  pid;
    gint  stdIn_fd;
