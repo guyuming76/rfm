@@ -4336,7 +4336,7 @@ static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx)
 #ifdef GNU_readline
    if ((e=append_history(history_entry_added, rfm_historyFileLocation))){
      if (e!=2) g_warning("failed to append_history(%d,%s) error code:%d",history_entry_added,rfm_historyFileLocation,e);
-     else if (e=write_history(rfm_historyFileLocation))
+     else if ((e=write_history(rfm_historyFileLocation)))
        g_warning("failed to write_history(%s) error code:%d", rfm_historyFileLocation,e);
    }  
    rl_attempted_completion_function = OLD_rl_attempted_completion_function;
@@ -4369,7 +4369,7 @@ static void regcomp_for_regex_rules(){
        int c;
        //https://www.gnu.org/software/sed/manual/html_node/Character-Classes-and-Bracket-Expressions.html#Character-Classes-and-Bracket-Expressions
        //https://www.gnu.org/software/sed/manual/html_node/BRE-syntax.html#BRE-syntax
-       if (c = regcomp(regex, regex_rules[i].pattern, 0)){
+       if ((c = regcomp(regex, regex_rules[i].pattern, 0))){
 		/************************************************************************/
 		/*  正则表达式编译出错输出错误信息                                      */
 		/*  调用 regerror 将错误信息输出到 regerrbuf 中                         */
@@ -4598,7 +4598,7 @@ static int ProcessOnelineForSearchResult_internel(char* oneline, gboolean new_se
 		         //我们假定搜索结果每行列数都是相同的,第二行数据用 get_treeviewColumnByTitle(C1) 一定可以找到第一行为C1分配的位置
 		         //但这里currentColumnTitle do while 循环最后会调用get_treeviewColumnByTitle(C2), 对于本方法并没有问题,因为while 判断会结束循环
 		         //但如果ProcessKeyValuePairInFilesFromSearchResult 调用本方法,get_treeviewColumnByTitle(C2) 会返回NULL,所以下面语句加了if NULL 判断
-		         if (col = get_treeviewColumnByTitle(currentColumnTitle))
+		         if ((col = get_treeviewColumnByTitle(currentColumnTitle)))
 			     current_Ext_Column = col->enumCol;
 			 else current_Ext_Column = NUM_COLS;
 		    }
