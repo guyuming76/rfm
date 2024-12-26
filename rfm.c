@@ -3764,12 +3764,12 @@ static void print_columns_status(wordexp_t * parsed_msg){
 // 来调用本函数比较合理,但是,show_hide_treeview_columns_in_order能工作蛮久了,又比较复杂,不想动;
 // 更重要的是,它可以不依赖stdarg.h,而本函数需要用到变长参数列表,所以把本函数放到外层也合理
 static void show_hide_treeview_columns_enum(int count, ...){
-    gchar* order_seq=calloc(G_N_ELEMENTS(treeviewColumns)*5+13, sizeof(char));
+    gchar* restrict order_seq=calloc(G_N_ELEMENTS(treeviewColumns)*5+13, sizeof(char));
     va_list valist;
     va_start(valist, count);
     for (int i = 0; i < count; i++) {
         int arg_i = va_arg(valist, int);
-	char* onecolumn[6];
+	char onecolumn[20];
 	if (i==0 && arg_i==INT_MAX){ //for first argument, it means leading ',' if it is INT_MAX
 	  order_seq=strcat(order_seq, strdup(","));
 	}else if (i==(count-1) && arg_i!=INT_MAX){ //for last argument, if it is not INT_MAX, remove the ending ','
