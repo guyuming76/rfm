@@ -4421,7 +4421,10 @@ int main(int argc, char *argv[])
      if (argv[c][0]=='-'){
       switch (argv[c][1]) {
       case 'd':
-	 if (argc<=(c+1)) die("ERROR: %s: A directory path is required for the -d option.\n", PROG_NAME);
+	 if (argc<=(c+1)) {
+	   g_warning("A directory path is required for the -d option.");
+	   break;
+	 }
          //int i=strlen(argv[c+1])-1;
          //if (i!=0 && argv[c+1][i]=='/') argv[c+1][i]='\0';
          //if (strstr(argv[c+1],"/.")!=NULL) die("ERROR: %s: Hidden files are not supported.\n", PROG_NAME);
