@@ -3735,9 +3735,9 @@ static void print_columns_status(wordexp_t * parsed_msg){
 	    for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++)
 	      if (TREEVIEW_COLUMNS[i].enumCol<NUM_COLS)
 		printf("%4d: %s%s\n", TREEVIEW_COLUMNS[i].Show? TREEVIEW_COLUMNS[i].enumCol : (-1)*TREEVIEW_COLUMNS[i].enumCol,TREEVIEW_COLUMNS[i].title, (current_sort_column_id==TREEVIEW_COLUMNS[i].enumCol?(current_sorttype==GTK_SORT_ASCENDING?"{v}":"{^}"):""));
-	      else{
+	      else if (TREEVIEW_COLUMNS[i].ValueFunc!=getExtColumnValueFromHashTable){//如果是C1,C2,...C60这样的列且还没映射到store, 就不要显示了，否则显示太长，用户需要往上翻看实际关心的列标题。除了用这种方式判断，有没有更好的方法判断这种扩展列？
 	        g_assert(!TREEVIEW_COLUMNS[i].Show);
-		printf("    : %s%s\n",TREEVIEW_COLUMNS[i].title,(current_sort_column_id==TREEVIEW_COLUMNS[i].enumCol?(current_sorttype==GTK_SORT_ASCENDING?"{v}":"{^}"):""));
+		printf("    : %s\n",TREEVIEW_COLUMNS[i].title);
 	      }
 
 	    printf(SHOWCOLUMN_USAGE);
