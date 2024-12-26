@@ -63,7 +63,7 @@ static void die(const char *errstr, ...);
 static int setup(RFM_ctx *rfmCtx);
 static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx);
 gpointer transferPointerOwnership(gpointer *newOwner, gpointer *oldOwner);
-gboolean str_regex_replace(char **str, const regex_t *pattern_compiled, const char *replacement);
+gboolean str_regex_replace(char **str, const regex_t * restrict pattern_compiled, const char *replacement);
 
 /****************************************************/
 /******Terminal Emulator related definitions*********/
@@ -102,7 +102,7 @@ typedef struct {
   gchar* pattern;
   gchar* replacement;
   void (*action)(void);
-  regex_t *pattern_compiled;
+  regex_t * restrict pattern_compiled;
 } RFM_cmd_regex_rule;
 
 typedef struct {
@@ -4365,7 +4365,7 @@ static void die(const char *errstr, ...) {
 
 static void regcomp_for_regex_rules(){
    for(guint i=0;i<G_N_ELEMENTS(regex_rules);i++){
-       regex_t *regex = calloc(1, sizeof(regex_t));
+       regex_t * restrict regex = calloc(1, sizeof(regex_t));
        int c;
        //https://www.gnu.org/software/sed/manual/html_node/Character-Classes-and-Bracket-Expressions.html#Character-Classes-and-Bracket-Expressions
        //https://www.gnu.org/software/sed/manual/html_node/BRE-syntax.html#BRE-syntax
@@ -4377,7 +4377,7 @@ static void regcomp_for_regex_rules(){
 		/*  字符串仍有有结尾0                                                   */
 		/************************************************************************/
                 char regerrbuf[256];
-                regerror(c, &regex, regerrbuf, sizeof(regerrbuf));
+                regerror(c, regex, regerrbuf, sizeof(regerrbuf));
 		regerrbuf[sizeof(regerrbuf) - 1] = '\0';
 		g_warning("%s", regerrbuf);
 		regfree(regex);
@@ -5027,7 +5027,7 @@ static gchar** rfmFileChooser_CMD(enum rfmTerminal startWithVT, gchar* search_cm
 #endif
 
 //用replacement 替换 str 中匹配 pattern 的部分,匹配成功返回TRUE
-gboolean str_regex_replace(char **str, const regex_t *pattern_compiled, const char *replacement) {
+gboolean str_regex_replace(char **str, const regex_t * restrict pattern_compiled, const char *replacement) {
       gboolean ret = FALSE;
       regmatch_t pm[1];
       size_t str_len = strlen(*str);
