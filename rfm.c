@@ -4132,7 +4132,14 @@ static char** gnu_readline_completion(const char *text, int start, int end){
 	return NULL;
       }
     }
+    //若没有匹配到 regex_rules ,则替换为在命令历史中搜索newtext的命令
     free(newtext);
+    newtext=calloc(PATH_MAX, sizeof(char));//没找到最大命令行长度，就用PATH_MAX了
+    snprintf(newtext,PATH_MAX,"cat %s|grep -ih ^%s|sort|uniq", rfm_historyFileLocation, text);
+    rl_replace_line(newtext,0);
+    rl_redisplay();
+    free(newtext);
+    return NULL;
   }
 
   if (OLD_rl_attempted_completion_function) {
@@ -5027,6 +5034,7 @@ static gchar** rfmFileChooser_CMD(enum rfmTerminal startWithVT, gchar* search_cm
 #endif
 
 //用replacement 替换 str 中匹配 pattern 的部分,匹配成功返回TRUE
+//匹配成功后，*str原先的内存会被释放，*str会指向新分配的替换后的字符串
 gboolean str_regex_replace(char **str, const regex_t * restrict pattern_compiled, const char *replacement) {
       gboolean ret = FALSE;
       regmatch_t pm[1];

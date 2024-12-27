@@ -58,7 +58,7 @@
 "    with difference in layout, there are also two types of view: icon view and list view, icons such as picture thumbnails are shown in icon view.\n" \
 "\n\033[32m command prompt: \033[0m\n" \
 "    b*> means there is selected file(s) in rfm view, and current command interpreter is Bash, which can be configured in config.h\n" \
-"        press TAB with empty prefix will insert the current selected file fullpath; press TAB with non-empty prefix will match input with regular expressions defined in config.h and replace; call readline default if no regular expression matches.\n" \
+"        press TAB with empty prefix will insert the current selected file fullpath; press TAB with non-empty prefix will match input with regular expressions defined in config.h and replace; input will be replaced with command to search in history if no regular expression matched.\n" \
 "    b>  means no selected files\n" \
 "    b?> means in refreshing and file selection cannot be determined, try press enter after refresh.\n" \
 "    prompt won't update when selection changes in rfm view, press Enter to refresh\n" \
@@ -67,7 +67,7 @@
 "\n\033[32m command history: \033[0m\n" \
 "    command history is saved in file ~/.rfm_history. command history for current running rfm is kept in memory and saved into file on quit, and will be read into memory on next launch.\n" \
 "    commond in history will be shown with uppper/down arrow key. enter command prefix can narrow down the scope.\n" \
-"    search command history with grep: grep -nh \"\" ~/.rfm_history\n" \
+"    search command history with grep: grep -nh \"\" ~/.rfm_history , or use TAB completion described above.\n" \
 "\n\033[32m Shell commands: \033[0m\n" \
 "    non-builtin commands will be sent to shell to execute.\n" \
 "    if there is \033[33mending space\033[0m in command entered, selected filename(s) will be appended at the end. for example, you can view currently selected maildir mail file with `mu view `, with ending space before return.\n" \
