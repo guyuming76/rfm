@@ -17,6 +17,7 @@
 #define RFM_FILE_CHOOSER_NAMED_PIPE_PREFIX "/tmp/rfmFileChooser_"
 #define RFM_ENV_VAR_NAME_PREFIX ""  //change this if your extented column name conflicts with existing ENV Variable name
 #define RFM_SEARCH_RESULT_AS_INPUT_PREFIX "SearchResult|"
+#define SEARCH_RFM_CMD_HISTORY "cat %s|grep -ih ^%s|sort|uniq"
 
 static char selected_filename_placeholder[32] = {'%', 's', 0 };
 static char run_cmd_in_new_terminal_emulator_suffix[32] = { '&', 0 };
