@@ -181,19 +181,19 @@ static gchar* stdin_cmd_template_bash_newVT_nonHold[] = { "$RFM_TERM", "/bin/bas
 static gchar* stdin_cmd_template_nu_inNewVT_nonHold[] = { "$RFM_TERM", "nu", "-c", shell_cmd_buffer, NULL };
 static gchar** stdin_command_bash(gchar* user_input_cmd, gboolean inNewVT) {
   if (inNewVT){
-    sprintf(shell_cmd_buffer,"set -o history; %s;read -p '\033[33m%s\033[0m'; exit $? 2>/dev/null", user_input_cmd, PRESS_ENTER_TO_CLOSE_WINDOW);
+    snprintf(shell_cmd_buffer,PATH_MAX,"set -o history; %s;read -p '\033[33m%s\033[0m'; exit $? 2>/dev/null", user_input_cmd, PRESS_ENTER_TO_CLOSE_WINDOW);
     //without set -o history and "bash -i", bash builtin history command will not show results.
     //Seems to be by design, but why? for the nu shell, nu -c "history" just works
     //without exit, rfm will quit after commands such as ls, nano, but commands such as echo 1 will work. if you change exit to sleep 20, even echo 1 will make rfm terminate. Are there any race condition here?
     return stdin_cmd_template_bash_newVT_nonHold;
   }else {
-    sprintf(shell_cmd_buffer,"set -o history; %s; exit $? 2>/dev/null",user_input_cmd);
+    snprintf(shell_cmd_buffer,PATH_MAX,"set -o history; %s; exit $? 2>/dev/null",user_input_cmd);
     return stdin_cmd_template_bash;
   }
 }
 static gchar** stdin_command_nu(gchar* user_input_cmd, gboolean inNewVT) {
 //TODO: add read -p into shell_cmd_buffer when inNewVT like stdin_command_bash
-  sprintf(shell_cmd_buffer,"%s",user_input_cmd);
+  snprintf(shell_cmd_buffer,PATH_MAX,"%s",user_input_cmd);
   return inNewVT? stdin_cmd_template_nu_inNewVT_nonHold : stdin_cmd_template_nu;
 }
 static void null_log_handler(const gchar *log_domain,GLogLevelFlags log_level,const gchar *message,gpointer user_data){
@@ -2310,7 +2310,7 @@ static void refresh_store_in_g_spawn_wrapper_callback(RFM_ChildAttribs* child_at
 //echo -en "\033]0;title\a"
 static void set_terminal_window_title(char * title)
 {
-  sprintf(cmd_to_set_terminal_title, "echo -en \"\\033]0;%s\\a\"", title);
+  snprintf(cmd_to_set_terminal_title,PATH_MAX, "echo -en \"\\033]0;%s\\a\"", title);
   char* cmd[]={ "bash", "-c", cmd_to_set_terminal_title,NULL};
   g_spawn_sync(rfm_curPath, cmd, NULL,
                            G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN |
@@ -3706,7 +3706,7 @@ static gchar* get_showcolumn_cmd_from_currently_displaying_columns(){
 	      //gchar* onecolumn=calloc(6, sizeof(char)); //5 chars for onecolumn + ending null
 	      if (TREEVIEW_COLUMNS[i].enumCol==NUM_COLS) continue;
 	      char onecolumn[6];
-	      sprintf(onecolumn,"%4d,", TREEVIEW_COLUMNS[i].enumCol * (TREEVIEW_COLUMNS[i].Show?1:-1));
+	      snprintf(onecolumn,6,"%4d,", TREEVIEW_COLUMNS[i].enumCol * (TREEVIEW_COLUMNS[i].Show?1:-1));
 	      showColumnHistory = strcat(showColumnHistory, onecolumn);
 	    }
 	    return showColumnHistory;
@@ -3776,7 +3776,7 @@ static void show_hide_treeview_columns_enum(int count, ...){
 	  int len=strlen(order_seq);
 	  order_seq[len-1]=0;
 	}else if (arg_i!=INT_MAX){
-	  sprintf(onecolumn, "%4d,", arg_i); //the leading space just mean to make the log entry align and more readable
+	  snprintf(onecolumn,20, "%4d,", arg_i); //the leading space just mean to make the log entry align and more readable
 	  order_seq=strcat(order_seq, onecolumn);
 	}
     }
@@ -3787,7 +3787,7 @@ static void show_hide_treeview_columns_enum(int count, ...){
 
 static void cmdSearchResultColumnSeperator(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution){
 	if (parsed_msg->we_wordc==1) printf("%s\n",SearchResultColumnSeperator);
-	else sprintf(SearchResultColumnSeperator,"%s",parsed_msg->we_wordv[1]);
+	else snprintf(SearchResultColumnSeperator,32,"%s",parsed_msg->we_wordv[1]);
 }
 
 static void cmdThumbnailsize(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution){
@@ -3795,7 +3795,7 @@ static void cmdThumbnailsize(wordexp_t * parsed_msg, GString* readline_result_st
 	    guint ts = atoi(parsed_msg->we_wordv[1]);
 	    if (ts>0) {
 	      RFM_THUMBNAIL_SIZE=ts;
-	      sprintf(thumbnailsize_str, "%dx%d",RFM_THUMBNAIL_SIZE,RFM_THUMBNAIL_SIZE);
+	      snprintf(thumbnailsize_str,8, "%dx%d",RFM_THUMBNAIL_SIZE,RFM_THUMBNAIL_SIZE);
 	    }else g_warning("invalid thumbnailsize");
 	}else printf("%d\n",RFM_THUMBNAIL_SIZE);
 }
@@ -3945,7 +3945,7 @@ static int MatchSearchResultType(gchar* readlineResult){
 	    for(guint i=0; i<G_N_ELEMENTS(searchresultTypes); i++){
 
 	      char* searchTypeNumberSuffix=calloc(256,sizeof(char));//RFM_SearchResultTypeNamePrefix can be long, but less then 256- 
-	      sprintf(searchTypeNumberSuffix,"%s%d",RFM_SearchResultTypeNamePrefix,i);
+	      snprintf(searchTypeNumberSuffix,256,"%s%d",RFM_SearchResultTypeNamePrefix,i);
 	      //先用searchresultTypes数组下标数字匹配,类似0,1,2代表stdin,stdout,stderr, 数字提供了常用searchresultTypes快速输入简写方式
 	      if (g_str_has_suffix(readlineResult, searchTypeNumberSuffix)){
 		g_debug("SearchResultTypeIndex:%d; searchResultTypeName:%s",i,searchresultTypes[i].name);
@@ -4416,7 +4416,7 @@ int main(int argc, char *argv[])
    memcpy(DirectoryViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
    sprintf(selected_filename_placeholder_in_space," %s ",selected_filename_placeholder);
    sprintf(selected_filename_placeholder_in_quotation, "'%s'",selected_filename_placeholder);
-   sprintf(thumbnailsize_str, "%dx%d",RFM_THUMBNAIL_SIZE,RFM_THUMBNAIL_SIZE);
+   snprintf(thumbnailsize_str,8, "%dx%d",RFM_THUMBNAIL_SIZE,RFM_THUMBNAIL_SIZE);
 
    fileMenu.menu = NULL;
 
@@ -4499,7 +4499,7 @@ int main(int argc, char *argv[])
 	int ts=atoi(thumbnailsize);
 	if (ts!=0) {
 	  RFM_THUMBNAIL_SIZE=ts;
-	  sprintf(thumbnailsize_str, "%dx%d",RFM_THUMBNAIL_SIZE,RFM_THUMBNAIL_SIZE);
+	  snprintf(thumbnailsize_str,8, "%dx%d",RFM_THUMBNAIL_SIZE,RFM_THUMBNAIL_SIZE);
 	}else die("-T should be followd with custom RFM_THUMBNAIL_SIZE, for example: -T256");
 	break;
       case '-': //-- for long argument
@@ -4550,13 +4550,13 @@ static int ProcessOnelineForSearchResult_internel(char* oneline, gboolean new_se
 	   uint seperatorPositionAfterCurrentExtColumnValue = strcspn(oneline, SearchResultColumnSeperator);
 	   uint currentColumnTitleIndex=1;
 	   if (seperatorPositionAfterCurrentExtColumnValue < strlen(oneline)) { //found ":" in oneline
-	       sprintf(key, "%d", fileAttributeID);
+	       snprintf(key,10, "%d", fileAttributeID);
 	       oneline[seperatorPositionAfterCurrentExtColumnValue] = 0; //ending NULL for filename
                char* currentExtColumnValue = oneline + seperatorPositionAfterCurrentExtColumnValue + 1; //moving char pointer
 	       uint currentExtColumnValueLength;
 	       enum RFM_treeviewCol current_Ext_Column=COL_Ext1;
 	       char currentColumnTitle[10];
-	       sprintf(currentColumnTitle,"C%d", currentColumnTitleIndex);
+	       snprintf(currentColumnTitle,10,"C%d", currentColumnTitleIndex);
 	       RFM_treeviewColumn* col = get_treeviewColumnByTitle(currentColumnTitle);
 	       // Column Titles will always be C1, C2, C3, ..., that is, continuous with no gap, and start from C1
 	       // but current_Ext_Column and currentExtColumnHashTable Ext can have gap: it can be COL_Ext2, COL_Ext4,...,
@@ -4589,7 +4589,7 @@ static int ProcessOnelineForSearchResult_internel(char* oneline, gboolean new_se
 		    currentExtColumnValue = currentExtColumnValue + seperatorPositionAfterCurrentExtColumnValue + 1; //moving char pointer
 
       		    currentColumnTitleIndex++;
-		    sprintf(currentColumnTitle,"C%d", currentColumnTitleIndex);
+		    snprintf(currentColumnTitle,10,"C%d", currentColumnTitleIndex);
 
 		    if (fileAttributeID==1){//搜索结果第一行
 		         g_assert(col->enumCol==NUM_COLS);
@@ -4660,7 +4660,7 @@ static int ProcessKeyValuePairInCmdOutputFromSearchResult(char *oneline, gboolea
    gchar* cmdOutput=NULL;
    gchar* cmdError=NULL;
    char mailHeadCmd[PATH_MAX];
-   sprintf(mailHeadCmd,cmdtemplate,oneline);
+   snprintf(mailHeadCmd,PATH_MAX,cmdtemplate,oneline);
    char** cmd = stdin_cmd_interpretors[current_stdin_cmd_interpretor].cmdTransformer(mailHeadCmd, FALSE);
 
    if (!g_spawn_sync(rfm_curPath, cmd, env_for_g_spawn, G_SPAWN_SEARCH_PATH, NULL, NULL, &cmdOutput, &cmdError, NULL, &error)){
@@ -4688,7 +4688,7 @@ static int ProcessKeyValuePairInData(GKeyFile *keyfile, char* groupname){
    g_log(RFM_LOG_DATA, G_LOG_LEVEL_DEBUG, "number of keys:%ld",size);
 
    char currentColumnOriginalTitle[10];
-   sprintf(currentColumnOriginalTitle,"C%d", currentPageStartingColumnTitleIndex);
+   snprintf(currentColumnOriginalTitle,10,"C%d", currentPageStartingColumnTitleIndex);
 
    for(gsize i=0; i<size; i++){
        RFM_treeviewColumn * col;
@@ -4706,11 +4706,11 @@ static int ProcessKeyValuePairInData(GKeyFile *keyfile, char* groupname){
 	     continue;;
 	   }
 	   col->enumCol=current_Ext_Column;
-	   sprintf(col->title,"%s",keys[i]);
+	   snprintf(col->title,256,"%s",keys[i]);
 	   col->ValueFunc=getExtColumnValueFromHashTable;
 
            currentPageStartingColumnTitleIndex++;
-	   sprintf(currentColumnOriginalTitle,"C%d", currentPageStartingColumnTitleIndex);
+	   snprintf(currentColumnOriginalTitle,10,"C%d", currentPageStartingColumnTitleIndex);
        }
 
        uint currentExtColumnHashTableIndex = current_Ext_Column - COL_Ext1;
@@ -4722,7 +4722,7 @@ static int ProcessKeyValuePairInData(GKeyFile *keyfile, char* groupname){
 	 continue;
        }
        char* strFileAttributeID=calloc(10, sizeof(char));
-       sprintf(strFileAttributeID, "%d", fileAttributeID);
+       snprintf(strFileAttributeID,10, "%d", fileAttributeID);
        g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"Insert column %s into ExtColumnHashTable[%d]: fileAttributeID as key %s,value %s", col->title, currentExtColumnHashTableIndex,strFileAttributeID,currentExtColumnValue);
        g_hash_table_insert(ExtColumnHashTable[currentExtColumnHashTableIndex], strFileAttributeID, currentExtColumnValue);
    }
@@ -4748,7 +4748,7 @@ static int CallMatchingProcessorForSearchResultLine(char *oneline, gboolean new_
 static gchar* getExtColumnValueFromHashTable(guint fileAttributeId, guint ExtColumnHashTableIndex){
    if (ExtColumnHashTable[ExtColumnHashTableIndex]==NULL) return NULL;
    gchar key[10];
-   sprintf(key, "%d", fileAttributeId);
+   snprintf(key,10, "%d", fileAttributeId);
    gchar *ret=g_hash_table_lookup(ExtColumnHashTable[ExtColumnHashTableIndex], key);
    g_log(RFM_LOG_DATA_EXT, G_LOG_LEVEL_DEBUG, "getExtColumnValueFromHashTable(fileAttributeId %d, ExtColumnHashTableIndex %d) return %s",fileAttributeId,ExtColumnHashTableIndex,ret);
    return ret;
@@ -4794,7 +4794,7 @@ void handle_commandline_argument(char* arg){
 int readlink_proc_self_fd_pipefd_and_confirm_pipefd_is_used_by_pipeline(){
    static char buf[PATH_MAX];
    char name[50];
-   sprintf(name,"/proc/self/fd/%s", pipefd);
+   snprintf(name,50,"/proc/self/fd/%s", pipefd);
    int rslt = readlink(name, buf, PATH_MAX);
    //g_debug("readlink for %s: %s",name,buf); //do we really need to use glib in this file?
    if (strlen(buf)>4 && strcmp(g_utf8_substring(buf, 0, 4),"pipe")==0) {
@@ -4832,7 +4832,7 @@ static void showSearchResultExtColumnsBasedOnHashTableValues(){
 	     show_hide_treeview_columns_enum(3, previousColumn,i,INT_MAX);
 	     if (first_line_column_title){
 	       RFM_treeviewColumn *col = get_treeviewColumnByEnum(i);
-	       sprintf(col->title,"%s",(char*)g_hash_table_lookup(ExtColumnHashTable[i-COL_Ext1], "1"));
+	       snprintf(col->title,256,"%s",(char*)g_hash_table_lookup(ExtColumnHashTable[i-COL_Ext1], "1"));
 	     }
 	     previousColumn = i;
 	   }
@@ -4964,7 +4964,7 @@ static void rfmFileChooserResultReader(RFM_ChildAttribs* child_attribs){
   }
 
   char named_pipe_name[50];
-  sprintf(named_pipe_name, "%s%d", RFM_FILE_CHOOSER_NAMED_PIPE_PREFIX,getpid());
+  snprintf(named_pipe_name,50, "%s%d", RFM_FILE_CHOOSER_NAMED_PIPE_PREFIX,getpid());
   remove(named_pipe_name);
 
   if (child_attribs->spawn_async && FileChooserClientCallback!=NULL) (*FileChooserClientCallback)(GList_to_str_array(*fileSelectionList,returnedCount));
@@ -4976,7 +4976,7 @@ static void rfmFileChooserResultReader(RFM_ChildAttribs* child_attribs){
    /* selection is freed in rfmFileChooserResultReader */
 GList* rfmFileChooser_glist(enum rfmTerminal startWithVirtualTerminal, char* search_cmd, gboolean async, GList** fileChooserSelectionListAddress, void (*fileChooserClientCallback)(char **)) {
   char named_pipe_name[50];
-  sprintf(named_pipe_name, "%s%d", RFM_FILE_CHOOSER_NAMED_PIPE_PREFIX,getpid());
+  snprintf(named_pipe_name,50, "%s%d", RFM_FILE_CHOOSER_NAMED_PIPE_PREFIX,getpid());
   if (async && fileChooserClientCallback==NULL) { g_warning("to call rfmFileChooser async, fileChooserClientCallback function pointer must be provided."); return NULL; }
   FileChooserClientCallback = fileChooserClientCallback;
   // 同步spawn的时候,我们依然使用namedpipe,而不是stdout来传递返回的选中文件,主要是因为stdout里面有可能会混入rfm的其他输出内容,专门的namedpipe就没这个问题
@@ -5010,9 +5010,9 @@ char** rfmFileChooser(enum rfmTerminal startWithVirtualTerminal, char* search_cm
 
 static gchar** rfmFileChooser_CMD(enum rfmTerminal startWithVT, gchar* search_cmd, gchar** defaultFileSelection, gchar* rfmFileChooserReturnSelectionIntoFilename){
     if (search_cmd == NULL || g_strcmp0(search_cmd,"")==0)
-    	sprintf(shell_cmd_buffer, "rfm.sh -r %s", rfmFileChooserReturnSelectionIntoFilename);
+        snprintf(shell_cmd_buffer,PATH_MAX, "rfm.sh -r %s", rfmFileChooserReturnSelectionIntoFilename);
     else
-	sprintf(shell_cmd_buffer, "exec %s | rfm.sh -r %s -p", search_cmd, rfmFileChooserReturnSelectionIntoFilename);
+        snprintf(shell_cmd_buffer,PATH_MAX, "exec %s | rfm.sh -r %s -p", search_cmd, rfmFileChooserReturnSelectionIntoFilename);
 
     if (defaultFileSelection != NULL){
       strcat(shell_cmd_buffer, " -d");
