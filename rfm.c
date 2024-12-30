@@ -1616,10 +1616,14 @@ static gboolean iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_o
   else {
     if (rfm_thumbQueue && mkThumb_thread==NULL) mkThumb_thread = g_thread_new("mkThumbnail", mkThumbLoop, NULL);
     rfm_thumbLoadScheduler=0;
+#ifdef GitIntegration
     if (rfm_gitCommitMsgScheduler==0){
+#endif
       In_refresh_store = FALSE;
       gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
+#ifdef GitIntegration
     }
+#endif
     return G_SOURCE_REMOVE;
   }
 }
