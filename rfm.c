@@ -145,7 +145,7 @@ static gchar *auto_execution_command_after_rfm_start = NULL;
 static gchar *OriginalReadlineResult = NULL;
 static guint history_entry_added=0;
 static char *rfm_historyFileLocation;
-static char *rfm_historyDirectory_FileLocation;
+static char *rfm_historyDirectory_FileLocation;//used by script rfmReadlineWithSpecificHistoryFile.sh 
 static gboolean showHelpOnStart = TRUE;
 static char **rfm_filename_completion(const char *text);
 #ifdef GNU_readline
