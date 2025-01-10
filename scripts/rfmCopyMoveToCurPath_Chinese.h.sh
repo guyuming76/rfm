@@ -1,6 +1,11 @@
 #!/bin/bash
 #set -x
 
+# may also debug with bashdb, but https://forums.gentoo.org/viewtopic-p-8850991.html#8850991
+# find the command and argument first in htop when script launched by clicking "粘贴" in toolbar
+# note that the _Chinese.h suffix in script name will be removed when package installation
+# select the script, and press e in htop to check environment variable, pay attention to variable name with rfm prefix, since sometimes env variables are used to passing parameters
+
 target=$(pwd)
 # rfm使用g_spawn执行脚本时,第一个参数working directory会传入 rfm_curPath, 我的理解这里 pwd 就会得到 rfm_curPath 的值
 if [[ -z "$target" ]]; then
@@ -29,6 +34,9 @@ else
 fi
 
 source="$(rfmReadlineWithSpecificHistoryFile.sh ~/.rfm_history_directory)"
+#https://forums.gentoo.org/viewtopic-p-8851216.html#8851216
+#https://bbs.deepin.org/post/283321
+source=${source/#~/${HOME}}
 
 if [[ "$1" == "sl" ]];then
 	read -p "是否(y/n)使用相对路径创建软链接?默认是(y)" -r useRelativeInSL

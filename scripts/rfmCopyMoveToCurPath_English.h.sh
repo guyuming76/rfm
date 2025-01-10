@@ -29,6 +29,7 @@ else
 fi
 
 source="$(rfmReadlineWithSpecificHistoryFile.sh ~/.rfm_history_directory)"
+source=${source/#~/${HOME}}
 
 if [[ ! -z "$source" ]];then
 
