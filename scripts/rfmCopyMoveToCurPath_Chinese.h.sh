@@ -29,8 +29,10 @@ done
 if [[ $clipboardContent -eq 0 ]];then
 	echo "请输入源路径(键盘上下箭头选取历史输入):"
 else
+	echo -e "\e[1;33m"
 	echo "直接回车从上面显示剪贴板内容读取源文件名;"
 	echo "或输入源路径(键盘上下箭头选取历史输入):"
+	echo -e "\e[0m"
 fi
 
 source="$(rfmReadlineWithSpecificHistoryFile.sh ~/.rfm_history_directory)"
@@ -48,7 +50,7 @@ read -p "是否(y/n)检查移动或复制造成的符号链接破坏并修复?�
 if [[ ! -z "$source" ]];then
 
 	if [[ -d $source ]];then
-		read -p "输入路径是个目录,为此目录新开rfm窗口以便选择源文件,还是复制整个目录(Y/n)?回车默认新开rfm,输入n复制整个目录" -r new_rfm
+		read -p "输入路径是个目录,按回车或y，则为此目录新开rfm窗口以便从中选择源文件（选完按q键关闭此新开窗口）; 或按n，复制整个目录." -r new_rfm
 	fi
 
 	if [[ -d $source && ( -z "$new_rfm" || "$new_rfm" == "Y" || "$new_rfm" == "y" ) ]];then

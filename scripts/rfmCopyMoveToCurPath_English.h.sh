@@ -24,8 +24,10 @@ done
 if [[ $clipboardContent -eq 0 ]];then
 	echo "Please input source path(use up and down arrow key to choose from input history):"
 else
+	echo -e "\e[1;33m"
 	echo "Press enter to read source from clipboard content shown above;"
 	echo "or input source path(use up and down arrow key to choose from input history):"
+	echo -e "\e[0m"
 fi
 
 source="$(rfmReadlineWithSpecificHistoryFile.sh ~/.rfm_history_directory)"
@@ -34,7 +36,7 @@ source=${source/#~/${HOME}}
 if [[ ! -z "$source" ]];then
 
 	if [[ -d $source ]];then
-		read -p "Path inputted is a directory, press enter to launch new rfm window to choose source from this directory, or press n to use the directory as source" -r new_rfm
+		read -p "Path inputted is a directory, press enter to launch new rfm window to choose source from this directory(press q to close the new rfm window after selection); or press n to use the directory as source" -r new_rfm
 	fi
 
 	if [[ -d $source && ( -z "$new_rfm" || "$new_rfm" == "Y" || "$new_rfm" == "y" ) ]];then
