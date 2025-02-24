@@ -326,6 +326,7 @@ enum RFM_treeviewCol{
    COL_MTIME,
    COL_MTIME_STR,
    COL_SIZE,
+   COL_SIZE_DISPLAY,
    COL_ATTR,
    COL_OWNER,
    COL_GROUP,
@@ -1847,6 +1848,7 @@ static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,
 			  COL_MTIME, fileAttributes->file_mtime==NULL? 0 : g_date_time_to_unix(fileAttributes->file_mtime),
 			  COL_MTIME_STR,fileAttributes->mtime,
              		  COL_SIZE,fileAttributes->file_size,
+			  COL_SIZE_DISPLAY,g_format_size_full(fileAttributes->file_size, G_FORMAT_SIZE_LONG_FORMAT),
                           COL_ATTR, fileAttributes,
                           COL_OWNER,fileAttributes->owner,
 			  COL_GROUP,fileAttributes->group,
@@ -4226,6 +4228,7 @@ static int setup(RFM_ctx *rfmCtx)
                               G_TYPE_UINT64,    /* File mtime: time_t is currently 32 bit signed */
 			      G_TYPE_STRING, //MTIME_STR
 			      G_TYPE_UINT64, //size
+			      G_TYPE_STRING, //size_display
 			      G_TYPE_POINTER,  /* RFM_FileAttributes */
 			      G_TYPE_STRING,    //OWNER
 			      G_TYPE_STRING,   //GROUP
