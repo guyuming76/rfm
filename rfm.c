@@ -3453,12 +3453,20 @@ static void writeSearchResultIntoFD(gint *fd){
 	GList* c=columns;
 	do{
 	  GValue val = G_VALUE_INIT;
+	  //g_value_init(&val, G_TYPE_GTYPE);
 	  gtk_tree_model_get_value(GTK_TREE_MODEL(store), &iter, *((enum RFM_treeviewCol *)(c->data)), &val);
-  	  gchar * str_value = g_value_get_string(&val);
-	  if (c==columns)//this means the first column
-	    dprintf(*fd, "\n%s", str_value? str_value:""); //首列输出回车 加 值
-	  else dprintf(*fd, "%s%s",SearchResultColumnSeperator, str_value?str_value:""); //非首列输出 分隔符 加值
-	  if (str_value) g_free(str_value);
+	  if (gtk_tree_model_get_column_type((GTK_TREE_MODEL(store)), *((enum RFM_treeviewCol *)(c->data)))==G_TYPE_STRING) { //到目前为止，只有 STRING 和 INT64 两种类型的列被显示，参加config.h里面 treeview 列定义以及对应列在 treeview store new 时候的类型
+	      gchar * str_value = g_value_get_string(&val);
+	      if (c==columns)//this means the first column
+		dprintf(*fd, "\n%s", str_value? str_value:""); //首列输出回车 加 值
+	      else dprintf(*fd, "%s%s",SearchResultColumnSeperator, str_value?str_value:""); //非首列输出 分隔符 加值
+	      if (str_value) g_free(str_value);
+	  }else{ //GTYPE_UINT64
+	      if (c==columns)//this means the first column
+		dprintf(*fd, "\n%ld", g_value_get_uint64(&val)); //首列输出回车 加 值
+	      else dprintf(*fd, "%s%ld",SearchResultColumnSeperator, g_value_get_uint64(&val)); //非首列输出 分隔符 加值
+	  }
+	  //g_value_unset(&val);
 	}while((c=g_list_next(c)));
 
       }while (stdin_cmd_selection_list?
