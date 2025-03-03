@@ -34,7 +34,7 @@ LIBS += `pkg-config --libs libcmark`
 endif
 CPPFLAGS += -DVERSION=\"${VERSION}\"
 GTK_CFLAGS = `pkg-config --cflags ${GTK_VERSION}`
-CFLAGS += -g -Wall -std=c11 -O0 -fPIC -pie  ${GTK_CFLAGS} ${INCS} ${CPPFLAGS}
+CFLAGS += -g -Wall -std=c11 -O0 -fPIC -pie -Wno-error=incompatible-pointer-types -Wno-error=return-mismatch ${GTK_CFLAGS} ${INCS} ${CPPFLAGS}
 LDFLAGS += -g ${LIBS}
 
 ifneq (${PythonEmbedded}, )
