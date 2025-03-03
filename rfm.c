@@ -899,7 +899,7 @@ static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_
 	 fprintf(stderr,"%s", msg);
        }else{
 	 if (strlen(msg) > RFM_MX_MSGBOX_CHARS){
-	   memcpy(msg[RFM_MX_MSGBOX_CHARS - 35],"......message too long to show\0",31);
+	   memcpy(msg + (RFM_MX_MSGBOX_CHARS - 35),"......message too long to show\0",31);
 	 }
 	 show_msgbox(msg, child_attribs->name, GTK_MESSAGE_ERROR);
        }
