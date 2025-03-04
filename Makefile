@@ -34,7 +34,7 @@ LIBS += `pkg-config --libs libcmark`
 endif
 CPPFLAGS += -DVERSION=\"${VERSION}\"
 GTK_CFLAGS = `pkg-config --cflags ${GTK_VERSION}`
-CFLAGS += -g -Wall -std=c11 -O0 -fPIC -pie -Wno-error=incompatible-pointer-types -Wno-error=return-mismatch ${GTK_CFLAGS} ${INCS} ${CPPFLAGS}
+CFLAGS += -g -Wall -std=c11 -O0 -fPIC -pie -Wno-error=incompatible-pointer-types ${GTK_CFLAGS} ${INCS} ${CPPFLAGS}
 LDFLAGS += -g ${LIBS}
 
 ifneq (${PythonEmbedded}, )
@@ -58,7 +58,7 @@ options:
 
 .c.o:
 	@echo CC $<
-	@trap 'echo "如果在gcc版本低于14,且编译报错，尝试去掉CFLAGS值中 -Wno-error=return-mismatch, 这是git commit 72fe3bcaf365978316a2f88b74f7b2888cd623bf 里加的.本消息无论gcc成功失败都会显示，如果根据不同gcc版本设置不同CFLAGS值，Makefile会不会变得更长更难读？"' EXIT
+	@echo "如果在gcc版本高于14,且编译报错，尝试在CFLAGS值中加 -Wno-error=return-mismatch"
 	@${CC} -c ${CFLAGS} $<
 
 ifneq ($(RFM_FILE_CHOOSER),)
