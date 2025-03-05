@@ -58,7 +58,6 @@ options:
 
 .c.o:
 	@echo CC $<
-	@echo "如果在gcc版本高于14,且编译报错，尝试在CFLAGS值中加 -Wno-error=return-mismatch"
 	@${CC} -c ${CFLAGS} $<
 
 ifneq ($(RFM_FILE_CHOOSER),)

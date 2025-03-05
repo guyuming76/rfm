@@ -4560,7 +4560,7 @@ static int ProcessOnelineForSearchResult_with_title(char* oneline, gboolean new_
 // first_line_column_title 为FALSE时,搜索结果第一行不包含表头,显示C1,C2,C3,...的顺序列名
 // first_line_column_title 为TRUE的时候,第一行为表头,且只能用于扩展列,不会去查找现有同名列
 static int ProcessOnelineForSearchResult_internel(char* oneline, gboolean new_search, gboolean first_line_column_title){
-           if (oneline == NULL || !new_search) return;
+           if (oneline == NULL || !new_search) return 0;
 	   char* key=calloc(10, sizeof(char));
 	   uint seperatorPositionAfterCurrentExtColumnValue = strcspn(oneline, SearchResultColumnSeperator);
 	   uint currentColumnTitleIndex=1;
@@ -4650,7 +4650,7 @@ static void CallDefaultSearchResultFunctionForNewSearch(char *one_line_in_search
 static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline, gboolean new_search){
    if (new_search){
      CallDefaultSearchResultFunctionForNewSearch(oneline);
-     return;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
+     return 0;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
    }
 
    GKeyFile *keyfile=g_key_file_new();
@@ -4667,7 +4667,7 @@ static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline, gboolean ne
 static int ProcessKeyValuePairInCmdOutputFromSearchResult(char *oneline, gboolean new_search, char* cmdtemplate){
    if (new_search){
      CallDefaultSearchResultFunctionForNewSearch(oneline);
-     return;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
+     return 0;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
    }
 
    GKeyFile *keyfile=g_key_file_new();
@@ -4749,7 +4749,7 @@ static int ProcessKeyValuePairInData(GKeyFile *keyfile, char* groupname){
 static int CallMatchingProcessorForSearchResultLine(char *oneline, gboolean new_search, char *cmdtemplate, RFM_FileAttributes* fileAttributes){
    if (new_search){
      CallDefaultSearchResultFunctionForNewSearch(oneline);
-     return;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
+     return 0;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
    }
 
    for(guint i=0; i<G_N_ELEMENTS(searchresultTypes); i++){
