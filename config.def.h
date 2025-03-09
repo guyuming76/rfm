@@ -59,7 +59,12 @@ static const char *play_video[] = { "/usr/bin/xdg-open", NULL };
 static const char *play_audio[] = { "/usr/bin/xdg-open", NULL };
 static const char *av_info[]    = { "/usr/bin/mediainfo", "-f", NULL };
 static const char *textEdit[]   = { "$RFM_TERM", rfmBinPath "rfmTextEdit.sh", NULL };
-static const char *pdf[]        = { "/usr/bin/xdg-open", NULL };
+//static const char *pdf[]        = { "/usr/bin/xdg-open", NULL };
+static const char *pdf[] = { "firefox-bin", "-P","pdf",NULL };
+//open pdf with firefox-bin. you will be prompted to create a new firefox profile named pdf for the first run.
+//Without a seperate profile, you will be asked to close existing instance of firefox, which is the reason why i don't use xdg-open now
+//but i can start only one instance of firefox with this pdf profile, it is said that firefox will lock the profile
+//i use binary package of firefox on gentoo, so firefox-bin, change it to something like firefox on your system.
 static const char *mupdf[]      = { "/usr/bin/evince", NULL };
 static const char *show_image[] = { rfmBinPath "rfmRefreshImage.sh", NULL };
 static const char *soffice[]    = { "/usr/bin/xdg-open", NULL };
