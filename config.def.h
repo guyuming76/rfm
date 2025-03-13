@@ -101,7 +101,7 @@ static const char *git_stage_cmd[] = {"/usr/bin/git","stage",NULL};
 static const char *git_root_cmd[] = {"/usr/bin/git","rev-parse", "--show-toplevel",NULL};
 static const char *git_latest_log_cmd[] = {"/usr/bin/git","log","-1","--date=iso",NULL};
 static const char *git_log_cmd[] = { rfmBinPath "rfmVTforCMD.sh","/usr/bin/git","log",NULL};
-//现在只有很少的像上面这行的情况需要rfmVTforCMD_hold.sh脚本，如果想去掉它，统一用rfmVTforCMD.sh,就得想办法把类似read -p 这种代码插到上面的数组里，如果直接把 read 命令放在git log后面，NULL的前面，目前就会牺牲可以在末尾追加任意个选中文件的功能，我记得加一个“”数组项可以表示替换一个文件
+//现在只有很少的像上面这行的情况需要rfmVTforCMD_hold.sh脚本，如果想去掉它，统一用rfmVTforCMD.sh,就得想办法把类似read -p 这种代码插到上面的数组里，如果直接把 read 命令放在git log后面，NULL的前面，目前就会牺牲可以在末尾追加任意个选中文件的功能，我记得加一个""数组项可以表示替换一个文件
 //若利用stdin_command_bash 这样的返回数组的函数，就意味着要增强文件上下文菜单的配置功能，让其能够接受函数，但这样会增加代码的复杂性，我认为上下文菜单应该保持只接受静态数组这么一种相对简单的配置方式
 //TODO：所以，现在要么保持有些冗余的rfmVTforCMD_hold.sh脚本，要么增强把静态数组和当前选中文件列表合并的方式，增加一个在中间合并进全部文件的符号，这个可以和命令行中间使用%s符号替换文件名一起考虑
 //static const char *tig_cmd[] = { "$RFM_TERM","/usr/bin/tig",NULL};
@@ -144,6 +144,8 @@ static RFM_builtinCMD builtinCMD[] = {
  *        All stderr is sent to the filer's stderr.
  *        Any stdout may be displayed by defining the run option.
  */
+
+static const char *find_same_name[] = { "$RFM_TERM", rfmBinPath "rfmFindFilesWithTheSameName.sh", NULL };
 
 static RFM_MenuItem run_actions[] = {
    /* name           mime root        mime sub type            filenameSuffix           OrSearchResultType	func		runCmd            		showCondition	*/
@@ -206,6 +208,7 @@ static RFM_MenuItem run_actions[] = {
    {RunActionRefreshThumb,"application","zip",                 ".ggb",			NULL,			refreshThumbnail,NULL,		                NULL },
    {RunActionRefreshThumb,"video",     "mp4",                  NULL,			NULL,			refreshThumbnail,NULL,		                NULL },
    {RunActionRefreshThumb,"image",     "*",                    NULL,			NULL,			refreshThumbnail,NULL,		                NULL },
+   { "查找同名文件", "*",              "*",                    NULL,			NULL,			NULL,		find_same_name,                   NULL },
 };
 
 /* Toolbar button definitions
