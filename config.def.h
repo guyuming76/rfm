@@ -78,6 +78,7 @@ static const char *umount[]   = { rfmBinPath "suMount.sh", "-u", NULL };
 /* static const char *udisks_mount[]   = { "/usr/bin/udisksctl", "mount", "--no-user-interaction", "-b", NULL }; */
 /* static const char *udisks_unmount[] = { "/usr/bin/udisksctl", "unmount", "--no-user-interaction", "-b", NULL }; */
 static const char *properties[]     = { "$RFM_TERM", rfmBinPath "rfmProperties.sh", NULL };
+static const char *find_same_name[] = { rfmBinPath "rfmFindFilesWithTheSameName.sh", NULL };
 static const char *www[]        = { "/usr/bin/xdg-open", NULL };
 static const char *man[]        = { "/usr/bin/groff", "-man", "-Tutf8", NULL };
 static const char *java[]       = { "/usr/bin/java", "-jar", NULL };
@@ -144,8 +145,6 @@ static RFM_builtinCMD builtinCMD[] = {
  *        All stderr is sent to the filer's stderr.
  *        Any stdout may be displayed by defining the run option.
  */
-
-static const char *find_same_name[] = { "$RFM_TERM", rfmBinPath "rfmFindFilesWithTheSameName.sh", NULL };
 
 static RFM_MenuItem run_actions[] = {
    /* name           mime root        mime sub type            filenameSuffix           OrSearchResultType	func		runCmd            		showCondition	*/
