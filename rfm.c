@@ -166,6 +166,7 @@ static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlin
 static void g_spawn_async_callback_to_new_readline_thread(gpointer child_attribs);
 static void regcomp_for_regex_rules();
 static void set_stdin_cmd_leading_space_true();
+static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboolean from_stdin_readline);
 static void parse_and_exec_stdin_command_in_gtk_thread(gchar *msg);
 static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * parsed_msg, GString* readline_result_string);
 static void toggle_exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread();
@@ -2705,6 +2706,16 @@ static void file_menu_exec(GtkMenuItem *menuitem, RFM_ChildAttribs *childAttribs
   child_attribs->spawn_async = childAttribs->spawn_async;
   child_attribs->name=g_strdup(childAttribs->name);
 	
+  for (int i=0; i<G_N_ELEMENTS(stdin_cmd_interpretors); i++){
+    if (child_attribs->RunCmd[0] == stdin_cmd_interpretors[i].name){//注意这里比较的是两个字符串的地址，而不是用strcmp比较内容，这样不会因为恰巧相同的字符串造成误判
+      //TODO:需要根据 child_attribs->RunCmd[0] 的值设置 curr_stdin_cmd_interpretor
+      //但如何防止 和 readline 线程引发的 parse_and_exec_stdin_command_in_gtk_thread 在 current_stdin_cmd_interpretor 值上的冲突?
+      gchar* cmd = strdup(child_attribs->RunCmd[1]);
+      parse_and_exec_command_in_gtk_thread(cmd, FALSE);
+      return;
+    }
+  }
+
   g_spawn_wrapper_for_selected_fileList_(child_attribs);
 }
 
@@ -3964,7 +3975,7 @@ static void set_stdin_cmd_leading_space_true(){
 }
 
 //this runs in gtk thread
-static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult)
+static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboolean from_stdin_readline)
 {
         gboolean SearchResultAsInput=FALSE;
 	stdin_cmd_leading_space=FALSE;
@@ -4079,15 +4090,18 @@ static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult)
 
 	if(startWithVT() || auto_execution_command_after_rfm_start!=NULL){
 	  if (SearchResultAsInput) exec_stdin_command_with_SearchResultAsInput(readlineResultString);
-	  else if (exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread && !execStdinCmdInNewVT) exec_stdin_command(readlineResultString);
+	  else if ((exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread || !from_stdin_readline) && !execStdinCmdInNewVT) exec_stdin_command(readlineResultString);
 	  
-	  if (auto_execution_command_after_rfm_start==NULL) g_thread_join(readlineThread);//we won't have more than one readlineThread running at the same time since we join before new thread here
+	  if (from_stdin_readline && auto_execution_command_after_rfm_start==NULL) g_thread_join(readlineThread);//we won't have more than one readlineThread running at the same time since we join before new thread here
 	  if (execStdinCmdInNewVT) exec_stdin_command_in_new_VT(readlineResultString);
 
-	  if (!SearchResultAsInput) readlineThread=g_thread_new("readline", readlineInSeperateThread, readlineResultString);
+	  if (from_stdin_readline && !SearchResultAsInput) readlineThread=g_thread_new("readline", readlineInSeperateThread, readlineResultString);
 	}
 }
 
+static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult){
+  parse_and_exec_command_in_gtk_thread(readlineResult, TRUE);
+}
 
 static char** rfm_filename_completion(const char *text){
   if (ItemSelected && (text==NULL || g_strcmp0(text, "")==0)) { //有文件被选中 且 当前光标上下文为空

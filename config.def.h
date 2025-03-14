@@ -45,6 +45,18 @@ static gboolean UseTargetAddressWhenEnterSymbloicLinkForDir=TRUE;
 static gboolean auto_sort_entering_view = FALSE;
 static gboolean keep_selection_on_view_across_refresh = TRUE; 
 static gchar* dumb_keyfile_groupname = "https://discourse.gnome.org/t/gkeyfile-to-handle-conf-without-groupname/23080/3"; 
+
+//do not change the order of the following array,or change with care, it's referenced as stdin_cmd_interpretor[0] in code below
+static const stdin_cmd_interpretor stdin_cmd_interpretors[] = {
+        //Name             activationKey          prompt            cmdTransformer
+	{"Bash",           "b>",                  "b",              stdin_command_bash },
+	{"NuShell",        "n>",                  "n",              stdin_command_nu   },
+#ifdef PythonEmbedded
+	{"PythonEmbedded", "p>",                  "p",              NULL               },
+#endif
+};
+
+
 /* rfmBinPath is passed in by compiler via Makefile*/
 static const char *f_rm[]   = { "$RFM_TERM",rfmBinPath "rfmRemove.sh",NULL };
 static const char *f_cp[]   = { "$RFM_TERM",rfmBinPath "rfmCopyMove.sh","cp", NULL };
@@ -78,7 +90,7 @@ static const char *umount[]   = { rfmBinPath "suMount.sh", "-u", NULL };
 /* static const char *udisks_mount[]   = { "/usr/bin/udisksctl", "mount", "--no-user-interaction", "-b", NULL }; */
 /* static const char *udisks_unmount[] = { "/usr/bin/udisksctl", "unmount", "--no-user-interaction", "-b", NULL }; */
 static const char *properties[]     = { "$RFM_TERM", rfmBinPath "rfmProperties.sh", NULL };
-static const char *find_same_name[] = { rfmBinPath "rfmFindFilesWithTheSameName.sh", NULL };
+static const char *find_same_name[] = { stdin_cmd_interpretors[0].name, rfmBinPath "rfmFindFilesWithTheSameName.sh >markdown1 ", NULL };
 static const char *www[]        = { "/usr/bin/xdg-open", NULL };
 static const char *man[]        = { "/usr/bin/groff", "-man", "-Tutf8", NULL };
 static const char *java[]       = { "/usr/bin/java", "-jar", NULL };
@@ -397,15 +409,6 @@ static gboolean ignored_filename(const gchar *name){
 }
 
 
-
-static stdin_cmd_interpretor stdin_cmd_interpretors[] = {
-        //Name             activationKey          prompt            cmdTransformer
-	{"Bash",           "b>",                  "b",              stdin_command_bash },
-	{"NuShell",        "n>",                  "n",              stdin_command_nu   },
-#ifdef PythonEmbedded
-	{"PythonEmbedded", "p>",                  "p",              NULL               },
-#endif
-};
 
 static RFM_cmd_regex_rule regex_rules[] = {
 // pattern                          replacement                          action                           pattern_compiled
