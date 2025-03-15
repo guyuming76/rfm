@@ -2320,7 +2320,7 @@ static gboolean show_gitMenus(RFM_FileAttributes *fileAttributes) {
   return SearchResultViewInsteadOfDirectoryView ^ 1 && curPath_is_git_repo;
 }
 
-static gboolean show_gitColumns() {
+static gboolean show_gitColumns(RFM_FileAttributes * fileAttributes) {
   return curPath_is_git_repo;
 }
 
