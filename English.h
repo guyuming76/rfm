@@ -144,14 +144,14 @@ BuiltInCmd_SearchResultColumnSeperator \
 "      So far, two kinds(or sources) of \033[32mextended column\033[0m(as opposed to the builtin file metadata columns such as permission, modification time,size,etc.) are mentioned, one is the columns included in command output. The other is the key value pair extracted from inside the file. By the way, there is a third type of extend column: defined in config.h, and added into view with showcolumn command. For example the ImageSize column in config.h"
 
 #define	SearchResultType_markdown1 "default search result type will be called first to get command output, standalone programe extractKeyValuePairFromMarkdown in rfm project will be called to parse the file in search result row with markdown format; it will output key value pairs in gkeyfile format： markdown level one title = first line content under level one title. Finally, result will be show in the same way as gkeyfile result type. For example:\n" \
-"      find -name *.TODO.md>markdown1"
+"      find -name *.TODO.md>.md"
 
 #define SearchResultType_muview "default search result type will be called first to get command output, then mu view command is used to read mail header and output key value pairs in gkeyfile format, and displayed in the same way as gkeyfile search result type. For example(Note: there will be ':' in file name in Maidir, conflicting with the default SearchResultColumnSeperator, quotation mark should be added around file name to solve this. cd and ls command are used below instead of locate command, because we need the default displaying order of ls command,  and the cd command inside {} is that defined in the shell, not that defined in rfm):\n" \
 "      { cd /home/guyuming/Mail/139INBOX/cur; ls -1td \"$PWD\"/*; }>muview\n" \
 "      command above can be simplified as what follows. I keep the one above as a sample for bash {} syntax\n" \
 "      ls -1td \"/home/guyuming/Mail/139INBOX/cur\"/*>muview"
 
-#define SearchResultType_TODO_md "work in the same way as markdown1 search result type except that only level one title '简述' and '问题状态' will be queried. For example:\n" \
+#define SearchResultType_TODO_md "work in the same way as .md search result type except that only level one title '简述' and '问题状态' will be queried. For example:\n" \
 "      locate .rfmTODO.md>TODO.md"
 
 #define SearchResultType_multitype "default search result type will be called first to get command output, MIME type and filename suffix will be used to match search result type, and matched search result type will be called to process this row of search result. With this type, we can display content of different file formats in same view. For example:\n" \

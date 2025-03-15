@@ -4734,18 +4734,26 @@ static int ProcessKeyValuePairInData(GKeyFile *keyfile, char* groupname){
 
 // 根据文件属性,例如文件名后缀,调用适当的处理函数
 // new_search为FALSE时,oneline仅包含文件路径
+// 用SearchResultType[i].name 去匹配文件名后缀,以匹配到的最长后缀为准
+// 比如 searchresulttype name 有 ".md", 还有 "TODO.md"
+// 一个没匹配到,默认用 searchresultype[0]
 static int CallMatchingProcessorForSearchResultLine(char *oneline, gboolean new_search, char *cmdtemplate, RFM_FileAttributes* fileAttributes){
    if (new_search){
      CallDefaultSearchResultFunctionForNewSearch(oneline);
      return 0;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
    }
 
+   char* longest_matched_searchresulttype_name = "";
+   int matched_searchresulttype_index = 0;
    for(guint i=0; i<G_N_ELEMENTS(searchresultTypes); i++){
-     if (g_str_has_suffix(oneline, searchresultTypes[i].name) || g_strcmp0(fileAttributes->mime_sort, searchresultTypes[i].name)==0){
-       searchresultTypes[i].SearchResultLineProcessingFunc(oneline,new_search,searchresultTypes[i].cmdTemplate, fileAttributes);
-       break;
+     if (g_str_has_suffix(oneline, searchresultTypes[i].name)){
+       if (strlen(searchresultTypes[i].name)>strlen(longest_matched_searchresulttype_name)){
+	 longest_matched_searchresulttype_name = searchresultTypes[i].name;
+	 matched_searchresulttype_index = i;
+       }
      }
    }
+   return searchresultTypes[matched_searchresulttype_index].SearchResultLineProcessingFunc(oneline,new_search,searchresultTypes[matched_searchresulttype_index].cmdTemplate, fileAttributes);
 }
 
 static gchar* getExtColumnValueFromHashTable(guint fileAttributeId, guint ExtColumnHashTableIndex){

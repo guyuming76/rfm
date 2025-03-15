@@ -90,7 +90,7 @@ static const char *umount[]   = { rfmBinPath "suMount.sh", "-u", NULL };
 /* static const char *udisks_mount[]   = { "/usr/bin/udisksctl", "mount", "--no-user-interaction", "-b", NULL }; */
 /* static const char *udisks_unmount[] = { "/usr/bin/udisksctl", "unmount", "--no-user-interaction", "-b", NULL }; */
 static const char *properties[]     = { "$RFM_TERM", rfmBinPath "rfmProperties.sh", NULL };
-static const char *find_same_name[] = { stdin_cmd_interpretors[0].name, rfmBinPath "rfmFindFilesWithTheSameName.sh >markdown1 ", NULL };
+static const char *find_same_name[] = { stdin_cmd_interpretors[0].name, rfmBinPath "rfmFindFilesWithTheSameName.sh >multitype ", NULL };
 static const char *www[]        = { "/usr/bin/xdg-open", NULL };
 static const char *man[]        = { "/usr/bin/groff", "-man", "-Tutf8", NULL };
 static const char *java[]       = { "/usr/bin/java", "-jar", NULL };
@@ -370,11 +370,11 @@ static RFM_SearchResultType searchresultTypes[] = {
 //name	       SearchResultLineProcessingFunc                  showcolumn     SearchResultColumnSeperator  cmdTemplate Description
   {"default",  ProcessOnelineForSearchResult,                  EmptyShowColumn, NULL, NULL,                            SearchResultType_default }, //default searchresult, contain only filename list such as returned by locate, or filename followed by additional info such as returned by grep
   {"gkeyfile", ProcessKeyValuePairInFilesFromSearchResult,     EmptyShowColumn, NULL, NULL,                            SearchResultType_gkeyfile},
-  {"markdown1",ProcessKeyValuePairInCmdOutputFromSearchResult, EmptyShowColumn, NULL, "extractKeyValuePairFromMarkdown 0 %s",SearchResultType_markdown1},
 #ifdef MU_VIEW
   {"muview",   ProcessKeyValuePairInCmdOutputFromSearchResult, MailColumns    , "&" , "mu view %s | rfmGetMailHeaderWithMuView.sh",SearchResultType_muview }, //%s in cmdTemplate will be replaced by filename in searchresult
 #endif
 #ifdef extractKeyValuePairFromMarkdown
+  {".md",      ProcessKeyValuePairInCmdOutputFromSearchResult, EmptyShowColumn, NULL, "extractKeyValuePairFromMarkdown 0 %s",SearchResultType_markdown1},
   {"TODO.md",  ProcessKeyValuePairInCmdOutputFromSearchResult, EmptyShowColumn, NULL, "extractKeyValuePairFromMarkdown 0 %s 简述 问题状态",SearchResultType_TODO_md},
 #endif
   {"multitype",CallMatchingProcessorForSearchResultLine,       EmptyShowColumn, NULL, NULL,                            SearchResultType_multitype },
