@@ -219,7 +219,7 @@ static RFM_MenuItem run_actions[] = {
    {RunActionRefreshThumb,"application","zip",                 ".ggb",			NULL,			refreshThumbnail,NULL,		                NULL },
    {RunActionRefreshThumb,"video",     "mp4",                  NULL,			NULL,			refreshThumbnail,NULL,		                NULL },
    {RunActionRefreshThumb,"image",     "*",                    NULL,			NULL,			refreshThumbnail,NULL,		                NULL },
-   { "查找同名文件", "*",              "*",                    NULL,			NULL,			NULL,		find_same_name,                   NULL },
+   { RunActionFindSameFile, "*",              "*",                    NULL,			NULL,			NULL,		find_same_name,                   NULL },
 };
 
 /* Toolbar button definitions

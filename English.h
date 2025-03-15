@@ -159,3 +159,5 @@ BuiltInCmd_SearchResultColumnSeperator \
 "      by the way, select one file in search result view and run rfm builtin cd command ending with space, we can go into the directory containning this selected file."
 
 #define SearchResultType_default_with_title "The same as the default search result type, except that the first row in command output contains column title"
+
+#define RunActionFindSameFile "Find and parse files with the same name"
