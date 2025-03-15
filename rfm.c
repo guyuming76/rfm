@@ -166,7 +166,7 @@ static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlin
 static void g_spawn_async_callback_to_new_readline_thread(gpointer child_attribs);
 static void regcomp_for_regex_rules();
 static void set_stdin_cmd_leading_space_true();
-static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboolean from_stdin_readline);
+static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboolean from_stdin_readline, int cmd_interpretor_index);
 static void parse_and_exec_stdin_command_in_gtk_thread(gchar *msg);
 static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * parsed_msg, GString* readline_result_string);
 static void toggle_exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread();
@@ -2708,10 +2708,8 @@ static void file_menu_exec(GtkMenuItem *menuitem, RFM_ChildAttribs *childAttribs
 	
   for (int i=0; i<G_N_ELEMENTS(stdin_cmd_interpretors); i++){
     if (child_attribs->RunCmd[0] == stdin_cmd_interpretors[i].name){//注意这里比较的是两个字符串的地址，而不是用strcmp比较内容，这样不会因为恰巧相同的字符串造成误判
-      //TODO:需要根据 child_attribs->RunCmd[0] 的值设置 curr_stdin_cmd_interpretor
-      //但如何防止 和 readline 线程引发的 parse_and_exec_stdin_command_in_gtk_thread 在 current_stdin_cmd_interpretor 值上的冲突?
       gchar* cmd = strdup(child_attribs->RunCmd[1]);
-      parse_and_exec_command_in_gtk_thread(cmd, FALSE);
+      parse_and_exec_command_in_gtk_thread(cmd, FALSE, i);
       return;
     }
   }
@@ -3975,7 +3973,7 @@ static void set_stdin_cmd_leading_space_true(){
 }
 
 //this runs in gtk thread
-static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboolean from_stdin_readline)
+static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboolean from_stdin_readline, int cmd_interpretor_index)
 {
         gboolean SearchResultAsInput=FALSE;
 	stdin_cmd_leading_space=FALSE;
@@ -4090,7 +4088,7 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 
 	if(startWithVT() || auto_execution_command_after_rfm_start!=NULL){
 	  if (SearchResultAsInput) exec_stdin_command_with_SearchResultAsInput(readlineResultString);
-	  else if ((exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread || !from_stdin_readline) && !execStdinCmdInNewVT) exec_stdin_command(readlineResultString, current_stdin_cmd_interpretor);
+	  else if ((exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread || !from_stdin_readline) && !execStdinCmdInNewVT) exec_stdin_command(readlineResultString, cmd_interpretor_index);
 	  
 	  if (from_stdin_readline && auto_execution_command_after_rfm_start==NULL) g_thread_join(readlineThread);//we won't have more than one readlineThread running at the same time since we join before new thread here
 	  if (execStdinCmdInNewVT) exec_stdin_command_in_new_VT(readlineResultString);
@@ -4100,7 +4098,7 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 }
 
 static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult){
-  parse_and_exec_command_in_gtk_thread(readlineResult, TRUE);
+  parse_and_exec_command_in_gtk_thread(readlineResult, TRUE, current_stdin_cmd_interpretor);
 }
 
 static char** rfm_filename_completion(const char *text){
@@ -4567,7 +4565,7 @@ static int ProcessOnelineForSearchResult_internel(char* oneline, gboolean new_se
 	       // but current_Ext_Column and currentExtColumnHashTable Ext can have gap: it can be COL_Ext2, COL_Ext4,...,
 	       // 上面一行的假设 current_Ext_Column 有空缺,我想象中可能会是用户通过 showcolumn 命令占用了一些扩展列.但这只是我在写这段代码时想象中可能出现的情况,并未在测试中实际遇到过
 	       // 到目前为止,实际测试中 current_Ext_column 也是连续的
-	       // 这个假设对目前代码的影响就是 用currentColumnTitleIndex 这样一个连续编号,得到 C1, C2,... 这样的连续编号列名, 然后再通过 get_treeviewColumnByTitle 找到列
+	       // 这个假设对目前代码的影响就是 用currentColumnTitleIndex 这样一个连续编号,得到 C1, C2, C3, ... 这样的连续编号列名, 然后再通过 get_treeviewColumnByTitle 找到列
 	       // current_Ext_Column 对应的COL_ExtX,中X下标总是等于 currentExtColumnHashTableIndex + 1
 
 	       if (fileAttributeID==1){ //bind to available extended column for the first line.
