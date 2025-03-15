@@ -1,31 +1,21 @@
 #!/bin/bash
 
-# Get list of selected files
+# 获取选中的文件列表
 selected_files=("$@")
 
-# Exit if no files selected
+# 如果没有选中文件,退出
 if [ ${#selected_files[@]} -eq 0 ]; then
-    echo "Please select at least one file"
+    echo "please select at least one file"
     exit 1
 fi
 
-# Process each selected file
+# 遍历每个选中的文件
 for file in "${selected_files[@]}"; do
-    # Get filename without path
+    # 获取文件名(不含路径)
     filename=$(basename "$file")
     
-    echo "Finding files with the same name as $filename:"
-    echo "----------------------------------------"
-    
-    # Use find command to locate files with same name
+    # 使用find命令查找同名文件
     find / -name "$filename" 2>/dev/null | while read found_file; do
-        # Skip the currently selected file
-        if [ "$found_file" != "$file" ]; then
-            echo "$found_file"
-        fi
+        echo "$found_file"
     done
-    echo "----------------------------------------"
 done
-
-# Wait for user to press enter
-read -p "Press Enter to close window..." 
