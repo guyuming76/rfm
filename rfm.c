@@ -162,7 +162,7 @@ static gboolean startWithVT();
 static void readlineInSeperateThread();
 static void ReadFromPipeStdinIfAny(char *fd);
 static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
-static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
+static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, int cmd_interpretor_index);
 static void g_spawn_async_callback_to_new_readline_thread(gpointer child_attribs);
 static void regcomp_for_regex_rules();
 static void set_stdin_cmd_leading_space_true();
@@ -842,9 +842,9 @@ static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_
 /* https://docs.gtk.org/glib/func.spawn_async_with_pipes_and_fds.html */
 /* g_spawn_async_with_pipes_and_fds(${1:const gchar *working_directory}, ${2:const gchar *const *argv}, ${3:const gchar *const *envp}, ${4:GSpawnFlags flags}, ${5:GSpawnChildSetupFunc child_setup}, ${6:gpointer user_data}, ${7:gint stdin_fd}, ${8:gint stdout_fd}, ${9:gint stderr_fd}, ${10:const gint *source_fds}, ${11:const gint *target_fds}, ${12:gsize n_fds}, ${13:GPid *child_pid_out}, ${14:gint *stdin_pipe_out}, ${15:gint *stdout_pipe_out}, ${16:gint *stderr_pipe_out}, ${17:GError **error}) */
 
-/* G_SPAWN_STDOUT_TO_DEV_NULL means that the child’s standard output will be discarded (by default, it goes to the same location as the parent’s standard output). G_SPAWN_CHILD_INHERITS_STDOUT explicitly imposes the default behavior. Both flags cannot be enabled at the same time and, in both cases, the stdout_pipe_out argument is ignored. */
+/* G_SPAWN_STDOUT_TO_DEV_NULL means that the child's standard output will be discarded (by default, it goes to the same location as the parent's standard output). G_SPAWN_CHILD_INHERITS_STDOUT explicitly imposes the default behavior. Both flags cannot be enabled at the same time and, in both cases, the stdout_pipe_out argument is ignored. */
    
-/* If stdout_pipe_out is NULL, the child’s standard output goes to the same location as the parent’s standard output unless G_SPAWN_STDOUT_TO_DEV_NULL is set. */
+/* If stdout_pipe_out is NULL, the child's standard output goes to the same location as the parent's standard output unless G_SPAWN_STDOUT_TO_DEV_NULL is set. */
 
 /* https://docs.gtk.org/glib/func.spawn_async_with_pipes.html */
 /* g_spawn_async_with_pipes(${1:const gchar *working_directory}, ${2:gchar **argv}, ${3:gchar **envp}, ${4:GSpawnFlags flags}, ${5:GSpawnChildSetupFunc child_setup}, ${6:gpointer user_data}, ${7:GPid *child_pid}, ${8:gint *standard_input}, ${9:gint *standard_output}, ${10:gint *standard_error}, ${11:GError **error}) */
@@ -1061,7 +1061,7 @@ static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *ch
       child_attribs->pid=-1;
       GError* err = NULL;
 /* https://docs.gtk.org/glib/func.spawn_async_with_pipes_and_fds.html */
-/*       If non-NULL, the stdin_pipe_out, stdout_pipe_out, stderr_pipe_out locations will be filled with file descriptors for writing to the child’s standard input or reading from its standard output or standard error. The caller of g_spawn_async_with_pipes() must close these file descriptors when they are no longer in use. If these parameters are NULL, the corresponding pipe won’t be created. */
+/*       If non-NULL, the stdin_pipe_out, stdout_pipe_out, stderr_pipe_out locations will be filled with file descriptors for writing to the child's standard input or reading from its standard output or standard error. The caller of g_spawn_async_with_pipes() must close these file descriptors when they are no longer in use. If these parameters are NULL, the corresponding pipe won't be created. */
       rv=g_spawn_async_with_pipes(rfm_curPath, v, env_for_g_spawn, G_SPAWN_DO_NOT_REAP_CHILD | G_SPAWN_SEARCH_PATH | child_attribs->runOpts,
 				  //本commit 是revert 3d53359fdb97498a895a0cec97e3076558908a02 消除冲突后的结果，注意上一行|child_attribs->runOpts 是保留3d53359fdb97498a895a0cec97e3076558908a02改动的
 
@@ -2662,7 +2662,7 @@ middle-mouse-click.  */
 
 // 这个函数的主要目的就是获得当前选中文件,产生一个data为 fileAttributes->path
 // 的Glist,然后汇同参数childAttribs一起传递各g_spawn_wrapper
-// TODO: 直接往g_spawn_wrapper 里面传data 我fileAttribtes 的GList不好吗?不过要注意释放问题,目前fileAttributes都是在refresh_store时统一释放的,其他地方都是引用
+// TODO: 直接往g_spawn_wrapper 里面传data 我fileAttributes 的GList不好吗?不过要注意释放问题,目前fileAttributes都是在refresh_store时统一释放的,其他地方都是引用
 static void g_spawn_wrapper_for_selected_fileList_(RFM_ChildAttribs *childAttribs)
 {
    GtkTreeIter iter;
@@ -3340,7 +3340,7 @@ static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPrevi
 	      add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
 }
 
-static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution){
+static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, int cmd_interpretor_index){
   if (auto_execution_command_after_rfm_start!=NULL){
     //auto_execution_command_after_rfm_start was freed in exec_stdin_command as readlineresult
     auto_execution_command_after_rfm_start = NULL;
@@ -3348,7 +3348,7 @@ static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlin
   
   if (readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution!=NULL){ //this means it's not initial run after rfm start, so i should first run cmd from previous readline here
 #ifdef PythonEmbedded
-	  if (pyProgramName!=NULL && g_strcmp0(stdin_cmd_interpretors[current_stdin_cmd_interpretor].name,"PythonEmbedded")==0){
+	  if (pyProgramName!=NULL && g_strcmp0(stdin_cmd_interpretors[cmd_interpretor_index].name,"PythonEmbedded")==0){
 		PyRun_SimpleString(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str);
 		g_strfreev(env_for_g_spawn_used_by_exec_stdin_command);env_for_g_spawn_used_by_exec_stdin_command=NULL;
 		add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
@@ -3358,13 +3358,13 @@ static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlin
 	  GError *err = NULL;
 
 	  if (SearchResultTypeIndex>=0 && g_spawn_sync(rfm_curPath, 
-						       stdin_cmd_interpretors[current_stdin_cmd_interpretor].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE),
+						       stdin_cmd_interpretors[cmd_interpretor_index].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE),
 					      env_for_g_spawn_used_by_exec_stdin_command,
 					      G_SPAWN_SEARCH_PATH|G_SPAWN_CHILD_INHERITS_STDIN|G_SPAWN_CHILD_INHERITS_STDERR,
 					      NULL,NULL,&stdout_read_by_search_result,NULL,NULL,&err)){ 
 	      g_idle_add_once(update_SearchResultFileNameList_and_refresh_store, (gpointer)stdout_read_by_search_result);
 	  } else if (SearchResultTypeIndex<0 && g_spawn_sync(rfm_curPath,
-							     stdin_cmd_interpretors[current_stdin_cmd_interpretor].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE), env_for_g_spawn_used_by_exec_stdin_command,
+							     stdin_cmd_interpretors[cmd_interpretor_index].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE), env_for_g_spawn_used_by_exec_stdin_command,
                            G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN |
                                G_SPAWN_CHILD_INHERITS_STDOUT |
                                G_SPAWN_CHILD_INHERITS_STDERR,
@@ -3469,7 +3469,7 @@ static void writeSearchResultIntoFD(gint *fd){
 
 static void readlineInSeperateThread(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution) {
   g_debug("readlineInSeperateThread");
-  if (!exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread && !execStdinCmdInNewVT) exec_stdin_command(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
+  if (!exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread && !execStdinCmdInNewVT) exec_stdin_command(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, current_stdin_cmd_interpretor);
 
   execStdinCmdInNewVT = FALSE;
   
@@ -3937,7 +3937,7 @@ static void toggle_exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread(){
 }
 
 // searchresulttype can be matched with index number or name
-// you can use >0  or >default or >your_custom_searchtype_name_or_index as suffix of your command
+// you can use >0  or >default or >your_custom_searchresulttype_name_or_index as suffix of your command
 // i use the ">" as RFM_SearchResultTypeNamePrefix since the beginning of development, but it can be confused with redirect to file in Bash. So, you mean define it to "}" or anything else you like in config.h
 static int MatchSearchResultType(gchar* readlineResult){
             gint len = strlen(readlineResult);
@@ -4090,7 +4090,7 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 
 	if(startWithVT() || auto_execution_command_after_rfm_start!=NULL){
 	  if (SearchResultAsInput) exec_stdin_command_with_SearchResultAsInput(readlineResultString);
-	  else if ((exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread || !from_stdin_readline) && !execStdinCmdInNewVT) exec_stdin_command(readlineResultString);
+	  else if ((exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread || !from_stdin_readline) && !execStdinCmdInNewVT) exec_stdin_command(readlineResultString, current_stdin_cmd_interpretor);
 	  
 	  if (from_stdin_readline && auto_execution_command_after_rfm_start==NULL) g_thread_join(readlineThread);//we won't have more than one readlineThread running at the same time since we join before new thread here
 	  if (execStdinCmdInNewVT) exec_stdin_command_in_new_VT(readlineResultString);
