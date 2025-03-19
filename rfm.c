@@ -411,6 +411,7 @@ static gboolean ExtColumnHashTable_keep_during_refresh[NUM_Ext_Columns + 1];
 //      locate blablablaa |rfm
 // , instead of from a directory
 static unsigned int SearchResultViewInsteadOfDirectoryView=0;
+static gboolean InSearchResultView(){ return SearchResultViewInsteadOfDirectoryView; }//c 语言有没有啥办法把变量当作函数调用或把函数当变量引用?这样我就用不着为了在ShowCondition里应用变量定义一个函数了
 static gboolean In_refresh_store=FALSE;
 static gboolean insert_fileAttributes_into_store_one_by_one=FALSE;
 static guint rfm_readDirSheduler=0;

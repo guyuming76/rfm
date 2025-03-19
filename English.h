@@ -14,6 +14,7 @@
 #define MoveTo "MoveHere"
 #define LinkTo "SoftLink"
 #define RunActionChangeOwner "ChangeOwner"
+#define RunActionCD "Enter parent directory of file"
 #define SwitchPipeDir  "Pipe/Dir"
 #define cpPath "copy directory name to clipboard"
 

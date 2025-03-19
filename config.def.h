@@ -91,6 +91,7 @@ static const char *umount[]   = { rfmBinPath "suMount.sh", "-u", NULL };
 /* static const char *udisks_unmount[] = { "/usr/bin/udisksctl", "unmount", "--no-user-interaction", "-b", NULL }; */
 static const char *properties[]     = { "$RFM_TERM", rfmBinPath "rfmProperties.sh", NULL };
 static const char *find_same_name[] = { stdin_cmd_interpretors[0].name, rfmBinPath "rfmFindFilesWithTheSameName.sh >multitype ", NULL };
+static const char *cd_in_searchresult[] = { stdin_cmd_interpretors[0].name, "cd ", NULL };
 static const char *www[]        = { "/usr/bin/xdg-open", NULL };
 static const char *man[]        = { "/usr/bin/groff", "-man", "-Tutf8", NULL };
 static const char *java[]       = { "/usr/bin/java", "-jar", NULL };
@@ -165,6 +166,8 @@ static RFM_MenuItem run_actions[] = {
    { RunActionDelete, "*",             "*",                    NULL,			NULL,			NULL,		f_rm,             		NULL },
    { RunActionSL,    "*",              "*",                    NULL,			NULL,			NULL,		create_softlink,                NULL },
    { RunActionFindSL,"*",              "*",                    NULL,			NULL,			NULL,		find_softlink,                  NULL },
+   { RunActionFindSameFile, "*",       "*",                    NULL,			NULL,			NULL,		find_same_name,                 NULL },
+   { RunActionCD,    "*",              "*",                    NULL,                    NULL,                   NULL,           cd_in_searchresult,             InSearchResultView },
 #ifdef GitIntegration
    { RunActionGitStage,  "*",          "*",                    NULL,			NULL,			NULL,		git_stage_cmd,    		show_gitMenus },
    { "git log",      "*",              "*",                    NULL,			NULL,			NULL,		git_log_cmd,      		show_gitMenus },
@@ -219,7 +222,6 @@ static RFM_MenuItem run_actions[] = {
    {RunActionRefreshThumb,"application","zip",                 ".ggb",			NULL,			refreshThumbnail,NULL,		                NULL },
    {RunActionRefreshThumb,"video",     "mp4",                  NULL,			NULL,			refreshThumbnail,NULL,		                NULL },
    {RunActionRefreshThumb,"image",     "*",                    NULL,			NULL,			refreshThumbnail,NULL,		                NULL },
-   { RunActionFindSameFile, "*",              "*",                    NULL,			NULL,			NULL,		find_same_name,                   NULL },
 };
 
 /* Toolbar button definitions

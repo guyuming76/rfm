@@ -15,6 +15,7 @@
 #define LinkTo "软链接"
 #define RunActionChangeOwner "更改所有者"
 #define RunActionFindSameFile "查找同名文件并解析"
+#define RunActionCD "进入选中文件所在目录"
 #define SwitchPipeDir  "管道/目录"
 #define cpPath "复制目录路径至剪贴板"
 
