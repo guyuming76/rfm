@@ -2710,6 +2710,7 @@ static void file_menu_exec(GtkMenuItem *menuitem, RFM_ChildAttribs *childAttribs
   for (int i=0; i<G_N_ELEMENTS(stdin_cmd_interpretors); i++){
     if (child_attribs->RunCmd[0] == stdin_cmd_interpretors[i].name){//注意这里比较的是两个字符串的地址，而不是用strcmp比较内容，这样不会因为恰巧相同的字符串造成误判
       gchar* cmd = strdup(child_attribs->RunCmd[1]);
+      printf("\nfilemenu>%s\n",cmd);
       parse_and_exec_command_in_gtk_thread(cmd, FALSE, i);
       return;
     }
