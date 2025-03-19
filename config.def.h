@@ -56,6 +56,12 @@ static const stdin_cmd_interpretor stdin_cmd_interpretors[] = {
 #endif
 };
 
+static const char *find_same_name[] = { stdin_cmd_interpretors[0].name, rfmBinPath "rfmFindFilesWithTheSameName.sh >multitype ", NULL };
+static const char *cd_in_searchresult[] = { stdin_cmd_interpretors[0].name, "cd ", NULL };
+//there are two types of command definition string array here:
+//1. those above, the first array item specify the command interpretor, and the second is the string you can input and run in rfm standard input command window, you can put everything in one string, and ending space means that selected file nanme will be appended, just as what happens when you input command in rfm standard input.
+//2. those below, which is inherited from Rob. You don't need to pass those array to a shell such as bash to run, but you need to separate string command into chunks. 
+//see the code in file_menu_exec function for detail
 
 /* rfmBinPath is passed in by compiler via Makefile*/
 static const char *f_rm[]   = { "$RFM_TERM",rfmBinPath "rfmRemove.sh",NULL };
@@ -90,8 +96,6 @@ static const char *umount[]   = { rfmBinPath "suMount.sh", "-u", NULL };
 /* static const char *udisks_mount[]   = { "/usr/bin/udisksctl", "mount", "--no-user-interaction", "-b", NULL }; */
 /* static const char *udisks_unmount[] = { "/usr/bin/udisksctl", "unmount", "--no-user-interaction", "-b", NULL }; */
 static const char *properties[]     = { "$RFM_TERM", rfmBinPath "rfmProperties.sh", NULL };
-static const char *find_same_name[] = { stdin_cmd_interpretors[0].name, rfmBinPath "rfmFindFilesWithTheSameName.sh >multitype ", NULL };
-static const char *cd_in_searchresult[] = { stdin_cmd_interpretors[0].name, "cd ", NULL };
 static const char *www[]        = { "/usr/bin/xdg-open", NULL };
 static const char *man[]        = { "/usr/bin/groff", "-man", "-Tutf8", NULL };
 static const char *java[]       = { "/usr/bin/java", "-jar", NULL };
