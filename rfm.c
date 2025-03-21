@@ -507,6 +507,7 @@ static int currentSearchResultTypeStartingColumnTitleIndex;
 static int currentPageStartingColumnTitleIndex;
 static gboolean first_line_column_title=FALSE;
 static gchar* stdout_read_by_search_result=NULL;
+static gboolean showSearchResultExtColumnsBasedOnHashTableValues_has_already_been_called_for_searchresult = FALSE;//方便用showcolumn命令手工调整SearchResult的列布局
 static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamelist);
 static void showSearchResultExtColumnsBasedOnHashTableValues();
 static int ProcessOnelineForSearchResult(gchar *oneline, gboolean new_search);
@@ -2139,7 +2140,7 @@ static gboolean fill_fileAttributeList_with_filenames_from_search_result_and_the
   }
   rfm_fileAttributeList=g_list_reverse(rfm_fileAttributeList);
 
-  if (SearchResultTypeIndexForCurrentExistingSearchResult>=0) showSearchResultExtColumnsBasedOnHashTableValues();
+  if (SearchResultTypeIndexForCurrentExistingSearchResult>=0 && !showSearchResultExtColumnsBasedOnHashTableValues_has_already_been_called_for_searchresult) showSearchResultExtColumnsBasedOnHashTableValues();
 
   icon_or_tree_view = add_view(rfmCtx);//add view have to be called after showSearchResultExtColumnsBasedOnHashTableValues()
   //commit ab8f8c2f832bc32b431ced50bda21de36b9314d5 里, 我发现 add_view 需要在showSearchResultExtColumnsBasedOnHashTableValues()后面调用,就在那个commit 里面移动了add_view 的位置,否则会出现一个问题:运行 locate .rfmTODO.md>TODO.md 后,只有filename列显示,需要连续回车刷新下才会显示ext列. 究其原因,可能和第 3334 行代码有关, 也就是说,在调用 show_hide_treeview_column 时,需要 icon_or_tree_view值有效,否则gtkcolumn不会被设置成显示
@@ -4859,7 +4860,7 @@ static void showSearchResultExtColumnsBasedOnHashTableValues(){
     i++;
   }
   do_not_show_VALUE_MAY_NOT_LOADED_message_because_we_will_add_GtkTreeViewColumn_later=old_value;
-  
+  showSearchResultExtColumnsBasedOnHashTableValues_has_already_been_called_for_searchresult = TRUE;
 }
 
 
@@ -4890,6 +4891,7 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
 
   SearchResultViewInsteadOfDirectoryView = 1;
   memcpy(SearchResultViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
+  showSearchResultExtColumnsBasedOnHashTableValues_has_already_been_called_for_searchresult = FALSE;
   char old_searchresultcolumnSeperator[32];
   //apply searchresulttype specific column seperator
   if (searchresultTypes[SearchResultTypeIndex].SearchResultColumnSeperator) {
