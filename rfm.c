@@ -3842,12 +3842,15 @@ static void cmd_showcolumn(wordexp_t *parsed_msg, GString *readline_result_strin
 
 static void cmd_setenv(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution) {
   if (parsed_msg->we_wordc==3){
+#ifdef GLIB280PLUS
     //https://gitlab.gnome.org/GNOME/glib/-/commit/e862f34dd8292f6ffcd30e20c22cd04d47531c3a
     if (strcmp(parsed_msg->we_wordv[1], "G_MESSAGES_DEBUG")==0){
       gchar** domains = g_strsplit(parsed_msg->we_wordv[2], ",", -1);
       g_log_writer_default_set_debug_domains(domains);
       g_strfreev(domains);
-    }else setenv(parsed_msg->we_wordv[1],parsed_msg->we_wordv[2],1);
+    }else
+#endif
+      setenv(parsed_msg->we_wordv[1],parsed_msg->we_wordv[2],1);
   }else printf(SETENV_USAGE);
 }
 

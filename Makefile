@@ -2,7 +2,9 @@
 
 include config.mk
 
-VERSION = 2.0.0
+VERSION = 2.80.0
+# I change version to 2.80 since it need glib >=2.80
+
 ifneq ($(RFM_FILE_CHOOSER),)
 LINKERNAME = librfm.so
 SONAME = librfm.so.1
@@ -13,7 +15,14 @@ endif
 # Edit below for extra libs (e.g. for thumbnailers etc.)
 #LIBS = -L./libdcmthumb -lm -ldcmthumb
 GTK_VERSION = gtk+-3.0
+# what shall be minimun gtk+ version for glib 2.80?
+
 CPPFLAGS = -DrfmBinPath=${rfmBinPath} --include ${languageInclude} -DG_LOG_DOMAIN=\"rfm\" ${GitIntegration} ${PythonEmbedded} ${RFM_FILE_CHOOSER} ${MU_VIEW} ${READLINE_LIB}
+# 检查glib版本是否≥2.80
+ifeq ($(shell pkg-config --atleast-version=2.80 glib-2.0 && echo yes),yes)
+CPPFLAGS += -DGLIB280PLUS
+endif
+
 ifneq (${extractKeyValuePairFromMarkdown},)
 CPPFLAGS += -D${extractKeyValuePairFromMarkdown}
 endif
