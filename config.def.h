@@ -60,7 +60,7 @@ static const char *find_same_name[] = { stdin_cmd_interpretors[0].name, rfmBinPa
 static const char *cd_in_searchresult[] = { stdin_cmd_interpretors[0].name, "cd ", NULL };
 //there are two types of command definition string array here:
 //1. those above, the first array item specify the command interpretor, and the second is the string you can input and run in rfm standard input command window, you can put everything in one string, and ending space means that selected file nanme will be appended, just as what happens when you input command in rfm standard input.
-//2. those below, which is inherited from Rob. You don't need to pass those array to a shell such as bash to run, but you need to separate string command into chunks. 
+//2. those below, which is inherited from Rodney. You don't need to pass those array to a shell such as bash to run, but you need to separate string command into chunks. 
 //see the code in file_menu_exec function for detail
 
 /* rfmBinPath is passed in by compiler via Makefile*/
