@@ -3841,8 +3841,14 @@ static void cmd_showcolumn(wordexp_t *parsed_msg, GString *readline_result_strin
 }
 
 static void cmd_setenv(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution) {
-	  if (parsed_msg->we_wordc==3) setenv(parsed_msg->we_wordv[1],parsed_msg->we_wordv[2],1);
-	  else printf(SETENV_USAGE);
+  if (parsed_msg->we_wordc==3){
+    //https://gitlab.gnome.org/GNOME/glib/-/commit/e862f34dd8292f6ffcd30e20c22cd04d47531c3a
+    if (strcmp(parsed_msg->we_wordv[1], "G_MESSAGES_DEBUG")==0){
+      gchar** domains = g_strsplit(parsed_msg->we_wordv[2], ",", -1);
+      g_log_writer_default_set_debug_domains(domains);
+      g_strfreev(domains);
+    }else setenv(parsed_msg->we_wordv[1],parsed_msg->we_wordv[2],1);
+  }else printf(SETENV_USAGE);
 }
 
 //返回TRUE表示成功匹配为BuiltInCmd并被执行,无论执行成功与否,都不需要在调用Shell来执行了;返回false表示未能识别为builtInCmd,需要进一步处理. 返回true后, GString*参数内存被释放,但调用者仍需将其设为NULL,因为后续处理根据其是否为NULL来判断是否需要继续处理(比如是否需要发送到Shell执行)
