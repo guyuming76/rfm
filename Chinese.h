@@ -18,6 +18,7 @@
 #define RunActionCD "进入选中文件所在目录"
 #define SwitchPipeDir  "管道/目录"
 #define cpPath "复制目录路径至剪贴板"
+#define START_MENU "开始菜单"
 
 #define PipeTitle "当前:%d/总数:%d, 每葉:%d"
 

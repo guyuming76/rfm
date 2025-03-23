@@ -17,6 +17,7 @@
 #define RunActionCD "Enter parent directory of file"
 #define SwitchPipeDir  "Pipe/Dir"
 #define cpPath "copy directory name to clipboard"
+#define START_MENU "Start menu"
 
 #define PipeTitle "Current:%d/Total:%d, PageSize:%d"
 

@@ -166,6 +166,7 @@ static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlin
 static void g_spawn_async_callback_to_new_readline_thread(gpointer child_attribs);
 static void regcomp_for_regex_rules();
 static void set_stdin_cmd_leading_space_true();
+static gboolean match_cmd_str_array_with_interpretors_and_call_parse_and_exec(gchar** RunCmd);
 static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboolean from_stdin_readline, int cmd_interpretor_index);
 static void parse_and_exec_stdin_command_in_gtk_thread(gchar *msg);
 static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * parsed_msg, GString* readline_result_string);
@@ -2620,7 +2621,8 @@ static void toolbar_button_exec(GtkToolItem *item, RFM_ChildAttribs *childAttrib
      child_attribs->spawn_async = childAttribs->spawn_async;
      child_attribs->name=g_strdup(childAttribs->name);
 
-     g_spawn_wrapper_(NULL, NULL, child_attribs);
+     if (!match_cmd_str_array_with_interpretors_and_call_parse_and_exec(child_attribs->RunCmd))
+       g_spawn_wrapper_(NULL, NULL, child_attribs);
    }
 }
 
@@ -2695,6 +2697,19 @@ static void g_spawn_wrapper_for_selected_fileList_(RFM_ChildAttribs *childAttrib
    }
 }
 
+
+static gboolean match_cmd_str_array_with_interpretors_and_call_parse_and_exec(gchar** RunCmd){
+  for (int i=0; i<G_N_ELEMENTS(stdin_cmd_interpretors); i++){
+    if (RunCmd[0] == stdin_cmd_interpretors[i].name){//注意这里比较的是两个字符串的地址，而不是用strcmp比较内容，这样不会因为恰巧相同的字符串造成误判
+      gchar* cmd = strdup(RunCmd[1]);
+      printf("\nGUI>%s\n",cmd);
+      parse_and_exec_command_in_gtk_thread(cmd, FALSE, i);
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+
 //这个函数做的主要就是复制一份childAttribs, 因为child_attribs包含stdOut这类执行完后要释放的内容,而依附于菜单项的childAttribs模板要在setup_file_menu时才销毁重建
 static void file_menu_exec(GtkMenuItem *menuitem, RFM_ChildAttribs *childAttribs)
 { 
@@ -2707,17 +2722,9 @@ static void file_menu_exec(GtkMenuItem *menuitem, RFM_ChildAttribs *childAttribs
   child_attribs->stdErr = NULL;
   child_attribs->spawn_async = childAttribs->spawn_async;
   child_attribs->name=g_strdup(childAttribs->name);
-	
-  for (int i=0; i<G_N_ELEMENTS(stdin_cmd_interpretors); i++){
-    if (child_attribs->RunCmd[0] == stdin_cmd_interpretors[i].name){//注意这里比较的是两个字符串的地址，而不是用strcmp比较内容，这样不会因为恰巧相同的字符串造成误判
-      gchar* cmd = strdup(child_attribs->RunCmd[1]);
-      printf("\nfilemenu>%s\n",cmd);
-      parse_and_exec_command_in_gtk_thread(cmd, FALSE, i);
-      return;
-    }
-  }
 
-  g_spawn_wrapper_for_selected_fileList_(child_attribs);
+  if (!match_cmd_str_array_with_interpretors_and_call_parse_and_exec(child_attribs->RunCmd))
+    g_spawn_wrapper_for_selected_fileList_(child_attribs);
 }
 
 //fileMenu.menu, fileMenu.menuItem[] 仅在首次运行时被初始化，但fileMenu.childattribs_for_menuItem[], fileMenu.menuItemSignalHandlers[]每次都会被重置刷新
