@@ -59,6 +59,7 @@ static const stdin_cmd_interpretor stdin_cmd_interpretors[] = {
 static const char *find_same_name[] = { stdin_cmd_interpretors[0].name, rfmBinPath "rfmFindFilesWithTheSameName.sh >multitype ", NULL };
 static const char *cd_in_searchresult[] = { stdin_cmd_interpretors[0].name, "cd ", NULL };
 static const char *start_menu[] = { stdin_cmd_interpretors[0].name, "cd /usr/share/applications", NULL };
+static const char *git_ls_files[] = { stdin_cmd_interpretors[0].name, "git ls-files>0", NULL };
 
 //there are two types of command definition string array here:
 //1. those above, the first array item specify the command interpretor, and the second is the string you can input and run in rfm standard input command window, you can put everything in one string, and ending space means that selected file nanme will be appended, just as what happens when you input command in rfm standard input.
@@ -255,6 +256,10 @@ static RFM_ToolButton tool_buttons[] = {
    { PageUp,         NULL,                      PreviousPage,           NULL,              TRUE,           FALSE,     GDK_KEY_Page_Up,       "MOD1(usually ALT)+PgUp",NULL},
    { PageDown,       NULL,                      NextPage,               NULL,              TRUE,           FALSE,     GDK_KEY_Page_Down,     "MOD1(usually ALT)+PgDn",NULL},
    { SwitchView,     NULL,                     switch_iconview_treeview, NULL,             TRUE,           TRUE,      GDK_KEY_slash,         "MOD1(usually ALT)+/",   NULL},
+#ifdef GitIntegration
+// { "gitCommit",    NULL,                      refresh_store,          git_commit,        FALSE,          TRUE,      0,                      NULL,                   cur_path_is_git_repo  },
+   { "git ls-files", NULL,                      NULL,                   git_ls_files,      TRUE,           TRUE,      0,                      NULL,                   show_gitMenus },
+#endif
    { Up,             "go-up",                   up_clicked,             NULL,              FALSE,          TRUE,      GDK_KEY_Up,            "MOD1(usually ALT)+Up",  NULL},
    { "Refresh",      "view-refresh",            refresh_store,          NULL,              TRUE,           TRUE,      0,                      NULL,                   NULL},
    { "Share",        NULL,                      NULL,                   share_dir,         FALSE,          TRUE,      0,                      "share directory",      NULL},
@@ -263,9 +268,6 @@ static RFM_ToolButton tool_buttons[] = {
    { "Stop",         "process-stop",            rfm_stop_all,           NULL,              TRUE,           TRUE,      0,                      NULL,                   NULL},
    { "Info",         "dialog-information",      info_clicked,           NULL,              TRUE,           TRUE,      0,                      NULL,                   NULL},
 // { "Home",         "go-home",                 home_clicked,           NULL,              FALSE,          TRUE,      0,                      NULL,                   NULL},
-//#ifdef GitIntegration
-// { "gitCommit",    NULL,                      refresh_store,          git_commit,        FALSE,          TRUE,      0,                      NULL,                   cur_path_is_git_repo  },
-//#endif
    { cpPath,         NULL,                      copy_curPath_to_clipboard, NULL,           TRUE,           TRUE,      0,                      "copy current path to clipboard", NULL},
    { START_MENU,     NULL,                      NULL,                   start_menu,        FALSE,          TRUE,      0,                      NULL,                  NULL},
 // { "mounts",       "drive-harddisk",          show_disk_devices,      dev_disk_path },
