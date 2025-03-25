@@ -54,7 +54,7 @@ static gchar*  PROG_NAME = NULL;
 static gchar *rfm_homePath;         /* Users home dir */
 static char *initDir=NULL;
 static char cwd[PATH_MAX];
-static struct sigaction newaction;
+static struct sigaction ignore_SIGINT;
 
 static GtkWidget *icon_or_tree_view = NULL; //this should be in the gtk ui section, however, it does not compile if moved there
 static gboolean treeview=FALSE;
@@ -4325,9 +4325,9 @@ static int setup(RFM_ctx *rfmCtx)
    }else stdin_command_Scheduler = g_idle_add_once(parse_and_exec_stdin_command_in_gtk_thread, auto_execution_command_after_rfm_start);
    
    //block Ctrl+C. Without this, Ctrl+C in readline will terminate rfm. Now, if you run htop with readline, Ctrl+C only terminate htop. BTW, it's strange that i had tried sigprocmask, pthread_sigmask, and rl_clear_signals, and they didn't work.
-   newaction.sa_handler = SIG_IGN;
-   newaction.sa_flags = 0;
-   sigaction(SIGINT, &newaction,NULL);
+   ignore_SIGINT.sa_handler = SIG_IGN;
+   ignore_SIGINT.sa_flags = 0;
+   sigaction(SIGINT, &ignore_SIGINT,NULL);
 
    return 0;
 }
