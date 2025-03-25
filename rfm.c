@@ -147,6 +147,7 @@ static guint history_entry_added=0;
 static char *rfm_historyFileLocation;
 static char *rfm_historyDirectory_FileLocation;//used by script rfmReadlineWithSpecificHistoryFile.sh 
 static gboolean showHelpOnStart = TRUE;
+static char* InheritedPrompt = NULL;
 static char **rfm_filename_completion(const char *text);
 #ifdef GNU_readline
 static char** gnu_readline_completion(const char *text, int start, int end);
@@ -3482,7 +3483,8 @@ static void readlineInSeperateThread(GString * readlineResultStringFromPreviousR
   execStdinCmdInNewVT = FALSE;
   
   if(startWithVT() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)){
-    gchar prompt[5]="";
+    gchar *prompt = InheritedPrompt? calloc(6, sizeof(gchar)):calloc(strlen(InheritedPrompt)+6, sizeof(gchar));
+    sprintf(prompt,"%s ",InheritedPrompt);
     strcat(prompt, stdin_cmd_interpretors[current_stdin_cmd_interpretor].prompt);
     //SearchResultTypeIndex=-1; //这个branch之前,一直在这里设成FALSE,没注意到有啥问题,但它改成数组索引后测试发现有race condition
     if (keep_selection_on_view_across_refresh && In_refresh_store) strcat(prompt,exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread ? "?]":"?>");
@@ -3500,6 +3502,7 @@ static void readlineInSeperateThread(GString * readlineResultStringFromPreviousR
 	    )==NULL){ g_debug("readline return null, %d",i++);}
 
     stdin_command_Scheduler = g_idle_add_once(parse_and_exec_stdin_command_in_gtk_thread, strdup(OriginalReadlineResult));
+    free(prompt);
   }
 }
 
@@ -4532,6 +4535,13 @@ int main(int argc, char *argv[])
 	}else if (g_strcmp0(longArgument, "help")==0){
 	  printf(rfmLaunchHelp, PROG_NAME);
 	  return 0;
+	}else if (g_strcmp0(longArgument, "InheritedPrompt")==0){
+	  if (argc<=(c+1)) {
+	   g_warning("Missing prompt string!");
+	   break;
+	  }
+	  InheritedPrompt = argv[c+1];
+	  c++;
 	}
 	break;
       default:

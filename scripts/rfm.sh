@@ -36,4 +36,11 @@ else
 	echo "env RFM_TERM is: " $RFM_TERM  >&2
 fi
 
-rfm "$@"
+if [ -n "$VIRTUAL_ENV" ]; then
+    # 提取虚拟环境的名称，通常是路径的最后一部分
+    venv_name=$(basename "$VIRTUAL_ENV")
+    echo "The current python virtual environment is named '$venv_name'." >&2
+    rfm "$@" --InheritedPrompt "($venv_name)"
+else
+    rfm "$@"
+fi
