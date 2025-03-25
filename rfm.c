@@ -147,7 +147,7 @@ static guint history_entry_added=0;
 static char *rfm_historyFileLocation;
 static char *rfm_historyDirectory_FileLocation;//used by script rfmReadlineWithSpecificHistoryFile.sh 
 static gboolean showHelpOnStart = TRUE;
-static char* InheritedPrompt = NULL;
+static char* InheritedPrompt = "";
 static char **rfm_filename_completion(const char *text);
 #ifdef GNU_readline
 static char** gnu_readline_completion(const char *text, int start, int end);
@@ -2703,7 +2703,7 @@ static gboolean match_cmd_str_array_with_interpretors_and_call_parse_and_exec(gc
   for (int i=0; i<G_N_ELEMENTS(stdin_cmd_interpretors); i++){
     if (RunCmd[0] == stdin_cmd_interpretors[i].name){//注意这里比较的是两个字符串的地址，而不是用strcmp比较内容，这样不会因为恰巧相同的字符串造成误判
       gchar* cmd = strdup(RunCmd[1]);
-      printf("\nGUI>%s\n",cmd);
+      printf("\n%s\033[32m%s%s]\033[0m%s\n",InheritedPrompt, stdin_cmd_interpretors[i].prompt,(ItemSelected==0)?"":"*",cmd);
       parse_and_exec_command_in_gtk_thread(cmd, FALSE, i);
       return TRUE;
     }
@@ -3483,8 +3483,8 @@ static void readlineInSeperateThread(GString * readlineResultStringFromPreviousR
   execStdinCmdInNewVT = FALSE;
   
   if(startWithVT() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)){
-    gchar *prompt = InheritedPrompt? calloc(6, sizeof(gchar)):calloc(strlen(InheritedPrompt)+6, sizeof(gchar));
-    sprintf(prompt,"%s ",InheritedPrompt);
+    gchar *prompt = calloc(strlen(InheritedPrompt)+6, sizeof(gchar));
+    sprintf(prompt,"%s",InheritedPrompt);
     strcat(prompt, stdin_cmd_interpretors[current_stdin_cmd_interpretor].prompt);
     //SearchResultTypeIndex=-1; //这个branch之前,一直在这里设成FALSE,没注意到有啥问题,但它改成数组索引后测试发现有race condition
     if (keep_selection_on_view_across_refresh && In_refresh_store) strcat(prompt,exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread ? "?]":"?>");
