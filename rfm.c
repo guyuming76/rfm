@@ -3999,7 +3999,8 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 {
         gboolean SearchResultAsInput=FALSE;
 	stdin_cmd_leading_space=FALSE;
-	
+        gboolean execCmdInNewVT=FALSE;//used by file_menu_exec, i.e., not from readline
+  
         gint len = strlen(readlineResult);
 	g_debug ("readline return length %u: %s", len, readlineResult);
         GString *readlineResultString = NULL;
@@ -4031,7 +4032,8 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 	    while (len>=1 && readlineResult[len-1]==' ') { readlineResult[len-1]='\0'; len--; } //remove ending space
 
             if (g_str_has_suffix(readlineResult, run_cmd_in_new_terminal_emulator_suffix)){
-	      execStdinCmdInNewVT = TRUE;
+	      if (from_stdin_readline) execStdinCmdInNewVT = TRUE;
+	      else execCmdInNewVT = TRUE;
 	      readlineResult[len-1] = '\0'; //remove ending '&'
       	      len = strlen(readlineResult);
 	    }
@@ -4040,7 +4042,7 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 	    stdin_cmd_ending_space = (stdin_cmd_ending_space || (len>=1 && readlineResult[len-1]==' '));
 	    while (len>=1 && readlineResult[len-1]==' ') { readlineResult[len-1]='\0'; len--; } //remove ending space
 
-	    if (!execStdinCmdInNewVT){
+	    if (!execStdinCmdInNewVT && !(!from_stdin_readline && execCmdInNewVT)){
 	      SearchResultTypeIndex = MatchSearchResultType(readlineResult);
 	      len = strlen(readlineResult);
 	      if (SearchResultTypeIndex>=0) SearchResultTypeIndexForCurrentExistingSearchResult=SearchResultTypeIndex;
@@ -4078,7 +4080,7 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 		  listElement=g_list_next(listElement);
 		}
 		if (ItemSelected==1){ //通过环境变量把当前选中的文件的数据(比如grepMatch列)传递给子进程,目前人为限制只有单选文件时起作用,因为多选文件时不同文件的同一列值可能不同
-		  if (execStdinCmdInNewVT){
+		  if (execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT)){
 		    g_assert_null(env_for_g_spawn);
 		    env_for_g_spawn = g_get_environ();
 		    set_env_to_pass_into_child_process(&iter, &env_for_g_spawn);
@@ -4090,7 +4092,7 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 		}
 	    }//end if (stdin_cmd_selection_list!=NULL)
 
-	    if (!execStdinCmdInNewVT){
+	    if (!execStdinCmdInNewVT && !(!from_stdin_readline && execCmdInNewVT)){
 	      wordexp_t parsed_msg;
 	      int wordexp_retval = wordexp(readlineResult,&parsed_msg,0);
 	      if (wordexp_retval==0 && parse_and_exec_stdin_builtin_command_in_gtk_thread(&parsed_msg, readlineResultString)){ //wordexp_retval 0 means success
@@ -4110,10 +4112,10 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 
 	if(startWithVT() || auto_execution_command_after_rfm_start!=NULL){
 	  if (SearchResultAsInput) exec_stdin_command_with_SearchResultAsInput(readlineResultString);
-	  else if ((exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread || !from_stdin_readline) && !execStdinCmdInNewVT) exec_stdin_command(readlineResultString, cmd_interpretor_index);
+	  else if ((exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread || !from_stdin_readline) && !(execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT))) exec_stdin_command(readlineResultString, cmd_interpretor_index);
 	  
 	  if (from_stdin_readline && auto_execution_command_after_rfm_start==NULL) g_thread_join(readlineThread);//we won't have more than one readlineThread running at the same time since we join before new thread here
-	  if (execStdinCmdInNewVT) exec_stdin_command_in_new_VT(readlineResultString, cmd_interpretor_index);
+	  if (execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT)) exec_stdin_command_in_new_VT(readlineResultString, cmd_interpretor_index);
 
 	  if (from_stdin_readline && !SearchResultAsInput) readlineThread=g_thread_new("readline", readlineInSeperateThread, readlineResultString);
 	}
