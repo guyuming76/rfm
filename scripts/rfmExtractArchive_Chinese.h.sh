@@ -26,7 +26,7 @@ case $EXTENSION in
         read -p "是否要将 '$FILE_PATH' 解压到当前目录？(y/n): " choice
         case $choice in
             y|Y )
-                tar xf "$FILE_PATH"
+                tar xvf "$FILE_PATH"
                 ;;
             n|N )
                 read -p "输入解压路径: " EXTRACT_PATH
@@ -34,7 +34,7 @@ case $EXTENSION in
                     echo "'$EXTRACT_PATH' 不是一个有效的目录。"
                     exit 1
                 fi
-                tar xf "$FILE_PATH" -C "$EXTRACT_PATH"
+                tar xvf "$FILE_PATH" -C "$EXTRACT_PATH"
                 ;;
             * )
                 echo "无效的选择。"

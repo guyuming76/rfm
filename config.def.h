@@ -60,6 +60,7 @@ static const char *find_same_name[] = { stdin_cmd_interpretors[0].name, rfmBinPa
 static const char *cd_in_searchresult[] = { stdin_cmd_interpretors[0].name, "cd ", NULL };
 static const char *start_menu[] = { stdin_cmd_interpretors[0].name, "cd /usr/share/applications", NULL };
 static const char *git_ls_files[] = { stdin_cmd_interpretors[0].name, "git ls-files>0", NULL };
+static const char *extract_archive[] = { stdin_cmd_interpretors[0].name, "rfmExtractArchive.sh & ", NULL };
 
 //there are two types of command definition string array here:
 //1. those above, the first array item specify the command interpretor, and the second is the string you can input and run in rfm standard input command window, you can put everything in one string, and ending space means that selected file nanme will be appended, just as what happens when you input command in rfm standard input.
@@ -89,7 +90,6 @@ static const char *pdf[] = { "firefox-bin", "-P","pdf",NULL };
 static const char *mupdf[]      = { "/usr/bin/evince", NULL };
 static const char *show_image[] = { rfmBinPath "rfmRefreshImage.sh", NULL };
 static const char *soffice[]    = { "/usr/bin/xdg-open", NULL };
-static const char *extract_archive[] = { rfmBinPath "extractArchive.sh", NULL };
 static const char *create_archive[]  = { rfmBinPath "createArchive.sh", NULL };
 static const char *list_archive[] = { rfmBinPath "rfmVTforCMD.sh", "tar","--list","--file", NULL};
 static const char *metaflac[] = { "/usr/bin/metaflac", "--list", "--block-type=VORBIS_COMMENT", NULL };
