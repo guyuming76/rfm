@@ -3365,25 +3365,28 @@ static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlin
 	  }
 #endif
 	  GError *err = NULL;
-
+          gint exit_status;
 	  if (SearchResultTypeIndex>=0 && g_spawn_sync(rfm_curPath, 
 						       stdin_cmd_interpretors[cmd_interpretor_index].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE),
 					      env_for_g_spawn_used_by_exec_stdin_command,
 					      G_SPAWN_SEARCH_PATH|G_SPAWN_CHILD_INHERITS_STDIN|G_SPAWN_CHILD_INHERITS_STDERR,
-					      NULL,NULL,&stdout_read_by_search_result,NULL,NULL,&err)){ 
+					      NULL,NULL,&stdout_read_by_search_result,NULL,&exit_status,&err)){
 	      g_idle_add_once(update_SearchResultFileNameList_and_refresh_store, (gpointer)stdout_read_by_search_result);
+
 	  } else if (SearchResultTypeIndex<0 && g_spawn_sync(rfm_curPath,
 							     stdin_cmd_interpretors[cmd_interpretor_index].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE), env_for_g_spawn_used_by_exec_stdin_command,
                            G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN |
                                G_SPAWN_CHILD_INHERITS_STDOUT |
                                G_SPAWN_CHILD_INHERITS_STDERR,
-			   NULL, NULL, NULL, NULL, NULL, &err)) {
-
+			   NULL, NULL, NULL, NULL, &exit_status, &err)) {
 
 	  } else {
               g_warning("%d;%s", err->code, err->message);
 	      g_error_free(err);
 	  }
+
+	  if (WIFEXITED(exit_status)) g_debug("child process of g_spawn_sync WIFEXITED true with status:%d", WEXITSTATUS(exit_status));
+	  else g_debug("child process of g_spawn_sync WIFEXITED false");
 	  add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
   }
   g_strfreev(env_for_g_spawn_used_by_exec_stdin_command);env_for_g_spawn_used_by_exec_stdin_command=NULL;
