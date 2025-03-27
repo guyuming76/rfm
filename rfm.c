@@ -3531,6 +3531,8 @@ static void stdin_command_help(wordexp_t * parsed_msg, GString* readline_result_
 	      printf("    \033[34m%s\033[0m   %s\n",searchresultTypes[i].name,searchresultTypes[i].Description);
 	    }
 	  }
+  	  printf("\n\n \033[33muse command follows to output current help without color:");
+	  printf("\n rfm.sh --help|sed 's/\\x1B\\[[0-9;]*m//g'\033[0m\n");
 }
 
 
@@ -4539,6 +4541,7 @@ int main(int argc, char *argv[])
 	  exit(Success);
 	}else if (g_strcmp0(longArgument, "help")==0){
 	  printf(rfmLaunchHelp, PROG_NAME);
+	  stdin_command_help(NULL, NULL);
 	  return 0;
 	}else if (g_strcmp0(longArgument, "InheritedPrompt")==0){
 	  if (argc<=(c+1)) {
