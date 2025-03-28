@@ -19,6 +19,7 @@
 #define SwitchPipeDir  "Pipe/Dir"
 #define cpPath "copy directory name to clipboard"
 #define START_MENU "Start menu"
+#define SAVESEARCHRESULT "save (selected) search result into file"
 
 #define PipeTitle "Current:%d/Total:%d, PageSize:%d"
 

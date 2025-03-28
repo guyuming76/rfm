@@ -8,8 +8,8 @@
 #set -x
 
 # 创建临时文件（自动清除）
-tmpfile=$(mktemp) || exit 1
-trap 'rm -f "$tmpfile"' EXIT  # 确保脚本退出时删除临时文件
+tmpfile=$(mktemp 2>/dev/null || mktemp -t 'rftmp') || exit 1
+trap 'rm -f "$tmpfile" 2>/dev/null' EXIT HUP INT TERM
 
 # 将管道输入写入临时文件
 cat > "$tmpfile"
@@ -118,3 +118,25 @@ fi
 
 # 修改所有read命令，强制从终端读取输入（即使stdin被重定向）：
 
+# ‌1. 临时文件创建 (核心改进)
+# 改进点‌：
+
+#     ‌跨平台兼容‌：
+#         同时支持 BSD (macOS) 和 GNU (Linux) 的 mktemp 实现
+#         BSD 系统要求 -t 参数必须带模板前缀
+#     ‌静默错误‌：
+#         2>/dev/null 隐藏不兼容系统的报错
+#     ‌固定前缀‌：
+#         使用 rftmp 作为临时文件前缀，方便系统管理员识别
+
+# 2. 清理信号扩展
+# 新增信号处理‌：
+# 信号 	触发场景 	处理必要性
+# HUP 	终端挂断 	防止SSH断开后留垃圾文件
+# INT 	Ctrl+C 中断 	用户主动中断时的清理
+# TERM 	系统终止请求 	应对kill命令的默认信号
+
+# ‌额外改进‌：
+
+#     2>/dev/null：抑制文件不存在时的错误提示
+#     统一处理所有常见退出信号
