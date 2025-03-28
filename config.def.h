@@ -61,6 +61,7 @@ static const char *cd_in_searchresult[] = { stdin_cmd_interpretors[0].name, "cd 
 static const char *start_menu[] = { stdin_cmd_interpretors[0].name, "cd /usr/share/applications", NULL };
 static const char *git_ls_files[] = { stdin_cmd_interpretors[0].name, "git ls-files>0", NULL };
 static const char *extract_archive[] = { stdin_cmd_interpretors[0].name, "rfmExtractArchive.sh & ", NULL };
+static const char *mkdir_and_move_files_into_it[] = { stdin_cmd_interpretors[0].name, "rfm_mkdir_and_move_selected_files_into_it.sh & ",NULL };
 
 //there are two types of command definition string array here:
 //1. those above, the first array item specify the command interpretor, and the second is the string you can input and run in rfm standard input command window, you can put everything in one string, and ending space means that selected file nanme will be appended, just as what happens when you input command in rfm standard input.
@@ -183,6 +184,7 @@ static RFM_MenuItem run_actions[] = {
    { "Properties",   "*",              "*",                    NULL,			NULL,			NULL,		properties,       		NULL },
    { "Open with...", "*",              "*",                    NULL,			NULL,			NULL,		open_with,        		NULL },
    { RunActionChangeOwner,"*",         "*",                    NULL,			NULL,			NULL,		change_owner,                   NULL },
+   { RunActionMkdirMoveFiles,"*",      "*",                    NULL,                    NULL,                   NULL,           mkdir_and_move_files_into_it,   NULL },
    { "Open",         "message",        "rfc822",               NULL,			"muview",               NULL,		muview,                         NULL },
    { "Open",         "image",          "*",                    NULL,			NULL,			NULL,		show_image,       		NULL },
    { "Open",         "application",    "x-desktop",            NULL,                    NULL,                   NULL,           launch_desktop,                 NULL },

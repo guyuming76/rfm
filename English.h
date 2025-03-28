@@ -15,6 +15,7 @@
 #define LinkTo "SoftLink"
 #define RunActionChangeOwner "ChangeOwner"
 #define RunActionCD "Enter parent directory of file"
+#define RunActionMkdirMoveFiles "new directory and move files into it"
 #define SwitchPipeDir  "Pipe/Dir"
 #define cpPath "copy directory name to clipboard"
 #define START_MENU "Start menu"

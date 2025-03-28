@@ -149,6 +149,7 @@ endif
 	@cp -f scripts/rfmMoveDirAndUpdateSymbolicLinks.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmCopyDirAndUpdateSymbolicLinks.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfm_Update_affected_SymbolicLinks_for_move_or_copy.sh ${DESTDIR}${PREFIX}/bin
+	@cp -f scripts/rfm_mkdir_and_move_selected_files_into_it_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfm_mkdir_and_move_selected_files_into_it.sh
 
 ifneq ($(CalledByEbuild),YES)
 # the CalledByEbuild variable is exported in rfm ebuild
@@ -195,6 +196,7 @@ endif
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmMoveDirAndUpdateSymbolicLinks.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmCopyDirAndUpdateSymbolicLinks.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfm_Update_affected_SymbolicLinks_for_move_or_copy.sh
+	@chmod +x ${DESTDIR}${PREFIX}/bin/rfm_mkdir_and_move_selected_files_into_it.sh
 
 	@echo
 	@echo "***please copy the .inputrc file into your home directory (~) manually."
@@ -235,6 +237,7 @@ endif
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmMoveDirAndUpdateSymbolicLinks.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmCopyDirAndUpdateSymbolicLinks.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfm_Update_affected_SymbolicLinks_for_move_or_copy.sh
+	@rm -f ${DESTDIR}${PREFIX}/bin/rfm_mkdir_and_move_selected_files_into_it.sh
 
 ifneq ($(CalledByEbuild),YES)
 	-xdg-desktop-menu uninstall rfm.desktop

@@ -16,6 +16,7 @@
 #define RunActionChangeOwner "更改所有者"
 #define RunActionFindSameFile "查找同名文件并解析"
 #define RunActionCD "进入选中文件所在目录"
+#define RunActionMkdirMoveFiles "新建目录并把选中文件移入其中"
 #define SwitchPipeDir  "管道/目录"
 #define cpPath "复制目录路径至剪贴板"
 #define START_MENU "开始菜单"
