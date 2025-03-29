@@ -62,7 +62,7 @@ static const char *start_menu[] = { stdin_cmd_interpretors[0].name, "cd /usr/sha
 static const char *git_ls_files[] = { stdin_cmd_interpretors[0].name, "git ls-files>0", NULL };
 static const char *extract_archive[] = { stdin_cmd_interpretors[0].name, "rfmExtractArchive.sh & ", NULL };
 static const char *mkdir_and_move_files_into_it[] = { stdin_cmd_interpretors[0].name, "rfm_mkdir_and_move_selected_files_into_it.sh & ",NULL };
-static const char *save_searchresult_to_file[] = { stdin_cmd_interpretors[0].name, "SearchResult|rfmSaveSearchResultToFile.sh", NULL };
+static const char *save_searchresult_to_file[] = { stdin_cmd_interpretors[0].name, "SearchResult|tee>rfmSearchResult.csv", NULL };
 
 //there are two types of command definition string array here:
 //1. those above, the first array item specify the command interpretor, and the second is the string you can input and run in rfm standard input command window, you can put everything in one string, and ending space means that selected file nanme will be appended, just as what happens when you input command in rfm standard input.
