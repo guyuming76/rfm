@@ -4058,8 +4058,13 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 	    while (len>=1 && readlineResult[len-1]==' ') { readlineResult[len-1]='\0'; len--; } //remove ending space
 
 	    if (g_str_has_prefix(readlineResult, RFM_SEARCH_RESULT_AS_INPUT_PREFIX)) {
-		SearchResultAsInput=TRUE;
-		for (int i=0;i<len;i++) readlineResult[i]=readlineResult[i + strlen(RFM_SEARCH_RESULT_AS_INPUT_PREFIX)]; //remove the prefix SearchResult|, which has 13 char
+	        if ((from_stdin_readline && execStdinCmdInNewVT) || execCmdInNewVT){
+		  g_warning("%s does not work with %s for now. TODO: we might save search result into temp file and use it in new terminal emulator in future.", RFM_SEARCH_RESULT_AS_INPUT_PREFIX, run_cmd_in_new_terminal_emulator_suffix);
+		  readlineResult[0]='\0';//设置读取字符串为空，执行一个空命令
+		}else{
+	          SearchResultAsInput=TRUE;
+		  for (int i=0;i<len;i++) readlineResult[i]=readlineResult[i + strlen(RFM_SEARCH_RESULT_AS_INPUT_PREFIX)]; //remove the prefix SearchResult|, which has 13 char
+		}
 	    }
             readlineResultString=g_string_new(strdup(readlineResult));
 
