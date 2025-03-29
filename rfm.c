@@ -3473,7 +3473,7 @@ static void writeSearchResultIntoFD(gint *fd){
 	      ((selectedListElement=g_list_next(selectedListElement)) && gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, selectedListElement->data))
 	      :gtk_tree_model_iter_next(GTK_TREE_MODEL(store), &iter));
       dprintf(*fd, "\n");
-    }else g_warning("empty search result view!");
+    }else g_warning("empty search result view or list view has not been opened, switch to list view if search result is not empty!");
     g_list_free(columns);
     if (stdin_cmd_selection_list) g_list_free_full(stdin_cmd_selection_list, (GDestroyNotify)gtk_tree_path_free);
   }else g_warning("currently not in search result view!");
