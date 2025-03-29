@@ -526,7 +526,7 @@ static int MatchSearchResultType(gchar *readlineResult);
 static void set_DisplayingPageSize_ForFileNameListFromPipesStdIn(uint pagesize);
 static void cmdPagesize(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
 static void writeSearchResultIntoFD(gint *fd);
-static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
+static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, gboolean from_stdin_readline, int cmd_interpretor_index);
 /******Search Result related definitions end*********/
 /****************************************************/
 /******TreeView column related definitions***********/
@@ -3394,11 +3394,11 @@ static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlin
 }
 
 
-static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution){
+static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, gboolean from_stdin_readline, int cmd_interpretor_index){
 	    RFM_ChildAttribs *childAttribs = calloc(1, sizeof(RFM_ChildAttribs));
-	    childAttribs->RunCmd = stdin_cmd_interpretors[current_stdin_cmd_interpretor].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE);
+	    childAttribs->RunCmd = stdin_cmd_interpretors[cmd_interpretor_index].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE);
 	    childAttribs->stdIn_fd = -1; //set to non-zero, and will be set to a valid fd by g_spawn_async_with_pipes
-	    childAttribs->customCallBackFunc = g_spawn_async_callback_to_new_readline_thread;
+	    childAttribs->customCallBackFunc = from_stdin_readline ? g_spawn_async_callback_to_new_readline_thread : NULL;
 	    if (SearchResultTypeIndex>=0) {
 	      childAttribs->output_read_by_program = TRUE;
 	      childAttribs->customCallbackUserData = update_SearchResultFileNameList_and_refresh_store;
@@ -4117,7 +4117,7 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
         g_free (readlineResult);
 
 	if(startWithVT() || auto_execution_command_after_rfm_start!=NULL){
-	  if (SearchResultAsInput) exec_stdin_command_with_SearchResultAsInput(readlineResultString);
+	  if (SearchResultAsInput) exec_stdin_command_with_SearchResultAsInput(readlineResultString, from_stdin_readline, cmd_interpretor_index);
 	  else if ((exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread || !from_stdin_readline) && !(execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT))) exec_stdin_command(readlineResultString, cmd_interpretor_index);
 	  
 	  if (from_stdin_readline && auto_execution_command_after_rfm_start==NULL) g_thread_join(readlineThread);//we won't have more than one readlineThread running at the same time since we join before new thread here
