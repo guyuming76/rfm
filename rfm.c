@@ -1076,6 +1076,7 @@ static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *ch
                                   &child_attribs->stdErr_fd, &err);
       
       if (rv==TRUE) {
+	 g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_DEBUG, "child pid:%d, child stdIn_fd:%d, child stdOut_fd:%d, child stdErr_fd:%d",child_attribs->pid, child_attribs->stdIn_fd,child_attribs->stdOut_fd,child_attribs->stdErr_fd);
          /* Don't block on read if nothing in pipe */
          if (! g_unix_set_fd_nonblocking(child_attribs->stdOut_fd, TRUE, NULL))
 	    g_warning("Can't set child stdout to non-blocking mode, PID:%d,FD:%d",child_attribs->pid,child_attribs->stdOut_fd);
