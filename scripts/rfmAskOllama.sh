@@ -6,26 +6,26 @@
 
 #gentoo上依赖 app-misc/jq
 
+
+
 OLLAMA_HOST="http://localhost:11434"
 
-# 检查模型名称是否为空
+# 检查模型参数
 if [ -z "$1" ]; then
   echo "错误：未提供模型名称" >&2
   exit 1
 fi
 MODEL_NAME="$1"
 
-# 从标准输入读取所有内容作为提示词
+# 读取用户输入
 prompt=$(cat)
-
-# 检查输入是否为空
 if [ -z "$prompt" ]; then
   echo "错误：未提供输入提示词" >&2
   exit 1
 fi
 
-# 发送请求并处理响应
-curl -sS --fail-with-body "$OLLAMA_HOST/api/generate" \
+# 发送请求并捕获原始 JSON 响应
+response=$(curl -sS --fail-with-body "$OLLAMA_HOST/api/generate" \
   -H "Content-Type: application/json" \
   -d "$(jq -n \
     --arg model "$MODEL_NAME" \
@@ -34,19 +34,40 @@ curl -sS --fail-with-body "$OLLAMA_HOST/api/generate" \
       model: $model,
       prompt: $prompt,
       stream: false,
-      options: {
-        temperature: 0.7,
-        num_ctx: 4096
-      }
-    }')" \
-  | jq -r '
-    if .error then 
-      "错误: " + .error 
-    else 
-      .response 
+      options: {temperature: 0.7, num_ctx: 4096}
+    }')" 2>&1)
+
+# 使用 jq 同时提取错误状态和内容（核心优化）
+# 用 \u0000 不可见字符分隔状态和内容，避免内容污染
+read -r -d '' has_error result < <(
+  echo "$response" | jq -r '
+    if .error then
+      "1\u0000\("错误: " + .error)"
+    else
+      "0\u0000\(.response)"
     end'
+)
 
+# 显示结果
+echo "$result"
 
+# 根据状态码保存文件（不再依赖内容前缀）
+if [ "$has_error" -eq 0 ]; then
+  # 清理模型名称中的非法字符（如冒号）
+  sanitized_model=$(echo "$MODEL_NAME" | sed 's/[:/\\*?<>|"]/_/g')  # 关键修改点
+  timestamp=$(date +%Y%m%d_%H%M%S)
+  filename="${sanitized_model}___${timestamp}.md"  # 使用清理后的名称
+
+  cat <<EOF > "$filename"
+## 用户提示词 ##
+$prompt
+
+## 模型回复 ##
+$result
+EOF
+
+  echo "回复已保存至: $filename" >&2
+fi
 
 
 
@@ -110,3 +131,49 @@ curl -sS --fail-with-body "$OLLAMA_HOST/api/generate" \
 # 2.输入缓存机制‌
 # # 缓存最近输入的提示词
 # prompt=$(cat | tee /tmp/last_prompt.txt)
+
+
+
+# 关键优化点说明‌
+
+#     ‌不可见分隔符提升安全性‌
+
+
+#     read -r -d '' has_error result < <(
+#       jq -r '..."\u0000..."'  # 使用 Unicode 空字符分隔
+#     )
+
+#         用 \u0000（ASCII 空字符）分隔状态码和内容，‌彻底避免内容本身包含分隔符‌的风险
+#         -d '' 设置 read 以空字符为分隔符
+
+#     ‌直接传递错误状态码‌
+
+
+#     if [ "$has_error" -eq 0 ]; then  # 0 表示成功
+
+#         has_error 明确为 0（成功）或 1（错误），逻辑更清晰
+#         完全消除对内容前缀的依赖，即使回复包含 错误: 也不影响判断
+
+#     ‌保留完整错误信息‌
+
+    
+#     echo "$result"  # 直接输出原始错误信息或回复
+
+#         终端显示逻辑不变，用户感知无差异
+#         保存文件前通过状态码过滤，确保只有成功响应才保存
+
+# ‌优化后逻辑流程图‌
+
+
+# 用户输入 --> 脚本
+#   ↓
+# 构造 JSON 请求 --> 调用 Ollama API
+#   ↓
+# 解析响应 --jq提取--> 状态码 (0/1) + 内容
+#   ↓
+# 显示内容 --> 终端
+#   ↓
+# 状态码=0? --是--> 保存 Markdown 文件
+#           --否--> 跳过保存
+
+# 此方案彻底分离 ‌状态判断‌ 和 ‌内容处理‌，是更健壮的实现方式。
