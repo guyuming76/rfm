@@ -34,7 +34,7 @@ response=$(curl -sS --fail-with-body "$OLLAMA_HOST/api/generate" \
       model: $model,
       prompt: $prompt,
       stream: false,
-      options: {temperature: 0.7, num_ctx: 4096}
+      options: {temperature: 0.7}
     }')" 2>&1)  # 捕获标准错误和输出
 
 # 解析响应
@@ -53,7 +53,7 @@ if ! [[ "$result" =~ ^错误: ]]; then
   # 清理模型名称中的非法字符（如冒号）
   sanitized_model=$(echo "$MODEL_NAME" | sed 's/[:/\\*?<>|"]/_/g')  # 关键修改点
   timestamp=$(date +%Y%m%d_%H%M%S)
-  filename="${sanitized_model}___${timestamp}.md"  # 使用清理后的名称
+  filename="rfmAI_${sanitized_model}___${timestamp}.md"  # 使用清理后的名称
 
   cat <<EOF > "$filename"
 ## 用户提示词 ##
