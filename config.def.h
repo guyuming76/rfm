@@ -44,13 +44,24 @@ static gint RFM_THUMBNAIL_SIZE = 128; /* Maximum size for thumb dir normal is 12
 static gboolean UseTargetAddressWhenEnterSymbloicLinkForDir=TRUE;
 static gboolean auto_sort_entering_view = FALSE;
 static gboolean keep_selection_on_view_across_refresh = TRUE; 
-static gchar* dumb_keyfile_groupname = "https://discourse.gnome.org/t/gkeyfile-to-handle-conf-without-groupname/23080/3"; 
+static gchar* dumb_keyfile_groupname = "https://discourse.gnome.org/t/gkeyfile-to-handle-conf-without-groupname/23080/3";
+
+static gchar** stdin_LLM_prompt(gchar* user_input_prompt, gboolean inNewVT) {
+  if (inNewVT){
+    snprintf(shell_cmd_buffer,PATH_MAX,"set -o history; echo %s | rfmAskOllama.sh ;read -p '\033[33m%s\033[0m'; exit \$? 2>/dev/null", user_input_prompt, PRESS_ENTER_TO_CLOSE_WINDOW);
+    return stdin_cmd_template_bash_newVT_nonHold;
+  }else {
+    snprintf(shell_cmd_buffer,PATH_MAX,"set -o history; echo %s | rfmAskOllama.sh; exit \$? 2>/dev/null",user_input_prompt);
+    return stdin_cmd_template_bash;
+  }
+}
 
 //do not change the order of the following array,or change with care, it's referenced as stdin_cmd_interpretor[0] in code below
 static const stdin_cmd_interpretor stdin_cmd_interpretors[] = {
         //Name             activationKey          prompt            cmdTransformer
 	{"Bash",           "b>",                  "b",              stdin_command_bash },
 	{"NuShell",        "n>",                  "n",              stdin_command_nu   },
+	{"AI",              "a>",                "a",             stdin_LLM_prompt   },
 #ifdef PythonEmbedded
 	{"PythonEmbedded", "p>",                  "p",              NULL               },
 #endif
