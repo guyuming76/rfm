@@ -35,24 +35,21 @@ response=$(curl -sS --fail-with-body "$OLLAMA_HOST/api/generate" \
       prompt: $prompt,
       stream: false,
       options: {temperature: 0.7, num_ctx: 4096}
-    }')" 2>&1)
+    }')" 2>&1)  # 捕获标准错误和输出
 
-# 使用 jq 同时提取错误状态和内容（核心优化）
-# 用 \u0000 不可见字符分隔状态和内容，避免内容污染
-read -r -d '' has_error result < <(
-  echo "$response" | jq -r '
-    if .error then
-      "1\u0000\("错误: " + .error)"
-    else
-      "0\u0000\(.response)"
-    end'
-)
+# 解析响应
+result=$(echo "$response" | jq -r '
+  if .error then
+    "错误: " + .error
+  else
+    .response
+  end')
 
 # 显示结果
 echo "$result"
 
-# 根据状态码保存文件（不再依赖内容前缀）
-if [ "$has_error" -eq 0 ]; then
+# 仅当成功时保存文件
+if ! [[ "$result" =~ ^错误: ]]; then
   # 清理模型名称中的非法字符（如冒号）
   sanitized_model=$(echo "$MODEL_NAME" | sed 's/[:/\\*?<>|"]/_/g')  # 关键修改点
   timestamp=$(date +%Y%m%d_%H%M%S)
