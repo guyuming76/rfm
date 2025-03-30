@@ -7,7 +7,13 @@
 #gentoo上依赖 app-misc/jq
 
 OLLAMA_HOST="http://localhost:11434"
-MODEL_NAME="codegeex4:9B"
+
+# 检查模型名称是否为空
+if [ -z "$1" ]; then
+  echo "错误：未提供模型名称" >&2
+  exit 1
+fi
+MODEL_NAME="$1"
 
 # 从标准输入读取所有内容作为提示词
 prompt=$(cat)

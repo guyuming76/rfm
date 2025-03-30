@@ -48,10 +48,10 @@ static gchar* dumb_keyfile_groupname = "https://discourse.gnome.org/t/gkeyfile-t
 
 static gchar** stdin_LLM_prompt(gchar* user_input_prompt, gboolean inNewVT) {
   if (inNewVT){
-    snprintf(shell_cmd_buffer,PATH_MAX,"set -o history; echo %s | rfmAskOllama.sh ;read -p '\033[33m%s\033[0m'; exit \$? 2>/dev/null", user_input_prompt, PRESS_ENTER_TO_CLOSE_WINDOW);
+    snprintf(shell_cmd_buffer,PATH_MAX,"set -o history; echo %s | rfmAskOllama.sh 'codegeex4:9B' ;read -p '\033[33m%s\033[0m'; exit \$? 2>/dev/null", user_input_prompt, PRESS_ENTER_TO_CLOSE_WINDOW);
     return stdin_cmd_template_bash_newVT_nonHold;
   }else {
-    snprintf(shell_cmd_buffer,PATH_MAX,"set -o history; echo %s | rfmAskOllama.sh; exit \$? 2>/dev/null",user_input_prompt);
+    snprintf(shell_cmd_buffer,PATH_MAX,"set -o history; echo %s | rfmAskOllama.sh 'codegeex4:9B' ; exit \$? 2>/dev/null",user_input_prompt);
     return stdin_cmd_template_bash;
   }
 }
