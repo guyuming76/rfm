@@ -45,7 +45,9 @@ result=$(echo "$response" | jq -r '
     .response
   end')
 
-# 显示结果
+# 显示结果 渲染markdown
+# 依赖 gentoo 依赖 dev-python/rich 或 pip install rich
+# echo "from rich.markdown\n    import Markdown print(Markdown(r'''$result'''))" | python
 echo "$result"
 
 # 仅当成功时保存文件
