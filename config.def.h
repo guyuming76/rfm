@@ -46,25 +46,21 @@ static gboolean auto_sort_entering_view = FALSE;
 static gboolean keep_selection_on_view_across_refresh = TRUE; 
 static gchar* dumb_keyfile_groupname = "https://discourse.gnome.org/t/gkeyfile-to-handle-conf-without-groupname/23080/3";
 
-static gchar** stdin_LLM_prompt(gchar* user_input_prompt, gboolean inNewVT) {
-  if (inNewVT){
-    snprintf(shell_cmd_buffer,PATH_MAX,"set -o history; echo %s | rfmAskOllama.sh 'codegeex4:9B' ;read -p '\033[33m%s\033[0m'; exit \$? 2>/dev/null", user_input_prompt, PRESS_ENTER_TO_CLOSE_WINDOW);
-    return stdin_cmd_template_bash_newVT_nonHold;
-  }else {
-    snprintf(shell_cmd_buffer,PATH_MAX,"set -o history; echo %s | rfmAskOllama.sh 'codegeex4:9B' ; exit \$? 2>/dev/null",user_input_prompt);
-    return stdin_cmd_template_bash;
-  }
-}
-
 //do not change the order of the following array,or change with care, it's referenced as stdin_cmd_interpretor[0] in code below
 static const stdin_cmd_interpretor stdin_cmd_interpretors[] = {
         //Name             activationKey          prompt            cmdTransformer
 	{"Bash",           "b>",                  "b",              stdin_command_bash },
 	{"NuShell",        "n>",                  "n",              stdin_command_nu   },
-	{"AI",              "a>",                "a",             stdin_LLM_prompt   },
+	{"AI",             "a>",                  "a",              stdin_LLM_prompt   }, //The prompt of AI will not show. The term_prompt of default AI_models will show instead. The acitivationKey of AI and that of the default AI_models have the same effect. DO NOT change the name AI here, it is hardcoded in code.
 #ifdef PythonEmbedded
 	{"PythonEmbedded", "p>",                  "p",              NULL               },
 #endif
+};
+
+//the first one is the default one
+static const AI_model_parameter AI_models[] = {
+  //calling_script        host_url                         model_name                  term_prompt         activationKey  InNewTerm
+  {"rfmAskOllama.sh",  "http://localhost:11434",           "codegeex4:9B",             "codegeex4:9B",     "c>",           TRUE },
 };
 
 static const char *find_same_name[] = { stdin_cmd_interpretors[0].name, rfmBinPath "rfmFindFilesWithTheSameName.sh >multitype ", NULL };

@@ -66,6 +66,22 @@ gpointer transferPointerOwnership(gpointer *newOwner, gpointer *oldOwner);
 gboolean str_regex_replace(char **str, const regex_t * restrict pattern_compiled, const char *replacement);
 
 /****************************************************/
+/******AI related definitions **********************/
+typedef struct {
+  gchar *calling_script;
+  gchar *host_url;
+  gchar *model_name;
+  gchar *term_prompt; // This is the prompt such b> shown in term, not the prompt for LLM
+  gchar *activationKey;
+  gboolean InNewTerm;
+} AI_model_parameter;
+    
+static int current_AI_model_index = 0;
+static int stdin_cmd_interpretor_index_for_AI = -1;
+
+static gchar** stdin_LLM_prompt(gchar* user_input_prompt, gboolean inNewVT);
+
+/********AI related definitions end******************/
 /******Terminal Emulator related definitions*********/
 #ifdef PythonEmbedded
 #define PY_SSIZE_T_CLEAN
@@ -199,6 +215,7 @@ static gchar** stdin_command_nu(gchar* user_input_cmd, gboolean inNewVT) {
   snprintf(shell_cmd_buffer,PATH_MAX,"%s",user_input_cmd);
   return inNewVT? stdin_cmd_template_nu_inNewVT_nonHold : stdin_cmd_template_nu;
 }
+
 static void null_log_handler(const gchar *log_domain,GLogLevelFlags log_level,const gchar *message,gpointer user_data){
 }
 
@@ -3346,6 +3363,7 @@ static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPrevi
 	      //child_attribs->runOpts = RFM_EXEC_NONE;
 	      child_attribs->spawn_async = TRUE;
 	      g_spawn_wrapper_(NULL, NULL, child_attribs);
+              g_debug("exec_stdin_command_in_new_VT(%s,%d)",readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,cmd_interpretor_index);
 	      g_strfreev(env_for_g_spawn);env_for_g_spawn=NULL;
 	      add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
 }
@@ -3386,8 +3404,8 @@ static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlin
 	      g_error_free(err);
 	  }
 
-	  if (WIFEXITED(exit_status)) g_debug("child process of g_spawn_sync WIFEXITED true with status:%d", WEXITSTATUS(exit_status));
-	  else g_debug("child process of g_spawn_sync WIFEXITED false");
+	  if (WIFEXITED(exit_status)) g_debug("exec_stdin_command(%s,%d): child process of g_spawn_sync WIFEXITED true with status:%d", readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str, cmd_interpretor_index, WEXITSTATUS(exit_status));
+	  else g_debug("exec_stdin_command(%s,%d): child process of g_spawn_sync WIFEXITED false",readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str, cmd_interpretor_index);
 	  add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
   }
   g_strfreev(env_for_g_spawn_used_by_exec_stdin_command);env_for_g_spawn_used_by_exec_stdin_command=NULL;
@@ -4000,7 +4018,19 @@ static void set_stdin_cmd_leading_space_true(){
   stdin_cmd_leading_space=TRUE;
 }
 
-//this runs in gtk thread
+static gchar** stdin_LLM_prompt(gchar* user_input_prompt, gboolean inNewVT) {
+  if (AI_models[current_AI_model_index].InNewTerm){
+    snprintf(shell_cmd_buffer,PATH_MAX,"set -o history; echo %s | %s %s ;read -p '\033[33m%s\033[0m'; exit \$? 2>/dev/null", user_input_prompt,AI_models[current_AI_model_index].calling_script, AI_models[current_AI_model_index].model_name,PRESS_ENTER_TO_CLOSE_WINDOW);
+    return stdin_cmd_template_bash_newVT_nonHold;
+  }else {
+    snprintf(shell_cmd_buffer,PATH_MAX,"set -o history; echo %s | %s %s ; exit \$? 2>/dev/null",user_input_prompt,AI_models[current_AI_model_index].calling_script,AI_models[current_AI_model_index].model_name);
+    return stdin_cmd_template_bash;
+  }
+}
+
+// this runs in gtk thread
+// from_stdin_readline 为 TRUE 时，表示用户从命令窗口输入的字符串，这时忽略 cmd_interpretor_index 参数为调用时的 current_stdin_cmd_interpretor
+// from_stdin_readline 为假时，readlineResults 通常是 config.h 里面配置好的命令字符串。此时命令字符串数组头部会配置 cmd_interpretor_index 对应的name
 static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboolean from_stdin_readline, int cmd_interpretor_index)
 {
         gboolean SearchResultAsInput=FALSE;
@@ -4024,12 +4054,25 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 	    len = strlen(readlineResult);
 	    
             for(guint i=0;i<G_N_ELEMENTS(stdin_cmd_interpretors);i++){
+	      if (strcmp(stdin_cmd_interpretors[i].name,"AI")==0) stdin_cmd_interpretor_index_for_AI = i; //我们需要一个方法获取AI_models静态定义里面的对应AI的index,0表示默认cmd_interpretor比较合适，最大的数未来也不一定表示AI,用户也可能随意调整位置，不如就在这里动态设置，省得要用的时候查表
 	      if (g_strcmp0(readlineResult, stdin_cmd_interpretors[i].activationKey)==0){
 		current_stdin_cmd_interpretor = i;
 		goto switchToReadlineThread;//如果当前输入命令是选择命令解释器,选择完后就直接进入一轮命令读取,无需再对当前输入命令进一步处理
 	      }
 	    }
+	    for(guint i=0;i<G_N_ELEMENTS(AI_models);i++){
+	      if (g_strcmp0(readlineResult, AI_models[i].activationKey)==0){
+		g_assert(stdin_cmd_interpretor_index_for_AI>=0);//能运行到这一步，上面一个for循环肯定跑完了，这个值肯定被设置过了
+		current_stdin_cmd_interpretor = stdin_cmd_interpretor_index_for_AI;
+		current_AI_model_index = i;
+		goto switchToReadlineThread;
+	      }
+	    }
 
+	    if (cmd_interpretor_index == stdin_cmd_interpretor_index_for_AI){ //注意这里是cmd_interpretor_index 而不是current_stdin_cmd_interpretor.
+	      if (from_stdin_readline) execStdinCmdInNewVT = AI_models[current_AI_model_index].InNewTerm;
+	      else execCmdInNewVT = AI_models[current_AI_model_index].InNewTerm;
+	    }else{
 	    //下面 stdin_cmd_ending_space, execStdinCmdInNewVT, SearchResultAsInput 应该也可以通过正则表达式匹配实现.
 	    //一方面之前写这些代码的时候还没添加正则表达式匹配的功能
 	    //再者有些人可能不喜欢正则表达式,而这些又是对rfm来说比较核心的功能,所以就暂不改用正则表达式识别
@@ -4066,6 +4109,9 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 		  for (int i=0;i<len;i++) readlineResult[i]=readlineResult[i + strlen(RFM_SEARCH_RESULT_AS_INPUT_PREFIX)]; //remove the prefix SearchResult|, which has 13 char
 		}
 	    }
+	      
+	    }//end else (cmd_interpretor_index == stdin_cmd_interpretor_index_for_AI){ 对于输入的 AI 提示词，就不要尝试解析了，
+	    //但是下面处理当前选中文件的部分还是需要的，当前选中文件可作为上下文传给AI
             readlineResultString=g_string_new(strdup(readlineResult));
 
 	      // combine runCmd with selected files to get gchar** v
@@ -4103,15 +4149,16 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 		}
 	    }//end if (stdin_cmd_selection_list!=NULL)
 
-	    if (!execStdinCmdInNewVT && !(!from_stdin_readline && execCmdInNewVT)){
+	    if (!execStdinCmdInNewVT && !(!from_stdin_readline && execCmdInNewVT) && cmd_interpretor_index != stdin_cmd_interpretor_index_for_AI){
 	      wordexp_t parsed_msg;
 	      int wordexp_retval = wordexp(readlineResult,&parsed_msg,0);
 	      if (wordexp_retval==0 && parse_and_exec_stdin_builtin_command_in_gtk_thread(&parsed_msg, readlineResultString)){ //wordexp_retval 0 means success
 		readlineResultString=NULL; //since readlineInseperatethread function will check this, we must clear it here after cmd already been executed.
 	      }
 	      if (wordexp_retval == 0) wordfree(&parsed_msg);
+	    }
 
-	    }//end if (!execStdinCmdInNewVT)
+
 	    if (stdin_cmd_selection_list!=NULL){
 	      g_list_free_full(stdin_cmd_selection_list, (GDestroyNotify)gtk_tree_path_free);
 	      stdin_cmd_selection_list=NULL;
