@@ -2,27 +2,25 @@
 
 #gentoo上依赖 app-misc/jq
 
-# 检查模型参数
-if [ -z "$1" ]; then
-  echo "错误：未提供模型名称" >&2
-  exit 1
-fi
-MODEL_NAME="$1"
+rfm_AI_MODEL_HOST_URL="$1"
+rfm_AI_MODEL_NAME="$2"
+rfm_AI_MODEL_TEMPERATURE=$3
+rfm_AI_MODEL_API_KEY="$4"
 
 # 读取用户输入
-prompt=$(cat)
-if [ -z "$prompt" ]; then
+rfm_AI_MODEL_prompt=$(cat)
+if [ -z "$rfm_AI_MODEL_prompt" ]; then
   echo "错误：未提供输入提示词" >&2
   exit 1
 fi
 
 # 发送请求并捕获原始 JSON 响应
-response=$(curl -sS --fail-with-body "https://openrouter.ai/api/v1/chat/completions" \
+response=$(curl -sS --fail-with-body "$rfm_AI_MODEL_HOST_URL" \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $OPENROUTER_API_KEY"
+  -H "Authorization: Bearer $rfm_AI_MODEL_API_KEY"
   -d "$(jq -n \
-    --arg model "$MODEL_NAME" \
-    --arg prompt "$prompt" \
+    --arg model "$rfm_AI_MODEL_NAME" \
+    --arg prompt "$rfm_AI_MODEL_prompt" \
     '{
       model: $model,
       prompt: $prompt,

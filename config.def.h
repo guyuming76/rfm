@@ -59,9 +59,10 @@ static const stdin_cmd_interpretor stdin_cmd_interpretors[] = {
 
 //the first one is the default one
 static const AI_model_parameter AI_models[] = {
-  //calling_script        host_url                         model_name                  term_prompt         activationKey  InNewTerm
-  {"rfmAskOllama.sh",  "http://localhost:11434",           "codegeex4:9B",             "codegeex4:9B",     "c>",           TRUE },
-  {"rfmAskOpenRouter.sh","https://openrouter.ai/api/v1/chat/completions","deepseek/deepseek-r1-zero:free","deepseek-r1:free","d>",TRUE },
+  //calling_script        host_url                         model_name                  term_prompt         activationKey  InNewTerm  Temperature   API_Key
+  {"rfmAskOllama.sh",  "http://localhost:11434/api/generate","codegeex4:9B",           "codegeex4:9B",     "c>",           TRUE,        0,          "别把key存config.def.h,存config.h" },
+  {"rfmAskOpenRouter.sh","https://openrouter.ai/api/v1/chat/completions","deepseek/deepseek-r1-zero:free","deepseek-r1:free","r>",TRUE, 0,          "别把key存config.def.h,存config.h" },
+  {"rfmAskOpenRouter.sh","https://api.deepseek.com/chat/completions","deepseek-reasoner","deepseek-r1",    "d>",           TRUE,        0,          "别把key存config.def.h,存config.h" },
 };
 
 static const char *find_same_name[] = { stdin_cmd_interpretors[0].name, rfmBinPath "rfmFindFilesWithTheSameName.sh >multitype ", NULL };
