@@ -4022,10 +4022,10 @@ static void set_stdin_cmd_leading_space_true(){
 
 static gchar** stdin_LLM_prompt(gchar* user_input_prompt, gboolean inNewVT) {
   if (AI_models[current_AI_model_index].InNewTerm){
-    snprintf(shell_cmd_buffer,PATH_MAX,"set -o history; echo %s | %s %s %s %s; read -p '\033[33m%s\033[0m'; exit \$? 2>/dev/null", user_input_prompt,AI_models[current_AI_model_index].calling_script, AI_models[current_AI_model_index].host_url,AI_models[current_AI_model_index].model_name, AI_models[current_AI_model_index].API_key, PRESS_ENTER_TO_CLOSE_WINDOW);
+    snprintf(shell_cmd_buffer,PATH_MAX,"set -o history; echo '%s' | %s %s %s %s; read -p '\033[33m%s\033[0m'; exit \$? 2>/dev/null", user_input_prompt,AI_models[current_AI_model_index].calling_script, AI_models[current_AI_model_index].host_url,AI_models[current_AI_model_index].model_name, AI_models[current_AI_model_index].API_key, PRESS_ENTER_TO_CLOSE_WINDOW);
     return stdin_cmd_template_bash_newVT_nonHold;
   }else {
-    snprintf(shell_cmd_buffer,PATH_MAX,"set -o history; echo %s | %s %s %s %s; exit \$? 2>/dev/null",user_input_prompt,AI_models[current_AI_model_index].calling_script, AI_models[current_AI_model_index].host_url, AI_models[current_AI_model_index].model_name, AI_models[current_AI_model_index].API_key);
+    snprintf(shell_cmd_buffer,PATH_MAX,"set -o history; echo '%s' | %s %s %s %s; exit \$? 2>/dev/null",user_input_prompt,AI_models[current_AI_model_index].calling_script, AI_models[current_AI_model_index].host_url, AI_models[current_AI_model_index].model_name, AI_models[current_AI_model_index].API_key);
     return stdin_cmd_template_bash;
   }
 }
