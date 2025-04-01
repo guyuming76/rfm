@@ -29,3 +29,6 @@ MU_VIEW = -DMU_VIEW
 #CFLAGS = -fsanitize=address
 
 #LDFLAGS = -lasan
+
+AiIntegration = -DAiIntegration
+#AiIntegration = 

@@ -67,6 +67,7 @@ gboolean str_regex_replace(char **str, const regex_t * restrict pattern_compiled
 
 /****************************************************/
 /******AI related definitions **********************/
+#ifdef AiIntegration
 typedef struct {
   gchar *calling_script;
   gchar *host_url;
@@ -82,7 +83,7 @@ static int current_AI_model_index = 0;
 static int stdin_cmd_interpretor_index_for_AI = -1;
 
 static gchar** stdin_LLM_prompt(gchar* user_input_prompt, gboolean inNewVT);
-
+#endif
 /********AI related definitions end******************/
 /******Terminal Emulator related definitions*********/
 #ifdef PythonEmbedded
@@ -4020,6 +4021,7 @@ static void set_stdin_cmd_leading_space_true(){
   stdin_cmd_leading_space=TRUE;
 }
 
+#ifdef AiIntegration
 static gchar** stdin_LLM_prompt(gchar* user_input_prompt, gboolean inNewVT) {
   if (AI_models[current_AI_model_index].InNewTerm){
     snprintf(shell_cmd_buffer,PATH_MAX,"set -o history; echo '%s' | %s %s %s %s; read -p '\033[33m%s\033[0m'; exit \$? 2>/dev/null", user_input_prompt,AI_models[current_AI_model_index].calling_script, AI_models[current_AI_model_index].host_url,AI_models[current_AI_model_index].model_name, AI_models[current_AI_model_index].API_key, PRESS_ENTER_TO_CLOSE_WINDOW);
@@ -4029,6 +4031,7 @@ static gchar** stdin_LLM_prompt(gchar* user_input_prompt, gboolean inNewVT) {
     return stdin_cmd_template_bash;
   }
 }
+#endif
 
 // this runs in gtk thread
 // from_stdin_readline 为 TRUE 时，表示用户从命令窗口输入的字符串，这时忽略 cmd_interpretor_index 参数为调用时的 current_stdin_cmd_interpretor
@@ -4056,12 +4059,15 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 	    len = strlen(readlineResult);
 	    
             for(guint i=0;i<G_N_ELEMENTS(stdin_cmd_interpretors);i++){
+#ifdef AiIntegration
 	      if (strcmp(stdin_cmd_interpretors[i].name,"AI")==0) stdin_cmd_interpretor_index_for_AI = i; //我们需要一个方法获取AI_models静态定义里面的对应AI的index,0表示默认cmd_interpretor比较合适，最大的数未来也不一定表示AI,用户也可能随意调整位置，不如就在这里动态设置，省得要用的时候查表
+#endif
 	      if (g_strcmp0(readlineResult, stdin_cmd_interpretors[i].activationKey)==0){
 		current_stdin_cmd_interpretor = i;
 		goto switchToReadlineThread;//如果当前输入命令是选择命令解释器,选择完后就直接进入一轮命令读取,无需再对当前输入命令进一步处理
 	      }
 	    }
+#ifdef AiIntegration
 	    for(guint i=0;i<G_N_ELEMENTS(AI_models);i++){
 	      if (g_strcmp0(readlineResult, AI_models[i].activationKey)==0){
 		g_assert(stdin_cmd_interpretor_index_for_AI>=0);//能运行到这一步，上面一个for循环肯定跑完了，这个值肯定被设置过了
@@ -4075,6 +4081,7 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 	      if (from_stdin_readline) execStdinCmdInNewVT = AI_models[current_AI_model_index].InNewTerm;
 	      else execCmdInNewVT = AI_models[current_AI_model_index].InNewTerm;
 	    }else{
+#endif
 	    //下面 stdin_cmd_ending_space, execStdinCmdInNewVT, SearchResultAsInput 应该也可以通过正则表达式匹配实现.
 	    //一方面之前写这些代码的时候还没添加正则表达式匹配的功能
 	    //再者有些人可能不喜欢正则表达式,而这些又是对rfm来说比较核心的功能,所以就暂不改用正则表达式识别
@@ -4111,9 +4118,10 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 		  for (int i=0;i<len;i++) readlineResult[i]=readlineResult[i + strlen(RFM_SEARCH_RESULT_AS_INPUT_PREFIX)]; //remove the prefix SearchResult|, which has 13 char
 		}
 	    }
-	      
+#ifdef AiIntegration	      
 	    }//end else (cmd_interpretor_index == stdin_cmd_interpretor_index_for_AI){ 对于输入的 AI 提示词，就不要尝试解析了，
 	    //但是下面处理当前选中文件的部分还是需要的，当前选中文件可作为上下文传给AI
+#endif
             readlineResultString=g_string_new(strdup(readlineResult));
 
 	      // combine runCmd with selected files to get gchar** v
@@ -4150,9 +4158,12 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 		  }
 		}
 	    }//end if (stdin_cmd_selection_list!=NULL)
-
+#ifdef AiIntegration
 	    if (!execStdinCmdInNewVT && !(!from_stdin_readline && execCmdInNewVT) && cmd_interpretor_index != stdin_cmd_interpretor_index_for_AI){
-	      wordexp_t parsed_msg;
+#else
+	    if (!execStdinCmdInNewVT && !(!from_stdin_readline && execCmdInNewVT)){
+#endif
+              wordexp_t parsed_msg;
 	      int wordexp_retval = wordexp(readlineResult,&parsed_msg,0);
 	      if (wordexp_retval==0 && parse_and_exec_stdin_builtin_command_in_gtk_thread(&parsed_msg, readlineResultString)){ //wordexp_retval 0 means success
 		readlineResultString=NULL; //since readlineInseperatethread function will check this, we must clear it here after cmd already been executed.

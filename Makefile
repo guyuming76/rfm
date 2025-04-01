@@ -17,7 +17,7 @@ endif
 GTK_VERSION = gtk+-3.0
 # what shall be minimun gtk+ version for glib 2.80?
 
-CPPFLAGS = -DrfmBinPath=${rfmBinPath} --include ${languageInclude} -DG_LOG_DOMAIN=\"rfm\" ${GitIntegration} ${PythonEmbedded} ${RFM_FILE_CHOOSER} ${MU_VIEW} ${READLINE_LIB}
+CPPFLAGS = -DrfmBinPath=${rfmBinPath} --include ${languageInclude} -DG_LOG_DOMAIN=\"rfm\" ${GitIntegration} ${PythonEmbedded} ${RFM_FILE_CHOOSER} ${MU_VIEW} ${READLINE_LIB} ${AiIntegration}
 # 检查glib版本是否≥2.80
 ifeq ($(shell pkg-config --atleast-version=2.80 glib-2.0 && echo yes),yes)
 CPPFLAGS += -DGLIB280PLUS
@@ -151,9 +151,10 @@ endif
 	@cp -f scripts/rfm_Update_affected_SymbolicLinks_for_move_or_copy.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfm_mkdir_and_move_selected_files_into_it_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfm_mkdir_and_move_selected_files_into_it.sh
 	@cp -f scripts/rfmSaveSearchResultToFile_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmSaveSearchResultToFile.sh
+ifneq ($(AiIntegration),)
 	@cp -f scripts/rfmAskOllama.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmAskOpenRouter.sh ${DESTDIR}${PREFIX}/bin
-
+endif
 ifneq ($(CalledByEbuild),YES)
 # the CalledByEbuild variable is exported in rfm ebuild
 # there will be sandbox error in gentoo ebuild run
@@ -201,8 +202,10 @@ endif
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfm_Update_affected_SymbolicLinks_for_move_or_copy.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfm_mkdir_and_move_selected_files_into_it.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmSaveSearchResultToFile.sh
+ifneq ($(AiIntegration),)
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmAskOllama.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmAskOpenRouter.sh
+endif
 	@echo
 	@echo "***please copy the .inputrc file into your home directory (~) manually."
 
@@ -244,8 +247,10 @@ endif
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfm_Update_affected_SymbolicLinks_for_move_or_copy.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfm_mkdir_and_move_selected_files_into_it.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmSaveSearchResultToFile.sh
+ifneq ($(AiIntegration),)
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmAskOllama.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmAskOpenRouter.sh
+endif
 ifneq ($(CalledByEbuild),YES)
 	-xdg-desktop-menu uninstall rfm.desktop
 	-rm -f /usr/share/applications/rfm.desktop

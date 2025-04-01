@@ -51,12 +51,15 @@ static const stdin_cmd_interpretor stdin_cmd_interpretors[] = {
         //Name             activationKey          prompt            cmdTransformer
 	{"Bash",           "b>",                  "b",              stdin_command_bash },
 	{"NuShell",        "n>",                  "n",              stdin_command_nu   },
+#ifdef AiIntegration
 	{"AI",             "a>",                  "a",              stdin_LLM_prompt   }, //The prompt of AI will not show. The term_prompt of default AI_models will show instead. The acitivationKey of AI and that of the default AI_models have the same effect. DO NOT change the name AI here, it is hardcoded in code.
+#endif
 #ifdef PythonEmbedded
 	{"PythonEmbedded", "p>",                  "p",              NULL               },
 #endif
 };
 
+#ifdef AiIntegration
 //the first one is the default one
 static const AI_model_parameter AI_models[] = {
   //calling_script        host_url                         model_name                  term_prompt         activationKey  InNewTerm  Temperature   API_Key
@@ -64,6 +67,7 @@ static const AI_model_parameter AI_models[] = {
   {"rfmAskOpenRouter.sh","https://openrouter.ai/api/v1/chat/completions","deepseek/deepseek-r1-zero:free","deepseek-r1:free","r>",TRUE, 0,          "别把key存config.def.h,存config.h" },
   {"rfmAskOpenRouter.sh","https://api.deepseek.com/chat/completions","deepseek-reasoner","deepseek-r1",    "d>",           TRUE,        0,          "别把key存config.def.h,存config.h" },
 };
+#endif
 
 static const char *find_same_name[] = { stdin_cmd_interpretors[0].name, rfmBinPath "rfmFindFilesWithTheSameName.sh >multitype ", NULL };
 static const char *cd_in_searchresult[] = { stdin_cmd_interpretors[0].name, "cd ", NULL };
