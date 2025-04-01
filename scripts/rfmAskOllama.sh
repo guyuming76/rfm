@@ -47,7 +47,7 @@ echo "$result"
 # 仅当成功时保存文件
 if ! [[ "$result" =~ ^错误: ]]; then
   # 清理模型名称中的非法字符（如冒号）
-  sanitized_model=$(echo "$MODEL_NAME" | sed 's/[:/\\*?<>|"]/_/g')  # 关键修改点
+  sanitized_model=$(echo "$rfm_AI_MODEL_NAME" | sed 's/[:/\\*?<>|"]/_/g')  # 关键修改点
   timestamp=$(date +%Y%m%d_%H%M%S)
   filename="rfmAI_${sanitized_model}___${timestamp}.md"  # 使用清理后的名称
 
