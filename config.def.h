@@ -61,6 +61,7 @@ static const stdin_cmd_interpretor stdin_cmd_interpretors[] = {
 static const AI_model_parameter AI_models[] = {
   //calling_script        host_url                         model_name                  term_prompt         activationKey  InNewTerm
   {"rfmAskOllama.sh",  "http://localhost:11434",           "codegeex4:9B",             "codegeex4:9B",     "c>",           TRUE },
+  {"rfmAskOpenRouter.sh","https://openrouter.ai/api/v1/chat/completions","deepseek/deepseek-r1-zero:free","deepseek-r1:free","d>",TRUE },
 };
 
 static const char *find_same_name[] = { stdin_cmd_interpretors[0].name, rfmBinPath "rfmFindFilesWithTheSameName.sh >multitype ", NULL };

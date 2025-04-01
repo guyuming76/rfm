@@ -152,6 +152,7 @@ endif
 	@cp -f scripts/rfm_mkdir_and_move_selected_files_into_it_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfm_mkdir_and_move_selected_files_into_it.sh
 	@cp -f scripts/rfmSaveSearchResultToFile_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmSaveSearchResultToFile.sh
 	@cp -f scripts/rfmAskOllama.sh ${DESTDIR}${PREFIX}/bin
+	@cp -f scripts/rfmAskOpenRouter.sh ${DESTDIR}${PREFIX}/bin
 
 ifneq ($(CalledByEbuild),YES)
 # the CalledByEbuild variable is exported in rfm ebuild
@@ -201,6 +202,7 @@ endif
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfm_mkdir_and_move_selected_files_into_it.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmSaveSearchResultToFile.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmAskOllama.sh
+	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmAskOpenRouter.sh
 	@echo
 	@echo "***please copy the .inputrc file into your home directory (~) manually."
 
@@ -243,7 +245,7 @@ endif
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfm_mkdir_and_move_selected_files_into_it.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmSaveSearchResultToFile.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmAskOllama.sh
-
+	@rm -f ${DESTDIR}${PREFIX}/bin/rfmAskOpenRouter.sh
 ifneq ($(CalledByEbuild),YES)
 	-xdg-desktop-menu uninstall rfm.desktop
 	-rm -f /usr/share/applications/rfm.desktop
