@@ -43,7 +43,7 @@ static char run_cmd_in_new_terminal_emulator_suffix[32] = { '&', 0 };
 static gint RFM_THUMBNAIL_SIZE = 128; /* Maximum size for thumb dir normal is 128 */
 static gboolean UseTargetAddressWhenEnterSymbloicLinkForDir=TRUE;
 static gboolean auto_sort_entering_view = FALSE;
-static gboolean keep_selection_on_view_across_refresh = TRUE; 
+static gboolean keep_selection_on_view_across_refresh = TRUE;
 static gchar* dumb_keyfile_groupname = "https://discourse.gnome.org/t/gkeyfile-to-handle-conf-without-groupname/23080/3";
 
 //do not change the order of the following array,or change with care, it's referenced as stdin_cmd_interpretor[0] in code below
@@ -394,16 +394,23 @@ static RFM_treeviewColumn treeviewColumns[] = {
 static char SearchResultColumnSeperator[32]={':', 0}; //this is the default value and can be override by specific searchresulttype and can also be set manually with builtin cmd
 static gchar* EmptyShowColumn[] = { NULL };
 static gchar* MailColumns[] = { "-FileName",",From,Subject,Date,Attachments",NULL };
+#ifdef MU_VIEW
+static gchar* MU_VIEW_cmdTemplate[] = { stdin_cmd_interpretors[0].name, "mu view %s | rfmGetMailHeaderWithMuView.sh", NULL };
+#endif
+#ifdef extractKeyValuePairFromMarkdown
+static gchar* MD_parsing_cmdTemplate[] = { stdin_cmd_interpretors[0].name, "extractKeyValuePairFromMarkdown 0 %s", NULL };
+static gchar* TODO_MD_parsing_cmdTemplate[] = { stdin_cmd_interpretors[0].name, "extractKeyValuePairFromMarkdown 0 %s 简述 问题状态", NULL };
+#endif
 static RFM_SearchResultType searchresultTypes[] = {
 //name	       SearchResultLineProcessingFunc                  showcolumn     SearchResultColumnSeperator  cmdTemplate Description
   {"default",  ProcessOnelineForSearchResult,                  EmptyShowColumn, NULL, NULL,                            SearchResultType_default }, //default searchresult, contain only filename list such as returned by locate, or filename followed by additional info such as returned by grep
   {"gkeyfile", ProcessKeyValuePairInFilesFromSearchResult,     EmptyShowColumn, NULL, NULL,                            SearchResultType_gkeyfile},
 #ifdef MU_VIEW
-  {"muview",   ProcessKeyValuePairInCmdOutputFromSearchResult, MailColumns    , "&" , "mu view %s | rfmGetMailHeaderWithMuView.sh",SearchResultType_muview }, //%s in cmdTemplate will be replaced by filename in searchresult
+  {"muview",   ProcessKeyValuePairInCmdOutputFromSearchResult, MailColumns    , "&" , MU_VIEW_cmdTemplate ,SearchResultType_muview }, //%s in cmdTemplate will be replaced by filename in searchresult
 #endif
 #ifdef extractKeyValuePairFromMarkdown
-  {".md",      ProcessKeyValuePairInCmdOutputFromSearchResult, EmptyShowColumn, NULL, "extractKeyValuePairFromMarkdown 0 %s",SearchResultType_markdown1},
-  {"TODO.md",  ProcessKeyValuePairInCmdOutputFromSearchResult, EmptyShowColumn, NULL, "extractKeyValuePairFromMarkdown 0 %s 简述 问题状态",SearchResultType_TODO_md},
+  {".md",      ProcessKeyValuePairInCmdOutputFromSearchResult, EmptyShowColumn, NULL, MD_parsing_cmdTemplate, SearchResultType_markdown1 },
+  {"TODO.md",  ProcessKeyValuePairInCmdOutputFromSearchResult, EmptyShowColumn, NULL, TODO_MD_parsing_cmdTemplate, SearchResultType_TODO_md },
 #endif
   {"multitype",CallMatchingProcessorForSearchResultLine,       EmptyShowColumn, NULL, NULL,                            SearchResultType_multitype },
   {"withTitle",ProcessOnelineForSearchResult_with_title,       EmptyShowColumn, NULL, NULL,                            SearchResultType_default_with_title },

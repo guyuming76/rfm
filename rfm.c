@@ -186,7 +186,7 @@ static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlin
 static void g_spawn_async_callback_to_new_readline_thread(gpointer child_attribs);
 static void regcomp_for_regex_rules();
 static void set_stdin_cmd_leading_space_true();
-static gboolean match_cmd_str_array_with_interpretors_and_call_parse_and_exec(gchar** RunCmd);
+static gboolean match_cmd_str_array_with_interpretors(gchar** RunCmd);
 static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboolean from_stdin_readline, int cmd_interpretor_index);
 static void parse_and_exec_stdin_command_in_gtk_thread(gchar *msg);
 static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * parsed_msg, GString* readline_result_string);
@@ -502,10 +502,10 @@ static void cmdToggleInotifyHandler(wordexp_t *parsed_msg,GString *readline_resu
 /******Search Result related definitions*************/
 typedef struct {
   gchar* name;
-  int (*SearchResultLineProcessingFunc)(gchar* oneline, gboolean new_search, char* cmdTemplate, RFM_FileAttributes* fileAttributes); //when new_search is TRUE, fileattributes will be NULL. Note that not all ProcessingFunc has these four parameters defined, mostly not.
+  int (*SearchResultLineProcessingFunc)(gchar* oneline, gboolean new_search, char** cmdTemplate, RFM_FileAttributes* fileAttributes); //when new_search is TRUE, fileattributes will be NULL. Note that not all ProcessingFunc has these four parameters defined, mostly not.
   const char** showcolumn; //the same type of string used in showcolumn builtin command
   const char* SearchResultColumnSeperator;
-  const char* cmdTemplate;//used by ProcessKeyValuePairInCmdOutputFromSearchResult
+  const char** cmdTemplate;//used by ProcessKeyValuePairInCmdOutputFromSearchResult
   const char* Description;
 }RFM_SearchResultType;
 
@@ -537,7 +537,7 @@ static int ProcessOnelineForSearchResult_internel(char* oneline, gboolean new_se
 static int ProcessOnelineForSearchResult_with_title(char* oneline, gboolean new_search);
 static void CallDefaultSearchResultFunctionForNewSearch(char *one_line_in_search_result);
 static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline, gboolean new_search);
-static int ProcessKeyValuePairInCmdOutputFromSearchResult(char *oneline, gboolean new_search, char *cmdtemplate);
+static int ProcessKeyValuePairInCmdOutputFromSearchResult(char *oneline, gboolean new_search, char **cmdtemplate);
 static int ProcessKeyValuePairInData(GKeyFile* keyfile, char *groupname);
 static int CallMatchingProcessorForSearchResultLine(char *oneline, gboolean new_search, char *cmdtemplate, RFM_FileAttributes* fileAttributes);
 static void cmdSearchResultColumnSeperator(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
@@ -2643,8 +2643,12 @@ static void toolbar_button_exec(GtkToolItem *item, RFM_ChildAttribs *childAttrib
      child_attribs->spawn_async = childAttribs->spawn_async;
      child_attribs->name=g_strdup(childAttribs->name);
 
-     if (!match_cmd_str_array_with_interpretors_and_call_parse_and_exec(child_attribs->RunCmd))
-       g_spawn_wrapper_(NULL, NULL, child_attribs);
+     int cmd_interpretor_index = match_cmd_str_array_with_interpretors(child_attribs->RunCmd);
+     if (cmd_interpretor_index>=0){
+       gchar* cmd = strdup(childAttribs->RunCmd[1]);
+       printf("\n%s\033[32m%s%s]\033[0m%s\n",InheritedPrompt, stdin_cmd_interpretors[cmd_interpretor_index].prompt,(ItemSelected==0)?"":"*",cmd);
+       parse_and_exec_command_in_gtk_thread(cmd, FALSE, cmd_interpretor_index);
+     }else g_spawn_wrapper_(NULL, NULL, child_attribs);
    }
 }
 
@@ -2720,16 +2724,12 @@ static void g_spawn_wrapper_for_selected_fileList_(RFM_ChildAttribs *childAttrib
 }
 
 
-static gboolean match_cmd_str_array_with_interpretors_and_call_parse_and_exec(gchar** RunCmd){
+static int match_cmd_str_array_with_interpretors(gchar** RunCmd){
   for (int i=0; i<G_N_ELEMENTS(stdin_cmd_interpretors); i++){
-    if (RunCmd[0] == stdin_cmd_interpretors[i].name){//注意这里比较的是两个字符串的地址，而不是用strcmp比较内容，这样不会因为恰巧相同的字符串造成误判
-      gchar* cmd = strdup(RunCmd[1]);
-      printf("\n%s\033[32m%s%s]\033[0m%s\n",InheritedPrompt, stdin_cmd_interpretors[i].prompt,(ItemSelected==0)?"":"*",cmd);
-      parse_and_exec_command_in_gtk_thread(cmd, FALSE, i);
-      return TRUE;
-    }
+    if (RunCmd[0] == stdin_cmd_interpretors[i].name)//注意这里比较的是两个字符串的地址，而不是用strcmp比较内容，这样不会因为恰巧相同的字符串造成误判
+      return i;
   }
-  return FALSE;
+  return -1;
 }
 
 //这个函数做的主要就是复制一份childAttribs, 因为child_attribs包含stdOut这类执行完后要释放的内容,而依附于菜单项的childAttribs模板要在setup_file_menu时才销毁重建
@@ -2745,8 +2745,12 @@ static void file_menu_exec(GtkMenuItem *menuitem, RFM_ChildAttribs *childAttribs
   child_attribs->spawn_async = childAttribs->spawn_async;
   child_attribs->name=g_strdup(childAttribs->name);
 
-  if (!match_cmd_str_array_with_interpretors_and_call_parse_and_exec(child_attribs->RunCmd))
-    g_spawn_wrapper_for_selected_fileList_(child_attribs);
+  int cmd_interpretor_index = match_cmd_str_array_with_interpretors(child_attribs->RunCmd);
+  if (cmd_interpretor_index>=0){
+    gchar* cmd = strdup(childAttribs->RunCmd[1]);
+    printf("\n%s\033[32m%s%s]\033[0m%s\n",InheritedPrompt, stdin_cmd_interpretors[cmd_interpretor_index].prompt,(ItemSelected==0)?"":"*",cmd);
+    parse_and_exec_command_in_gtk_thread(cmd, FALSE, cmd_interpretor_index);
+  }g_spawn_wrapper_for_selected_fileList_(child_attribs);
 }
 
 //fileMenu.menu, fileMenu.menuItem[] 仅在首次运行时被初始化，但fileMenu.childattribs_for_menuItem[], fileMenu.menuItemSignalHandlers[]每次都会被重置刷新
@@ -4755,7 +4759,14 @@ static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline, gboolean ne
    }
 }
 
-static int ProcessKeyValuePairInCmdOutputFromSearchResult(char *oneline, gboolean new_search, char* cmdtemplate){
+// 查看 SearchResultLineProcessingFunc 函数指针了解此函数调用
+// 这个函数的 cmdtemplate 有点类似 parse_and_exec_cmd_in_gtk_thread 的readlineResult, （还是等同？）
+// 但这个函数和 parse_and_exec_cmd_in_gtk_thread  的不同在于本函数是处理查询结果的一条记录的，即一个查询到的文件，cmdtemplate 是用来解析这个文件内容的，处理的上下文就是这个文件。
+// 而 parse_and_exec_cmd_in_gtk_thread 处理用户输入或config.h写死的命令时会考虑当前选中文件上下文
+// cmdtemplate的解析结果会通过 cmdOutput 局部变量传递到下一环节。这个cmdOutput会对应到查询结果的一行
+// 而parse_and_exec_cmd_in_gtk_thread 里的readlineResult是返回这个查询结果多行记录的，每行一个文件。
+// 所以这两个函数看上去都是执行命令模板的，有类似之处，却不好合并
+static int ProcessKeyValuePairInCmdOutputFromSearchResult(char *oneline, gboolean new_search, char** cmdtemplate){
    if (new_search){
      CallDefaultSearchResultFunctionForNewSearch(oneline);
      return 0;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
@@ -4767,7 +4778,8 @@ static int ProcessKeyValuePairInCmdOutputFromSearchResult(char *oneline, gboolea
    gchar* cmdError=NULL;
    char mailHeadCmd[PATH_MAX];
    snprintf(mailHeadCmd,PATH_MAX,cmdtemplate,oneline);
-   char** cmd = stdin_cmd_interpretors[current_stdin_cmd_interpretor].cmdTransformer(mailHeadCmd, FALSE);
+   int cmd_interpretor_index = match_cmd_str_array_with_interpretors(cmdtemplate);
+   char** cmd = stdin_cmd_interpretors[cmd_interpretor_index>=0 ? cmd_interpretor_index : current_stdin_cmd_interpretor].cmdTransformer(mailHeadCmd, FALSE);
 
    if (!g_spawn_sync(rfm_curPath, cmd, env_for_g_spawn, G_SPAWN_SEARCH_PATH, NULL, NULL, &cmdOutput, &cmdError, NULL, &error)){
      g_warning("error executing cmd %s, error:%s",mailHeadCmd, error==NULL?"":error->message);
