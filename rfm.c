@@ -578,6 +578,7 @@ static gchar* get_showcolumn_cmd_from_currently_displaying_columns();
 static void show_hide_treeview_columns_in_order(gchar *order_sequence);
 static void show_hide_treeview_columns_enum(int count, ...);
 static void cmd_showcolumn(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
+static void init_ext_columns_in_treeviewColumns();
 /******TreeView column related definitions end*******/
 /****************************************************/
 /******View Selection related definitions************/
@@ -4492,6 +4493,18 @@ static void regcomp_for_regex_rules(){
    }
 }
 
+
+static void init_ext_columns_in_treeviewColumns() {
+    // 复制原始列
+    memcpy(treeviewColumns, treeviewColumns_init, sizeof(treeviewColumns_init));
+    // 追加C2-C60列
+    for(int i = 2; i <= 60; i++) {
+      // 复制C1的所有属性，假设C1是最后一个元素
+      memcpy(&treeviewColumns[G_N_ELEMENTS(treeviewColumns_init) + i - 2], &treeviewColumns_init[G_N_ELEMENTS(treeviewColumns_init) - 1], sizeof(RFM_treeviewColumn));
+      snprintf(treeviewColumns[G_N_ELEMENTS(treeviewColumns_init) + i - 2].title, 10, "C%d", i);
+    }
+}
+
 int main(int argc, char *argv[])
 {
    struct stat statbuf;
@@ -4513,6 +4526,8 @@ int main(int argc, char *argv[])
    for(int i=0;i<=NUM_Ext_Columns;i++) {
      ExtColumnHashTable[i]=NULL;
    }
+
+   init_ext_columns_in_treeviewColumns();
    //init some variables
    memcpy(SearchResultViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
    memcpy(DirectoryViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
