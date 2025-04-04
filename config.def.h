@@ -329,10 +329,10 @@ static RFM_treeviewColumn treeviewColumns_init[] = {
   {"ImageSize",               NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 getImageSize,    NULL,     "image",     "*",    FALSE,FALSE},
   {"Comment",                 NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 getComment,      NULL,     "image",     "*",    FALSE,FALSE},
   {"C1",                      NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 NULL,getExtColumnValueFromHashTable,"*","*",    FALSE,FALSE},
-  //后面C2,C3,....在初始化时添加
+  //后面C2,C3,....在初始化时添加，注意C1 一定要是最后一个项, 虽然C1这一行放在这里有些奇怪，但如果放代码里初始化值，没有放这里静态数组里直观
 };
 
-static RFM_treeviewColumn treeviewColumns[G_N_ELEMENTS(treeviewColumns_init) + 59];
+static RFM_treeviewColumn treeviewColumns[G_N_ELEMENTS(treeviewColumns_init) + NUM_Ext_Columns - 1]; // 因为C1已经包含在treeviewColumns_init 里了，所以要-1
 
 #define RFM_SearchResultTypeNamePrefix ">"
 static char SearchResultColumnSeperator[32]={':', 0}; //this is the default value and can be override by specific searchresulttype and can also be set manually with builtin cmd

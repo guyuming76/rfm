@@ -4493,12 +4493,12 @@ static void regcomp_for_regex_rules(){
    }
 }
 
-
+//从treeviewColumns_init 复制到 treeviewColumns, 并用C1作为模板，补齐C2,C3,...,C60列
 static void init_ext_columns_in_treeviewColumns() {
     // 复制原始列
     memcpy(treeviewColumns, treeviewColumns_init, sizeof(treeviewColumns_init));
     // 追加C2-C60列
-    for(int i = 2; i <= 60; i++) {
+    for(int i = 2; i <= NUM_Ext_Columns; i++) {
       // 复制C1的所有属性，假设C1是最后一个元素
       memcpy(&treeviewColumns[G_N_ELEMENTS(treeviewColumns_init) + i - 2], &treeviewColumns_init[G_N_ELEMENTS(treeviewColumns_init) - 1], sizeof(RFM_treeviewColumn));
       snprintf(treeviewColumns[G_N_ELEMENTS(treeviewColumns_init) + i - 2].title, 10, "C%d", i);
@@ -4528,7 +4528,8 @@ int main(int argc, char *argv[])
    }
 
    init_ext_columns_in_treeviewColumns();
-   //init some variables
+   //上面 根据 treeviewColumns_init 初始化 treeviewColumns 也可以和下面两个memcpy 合并，也就是 根据treeviewColumns_init 直接初始化 SearchResultViewColumnsLayout 和 DirectoryViewColumnsLayout. 可以省掉treeviewColumns 数组。
+   //但 treeviewColumns_init 到 treeviewColumns 的复制，主要是为了config.def.h 看起来更清爽，也减少了 AI 编程时传给大模型prompt量，减少珍贵的context window 的占用。主要是我不知道C语言里还能有啥好办法初始化时扩展静态数组，才这么做的，也许将来会改。而下面的memcpy是除了初始化外，程序运行时还多次要用到的。这两步数组复制的目的和功能不同，treeviewColumns 这点本身运行内存的占用在现代计算机上算不得啥，所以就不合并了。
    memcpy(SearchResultViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
    memcpy(DirectoryViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
    sprintf(selected_filename_placeholder_in_space," %s ",selected_filename_placeholder);
