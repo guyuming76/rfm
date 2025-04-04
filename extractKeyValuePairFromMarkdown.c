@@ -88,7 +88,12 @@ int main(int argc, char *argv[]){
     }
 
     FILE *fp = fopen(argv[2], "rb");
+    if (!fp) {
+        fprintf(stderr, "Error opening file: %s\n", argv[2]);
+        return 1;
+    }
     cmark_node *root = cmark_parse_file(fp, CMARK_OPT_DEFAULT);
+    fclose(fp); // Close the file after parsing
 
     debug = atoi(argv[1]);
     HeadersToMatch = argv + 3;
@@ -103,6 +108,7 @@ int main(int argc, char *argv[]){
     }
     printf("\n");
     cmark_iter_free(iter);
+    cmark_node_free(root); // Free the cmark node tree
 
     return 0;
 }
