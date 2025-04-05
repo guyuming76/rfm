@@ -5009,9 +5009,10 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
   g_assert(SearchResultTypeIndex>=0 && SearchResultTypeIndex<G_N_ELEMENTS(searchresultTypes));
   
   GList * old_filenamelist = SearchResultFileNameList;
-  static GHashTable* old_ExtColumnHashTable[NUM_Ext_Columns + 1];
+  static GHashTable* old_ExtColumnHashTable[NUM_Ext_Columns + 1]; //静态存储期（static storage duration）的变量（包括全局变量和用static 关键字声明的局部变量）如果没有显式初始化，会被自动初始化为零。
   SearchResultFileNameList = NULL;
   for(int i=0;i<=NUM_Ext_Columns;i++) {
+    if (old_ExtColumnHashTable[i] != NULL) g_warning("update_SearchResultFileNameList_and_refresh_store 函数重入了，造成HashTable内存泄漏");
     old_ExtColumnHashTable[i]=ExtColumnHashTable[i];
     ExtColumnHashTable[i]=NULL;
     ExtColumnHashTable_keep_during_refresh[i]=FALSE;
@@ -5046,7 +5047,7 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
  
   FirstPage(rfmCtx);
   if (old_filenamelist!=NULL) g_list_free(old_filenamelist);
-  for(int i=0;i<=NUM_Ext_Columns;i++) if (old_ExtColumnHashTable[i]!=NULL) g_hash_table_destroy(old_ExtColumnHashTable[i]);
+  for(int i=0;i<=NUM_Ext_Columns;i++) if (old_ExtColumnHashTable[i]!=NULL) { g_hash_table_destroy(old_ExtColumnHashTable[i]); old_ExtColumnHashTable[i] = NULL; }
 
   g_free(filenamelist);
 }
