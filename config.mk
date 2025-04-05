@@ -26,6 +26,9 @@ extractKeyValuePairFromMarkdown = extractKeyValuePairFromMarkdown
 MU_VIEW = -DMU_VIEW
 #MU_VIEW =
 
+RFM_LOCAL = -DRFM_LOCAL
+#RFM_LOCAL =
+
 #CFLAGS = -fsanitize=address
 
 #LDFLAGS = -lasan

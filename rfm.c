@@ -38,6 +38,9 @@
 #include <stdarg.h>
 #include <regex.h>
 #include <gio/gdesktopappinfo.h>
+#ifdef RFM_LOCAL
+#include <dlfcn.h>
+#endif
 
 #define INOTIFY_MASK IN_MOVE|IN_CREATE|IN_CLOSE_WRITE|IN_DELETE|IN_DELETE_SELF|IN_MOVE_SELF
 #define PIPE_SZ 65535      /* Kernel pipe size */
@@ -497,6 +500,10 @@ static gboolean iterate_through_store_to_load_latest_git_log_one_by_one_when_idl
 static void set_terminal_window_title(char* title);
 static void set_Titles(gchar * title);
 static void cmdToggleInotifyHandler(wordexp_t *parsed_msg,GString *readline_result_string_after_file_name_substitution);
+#ifdef RFM_LOCAL
+static void load_local_extension();
+static void unload_local_extension();
+#endif
 /******GtkListStore and refresh definitions end******/
 /****************************************************/
 /******Search Result related definitions*************/
@@ -613,6 +620,14 @@ static gboolean StartedAs_rfmFileChooser = FALSE;
 static gchar *rfmFileChooserReturnSelectionIntoFilename = NULL;
 #ifdef RFM_FILE_CHOOSER
 static void (*FileChooserClientCallback)(char **) = NULL;
+#endif
+#ifdef RFM_LOCAL
+#define RFM_LOCAL_C_FILE "rfm_local.c"
+#define RFM_LOCAL_SO_FILE "rfm_local.so"
+#define RFM_LOCAL_INIT_FUNC "rfm_local_init"
+static void *rfm_local_so_handle = NULL;
+#endif
+#ifdef RFM_FILE_CHOOSER
 GList *str_array_ToGList(char *a[]);
 char **GList_to_str_array(GList *l, int count);
 static void rfmFileChooserResultReader(RFM_ChildAttribs *child_attribs);
@@ -2373,6 +2388,9 @@ static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpoin
 
 
 static void set_rfm_curPath_internal(gchar* path){
+#ifdef RFM_LOCAL
+      unload_local_extension(); // Unload previous extension if any, before path changes
+#endif
   //https://blog.csdn.net/CaspianSea/article/details/78817778
        if (rfm_curPath != path) {
 	 if (rfm_curPath!=NULL){
@@ -2392,6 +2410,9 @@ static void set_rfm_curPath_internal(gchar* path){
    //when we run commands such as echo $PWD, we spawn child process with working directory rfm_curPath, so, even we do not set $PWD, we get result as expected with this kind of commands.
    //so, we should first know the relationship between working directory parameter in g_spawn and PWD env value inheritence before we do anything furthur here.
    //anyway, setting OLDPWD is necessary for us here.
+#ifdef RFM_LOCAL
+      load_local_extension();   // Load new extension if available, after path has changed
+#endif
       }  
 }
 
@@ -5209,3 +5230,135 @@ gboolean str_regex_replace(char **str, const regex_t * restrict pattern_compiled
 
       return ret;
 }
+
+
+#ifdef RFM_LOCAL
+// Compile rfm_local.c into rfm_local.so in the current directory
+static gboolean compile_local_extension() {
+    gchar *local_c_path = g_build_filename(rfm_curPath, RFM_LOCAL_C_FILE, NULL);
+    gchar *local_so_path = g_build_filename(rfm_curPath, RFM_LOCAL_SO_FILE, NULL);
+    gboolean success = FALSE;
+    GError *err = NULL;
+    gint status;
+    gchar *std_out = NULL, *std_err = NULL;
+
+    // Basic compilation command. Might need adjustments for complex extensions.
+    // Consider adding include paths if rfm_local.c needs project headers: e.g., "-I."
+    // Consider adding LDFLAGS if needed.
+    const gchar *compile_cmd[] = {"gcc", "-shared", "-fPIC", "-o", local_so_path, local_c_path, NULL};
+    gchar * cmd_str = g_strjoinv(" ", (gchar**)compile_cmd);
+    g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Compiling local extension: %s", cmd_str);
+    g_free(cmd_str);
+
+
+    success = g_spawn_sync(rfm_curPath,         // working directory
+                           (gchar **)compile_cmd, // argv
+                           NULL,                // envp
+                           G_SPAWN_SEARCH_PATH, // flags
+                           NULL,                // child_setup
+                           NULL,                // user_data
+                           &std_out,            // standard_output
+                           &std_err,            // standard_error
+                           &status,             // exit_status
+                           &err);               // error
+
+    if (!success || !WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+        g_warning("Failed to compile %s.", local_c_path);
+        if (err) {
+            g_warning("Error: %s", err->message);
+            g_error_free(err);
+        }
+        if (std_err && strlen(std_err) > 0) {
+            g_warning("Compiler stderr:\n%s", std_err);
+        }
+        success = FALSE;
+    } else {
+        g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Successfully compiled %s to %s", local_c_path, local_so_path);
+        success = TRUE;
+    }
+
+    g_free(std_out);
+    g_free(std_err);
+    g_free(local_c_path);
+    g_free(local_so_path);
+    return success;
+}
+
+// Load rfm_local.so if it exists and is up-to-date or successfully compiled
+static void load_local_extension() {
+    gchar *local_c_path = g_build_filename(rfm_curPath, RFM_LOCAL_C_FILE, NULL);
+    gchar *local_so_path = g_build_filename(rfm_curPath, RFM_LOCAL_SO_FILE, NULL);
+    gboolean compile_needed = FALSE;
+    struct stat c_stat, so_stat;
+
+    if (g_file_test(local_c_path, G_FILE_TEST_EXISTS)) {
+        if (stat(local_c_path, &c_stat) != 0) {
+            g_warning("Could not stat %s", local_c_path);
+            goto cleanup;
+        }
+
+        if (!g_file_test(local_so_path, G_FILE_TEST_EXISTS)) {
+            g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "%s not found, compilation needed.", local_so_path);
+            compile_needed = TRUE;
+        } else {
+            if (stat(local_so_path, &so_stat) != 0) {
+                g_warning("Could not stat %s, recompiling.", local_so_path);
+                compile_needed = TRUE;
+            } else if (c_stat.st_mtime > so_stat.st_mtime) {
+                g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "%s is newer than %s, recompilation needed.", local_c_path, local_so_path);
+                compile_needed = TRUE;
+            }
+        }
+
+        if (compile_needed) {
+            if (!compile_local_extension()) {
+                g_warning("Compilation failed, cannot load local extension.");
+                goto cleanup;
+            }
+        }
+
+        // Load the .so file
+        rfm_local_so_handle = dlopen(local_so_path, RTLD_LAZY | RTLD_LOCAL);
+        if (!rfm_local_so_handle) {
+            g_warning("dlopen failed for %s: %s", local_so_path, dlerror());
+            goto cleanup;
+        }
+
+        // Find and call the init function
+        void (*init_func)(void) = dlsym(rfm_local_so_handle, RFM_LOCAL_INIT_FUNC);
+        const char *dlsym_error = dlerror(); // Check error *after* calling dlsym
+        if (dlsym_error) {
+            g_warning("dlsym failed for %s in %s: %s", RFM_LOCAL_INIT_FUNC, local_so_path, dlsym_error);
+            dlclose(rfm_local_so_handle);
+            rfm_local_so_handle = NULL;
+            goto cleanup;
+        }
+
+        if (init_func) {
+            g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Calling %s from %s", RFM_LOCAL_INIT_FUNC, local_so_path);
+            (*init_func)();
+        } else {
+             g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Function %s not found in %s (optional).", RFM_LOCAL_INIT_FUNC, local_so_path);
+        }
+
+    } else {
+         g_log(G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, "No local extension file %s found.", local_c_path);
+    }
+
+
+cleanup:
+    g_free(local_c_path);
+    g_free(local_so_path);
+}
+
+// Unload the currently loaded local extension
+static void unload_local_extension() {
+    if (rfm_local_so_handle) {
+        g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Unloading local extension.");
+        if (dlclose(rfm_local_so_handle) != 0) {
+             g_warning("dlclose failed: %s", dlerror());
+        }
+        rfm_local_so_handle = NULL;
+    }
+}
+#endif

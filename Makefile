@@ -17,7 +17,7 @@ endif
 GTK_VERSION = gtk+-3.0
 # what shall be minimun gtk+ version for glib 2.80?
 
-CPPFLAGS = -DrfmBinPath=${rfmBinPath} --include ${languageInclude} -DG_LOG_DOMAIN=\"rfm\" ${GitIntegration} ${PythonEmbedded} ${RFM_FILE_CHOOSER} ${MU_VIEW} ${READLINE_LIB} ${AiIntegration}
+CPPFLAGS = -DrfmBinPath=${rfmBinPath} --include ${languageInclude} -DG_LOG_DOMAIN=\"rfm\" ${GitIntegration} ${PythonEmbedded} ${RFM_FILE_CHOOSER} ${MU_VIEW} ${READLINE_LIB} ${AiIntegration} ${RFM_LOCAL}
 # 检查glib版本是否≥2.80
 ifeq ($(shell pkg-config --atleast-version=2.80 glib-2.0 && echo yes),yes)
 CPPFLAGS += -DGLIB280PLUS
