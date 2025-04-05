@@ -500,10 +500,7 @@ static gboolean iterate_through_store_to_load_latest_git_log_one_by_one_when_idl
 static void set_terminal_window_title(char* title);
 static void set_Titles(gchar * title);
 static void cmdToggleInotifyHandler(wordexp_t *parsed_msg,GString *readline_result_string_after_file_name_substitution);
-#ifdef RFM_LOCAL
-static void load_local_extension();
-static void unload_local_extension();
-#endif
+
 /******GtkListStore and refresh definitions end******/
 /****************************************************/
 /******Search Result related definitions*************/
@@ -620,14 +617,6 @@ static gboolean StartedAs_rfmFileChooser = FALSE;
 static gchar *rfmFileChooserReturnSelectionIntoFilename = NULL;
 #ifdef RFM_FILE_CHOOSER
 static void (*FileChooserClientCallback)(char **) = NULL;
-#endif
-#ifdef RFM_LOCAL
-#define RFM_LOCAL_C_FILE "rfm_local.c"
-#define RFM_LOCAL_SO_FILE "rfm_local.so"
-#define RFM_LOCAL_INIT_FUNC "rfm_local_init"
-static void *rfm_local_so_handle = NULL;
-#endif
-#ifdef RFM_FILE_CHOOSER
 GList *str_array_ToGList(char *a[]);
 char **GList_to_str_array(GList *l, int count);
 static void rfmFileChooserResultReader(RFM_ChildAttribs *child_attribs);
@@ -730,6 +719,13 @@ typedef struct {
 RFM_fileMenu fileMenu;
 
 #define SHOW_TOOLBAR_BUTTON(i) (((SearchResultViewInsteadOfDirectoryView && tool_buttons[i].showInSearchResultView) || (!SearchResultViewInsteadOfDirectoryView && tool_buttons[i].showInDirectoryView)) && (tool_buttons[i].showCondition == NULL || tool_buttons[i].showCondition()))
+
+#ifdef RFM_LOCAL
+static void load_local_extension();
+static void unload_local_extension();
+static gboolean compile_local_extension();
+static void *rfm_local_so_handle = NULL;
+#endif
 
 /**************gtk UI, filemenu, toolbar end**************************/
 

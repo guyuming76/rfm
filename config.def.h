@@ -401,3 +401,10 @@ static RFM_cmd_regex_rule regex_rules[] = {
 
 //TODO: 增加一个类似前面定义 alias 的功能，或直接在 alias 功能里扩展， 看能不能结合 readline 库，输入一个alias, 直接替换成一个常用命令，可以编辑再执行，而不是向前面直接就给执行了但不显示真实命令
 //locate .ebuild|xargs grep -il "inherit cmake" |xargs grep CMAKE_CXX_FLAGS>0
+
+
+#ifdef RFM_LOCAL
+#define RFM_LOCAL_C_FILE "rfm_local.c"
+#define RFM_LOCAL_SO_FILE "rfm_local.so"
+#define RFM_LOCAL_INIT_FUNC "rfm_local_init"
+#endif
