@@ -725,6 +725,10 @@ static void load_local_extension();
 static void unload_local_extension();
 static gboolean compile_local_extension();
 static void *rfm_local_so_handle = NULL;
+static void (*local_enter_func)(void) = NULL;
+static void (*local_leave_func)(void) = NULL;
+static gchar *local_c_path = NULL;
+static gchar *local_so_path = NULL;
 #endif
 
 /**************gtk UI, filemenu, toolbar end**************************/
@@ -5231,8 +5235,6 @@ gboolean str_regex_replace(char **str, const regex_t * restrict pattern_compiled
 #ifdef RFM_LOCAL
 // Compile rfm_local.c into rfm_local.so in the current directory
 static gboolean compile_local_extension() {
-    gchar *local_c_path = g_build_filename(rfm_curPath, RFM_LOCAL_C_FILE, NULL);
-    gchar *local_so_path = g_build_filename(rfm_curPath, RFM_LOCAL_SO_FILE, NULL);
     gboolean success = FALSE;
     GError *err = NULL;
     gint status;
@@ -5282,8 +5284,8 @@ static gboolean compile_local_extension() {
 
 // Load rfm_local.so if it exists and is up-to-date or successfully compiled
 static void load_local_extension() {
-    gchar *local_c_path = g_build_filename(rfm_curPath, RFM_LOCAL_C_FILE, NULL);
-    gchar *local_so_path = g_build_filename(rfm_curPath, RFM_LOCAL_SO_FILE, NULL);
+    local_c_path = g_build_filename(rfm_curPath, RFM_LOCAL_C_FILE, NULL);
+    local_so_path = g_build_filename(rfm_curPath, RFM_LOCAL_SO_FILE, NULL);
     gboolean compile_needed = FALSE;
     struct stat c_stat, so_stat;
 
@@ -5320,19 +5322,19 @@ static void load_local_extension() {
             goto cleanup;
         }
 
-        // Find and call the init function
-        void (*local_enter_func)(void) = dlsym(rfm_local_so_handle, RFM_LOCAL_ENTER_FUNC);
+        // Find enter function
+        local_enter_func = dlsym(rfm_local_so_handle, RFM_LOCAL_ENTER_FUNC);
         const char *dlsym_error = dlerror(); // Check error *after* calling dlsym
         if (dlsym_error) {
             g_warning("dlsym failed for %s in %s: %s", RFM_LOCAL_ENTER_FUNC, local_so_path, dlsym_error);
-            dlclose(rfm_local_so_handle);
-            rfm_local_so_handle = NULL;
             goto cleanup;
         }
 
+        //call enter function
         if (local_enter_func) {
             g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Calling %s from %s", RFM_LOCAL_ENTER_FUNC, local_so_path);
             (*local_enter_func)();
+	    return; // 成功call enter funtion 就不要cleanup, unload 完再cleanup
         } else {
              g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Function %s not found in %s (optional).", RFM_LOCAL_ENTER_FUNC, local_so_path);
         }
@@ -5341,8 +5343,11 @@ static void load_local_extension() {
          g_log(G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, "No local extension file %s found.", local_c_path);
     }
 
-
-cleanup:
+ cleanup:
+    if (rfm_local_so_handle) {
+        if (dlclose(rfm_local_so_handle) != 0) g_warning("dlclose failed: %s", dlerror());
+        rfm_local_so_handle = NULL;
+    }
     g_free(local_c_path);
     g_free(local_so_path);
 }
@@ -5351,10 +5356,24 @@ cleanup:
 static void unload_local_extension() {
     if (rfm_local_so_handle) {
         g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Unloading local extension.");
+
+	local_leave_func = dlsym(rfm_local_so_handle, RFM_LOCAL_LEAVE_FUNC);
+        const char *dlsym_error = dlerror(); // Check error *after* calling dlsym
+        if (dlsym_error) g_warning("dlsym failed for %s in %s: %s", RFM_LOCAL_LEAVE_FUNC, local_so_path, dlsym_error);
+
+        //call leave function
+        if (local_leave_func) {
+            g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Calling %s from %s", RFM_LOCAL_LEAVE_FUNC, local_so_path);
+            (*local_leave_func)();
+        } else {
+             g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Function %s not found in %s (optional).", RFM_LOCAL_LEAVE_FUNC, local_so_path);
+        }
         if (dlclose(rfm_local_so_handle) != 0) {
              g_warning("dlclose failed: %s", dlerror());
         }
         rfm_local_so_handle = NULL;
+	g_free(local_c_path);
+	g_free(local_so_path);
     }
 }
 #endif
