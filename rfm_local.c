@@ -10,6 +10,7 @@ const char * const rfm_local_c_file_hash = NULL;
 #endif
 
 // #include <gtk/gtk.h>
+#include <stdio.h>
 
 void rfm_local_enter() {
      printf("rfm_local_enter called!\n");

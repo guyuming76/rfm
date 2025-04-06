@@ -5272,32 +5272,18 @@ static gboolean compile_local_extension() {
     // Prepare the hash definition for the compiler command
     gchar *hash_define = g_strdup_printf("-DRFM_LOCAL_C_HASH=\"%s\"", c_file_hash);
 
-    // Basic compilation command. Might need adjustments for complex extensions.
-    const gchar *compile_cmd_base[] = {"gcc", "-shared", "-fPIC", "-o", NULL, NULL, NULL, NULL}; // Placeholders for output, hash, input
-    gint base_len = 0;
-    while(compile_cmd_base[base_len] != NULL) base_len++; // Find current length
- 
-    // Create the final command array, use g_new0 for safety (initializes to NULL)
-    gchar **compile_cmd = g_new0(gchar*, base_len + 1); // +1 for NULL terminator
-    for(int i = 0; i < base_len; ++i) {
-        if (compile_cmd_base[i] != NULL) { // Copy non-NULL base parts
-            compile_cmd[i] = (gchar*)compile_cmd_base[i];
-        }
-    }
     // Fill in the placeholders
-    compile_cmd[3] = local_so_path; // -o output_path
-    compile_cmd[4] = hash_define;   // -DRFM_LOCAL_C_HASH="xxx"
-    compile_cmd[5] = local_c_path;  // input_path.c
-    compile_cmd[6] = NULL;          // Null terminate
+    rfm_local_c_compile_cmd[4] = local_so_path; // -o output_path
+    rfm_local_c_compile_cmd[5] = hash_define;   // -DRFM_LOCAL_C_HASH="xxx"
+    rfm_local_c_compile_cmd[6] = local_c_path;  // input_path.c
+    rfm_local_c_compile_cmd[7] = NULL;          // Null terminate
 
-
-    gchar * cmd_str = g_strjoinv(" ", (gchar**)compile_cmd);
+    gchar * cmd_str = g_strjoinv(" ", (gchar**)rfm_local_c_compile_cmd);
     g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Compiling local extension: %s", cmd_str);
     g_free(cmd_str);
 
-
     success = g_spawn_sync(rfm_curPath,         // working directory
-                           (gchar **)compile_cmd, // argv
+                           (gchar **)rfm_local_c_compile_cmd, // argv
                            NULL,                // envp
                            G_SPAWN_SEARCH_PATH, // flags
                            NULL,                // child_setup
@@ -5308,7 +5294,6 @@ static gboolean compile_local_extension() {
                            &err);               // error
 
     g_free(hash_define); // Free the allocated hash define string
-    g_free(compile_cmd); // Free the dynamically allocated command array
     g_free(c_file_hash); // Free the calculated hash string
 
     if (!success || !WIFEXITED(status) || WEXITSTATUS(status) != 0) {
