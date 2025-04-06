@@ -5267,53 +5267,18 @@ static gboolean compile_local_extension() {
         // Note: local_c_path and local_so_path are freed in the caller (load_local_extension)
         return FALSE;
     }
-    g_log(G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, "Hash of %s: %s", local_c_path, c_file_hash);
+    g_debug("Hash of %s: %s", local_c_path, c_file_hash);
 
     // Prepare the hash definition for the compiler command
     gchar *hash_define = g_strdup_printf("-DRFM_LOCAL_C_HASH=\"%s\"", c_file_hash);
-
-    // Fill in the placeholders
-    rfm_local_c_compile_cmd[4] = local_so_path; // -o output_path
-    rfm_local_c_compile_cmd[5] = hash_define;   // -DRFM_LOCAL_C_HASH="xxx"
-    rfm_local_c_compile_cmd[6] = local_c_path;  // input_path.c
-    rfm_local_c_compile_cmd[7] = NULL;          // Null terminate
-
-    gchar * cmd_str = g_strjoinv(" ", (gchar**)rfm_local_c_compile_cmd);
-    g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Compiling local extension: %s", cmd_str);
-    g_free(cmd_str);
-
-    success = g_spawn_sync(rfm_curPath,         // working directory
-                           (gchar **)rfm_local_c_compile_cmd, // argv
-                           NULL,                // envp
-                           G_SPAWN_SEARCH_PATH, // flags
-                           NULL,                // child_setup
-                           NULL,                // user_data
-                           &std_out,            // standard_output
-                           &std_err,            // standard_error
-                           &status,             // exit_status
-                           &err);               // error
-
-    g_free(hash_define); // Free the allocated hash define string
     g_free(c_file_hash); // Free the calculated hash string
-
-    if (!success || !WIFEXITED(status) || WEXITSTATUS(status) != 0) {
-        g_warning("Failed to compile %s.", local_c_path);
-        if (err) {
-            g_warning("Error: %s", err->message);
-            g_error_free(err);
-        }
-        if (std_err && strlen(std_err) > 0) {
-            g_warning("Compiler stderr:\n%s", std_err);
-        }
-        success = FALSE;
-    } else {
-        g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Successfully compiled %s to %s", local_c_path, local_so_path);
-        success = TRUE;
-    }
-
-    g_free(std_out);
-    g_free(std_err);
-    // Note: local_c_path and local_so_path are freed in the caller (load_local_extension)
+  
+    GList * ending_parameters_for_compile_cmd=NULL;
+    ending_parameters_for_compile_cmd=g_list_prepend(ending_parameters_for_compile_cmd, g_strdup(local_so_path));
+    ending_parameters_for_compile_cmd=g_list_append(ending_parameters_for_compile_cmd, hash_define);
+    ending_parameters_for_compile_cmd=g_list_append(ending_parameters_for_compile_cmd, g_strdup(local_c_path));
+    success = g_spawn_wrapper((gchar **)rfm_local_c_compile_cmd, ending_parameters_for_compile_cmd, G_SPAWN_SEARCH_PATH, NULL, FALSE, NULL, NULL, FALSE);
+    g_list_free_full(ending_parameters_for_compile_cmd,(GDestroyNotify)g_free);
     return success;
 }
 
