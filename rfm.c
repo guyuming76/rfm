@@ -40,6 +40,7 @@
 #include <gio/gdesktopappinfo.h>
 #ifdef RFM_LOCAL
 #include <dlfcn.h>
+#include <glib/gchecksum.h> // For file hashing
 #endif
 
 #define INOTIFY_MASK IN_MOVE|IN_CREATE|IN_CLOSE_WRITE|IN_DELETE|IN_DELETE_SELF|IN_MOVE_SELF
@@ -724,6 +725,7 @@ RFM_fileMenu fileMenu;
 static void load_local_extension();
 static void unload_local_extension();
 static gboolean compile_local_extension();
+static gchar* calculate_file_hash(const gchar *filepath);
 static void *rfm_local_so_handle = NULL;
 static void (*local_enter_func)(void) = NULL;
 static void (*local_leave_func)(void) = NULL;
@@ -5233,17 +5235,62 @@ gboolean str_regex_replace(char **str, const regex_t * restrict pattern_compiled
 
 
 #ifdef RFM_LOCAL
+
+// Helper function to calculate MD5 hash of a file
+static gchar* calculate_file_hash(const gchar *filepath) {
+    GError *error = NULL;
+    gchar *contents = NULL;
+    gsize length = 0;
+    if (!g_file_get_contents(filepath, &contents, &length, &error)) {
+        g_warning("Failed to read file %s: %s", filepath, error->message);
+        g_error_free(error);
+        return NULL;
+    }
+    gchar *hash_str = g_compute_checksum_for_string(G_CHECKSUM_MD5, contents, length);
+    g_free(contents);
+    return hash_str;
+}
+
 // Compile rfm_local.c into rfm_local.so in the current directory
 static gboolean compile_local_extension() {
     gboolean success = FALSE;
     GError *err = NULL;
     gint status;
     gchar *std_out = NULL, *std_err = NULL;
+    gchar *c_file_hash = NULL; // To store the hash of the .c file
+
+    // Calculate hash of the .c file
+    c_file_hash = calculate_file_hash(local_c_path);
+    if (!c_file_hash) {
+        g_warning("Failed to calculate hash for %s", local_c_path);
+        // No goto cleanup here, just return FALSE after freeing potential resources
+        // Note: local_c_path and local_so_path are freed in the caller (load_local_extension)
+        return FALSE;
+    }
+    g_log(G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, "Hash of %s: %s", local_c_path, c_file_hash);
+
+    // Prepare the hash definition for the compiler command
+    gchar *hash_define = g_strdup_printf("-DRFM_LOCAL_C_HASH=\"%s\"", c_file_hash);
 
     // Basic compilation command. Might need adjustments for complex extensions.
-    // Consider adding include paths if rfm_local.c needs project headers: e.g., "-I."
-    // Consider adding LDFLAGS if needed.
-    const gchar *compile_cmd[] = {"gcc", "-shared", "-fPIC", "-o", local_so_path, local_c_path, NULL};
+    const gchar *compile_cmd_base[] = {"gcc", "-shared", "-fPIC", "-o", NULL, NULL, NULL, NULL}; // Placeholders for output, hash, input
+    gint base_len = 0;
+    while(compile_cmd_base[base_len] != NULL) base_len++; // Find current length
+ 
+    // Create the final command array, use g_new0 for safety (initializes to NULL)
+    gchar **compile_cmd = g_new0(gchar*, base_len + 1); // +1 for NULL terminator
+    for(int i = 0; i < base_len; ++i) {
+        if (compile_cmd_base[i] != NULL) { // Copy non-NULL base parts
+            compile_cmd[i] = (gchar*)compile_cmd_base[i];
+        }
+    }
+    // Fill in the placeholders
+    compile_cmd[3] = local_so_path; // -o output_path
+    compile_cmd[4] = hash_define;   // -DRFM_LOCAL_C_HASH="xxx"
+    compile_cmd[5] = local_c_path;  // input_path.c
+    compile_cmd[6] = NULL;          // Null terminate
+
+
     gchar * cmd_str = g_strjoinv(" ", (gchar**)compile_cmd);
     g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Compiling local extension: %s", cmd_str);
     g_free(cmd_str);
@@ -5259,6 +5306,10 @@ static gboolean compile_local_extension() {
                            &std_err,            // standard_error
                            &status,             // exit_status
                            &err);               // error
+
+    g_free(hash_define); // Free the allocated hash define string
+    g_free(compile_cmd); // Free the dynamically allocated command array
+    g_free(c_file_hash); // Free the calculated hash string
 
     if (!success || !WIFEXITED(status) || WEXITSTATUS(status) != 0) {
         g_warning("Failed to compile %s.", local_c_path);
@@ -5277,8 +5328,7 @@ static gboolean compile_local_extension() {
 
     g_free(std_out);
     g_free(std_err);
-    g_free(local_c_path);
-    g_free(local_so_path);
+    // Note: local_c_path and local_so_path are freed in the caller (load_local_extension)
     return success;
 }
 
@@ -5287,26 +5337,64 @@ static void load_local_extension() {
     local_c_path = g_build_filename(rfm_curPath, RFM_LOCAL_C_FILE, NULL);
     local_so_path = g_build_filename(rfm_curPath, RFM_LOCAL_SO_FILE, NULL);
     gboolean compile_needed = FALSE;
-    struct stat c_stat, so_stat;
+   // struct stat c_stat, so_stat; // No longer needed for timestamp
 
-    if (g_file_test(local_c_path, G_FILE_TEST_EXISTS)) {
-        if (stat(local_c_path, &c_stat) != 0) {
-            g_warning("Could not stat %s", local_c_path);
-            goto cleanup;
-        }
+   if (g_file_test(local_c_path, G_FILE_TEST_EXISTS)) {
+       // No need to stat .c file anymore
 
-        if (!g_file_test(local_so_path, G_FILE_TEST_EXISTS)) {
-            g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "%s not found, compilation needed.", local_so_path);
-            compile_needed = TRUE;
-        } else {
-            if (stat(local_so_path, &so_stat) != 0) {
-                g_warning("Could not stat %s, recompiling.", local_so_path);
-                compile_needed = TRUE;
-            } else if (c_stat.st_mtime > so_stat.st_mtime) {
-                g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "%s is newer than %s, recompilation needed.", local_c_path, local_so_path);
-                compile_needed = TRUE;
-            }
-        }
+       if (!g_file_test(local_so_path, G_FILE_TEST_EXISTS)) {
+           g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "%s not found, compilation needed.", local_so_path);
+           compile_needed = TRUE;
+       } else {
+           // Compare hashes instead of timestamps
+           gchar *current_c_hash = calculate_file_hash(local_c_path);
+           gchar *so_hash = NULL;
+           void *temp_handle = dlopen(local_so_path, RTLD_LAZY | RTLD_LOCAL);
+           const char *dlsym_err_str = NULL; // To store dlerror result
+
+           if (temp_handle) {
+               // Clear any previous error before dlsym
+               dlerror();
+               // Use void* for dlsym, then cast if needed
+               void *symbol_ptr = dlsym(temp_handle, "rfm_local_c_file_hash");
+               dlsym_err_str = dlerror(); // Check error *after* calling dlsym
+
+               if (!dlsym_err_str && symbol_ptr) {
+                   // Cast to the correct type ONLY if symbol was found
+                   const char * const * hash_ptr = (const char * const *)symbol_ptr;
+                   if (hash_ptr && *hash_ptr) { // Check if the pointer itself and the string it points to are valid
+                       so_hash = g_strdup(*hash_ptr);
+                        g_log(G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, "Found hash in SO: %s", so_hash);
+                   } else {
+                        g_warning("Symbol 'rfm_local_c_file_hash' found in %s but points to NULL. Recompiling.", local_so_path);
+                        compile_needed = TRUE; // Force recompile if symbol is NULL
+                   }
+               } else {
+                    g_warning("Could not find symbol 'rfm_local_c_file_hash' in %s: %s. Recompiling.", local_so_path, dlsym_err_str ? dlsym_err_str : "(symbol not found)");
+                    compile_needed = TRUE; // Force recompile if symbol not found
+               }
+               dlclose(temp_handle);
+           } else {
+               g_warning("Could not dlopen %s to check hash: %s. Recompiling.", local_so_path, dlerror());
+               compile_needed = TRUE; // Force recompile if .so can't be opened
+           }
+
+           if (!compile_needed && current_c_hash && so_hash) {
+               if (g_strcmp0(current_c_hash, so_hash) != 0) {
+                   g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Hash mismatch for %s. Recompilation needed. (C: %s, SO: %s)", local_c_path, current_c_hash, so_hash);
+                   compile_needed = TRUE;
+               } else {
+                    g_log(G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, "Hashes match for %s. No recompilation needed.", local_c_path);
+               }
+           } else if (!compile_needed && !current_c_hash) {
+                g_warning("Failed to calculate hash for current %s. Recompiling.", local_c_path);
+                compile_needed = TRUE; // Force recompile if current hash fails
+           }
+           // compile_needed might have been set true inside the dlopen/dlsym block
+
+           g_free(current_c_hash);
+           g_free(so_hash);
+       }
 
         if (compile_needed) {
             if (!compile_local_extension()) {
