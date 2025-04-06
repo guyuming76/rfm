@@ -406,5 +406,5 @@ static RFM_cmd_regex_rule regex_rules[] = {
 #ifdef RFM_LOCAL
 #define RFM_LOCAL_C_FILE "rfm_local.c"
 #define RFM_LOCAL_SO_FILE "rfm_local.so"
-#define RFM_LOCAL_INIT_FUNC "rfm_local_init"
+#define RFM_LOCAL_ENTER_FUNC "rfm_local_enter"
 #endif

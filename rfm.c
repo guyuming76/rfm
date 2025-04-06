@@ -5321,20 +5321,20 @@ static void load_local_extension() {
         }
 
         // Find and call the init function
-        void (*init_func)(void) = dlsym(rfm_local_so_handle, RFM_LOCAL_INIT_FUNC);
+        void (*local_enter_func)(void) = dlsym(rfm_local_so_handle, RFM_LOCAL_ENTER_FUNC);
         const char *dlsym_error = dlerror(); // Check error *after* calling dlsym
         if (dlsym_error) {
-            g_warning("dlsym failed for %s in %s: %s", RFM_LOCAL_INIT_FUNC, local_so_path, dlsym_error);
+            g_warning("dlsym failed for %s in %s: %s", RFM_LOCAL_ENTER_FUNC, local_so_path, dlsym_error);
             dlclose(rfm_local_so_handle);
             rfm_local_so_handle = NULL;
             goto cleanup;
         }
 
-        if (init_func) {
-            g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Calling %s from %s", RFM_LOCAL_INIT_FUNC, local_so_path);
-            (*init_func)();
+        if (local_enter_func) {
+            g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Calling %s from %s", RFM_LOCAL_ENTER_FUNC, local_so_path);
+            (*local_enter_func)();
         } else {
-             g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Function %s not found in %s (optional).", RFM_LOCAL_INIT_FUNC, local_so_path);
+             g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Function %s not found in %s (optional).", RFM_LOCAL_ENTER_FUNC, local_so_path);
         }
 
     } else {
