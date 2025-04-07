@@ -1225,7 +1225,7 @@ static gboolean g_spawn_wrapper_(GList *file_list, char *dest_path, RFM_ChildAtt
 	            child_attribs->exitcode = -1; // Default to error unless status check passes
 		    //TODO：这部分处理子进程退出状态的代码是 AI 提供的，g_spawn_async_with_pipes_wrapper_child_supervisor 里也有一些手工代码类似，看能不能统一下
 		    if (!g_spawn_check_wait_status(child_attribs->status, &wait_err)) {
-	                g_warning("Child process %s (sync) exited abnormally: %s", argv, wait_err ? wait_err->message : "Unknown reason");
+	                g_log(RFM_LOG_GSPAWN,child_attribs->output_read_by_program? G_LOG_LEVEL_DEBUG: G_LOG_LEVEL_WARNING,"Child process %s (sync) exited abnormally: %s", argv, wait_err ? wait_err->message : "Unknown reason");
 	                if (wait_err) g_error_free(wait_err);
 	                // Keep exitcode as -1
 	            } else {
