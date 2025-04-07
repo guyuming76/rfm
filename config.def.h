@@ -408,5 +408,5 @@ static RFM_cmd_regex_rule regex_rules[] = {
 #define RFM_LOCAL_SO_FILE "rfm_local.so"
 #define RFM_LOCAL_ENTER_FUNC "rfm_local_enter"
 #define RFM_LOCAL_LEAVE_FUNC "rfm_local_leave"
-static const gchar *rfm_local_c_compile_cmd[] = {"gcc", "-shared", "-fPIC", "-o", NULL, NULL, NULL, NULL}; // Placeholders for output, hash, input
+static const gchar *rfm_local_c_compile_cmd[] = {"gcc", "-shared", "-fPIC", "-o", NULL};
 #endif
