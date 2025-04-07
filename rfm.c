@@ -1223,16 +1223,18 @@ static gboolean g_spawn_wrapper_(GList *file_list, char *dest_path, RFM_ChildAtt
 	            // Spawn succeeded, now check the exit status
 	            GError *wait_err = NULL;
 	            child_attribs->exitcode = -1; // Default to error unless status check passes
-	            if (!g_spawn_check_wait_status(child_attribs->status, &wait_err)) {
-	                g_warning("Child process %s (sync) exited abnormally: %s", argv[0], wait_err ? wait_err->message : "Unknown reason");
+		    //TODO：这部分处理子进程退出状态的代码是 AI 提供的，g_spawn_async_with_pipes_wrapper_child_supervisor 里也有一些手工代码类似，看能不能统一下
+		    if (!g_spawn_check_wait_status(child_attribs->status, &wait_err)) {
+	                g_warning("Child process %s (sync) exited abnormally: %s", argv, wait_err ? wait_err->message : "Unknown reason");
 	                if (wait_err) g_error_free(wait_err);
 	                // Keep exitcode as -1
 	            } else {
 	                child_attribs->exitcode = WEXITSTATUS(child_attribs->status);
-	                g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_DEBUG, "Child process %s (sync) finished with exit code %d.", argv[0], child_attribs->exitcode);
+	                g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_DEBUG, "Child process %s (sync) finished with exit code %d.", argv, child_attribs->exitcode);
 	            }
 	            // Show output regardless of exit status, as stderr might contain info
-	            show_child_output(child_attribs);
+	            if (!child_attribs->output_read_by_program && ((child_attribs->stdOut && strlen(child_attribs->stdOut)>0) || (child_attribs->stdErr && strlen(child_attribs->stdErr)>0))) show_child_output(child_attribs);//这个条件是从 async 分支g_spawn_async_with_pipes_wrapper_child_supervisor那里复制过来的，AI给漏了。如果是output_read_by_program, 则stdErr和stdOut都在Callback里处理。为啥不在这里显示 stdout 呢？因为如果 stdErr 和 stdout同时不为空，show_child_output 就把stdout也消耗了，callback 就没得 stdout 读了。
+		    //TODO：现有的callback里没发现有处理stderr的，也就是说，如果是 output_read_by_program, stdErr这里也不显示，callback 也不处理，就被吞了。
 	            ExecCallback_freeChildAttribs(child_attribs); // Callback handles the exit code
 	       }
       }
