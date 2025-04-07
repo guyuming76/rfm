@@ -130,7 +130,7 @@ static const char *muview[] = { "mu", "view", NULL };
 static const char *launch_desktop[] = { "dex", "--term", "$RFM_TERM", NULL };
 //TODO: to get thumbnail from .desktop file
 #ifdef GitIntegration
-static const char *git_inside_work_tree_cmd[] = {"/usr/bin/git", "rev-parse","--is-inside-work-tree", NULL};
+static const char *git_inside_work_tree_cmd[] = { "/bin/bash","-c","git rev-parse --is-inside-work-tree; exit 0", NULL};
 static const char *git_ls_files_cmd[] = {"/usr/bin/git", "ls-files", "--full-name",NULL};
 static const char *git_modified_staged_info_cmd[] = {"/usr/bin/git","status","--porcelain",NULL};
 static const char *git_stage_cmd[] = {"/usr/bin/git","stage",NULL};
