@@ -1194,7 +1194,7 @@ static void GSpawnChildSetupFunc_setenv(gpointer user_data) {
       //working_directory won't update child process PWD env, which inherits parents PWD env,why?
 }
 
-//TODO: g_spawn_async_with_pipes_wrapper_child_supervisor 里也有类似逻辑，考虑用这个单独的函数替换那块代码，但可能要融合那块代码里的特性如判断 startwithVT
+
 static void check_wait_status_and_set_exit_code(RFM_ChildAttribs *child_attribs) {
 	            GError *wait_err = NULL;
 	            child_attribs->exitcode = -1; // Default to error unless status check passes
@@ -3934,12 +3934,12 @@ static void cmd_setenv(wordexp_t *parsed_msg, GString *readline_result_string_af
 #ifdef GLIB280PLUS
     if (strcmp(parsed_msg->we_wordv[1], "G_MESSAGES_DEBUG")==0){
       printf("\n%s\n","G_MESSAGES_DEBUG env variable will not be changed, g_log_writer_default_set_debug_domains will be called instead, see https://gitlab.gnome.org/GNOME/glib/-/commit/e862f34dd8292f6ffcd30e20c22cd04d47531c3a");
-      gchar** domains = g_strsplit(parsed_msg->we_wordv[2], ",", -1);
+      gchar** domains = g_strsplit(parsed_msg->we_wordv[2], ", ", -1);
       g_log_writer_default_set_debug_domains(domains);
       g_strfreev(domains);
-    }else
+    }
 #endif
-      setenv(parsed_msg->we_wordv[1],parsed_msg->we_wordv[2],1);
+    setenv(parsed_msg->we_wordv[1],parsed_msg->we_wordv[2],1);
   }else printf(SETENV_USAGE);
 }
 
