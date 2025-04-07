@@ -21,7 +21,7 @@
 #define cpPath "复制目录路径至剪贴板"
 #define START_MENU "开始菜单"
 #define SAVESEARCHRESULT "保存（选中的）查询结果到文件"
-
+#define FIND_FILES "含子目录文件"
 #define PipeTitle "当前:%d/总数:%d, 每葉:%d"
 
 #define TOOL_TIP_PathAndRepositoryNameDisplay "点击在目录视图和搜索结果间切换，或使用//命令; \n可用 pagesize xxx 命令设置搜索结果视图每葉条数"

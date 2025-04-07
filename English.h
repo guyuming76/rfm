@@ -20,6 +20,7 @@
 #define cpPath "copy directory name to clipboard"
 #define START_MENU "Start menu"
 #define SAVESEARCHRESULT "save (selected) search result into file"
+#define FIND_FILES "all files (subdir)"
 
 #define PipeTitle "Current:%d/Total:%d, PageSize:%d"
 
