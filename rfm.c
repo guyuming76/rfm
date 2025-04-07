@@ -271,6 +271,7 @@ static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *ch
 static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_data);
 static void child_handler_to_set_finished_status_for_child_supervisor(GPid pid, gint status, RFM_ChildAttribs *child_attribs);
 static gboolean ExecCallback_freeChildAttribs(RFM_ChildAttribs * child_attribs);
+static void check_wait_status_and_set_exit_code(RFM_ChildAttribs *child_attribs);
 static void show_child_output(RFM_ChildAttribs *child_attribs);
 static int read_char_pipe(gint fd, ssize_t block_size, char **buffer);
 static void GSpawnChildSetupFunc_setenv(gpointer user_data);
@@ -912,8 +913,8 @@ static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_
    }
    g_spawn_close_pid(child_attribs->pid);
 
-   //TODO: 之前, stdErr 都是child结束后g_warning 显示的, 但现在, 在!child_attribs->output_read_by_program 的情况下, stdErr 是在 show_child_output 里和output 类似处理的, 但output_read_by_program的情况,暂时还是保留之前处理方式吧, 有啥别的办法? 
-   if (child_attribs->output_read_by_program && child_attribs->stdErr!=NULL && strlen(child_attribs->stdErr)>0) g_warning("g_spawn_async_with_wrapper_child_supervisor: %s",child_attribs->stdErr);
+   //之前, stdErr 都是child结束后g_warning 显示的, 但现在, 在!child_attribs->output_read_by_program 的情况下, stdErr 是在 show_child_output 里和output 类似处理的, 但output_read_by_program的情况,暂时还是保留之前处理方式吧, 有啥别的办法? 
+   if (child_attribs->output_read_by_program && child_attribs->stdErr!=NULL && strlen(child_attribs->stdErr)>0) g_debug("g_spawn_async_with_wrapper_child_supervisor: %s",child_attribs->stdErr); // output_read_by_program 的情况下，如检查当前仓库是否是git仓库，如果不是，命令会返回错误，exitcode 128, 如果这种情况也显示warning,对用户干扰太大。//TODO:在 childattribs里加选项控制是waring,还是debug显示错误消息，奇怪的是今天测试才发现这个错误显示，之前一直没看见，为啥？这两天的代码改动不影响这一块啊
    
    rfm_childList=g_list_remove(rfm_childList, child_attribs);
    rfm_childListLength--;
@@ -923,7 +924,6 @@ static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_
    GError *err=NULL;
    char * msg=NULL;
 
-   //for g_spawn_sync, the lass parameter is GError *, so why pass in NULL there and get it here instead?
    /* if (g_spawn_check_wait_status(child_attribs->status, &err) && child_attribs->runOpts==RFM_EXEC_MOUNT) */
    /*    set_rfm_curPath(RFM_MOUNT_MEDIA_PATH); */
    //https://docs.gtk.org/glib/func.spawn_check_wait_status.html
@@ -1192,6 +1192,21 @@ static void GSpawnChildSetupFunc_setenv(gpointer user_data) {
       //working_directory won't update child process PWD env, which inherits parents PWD env,why?
 }
 
+//TODO: g_spawn_async_with_pipes_wrapper_child_supervisor 里也有类似逻辑，考虑用这个单独的函数替换那块代码，但可能要融合那块代码里的特性如判断 startwithVT
+static void check_wait_status_and_set_exit_code(RFM_ChildAttribs *child_attribs) {
+	            GError *wait_err = NULL;
+	            child_attribs->exitcode = -1; // Default to error unless status check passes
+		    
+		    if (!g_spawn_check_wait_status(child_attribs->status, &wait_err)) {
+	                g_log(RFM_LOG_GSPAWN,child_attribs->output_read_by_program? G_LOG_LEVEL_DEBUG: G_LOG_LEVEL_WARNING,"Child process exited abnormally: %s", wait_err ? wait_err->message : "Unknown reason");
+	                if (wait_err) g_error_free(wait_err);
+	                // Keep exitcode as -1
+	            } else {
+	                child_attribs->exitcode = WEXITSTATUS(child_attribs->status);
+	                g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_DEBUG, "Child process finished with exit code %d.", child_attribs->exitcode);
+	            }
+}
+
 //caller should g_list_free(file_list), but usually not g_list_free_full, since the file char* is usually owned by rfm_fileattributes
 static gboolean g_spawn_wrapper_(GList *file_list, char *dest_path, RFM_ChildAttribs * child_attribs)
 {
@@ -1211,8 +1226,7 @@ static gboolean g_spawn_wrapper_(GList *file_list, char *dest_path, RFM_ChildAtt
       } else {
 	       child_attribs->status=-1; // Initialize status
 	       GError *spawn_err = NULL;
-/* (rfm:11714): GLib-CRITICAL **: 14:05:51.441: g_spawn_sync: assertion 'standard_output == NULL || !(flags & G_SPAWN_STDOUT_TO_DEV_NULL)' failed */
-/* (rfm:11714): rfm-WARNING **: 14:05:51.441: g_spawn_wrapper_->g_spawn_sync /usr/bin/ffmpeg failed to execute. Check command in config.h! */
+
 	       g_log(RFM_LOG_GSPAWN,G_LOG_LEVEL_DEBUG,"g_spawn_sync, workingdir:%s, argv:%s",rfm_curPath, argv);
 	       if (!g_spawn_sync(rfm_curPath, v, env_for_g_spawn,G_SPAWN_SEARCH_PATH|child_attribs->runOpts, GSpawnChildSetupFunc_setenv,child_attribs,(child_attribs->runOpts & G_SPAWN_STDOUT_TO_DEV_NULL)? NULL : &child_attribs->stdOut, &child_attribs->stdErr,&child_attribs->status,&spawn_err)){
 	            g_warning("g_spawn_sync %s failed to execute: %s. Check command in config.h!", argv, spawn_err ? spawn_err->message : "Unknown error");
@@ -1220,22 +1234,13 @@ static gboolean g_spawn_wrapper_(GList *file_list, char *dest_path, RFM_ChildAtt
 	            free_child_attribs(child_attribs);
 	            ret = FALSE;
 	       } else {
-	            // Spawn succeeded, now check the exit status
-	            GError *wait_err = NULL;
-	            child_attribs->exitcode = -1; // Default to error unless status check passes
-		    //TODO：这部分处理子进程退出状态的代码是 AI 提供的，g_spawn_async_with_pipes_wrapper_child_supervisor 里也有一些手工代码类似，看能不能统一下
-		    if (!g_spawn_check_wait_status(child_attribs->status, &wait_err)) {
-	                g_log(RFM_LOG_GSPAWN,child_attribs->output_read_by_program? G_LOG_LEVEL_DEBUG: G_LOG_LEVEL_WARNING,"Child process %s (sync) exited abnormally: %s", argv, wait_err ? wait_err->message : "Unknown reason");
-	                if (wait_err) g_error_free(wait_err);
-	                // Keep exitcode as -1
-	            } else {
-	                child_attribs->exitcode = WEXITSTATUS(child_attribs->status);
-	                g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_DEBUG, "Child process %s (sync) finished with exit code %d.", argv, child_attribs->exitcode);
-	            }
-	            // Show output regardless of exit status, as stderr might contain info
-	            if (!child_attribs->output_read_by_program && ((child_attribs->stdOut && strlen(child_attribs->stdOut)>0) || (child_attribs->stdErr && strlen(child_attribs->stdErr)>0))) show_child_output(child_attribs);//这个条件是从 async 分支g_spawn_async_with_pipes_wrapper_child_supervisor那里复制过来的，AI给漏了。如果是output_read_by_program, 则stdErr和stdOut都在Callback里处理。为啥不在这里显示 stdout 呢？因为如果 stdErr 和 stdout同时不为空，show_child_output 就把stdout也消耗了，callback 就没得 stdout 读了。
-		    //TODO：现有的callback里没发现有处理stderr的，也就是说，如果是 output_read_by_program, stdErr这里也不显示，callback 也不处理，就被吞了。
-	            ExecCallback_freeChildAttribs(child_attribs); // Callback handles the exit code
+		    //如果是output_read_by_program, 则stdErr和stdOut都在Callback里处理。为啥不在这里显示 stdout 呢？因为如果 stdErr 和 stdout同时不为空，show_child_output 就把stdout也消耗了，callback 就没得 stdout 读了。
+   		    if (child_attribs->output_read_by_program){
+		      if (child_attribs->stdErr && strlen(child_attribs->stdErr)>0) g_debug("g_spawn_wrapper_: %s",child_attribs->stdErr);
+	            }else if ((child_attribs->stdOut && strlen(child_attribs->stdOut)>0) || (child_attribs->stdErr && strlen(child_attribs->stdErr)>0)) show_child_output(child_attribs);
+
+		    check_wait_status_and_set_exit_code(child_attribs);
+	            ExecCallback_freeChildAttribs(child_attribs);
 	       }
       }
       g_free(argv);
