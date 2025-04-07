@@ -921,35 +921,37 @@ static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_
    /* if (rfm_childList==NULL) */
    /*    gtk_widget_set_sensitive(GTK_WIDGET(info_button), FALSE); */
 
-   GError *err=NULL;
-   char * msg=NULL;
+   /* GError *err=NULL; */
+   /* char * msg=NULL; */
 
-   /* if (g_spawn_check_wait_status(child_attribs->status, &err) && child_attribs->runOpts==RFM_EXEC_MOUNT) */
-   /*    set_rfm_curPath(RFM_MOUNT_MEDIA_PATH); */
-   //https://docs.gtk.org/glib/func.spawn_check_wait_status.html
-   if (!g_spawn_check_wait_status(child_attribs->status, &err)){; //TRUE if child exited successfully, FALSE otherwise (and error will be set).
-   //TODO: after i change runOpts to GSpawnFlags, RFM_EXEC_MOUNT won't work, i don't understand what it for, maybe later, we can use fields such as runCmd or some naming conventions in runaction or childAttribs to indicate this type.
-     if (err!=NULL) {
-       if (g_error_matches(err, G_SPAWN_ERROR, G_SPAWN_ERROR_FAILED)) { //If the process was terminated by some means other than an exit status (for example if it was killed by a signal), the domain will be G_SPAWN_ERROR and the code will be G_SPAWN_ERROR_FAILED.
-	 child_attribs->exitcode = -1; // to prevent customcallbackfunc from execution
-	 msg=g_strdup_printf("%s (pid: %i): stopped: %s\n", child_attribs->name, child_attribs->pid, err->message);
-       }else { //The special semantics are that the actual exit code will be the code set in error, and the domain will be G_SPAWN_EXIT_ERROR. This allows you to differentiate between different exit codes.
-	 child_attribs->exitcode = err->code;
-	 msg=g_strdup_printf("%s (pid: %i): finished with exit code %i.\n%s\n", child_attribs->name, child_attribs->pid, child_attribs->exitcode, child_attribs->stdErr);
-       }
-       if (startWithVT()){
-	 fprintf(stderr,"%s", msg);
-       }else{
-	 if (strlen(msg) > RFM_MX_MSGBOX_CHARS){
-	   memcpy(msg + (RFM_MX_MSGBOX_CHARS - 35),"......message too long to show\0",31);
-	 }
-	 show_msgbox(msg, child_attribs->name, GTK_MESSAGE_ERROR);
-       }
+   /* /\* if (g_spawn_check_wait_status(child_attribs->status, &err) && child_attribs->runOpts==RFM_EXEC_MOUNT) *\/ */
+   /* /\*    set_rfm_curPath(RFM_MOUNT_MEDIA_PATH); *\/ */
+   /* //https://docs.gtk.org/glib/func.spawn_check_wait_status.html */
+   /* if (!g_spawn_check_wait_status(child_attribs->status, &err)){; //TRUE if child exited successfully, FALSE otherwise (and error will be set). */
+   /* //TODO: after i change runOpts to GSpawnFlags, RFM_EXEC_MOUNT won't work, i don't understand what it for, maybe later, we can use fields such as runCmd or some naming conventions in runaction or childAttribs to indicate this type. */
+   /*   if (err!=NULL) { */
+   /*     if (g_error_matches(err, G_SPAWN_ERROR, G_SPAWN_ERROR_FAILED)) { //If the process was terminated by some means other than an exit status (for example if it was killed by a signal), the domain will be G_SPAWN_ERROR and the code will be G_SPAWN_ERROR_FAILED. */
+   /* 	 child_attribs->exitcode = -1; // to prevent customcallbackfunc from execution */
+   /* 	 msg=g_strdup_printf("%s (pid: %i): stopped: %s\n", child_attribs->name, child_attribs->pid, err->message); */
+   /*     }else { //The special semantics are that the actual exit code will be the code set in error, and the domain will be G_SPAWN_EXIT_ERROR. This allows you to differentiate between different exit codes. */
+   /* 	 child_attribs->exitcode = err->code; */
+   /* 	 msg=g_strdup_printf("%s (pid: %i): finished with exit code %i.\n%s\n", child_attribs->name, child_attribs->pid, child_attribs->exitcode, child_attribs->stdErr); */
+   /*     } */
+       
+   /*     if (startWithVT()){ */
+   /* 	 fprintf(stderr,"%s", msg); */
+   /*     }else{ */
+   /* 	 if (strlen(msg) > RFM_MX_MSGBOX_CHARS){ */
+   /* 	   memcpy(msg + (RFM_MX_MSGBOX_CHARS - 35),"......message too long to show\0",31); */
+   /* 	 } */
+   /* 	 show_msgbox(msg, child_attribs->name, GTK_MESSAGE_ERROR); */
+   /*     } */
 
-       g_free(msg);
-       g_error_free(err);
-     }else g_warning("g_spawn_check_wait_status return FALSE but GError NULL");
-   }
+   /*     g_free(msg); */
+   /*     g_error_free(err); */
+   /*   }else g_warning("g_spawn_check_wait_status return FALSE but GError NULL"); */
+   /* } */
+   check_wait_status_and_set_exit_code(child_attribs);
    ExecCallback_freeChildAttribs(child_attribs);
    return G_SOURCE_REMOVE;
 }
@@ -1236,7 +1238,7 @@ static gboolean g_spawn_wrapper_(GList *file_list, char *dest_path, RFM_ChildAtt
 	       } else {
 		    //如果是output_read_by_program, 则stdErr和stdOut都在Callback里处理。为啥不在这里显示 stdout 呢？因为如果 stdErr 和 stdout同时不为空，show_child_output 就把stdout也消耗了，callback 就没得 stdout 读了。
    		    if (child_attribs->output_read_by_program){
-		      if (child_attribs->stdErr && strlen(child_attribs->stdErr)>0) g_debug("g_spawn_wrapper_: %s",child_attribs->stdErr);
+		      if (child_attribs->stdErr && strlen(child_attribs->stdErr)>0) g_debug("g_spawn_wrapper_ sync branch, with output_read_by_program: %s",child_attribs->stdErr);
 	            }else if ((child_attribs->stdOut && strlen(child_attribs->stdOut)>0) || (child_attribs->stdErr && strlen(child_attribs->stdErr)>0)) show_child_output(child_attribs);
 
 		    check_wait_status_and_set_exit_code(child_attribs);
