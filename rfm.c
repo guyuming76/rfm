@@ -1209,17 +1209,32 @@ static gboolean g_spawn_wrapper_(GList *file_list, char *dest_path, RFM_ChildAtt
 	           ret = FALSE;
                };
       } else {
-	       child_attribs->status=-1;
+	       child_attribs->status=-1; // Initialize status
+	       GError *spawn_err = NULL;
 /* (rfm:11714): GLib-CRITICAL **: 14:05:51.441: g_spawn_sync: assertion 'standard_output == NULL || !(flags & G_SPAWN_STDOUT_TO_DEV_NULL)' failed */
-
-/* (rfm:11714): rfm-WARNING **: 14:05:51.441: g_spawn_wrapper_->g_spawn_sync /usr/bin/ffmpeg failed to execute. Check command in config.h! */	       
+/* (rfm:11714): rfm-WARNING **: 14:05:51.441: g_spawn_wrapper_->g_spawn_sync /usr/bin/ffmpeg failed to execute. Check command in config.h! */
 	       g_log(RFM_LOG_GSPAWN,G_LOG_LEVEL_DEBUG,"g_spawn_sync, workingdir:%s, argv:%s",rfm_curPath, argv);
-	       if (!g_spawn_sync(rfm_curPath, v, env_for_g_spawn,G_SPAWN_SEARCH_PATH|child_attribs->runOpts, GSpawnChildSetupFunc_setenv,child_attribs,(child_attribs->runOpts & G_SPAWN_STDOUT_TO_DEV_NULL)? NULL : &child_attribs->stdOut, &child_attribs->stdErr,&child_attribs->status,NULL)){
-	            g_warning("g_spawn_sync %s failed to execute. Check command in config.h!", argv);
+	       if (!g_spawn_sync(rfm_curPath, v, env_for_g_spawn,G_SPAWN_SEARCH_PATH|child_attribs->runOpts, GSpawnChildSetupFunc_setenv,child_attribs,(child_attribs->runOpts & G_SPAWN_STDOUT_TO_DEV_NULL)? NULL : &child_attribs->stdOut, &child_attribs->stdErr,&child_attribs->status,&spawn_err)){
+	            g_warning("g_spawn_sync %s failed to execute: %s. Check command in config.h!", argv, spawn_err ? spawn_err->message : "Unknown error");
+	            if (spawn_err) g_error_free(spawn_err);
 	            free_child_attribs(child_attribs);
 	            ret = FALSE;
-	       }else //TODO: why show_child_output not called here?
-	            ExecCallback_freeChildAttribs(child_attribs);
+	       } else {
+	            // Spawn succeeded, now check the exit status
+	            GError *wait_err = NULL;
+	            child_attribs->exitcode = -1; // Default to error unless status check passes
+	            if (!g_spawn_check_wait_status(child_attribs->status, &wait_err)) {
+	                g_warning("Child process %s (sync) exited abnormally: %s", argv[0], wait_err ? wait_err->message : "Unknown reason");
+	                if (wait_err) g_error_free(wait_err);
+	                // Keep exitcode as -1
+	            } else {
+	                child_attribs->exitcode = WEXITSTATUS(child_attribs->status);
+	                g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_DEBUG, "Child process %s (sync) finished with exit code %d.", argv[0], child_attribs->exitcode);
+	            }
+	            // Show output regardless of exit status, as stderr might contain info
+	            show_child_output(child_attribs);
+	            ExecCallback_freeChildAttribs(child_attribs); // Callback handles the exit code
+	       }
       }
       g_free(argv);
       free(v); //only free v, but char* data such as filename in command not freed here.
