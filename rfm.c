@@ -3583,30 +3583,69 @@ static void readlineInSeperateThread(GString * readlineResultStringFromPreviousR
   }
 }
 
+/**
+ * @brief 显示 rfm 内置命令、命令解释器和搜索结果类型的帮助信息。
+ *
+ * 此函数处理用户在 rfm 命令行输入的 'help' 命令。
+ * 它可以显示通用帮助或特定主题的帮助。
+ *
+ * @param parsed_msg 指向 wordexp 解析后的命令行参数结构体。
+ *                   parsed_msg->we_wordc 是参数数量。
+ *                   parsed_msg->we_wordv 是参数字符串数组。
+ *                   如果 we_wordc == 1，表示通用帮助请求 ("help")。
+ *                   如果 we_wordc > 1，表示特定帮助请求 ("help topic")，
+ *                   topic 在 parsed_msg->we_wordv[1] 中。
+ * @param readline_result_string_after_file_name_substitution 指向经过文件名替换后的原始命令行 GString。
+ *                                                            在此函数中未使用，但可能是内置命令处理函数的标准签名。
+ */
 static void stdin_command_help(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution){
-          gboolean for_specific_command = (parsed_msg!=NULL && (parsed_msg->we_wordc!=1));
-          if (!for_specific_command) printf("%s",builtinCMD_Help);
-	  for(guint i=0;i<G_N_ELEMENTS(builtinCMD);i++){
-	    if (!for_specific_command || (for_specific_command && strcmp(parsed_msg->we_wordv[1], builtinCMD[i].cmd)==0)) {
-	      printf("    \033[33m%s\033[0m   %s\n", builtinCMD[i].cmd, builtinCMD[i].help_msg); //黄色打印命令
-	    }
-	  }
-	  for(guint i=0;i<G_N_ELEMENTS(stdin_cmd_interpretors);i++){
-	    if (!for_specific_command){
-	      printf("    \033[33m%s\033[0m   %s\n", stdin_cmd_interpretors[i].activationKey, stdin_cmd_interpretors[i].name);
-	    }
-	  }
-          if (!for_specific_command){
-	    printf("\n\033[32m %s\033[0m\n",RFM_SEARCH_RESULT_TYPES);
-	    printf("%s\n", RFM_SEARCH_RESULT_TYPES_HELP);
-	  }
-	  for(guint i=0;i<G_N_ELEMENTS(searchresultTypes);i++){
-	    if (!for_specific_command || (for_specific_command && strcmp(parsed_msg->we_wordv[1], searchresultTypes[i].name)==0)) {
-	      printf("    \033[34m%s\033[0m   %s\n",searchresultTypes[i].name,searchresultTypes[i].Description);
-	    }
-	  }
-  	  printf("\n\n \033[33muse command follows to output current help without color:");
-	  printf("\n rfm.sh --help|sed 's/\\x1B\\[[0-9;]*m//g'\033[0m\n");
+      // 判断是请求通用帮助还是特定命令/主题的帮助
+      // 如果 parsed_msg 不为 NULL 且参数数量不等于 1，则认为是特定帮助
+      gboolean for_specific_command = (parsed_msg!=NULL && (parsed_msg->we_wordc!=1));
+
+      // 如果是通用帮助请求，打印预定义的通用帮助头信息 (通常定义在 config.h)
+      if (!for_specific_command) printf("%s",builtinCMD_Help);
+
+      // --- 打印内置命令 (builtinCMD) 的帮助信息 ---
+      // 遍历在 config.h 中定义的 builtinCMD 数组
+      for(guint i=0;i<G_N_ELEMENTS(builtinCMD);i++){
+        // 如果是通用帮助请求，或者 是特定帮助请求且用户请求的主题与当前命令匹配
+        if (!for_specific_command || (for_specific_command && strcmp(parsed_msg->we_wordv[1], builtinCMD[i].cmd)==0)) {
+          // 打印命令名称（黄色高亮）和其帮助信息
+          printf("    \033[33m%s\033[0m   %s\n", builtinCMD[i].cmd, builtinCMD[i].help_msg); // \033[33m 是黄色, \033[0m 重置颜色
+        }
+      }
+
+      // --- 打印标准输入命令解释器 (stdin_cmd_interpretors) 的信息 ---
+      // 遍历在 config.h 中定义的 stdin_cmd_interpretors 数组
+      for(guint i=0;i<G_N_ELEMENTS(stdin_cmd_interpretors);i++){
+        // 仅在通用帮助请求时打印此部分信息
+        if (!for_specific_command){
+          // 打印解释器的激活键（黄色高亮）和其名称
+          printf("    \033[33m%s\033[0m   %s\n", stdin_cmd_interpretors[i].activationKey, stdin_cmd_interpretors[i].name);
+        }
+      }
+
+      // --- 打印搜索结果类型 (searchresultTypes) 的帮助信息 ---
+      // 如果是通用帮助请求
+      if (!for_specific_command){
+        // 打印搜索结果类型的段落标题（绿色高亮）和通用说明文本 (通常定义在 config.h)
+        printf("\n\033[32m %s\033[0m\n",RFM_SEARCH_RESULT_TYPES); // \033[32m 是绿色
+        printf("%s\n", RFM_SEARCH_RESULT_TYPES_HELP);
+      }
+      // 遍历在 config.h 中定义的 searchresultTypes 数组
+      for(guint i=0;i<G_N_ELEMENTS(searchresultTypes);i++){
+        // 如果是通用帮助请求，或者 是特定帮助请求且用户请求的主题与当前类型名称匹配
+        if (!for_specific_command || (for_specific_command && strcmp(parsed_msg->we_wordv[1], searchresultTypes[i].name)==0)) {
+          // 打印类型名称（蓝色高亮）和其描述
+          printf("    \033[34m%s\033[0m   %s\n",searchresultTypes[i].name,searchresultTypes[i].Description); // \033[34m 是蓝色
+        }
+      }
+
+      // --- 打印去除颜色代码的提示 ---
+      // 提供一个示例命令，用户可以使用它来查看不带 ANSI 颜色代码的帮助输出
+      printf("\n\n \033[33muse command follows to output current help without color:");
+      printf("\n rfm.sh --help|sed 's/\\x1B\\[[0-9;]*m//g'\033[0m\n");
 }
 
 
