@@ -3639,6 +3639,25 @@ static void stdin_command_help(wordexp_t * parsed_msg, GString* readline_result_
         }
       }
 
+#ifdef AiIntegration
+      // --- 打印 AI 模型 (AI_models) 的信息 ---
+      // 仅在通用帮助请求时打印此部分信息
+      if (!for_specific_command){
+          printf("\n\033[32m %s\033[0m\n", "AI Models:"); // 绿色打印段落标题
+          // 遍历在 config.h 中定义的 AI_models 数组
+          for(guint i=0; i<G_N_ELEMENTS(AI_models); i++){
+              // 打印 AI 模型的激活键（黄色高亮）和详细信息
+              printf("    \033[33m%s\033[0m    %s, Host: %s, Model: %s, Temp: %d, Script: %s\n",
+                     AI_models[i].activationKey,
+                     AI_models[i].term_prompt,
+		     AI_models[i].host_url,
+                     AI_models[i].model_name ? AI_models[i].model_name : "Default",
+                     AI_models[i].model_temporature,
+                     AI_models[i].calling_script ? AI_models[i].calling_script : "Default");
+          }
+      }
+#endif
+
       // --- 打印搜索结果类型 (searchresultTypes) 的帮助信息 ---
       // 如果是通用帮助请求
       if (!for_specific_command){
