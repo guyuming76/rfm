@@ -4183,7 +4183,7 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 	    
             for(guint i=0;i<G_N_ELEMENTS(stdin_cmd_interpretors);i++){
 #ifdef AiIntegration
-	      if (strcmp(stdin_cmd_interpretors[i].name,"AI")==0) stdin_cmd_interpretor_index_for_AI = i; //我们需要一个方法获取AI_models静态定义里面的对应AI的index,0表示默认cmd_interpretor比较合适，最大的数未来也不一定表示AI,用户也可能随意调整位置，不如就在这里动态设置，省得要用的时候查表
+	      if (strcmp(stdin_cmd_interpretors[i].name, AI_MODEL_AS_CMD_INTERPRETER)==0) stdin_cmd_interpretor_index_for_AI = i; //我们需要一个方法获取AI_models静态定义里面的对应AI的index,0表示默认cmd_interpretor比较合适，最大的数未来也不一定表示AI,用户也可能随意调整位置，不如就在这里动态设置，省得要用的时候查表
 #endif
 	      if (g_strcmp0(readlineResult, stdin_cmd_interpretors[i].activationKey)==0){
 		current_stdin_cmd_interpretor = i;

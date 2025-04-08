@@ -24,6 +24,8 @@
 #define FIND_FILES "含子目录文件"
 #define PipeTitle "当前:%d/总数:%d, 每葉:%d"
 
+#define AI_MODEL_AS_CMD_INTERPRETER "切换到当前AI模型回答模式，下面AI MODELS部分列出所有候选模型，首列是切换至此模型的命令"
+
 #define TOOL_TIP_PathAndRepositoryNameDisplay "点击在目录视图和搜索结果间切换，或使用//命令; \n可用 pagesize xxx 命令设置搜索结果视图每葉条数"
 
 #define PRESS_ENTER_TO_CLOSE_WINDOW "按回车键关闭当前窗口"
@@ -166,3 +168,4 @@ BuiltInCmd_SearchResultColumnSeperator \
 "    最后,在查询结果视图选中一条文件, 执行前述rfm内置的cd后接空格命令,就可以直接切换到包含此文件的目录.上面例子里文件是一条rfm TODO 事项描述文件,目录可以是为此事项专门建立,用以保存此事项相关图片等文档. 对比常见的关系数据库应用,查询结果里的扩展列相当于表字段; 我们用来在locate命令里匹配文件路径名的字符串起着关系数据库名及表名的作用; 两条不同表的记录的关联可以通过多种方式实现,最简单直观的就是两个文件位于同一文件目录下面. 上面例子若是在电子邮件系统里实现, rfmTODO 事项描述文件内容通常放在邮件正文里, 而事项相关文档都需要通过附件形式打包到邮件内, 也不如在rfm里面简单放在一个文件目录下方便."
 
 #define SearchResultType_default_with_title "类似0号default查询结果类型,区别仅在于首行包含的是列标题,而不是实际数据"
+

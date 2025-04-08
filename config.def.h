@@ -52,7 +52,7 @@ static const stdin_cmd_interpretor stdin_cmd_interpretors[] = {
 	{"Bash",           "b>",                  "b",              stdin_command_bash },
 	{"NuShell",        "n>",                  "n",              stdin_command_nu   },
 #ifdef AiIntegration
-	{"AI",             "a>",                  "a",              stdin_LLM_prompt   }, //The prompt of AI will not show. The term_prompt of default AI_models will show instead. The acitivationKey of AI and that of the default AI_models have the same effect. DO NOT change the name AI here, it is hardcoded in code.
+	{AI_MODEL_AS_CMD_INTERPRETER,"a>",        "a",              stdin_LLM_prompt   }, //The prompt of AI will not show. The term_prompt of default AI_models will show instead. The acitivationKey of AI and that of the default AI_models have the same effect. DO NOT change the name AI here, it is hardcoded in code.
 #endif
 #ifdef PythonEmbedded
 	{"PythonEmbedded", "p>",                  "p",              NULL               },

@@ -24,6 +24,8 @@
 
 #define PipeTitle "Current:%d/Total:%d, PageSize:%d"
 
+#define AI_MODEL_AS_CMD_INTERPRETER "Switch to the current AI model. The section below lists all candidate models. The first column is the command"
+
 #define TOOL_TIP_PathAndRepositoryNameDisplay "click to switch between directory and search result view, or use // command; \npagesize xxx command can set file number per page at search result view"
 
 #define PRESS_ENTER_TO_CLOSE_WINDOW   "Press Enter to close current window"
