@@ -3560,9 +3560,22 @@ static void readlineInSeperateThread(GString * readlineResultStringFromPreviousR
   execStdinCmdInNewVT = FALSE;
   
   if(startWithVT() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)){
-    gchar *prompt = calloc(strlen(InheritedPrompt)+6, sizeof(gchar));
+    // Allocate more space for potentially longer AI prompts
+    gchar *prompt = calloc(strlen(InheritedPrompt)+256, sizeof(gchar));
     sprintf(prompt,"%s",InheritedPrompt);
+#ifdef AiIntegration
+    // Check if the current interpreter is the AI interpreter
+    if (current_stdin_cmd_interpretor == stdin_cmd_interpretor_index_for_AI) {
+        // Use the specific AI model's term_prompt
+        strcat(prompt, AI_models[current_AI_model_index].term_prompt);
+    } else {
+        // Use the general interpreter prompt
+        strcat(prompt, stdin_cmd_interpretors[current_stdin_cmd_interpretor].prompt);
+    }
+#else
+    // Original behavior if AiIntegration is not defined
     strcat(prompt, stdin_cmd_interpretors[current_stdin_cmd_interpretor].prompt);
+#endif
     //SearchResultTypeIndex=-1; //这个branch之前,一直在这里设成FALSE,没注意到有啥问题,但它改成数组索引后测试发现有race condition
     if (keep_selection_on_view_across_refresh && In_refresh_store) strcat(prompt,exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread ? "?]":"?>");
     else if (ItemSelected==0) strcat(prompt,exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread ? "]":">");
