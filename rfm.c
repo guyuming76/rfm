@@ -551,7 +551,7 @@ static void cmdSearchResultColumnSeperator(wordexp_t * parsed_msg, GString* read
 static int MatchSearchResultType(gchar *readlineResult);
 static void set_DisplayingPageSize_ForFileNameListFromPipesStdIn(uint pagesize);
 static void cmdPagesize(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
-static void writeSearchResultIntoFD(gint *fd);
+static void writeSearchResultIntoFD_in_gtk_thread(gint *fd);
 static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, gboolean from_stdin_readline, int cmd_interpretor_index);
 /******Search Result related definitions end*********/
 /****************************************************/
@@ -3466,7 +3466,7 @@ static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlin
   g_strfreev(env_for_g_spawn_used_by_exec_stdin_command);env_for_g_spawn_used_by_exec_stdin_command=NULL;
 }
 
-
+//this runs in gtk main thread
 static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, gboolean from_stdin_readline, int cmd_interpretor_index){
 	    RFM_ChildAttribs *childAttribs = calloc(1, sizeof(RFM_ChildAttribs));
 	    childAttribs->RunCmd = stdin_cmd_interpretors[cmd_interpretor_index].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE);
@@ -3479,8 +3479,8 @@ static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResult
 	      //不能保证writeSearchResultIntoFD执行的时候不向命令窗口输出内容,不知道子进程输出和writeSearchResultIntoFD同时争抢命令窗口会发生什么. 所以不如让 child_supervisor 读取子进程输出 fd 后再显示,至少都是在 gtk main loop 里面输出
 	    }
 	    if (!g_spawn_async_with_pipes_wrapper(childAttribs->RunCmd, childAttribs)) free_child_attribs(childAttribs);
-	    else writeSearchResultIntoFD(&(childAttribs->stdIn_fd));//SearchResultAsInput 时exec_stdin_command 总是在gtk main thread 执行
-
+	    else writeSearchResultIntoFD_in_gtk_thread(&(childAttribs->stdIn_fd));//SearchResultAsInput 时exec_stdin_command 总是在gtk main thread 执行
+	    //异步启动 RunCmd 后，接着写文件，而RunCmd 会读取文件作为输入
 	    add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
 }
 
@@ -3498,7 +3498,7 @@ static void g_spawn_async_callback_to_new_readline_thread(gpointer child_attribs
   readlineThread=g_thread_new("readline", readlineInSeperateThread, NULL);//这种情况下,新的readlineThread下不会再运行exec_stdin_command, 所以命令参数直接传NULL过去就可以了
 }
 
-static void writeSearchResultIntoFD(gint *fd){
+static void writeSearchResultIntoFD_in_gtk_thread(gint *fd){
   g_debug("writeSearchResultIntoFD(%d)",*fd);
   if (SearchResultViewInsteadOfDirectoryView){
     gboolean firstColumn=TRUE;
@@ -3516,7 +3516,7 @@ static void writeSearchResultIntoFD(gint *fd){
 
     GtkTreeIter iter;
     GList *selectedListElement=NULL;
-    stdin_cmd_selection_list = get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
+    stdin_cmd_selection_list = get_view_selection_list(icon_or_tree_view,treeview,&treemodel); //TODO: 将来这里不需要重新获取 stdin_cmd_selection_list 值，因为值在 parse_and_exec_cmd_in_gtk_thread 里已经获取过了，但现状是在exec_stdin_command_with_SearchResultAsInput前已经释放掉了。但既然使用了全局变量，也许在 parse_and_exec_cmd_in_gtk_thread 里晚点释放，然后这里就不用获取，也就不用释放了。
     if (stdin_cmd_selection_list) selectedListElement=g_list_first(stdin_cmd_selection_list);
         
     if (stdin_cmd_selection_list?
@@ -3548,7 +3548,7 @@ static void writeSearchResultIntoFD(gint *fd){
       dprintf(*fd, "\n");
     }else g_warning("empty search result view or list view has not been opened, switch to list view if search result is not empty!");
     g_list_free(columns);
-    if (stdin_cmd_selection_list) g_list_free_full(stdin_cmd_selection_list, (GDestroyNotify)gtk_tree_path_free);
+    if (stdin_cmd_selection_list) { g_list_free_full(stdin_cmd_selection_list, (GDestroyNotify)gtk_tree_path_free); stdin_cmd_selection_list = NULL; }
   }else g_warning("currently not in search result view!");
   close(*fd);
 }
