@@ -4282,7 +4282,7 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 		}
 	    }//end if (stdin_cmd_selection_list!=NULL)
 #ifdef AiIntegration
-	    if (!execStdinCmdInNewVT && !(!from_stdin_readline && execCmdInNewVT) && cmd_interpretor_index != stdin_cmd_interpretor_index_for_AI){
+	    if (!execStdinCmdInNewVT && !(!from_stdin_readline && execCmdInNewVT) || cmd_interpretor_index == stdin_cmd_interpretor_index_for_AI){
 #else
 	    if (!execStdinCmdInNewVT && !(!from_stdin_readline && execCmdInNewVT)){
 #endif
@@ -4309,7 +4309,7 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 	  else if ((exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread || !from_stdin_readline) && !(execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT))) exec_stdin_command(readlineResultString, cmd_interpretor_index);
 	  
 	  if (from_stdin_readline && auto_execution_command_after_rfm_start==NULL) g_thread_join(readlineThread);//we won't have more than one readlineThread running at the same time since we join before new thread here
-	  if (execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT)) exec_stdin_command_in_new_VT(readlineResultString, cmd_interpretor_index);
+	  if ((execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT)) && readlineResultString) exec_stdin_command_in_new_VT(readlineResultString, cmd_interpretor_index); // 在AI Mode下输入builtin cmd,如 help, 会因为是AI mode 一开始把 execStdinCmdInNewVT 设成true,所以这里加上 readlineResultString 非NULL判断
 
 	  if (from_stdin_readline && !SearchResultAsInput) readlineThread=g_thread_new("readline", readlineInSeperateThread, readlineResultString);
 	}
