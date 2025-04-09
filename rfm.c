@@ -4273,7 +4273,7 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 		  if (execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT)){
 		    g_assert_null(env_for_g_spawn);
 		    env_for_g_spawn = g_get_environ();
-		    set_env_to_pass_into_child_process(&iter, &env_for_g_spawn);
+		    set_env_to_pass_into_child_process(&iter, &env_for_g_spawn); //正是因为这里对于 &iter 的使用，我们只能使用 stdin_cmd_selection_list, 而不能简单地使用filepath_lists_for_selection_on_view 
 		  }else{
 		    if (exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread) g_assert_null(env_for_g_spawn_used_by_exec_stdin_command);
 		    env_for_g_spawn_used_by_exec_stdin_command = g_get_environ();
