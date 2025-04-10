@@ -3462,8 +3462,8 @@ static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlin
 	  if (WIFEXITED(exit_status)) g_debug("exec_stdin_command(%s,%d): child process of g_spawn_sync WIFEXITED true with status:%d", readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str, cmd_interpretor_index, WEXITSTATUS(exit_status));
 	  else g_debug("exec_stdin_command(%s,%d): child process of g_spawn_sync WIFEXITED false",readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str, cmd_interpretor_index);
 	  add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
-  }
-  g_strfreev(env_for_g_spawn_used_by_exec_stdin_command);env_for_g_spawn_used_by_exec_stdin_command=NULL;
+  }else g_debug("exec_stdin_command(NULL,%d)",cmd_interpretor_index);
+  g_strfreev(env_for_g_spawn_used_by_exec_stdin_command);env_for_g_spawn_used_by_exec_stdin_command=NULL; //If str_array is NULL, this function simply returns.  https://docs.gtk.org/glib/func.strfreev.html 
 }
 
 //this runs in gtk main thread
