@@ -236,6 +236,7 @@ typedef struct RFM_ChildAttributes{
    gchar *name;
    const gchar **RunCmd;
    GSpawnFlags  runOpts;
+   gchar** env;
    GPid  pid;
    gint  stdIn_fd;
    gint  stdOut_fd;
@@ -821,6 +822,7 @@ static void free_child_attribs(RFM_ChildAttribs *child_attribs)
    g_free(child_attribs->stdOut);
    g_free(child_attribs->stdErr);
    g_free(child_attribs->name);
+   g_strfreev(child_attribs->env);
    //how can we memcpy the content of customCallbackUserData and free it here?
    //g_free(child_attribs->customCallbackUserData);
    g_free(child_attribs);
@@ -1106,7 +1108,7 @@ static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *ch
       GError* err = NULL;
 /* https://docs.gtk.org/glib/func.spawn_async_with_pipes_and_fds.html */
 /*       If non-NULL, the stdin_pipe_out, stdout_pipe_out, stderr_pipe_out locations will be filled with file descriptors for writing to the child's standard input or reading from its standard output or standard error. The caller of g_spawn_async_with_pipes() must close these file descriptors when they are no longer in use. If these parameters are NULL, the corresponding pipe won't be created. */
-      rv=g_spawn_async_with_pipes(rfm_curPath, v, env_for_g_spawn, G_SPAWN_DO_NOT_REAP_CHILD | G_SPAWN_SEARCH_PATH | child_attribs->runOpts,
+      rv=g_spawn_async_with_pipes(rfm_curPath, v, (child_attribs->env?child_attribs->env:env_for_g_spawn), G_SPAWN_DO_NOT_REAP_CHILD | G_SPAWN_SEARCH_PATH | child_attribs->runOpts,
 				  //本commit 是revert 3d53359fdb97498a895a0cec97e3076558908a02 消除冲突后的结果，注意上一行|child_attribs->runOpts 是保留3d53359fdb97498a895a0cec97e3076558908a02改动的
 
 				  GSpawnChildSetupFunc_setenv,child_attribs,
@@ -1230,7 +1232,7 @@ static gboolean g_spawn_wrapper_(GList *file_list, char *dest_path, RFM_ChildAtt
 	       GError *spawn_err = NULL;
 
 	       g_log(RFM_LOG_GSPAWN,G_LOG_LEVEL_DEBUG,"g_spawn_sync, workingdir:%s, argv:%s",rfm_curPath, argv);
-	       if (!g_spawn_sync(rfm_curPath, v, env_for_g_spawn,G_SPAWN_SEARCH_PATH|child_attribs->runOpts, GSpawnChildSetupFunc_setenv,child_attribs,(child_attribs->runOpts & G_SPAWN_STDOUT_TO_DEV_NULL)? NULL : &child_attribs->stdOut, &child_attribs->stdErr,&child_attribs->status,&spawn_err)){
+	       if (!g_spawn_sync(rfm_curPath, v, child_attribs->env? child_attribs->env : env_for_g_spawn,G_SPAWN_SEARCH_PATH|child_attribs->runOpts, GSpawnChildSetupFunc_setenv,child_attribs,(child_attribs->runOpts & G_SPAWN_STDOUT_TO_DEV_NULL)? NULL : &child_attribs->stdOut, &child_attribs->stdErr,&child_attribs->status,&spawn_err)){
 	            g_warning("g_spawn_sync %s failed to execute: %s. Check command in config.h!", argv, spawn_err ? spawn_err->message : "Unknown error");
 	            if (spawn_err) g_error_free(spawn_err);
 	            free_child_attribs(child_attribs);
@@ -2580,11 +2582,10 @@ static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointe
       }
 
       if (index_of_default_file_activation_action_based_on_mime_or_searchresultType != -1){
-	g_assert_null(env_for_g_spawn);
-	env_for_g_spawn = g_get_environ();
-	set_env_to_pass_into_child_process(&iter,&env_for_g_spawn);
+	gchar ** env_for_g_spawn_local = g_get_environ(); //局部变量，省得全局变量使用太多，差错太费脑.TODO:用childattribs->env替代掉这个局部变量
+	set_env_to_pass_into_child_process(&iter,&env_for_g_spawn_local);
 	g_spawn_wrapper(run_actions[index_of_default_file_activation_action_based_on_mime_or_searchresultType].runCmd, activated_single_file_list, G_SPAWN_DEFAULT, NULL,TRUE,NULL,NULL,FALSE);
-	g_strfreev(env_for_g_spawn); env_for_g_spawn = NULL;
+	g_strfreev(env_for_g_spawn_local);
       }else {
          msg=g_strdup_printf("No default file activation action defined for mime type:\n %s/%s\n", fileAttributes->mime_root, fileAttributes->mime_sub_type);
          show_msgbox(msg, "Run Action", GTK_MESSAGE_INFO);
@@ -2760,11 +2761,9 @@ static void g_spawn_wrapper_for_selected_fileList_(RFM_ChildAttribs *childAttrib
       }
 
       if (ItemSelected==1){
-	g_assert_null(env_for_g_spawn);
-	env_for_g_spawn=g_get_environ();
-	set_env_to_pass_into_child_process(&iter,&env_for_g_spawn);
+	childAttribs->env=g_get_environ();
+	set_env_to_pass_into_child_process(&iter,&(childAttribs->env));
 	g_spawn_wrapper_(actionFileList,NULL,childAttribs);
-	g_strfreev(env_for_g_spawn); env_for_g_spawn=NULL;
       }else g_spawn_wrapper_(actionFileList,NULL,childAttribs);
       g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
       g_list_free(actionFileList); /* Do not free list elements: owned by GList rfm_fileAttributeList */
