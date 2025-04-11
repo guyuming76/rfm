@@ -79,7 +79,7 @@ typedef struct {
   gchar *term_prompt; // This is the prompt such b> shown in term, not the prompt for LLM
   gchar *activationKey;
   gboolean InNewTerm;
-  int    model_temporature;
+  gchar *model_temporature;
   gchar *API_key;
 } AI_model_parameter;
     
@@ -3646,7 +3646,7 @@ static void stdin_command_help(wordexp_t * parsed_msg, GString* readline_result_
           // 遍历在 config.h 中定义的 AI_models 数组
           for(guint i=0; i<G_N_ELEMENTS(AI_models); i++){
               // 打印 AI 模型的激活键（黄色高亮）和详细信息
-              printf("    \033[33m%s\033[0m    %s, Host: %s, Model: %s, Temp: %d, Script: %s\n",
+              printf("    \033[33m%s\033[0m    %s, Host: %s, Model: %s, Temp: %s, Script: %s\n",
                      AI_models[i].activationKey,
                      AI_models[i].term_prompt,
 		     AI_models[i].host_url,
@@ -4146,10 +4146,10 @@ static void set_stdin_cmd_leading_space_true(){
 #ifdef AiIntegration
 static gchar** stdin_LLM_prompt(gchar* user_input_prompt, gboolean inNewVT) {
   if (AI_models[current_AI_model_index].InNewTerm){
-    snprintf(shell_cmd_buffer,PATH_MAX,"set -o history; echo '%s' | %s %s %s %s; read -p '\033[33m%s\033[0m'; exit \$? 2>/dev/null", user_input_prompt,AI_models[current_AI_model_index].calling_script, AI_models[current_AI_model_index].host_url,AI_models[current_AI_model_index].model_name, AI_models[current_AI_model_index].API_key, PRESS_ENTER_TO_CLOSE_WINDOW);
+    snprintf(shell_cmd_buffer,PATH_MAX,"set -o history; echo '%s' | %s %s %s %s %s; read -p '\033[33m%s\033[0m'; exit \$? 2>/dev/null", user_input_prompt,AI_models[current_AI_model_index].calling_script, AI_models[current_AI_model_index].host_url,AI_models[current_AI_model_index].model_name, AI_models[current_AI_model_index].model_temporature, AI_models[current_AI_model_index].API_key, PRESS_ENTER_TO_CLOSE_WINDOW);
     return stdin_cmd_template_bash_newVT_nonHold;
   }else {
-    snprintf(shell_cmd_buffer,PATH_MAX,"set -o history; echo '%s' | %s %s %s %s; exit \$? 2>/dev/null",user_input_prompt,AI_models[current_AI_model_index].calling_script, AI_models[current_AI_model_index].host_url, AI_models[current_AI_model_index].model_name, AI_models[current_AI_model_index].API_key);
+    snprintf(shell_cmd_buffer,PATH_MAX,"set -o history; echo '%s' | %s %s %s %s %s; exit \$? 2>/dev/null",user_input_prompt,AI_models[current_AI_model_index].calling_script, AI_models[current_AI_model_index].host_url, AI_models[current_AI_model_index].model_name, AI_models[current_AI_model_index].model_temporature, AI_models[current_AI_model_index].API_key);
     return stdin_cmd_template_bash;
   }
 }
