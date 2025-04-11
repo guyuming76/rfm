@@ -53,19 +53,16 @@ fi
 # Parse the response using jq
 # Extract the response content or the error message
 # Handles standard OpenAI format and potential error structures
-RESULT=$(echo "$RESPONSE" | jq -r '
-  if .error then
-    "Error: " + (.error.message // .error | tostring)
-	# Handle different error structures
-  elif .choices and (.choices | length > 0) and .choices[0].message and .choices[0].message.content then
-     .choices[0].message.content
-  elif .choices and (.choices | length > 0) and .choices[0].text then
-	# Fallback for older/different formats
-     .choices[0].text
-  else
-    # Try to capture other potential error formats like DeepSeek's direct message
-    .message // ("Error: Unexpected API response format: " + tostring)
-  end')
+RESULT=$(echo "$RESPONSE" | jq -r $'
+if .error then
+  "Error: " + (.error.message // .error | tostring)
+elif .choices and (.choices | length > 0) and .choices.message and .choices.message.content then
+  .choices.message.content
+elif .choices and (.choices | length > 0) and .choices.text then
+  .choices.text
+else
+  .message // ("Error: Unexpected API response format: " + (tostring))
+end')
 
 
 # Display the result
