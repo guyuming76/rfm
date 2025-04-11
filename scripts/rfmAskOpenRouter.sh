@@ -2,45 +2,81 @@
 
 #gentoo上依赖 app-misc/jq
 
+set -x
+
 rfm_AI_MODEL_HOST_URL="$1"
 rfm_AI_MODEL_NAME="$2"
 rfm_AI_MODEL_TEMPERATURE=$3
 rfm_AI_MODEL_API_KEY="$4"
 
-# 读取用户输入
-rfm_AI_MODEL_prompt=$(cat)
-if [ -z "$rfm_AI_MODEL_prompt" ]; then
-  echo "错误：未提供输入提示词" >&2
+
+# Read the user's prompt from standard input
+PROMPT=$(cat)
+if [ -z "$PROMPT" ]; then
+  echo "Error: No prompt provided." >&2
   exit 1
 fi
 
-# 发送请求并捕获原始 JSON 响应
-response=$(curl -sS --fail-with-body "$rfm_AI_MODEL_HOST_URL" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $rfm_AI_MODEL_API_KEY"
-  -d "$(jq -n \
-    --arg model "$rfm_AI_MODEL_NAME" \
-    --arg prompt "$rfm_AI_MODEL_prompt" \
-    '{
-      model: $model,
-      prompt: $prompt,
-      stream: false,
-      options: {temperature: 0.7}
-    }')" 2>&1)  # 捕获标准错误和输出
+# Make the API call using curl
+# Append the correct endpoint path to the base URL
 
-# 解析响应
-result=$(echo "$response" | jq -r '
+# Build the JSON payload using the messages array format
+JSON_PAYLOAD=$(jq -n \
+  --arg model "$rfm_AI_MODEL_NAME" \
+  --arg content "$PROMPT" \
+  --argjson temp "$rfm_AI_MODEL_TEMPERATURE" \
+  '{
+    model: $model,
+    messages: [ { role: "user", content: $content } ],
+    stream: false,
+    temperature: $temp
+  }')
+
+# The JSON payload includes the model name and the user's prompt
+RESPONSE=$(curl -sS --fail-with-body -X POST "$rfm_AI_MODEL_HOST_URL" \
+  -H "Authorization: Bearer $rfm_AI_MODEL_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d "$JSON_PAYLOAD" 2>&1) # Capture stderr as well
+
+# Check if curl failed (using --fail-with-body helps capture HTTP errors)
+CURL_EXIT_CODE=$?
+if [ $CURL_EXIT_CODE -ne 0 ]; then
+    # Attempt to parse error from response body if curl failed
+    ERROR_MSG=$(echo "$RESPONSE" | jq -r '.error.message // .detail // "Unknown curl error or non-JSON response"')
+    echo "Error: curl command failed (Exit Code: $CURL_EXIT_CODE). $ERROR_MSG" >&2
+    # Optionally print the raw response for debugging
+    # echo "Raw Response: $RESPONSE" >&2
+    exit 1
+fi
+
+
+# Parse the response using jq
+# Extract the response content or the error message
+# Handles standard OpenAI format and potential error structures
+RESULT=$(echo "$RESPONSE" | jq -r '
   if .error then
-    "错误: " + .error
+    "Error: " + (.error.message // .error | tostring)
+	# Handle different error structures
+  elif .choices and (.choices | length > 0) and .choices[0].message and .choices[0].message.content then
+     .choices[0].message.content
+  elif .choices and (.choices | length > 0) and .choices[0].text then
+	# Fallback for older/different formats
+     .choices[0].text
   else
-    .response
+    # Try to capture other potential error formats like DeepSeek's direct message
+    .message // ("Error: Unexpected API response format: " + tostring)
   end')
 
-# 显示结果
-echo "$result"
+
+# Display the result
+echo "$RESULT"
+
+
+
+
 
 # 仅当成功时保存文件
-if ! [[ "$result" =~ ^错误: ]]; then
+if ! [[ "$RESULT" =~ ^Error: ]]; then
   # 清理模型名称中的非法字符（如冒号）
   sanitized_model=$(echo "$rfm_AI_MODEL_NAME" | sed 's/[:/\\*?<>|"]/_/g')  # 关键修改点
   timestamp=$(date +%Y%m%d_%H%M%S)
@@ -48,10 +84,10 @@ if ! [[ "$result" =~ ^错误: ]]; then
 
   cat <<EOF > "$filename"
 ## 用户提示词 ##
-$prompt
+$PROMPT
 
 ## 模型回复 ##
-$result
+$RESULT
 EOF
 
   echo "回复已保存至: $filename" >&2
