@@ -4190,6 +4190,11 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 		goto switchToReadlineThread;//如果当前输入命令是选择命令解释器,选择完后就直接进入一轮命令读取,无需再对当前输入命令进一步处理
 	      }
 	    }
+
+            //在AI提示符状态下，期望builtin命令能够执行，而一条重要的buildin命令cd(带空格)执行cmd_cd,跳转到查询结果窗口当前选中文件的parent目录，就依赖stdin_cmd_ending_space, 所以把第一次的stdin_cmd_ending_space 判断提前否则如果cmd_interpretor_index ！= stdin_cmd_interpretor_index_for_AI，就直接被跳过了
+            stdin_cmd_ending_space = (len>=1 && readlineResult[len-1]==' ');
+	    while (len>=1 && readlineResult[len-1]==' ') { readlineResult[len-1]='\0'; len--; } //remove ending space
+
 #ifdef AiIntegration
 	    for(guint i=0;i<G_N_ELEMENTS(AI_models);i++){
 	      if (g_strcmp0(readlineResult, AI_models[i].activationKey)==0){
@@ -4205,12 +4210,10 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 	      else execCmdInNewVT = AI_models[current_AI_model_index].InNewTerm;
 	    }else{
 #endif
-	    //下面 stdin_cmd_ending_space, execStdinCmdInNewVT, SearchResultAsInput 应该也可以通过正则表达式匹配实现.
+	    //stdin_cmd_ending_space, execStdinCmdInNewVT, SearchResultAsInput 应该也可以通过正则表达式匹配实现.
 	    //一方面之前写这些代码的时候还没添加正则表达式匹配的功能
 	    //再者有些人可能不喜欢正则表达式,而这些又是对rfm来说比较核心的功能,所以就暂不改用正则表达式识别
 	    //目前正则表达式匹配主要是解决一些字母大小写,消除空格等,把用户输入命令规范化成统一定义的格式
-    	    stdin_cmd_ending_space = (len>=1 && readlineResult[len-1]==' ');
-	    while (len>=1 && readlineResult[len-1]==' ') { readlineResult[len-1]='\0'; len--; } //remove ending space
 
             if (g_str_has_suffix(readlineResult, run_cmd_in_new_terminal_emulator_suffix)){
 	      if (from_stdin_readline) execStdinCmdInNewVT = TRUE;
