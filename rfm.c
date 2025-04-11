@@ -4293,17 +4293,10 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 	      if (wordexp_retval==0 && parse_and_exec_stdin_builtin_command_in_gtk_thread(&parsed_msg, readlineResultString)){ //wordexp_retval 0 means success
 		readlineResultString=NULL; //since readlineInseperatethread function will check this, we must clear it here after cmd already been executed.
 #ifdef AiIntegration
-		//上两个commit发现，locate suckless>0，选中一个文件，在AI Mode提示符下用命令 cd 会有assert fail.
-		//没尝试在AI MODE 下执行 builtin command 的时候没这个问题,之前若是执行了builtin_command, readlineResultString设成空后，进入exec 环节后还是会把 env_for 边量给清空
-		//感觉cmd_interpretor_index == stdin_cmd_interpretor_index_for_AI 时，exec 环节的执行和env_for变量的创建可能不匹配，导致assert fail. 所以这里修补的办法是执行builtin_cmd后，就根据创建env_for 的条件作对应清理，反正 g_strfreev(NULL) 也不报错
 		//TODO: 这个env_for_g_spawn 要能参数化，而不是全局变量可能会好些，特别要是能纳入Child_Attribs
-		if (stdin_cmd_selection_list!=NULL && ItemSelected==1 && cmd_interpretor_index == stdin_cmd_interpretor_index_for_AI) {
-		  if (execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT)){
-		    g_strfreev(env_for_g_spawn);env_for_g_spawn=NULL;
-		  }else{
-		    g_strfreev(env_for_g_spawn_used_by_exec_stdin_command);env_for_g_spawn_used_by_exec_stdin_command=NULL;
-		  }
-		}
+		g_strfreev(env_for_g_spawn);env_for_g_spawn=NULL;
+		g_strfreev(env_for_g_spawn_used_by_exec_stdin_command);env_for_g_spawn_used_by_exec_stdin_command=NULL;
+		//读取一个用户输入readlineInSeperateThread 并执行，包括执行builtin cmd 我们就认为完成一个命令周期，上两行变量就都清空，不管此命令周期实际用的是哪个变量，反正g_strfreev(NULL)不报错
 #endif
 	      }
 	      if (wordexp_retval == 0) wordfree(&parsed_msg);
