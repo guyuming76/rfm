@@ -4919,6 +4919,7 @@ static int ProcessKeyValuePairInCmdOutputFromSearchResult(char *oneline, gboolea
    int cmd_interpretor_index = match_cmd_str_array_with_interpretors(cmdtemplate);
    char** cmd = stdin_cmd_interpretors[cmd_interpretor_index>=0 ? cmd_interpretor_index : current_stdin_cmd_interpretor].cmdTransformer(mailHeadCmd, FALSE);
 
+   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"ProcessKeyValuePairInCmdOutputFromSearchResult cmd:%s, MatchedCmdInterpretor:%d, current_stdin_cmd_interpretor %d",mailHeadCmd, cmd_interpretor_index, current_stdin_cmd_interpretor);
    if (!g_spawn_sync(rfm_curPath, cmd, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, &cmdOutput, &cmdError, NULL, &error)){
      g_warning("error executing cmd %s, error:%s",mailHeadCmd, error==NULL?"":error->message);
      if (error) g_error_free(error);
@@ -5006,6 +5007,7 @@ static int CallMatchingProcessorForSearchResultLine(char *oneline, gboolean new_
        }
      }
    }
+   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"SearchResultTypeId %d,name %s matched for file:%s",matched_searchresulttype_index,longest_matched_searchresulttype_name,oneline);
    return searchresultTypes[matched_searchresulttype_index].SearchResultLineProcessingFunc(oneline,new_search,searchresultTypes[matched_searchresulttype_index].cmdTemplate, fileAttributes);
 }
 
