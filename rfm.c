@@ -185,7 +185,7 @@ void ensure_fd0_is_opened_for_stdin_inherited_from_parent_process_instead_of_use
 static gboolean startWithVT();
 static void readlineInSeperateThread();
 static void ReadFromPipeStdinIfAny(char *fd);
-static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, int cmd_interpretor_index);
+static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, int cmd_interpretor_index, gchar** env);
 static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, int cmd_interpretor_index);
 static void g_spawn_async_callback_to_new_readline_thread(gpointer child_attribs);
 static void regcomp_for_regex_rules();
@@ -253,7 +253,6 @@ typedef struct RFM_ChildAttributes{
 
 static GList *rfm_childList = NULL;
 static int rfm_childListLength = 0;
-static gchar** env_for_g_spawn=NULL;
 static void free_child_attribs(RFM_ChildAttribs *child_attribs);
 static void g_spawn_wrapper_for_selected_fileList_(RFM_ChildAttribs *childAttribs);
 /* instantiate childAttribs and call g_spawn_wrapper_ */
@@ -1108,7 +1107,7 @@ static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *ch
       GError* err = NULL;
 /* https://docs.gtk.org/glib/func.spawn_async_with_pipes_and_fds.html */
 /*       If non-NULL, the stdin_pipe_out, stdout_pipe_out, stderr_pipe_out locations will be filled with file descriptors for writing to the child's standard input or reading from its standard output or standard error. The caller of g_spawn_async_with_pipes() must close these file descriptors when they are no longer in use. If these parameters are NULL, the corresponding pipe won't be created. */
-      rv=g_spawn_async_with_pipes(rfm_curPath, v, (child_attribs->env?child_attribs->env:env_for_g_spawn), G_SPAWN_DO_NOT_REAP_CHILD | G_SPAWN_SEARCH_PATH | child_attribs->runOpts,
+      rv=g_spawn_async_with_pipes(rfm_curPath, v, child_attribs->env, G_SPAWN_DO_NOT_REAP_CHILD | G_SPAWN_SEARCH_PATH | child_attribs->runOpts,
 				  //本commit 是revert 3d53359fdb97498a895a0cec97e3076558908a02 消除冲突后的结果，注意上一行|child_attribs->runOpts 是保留3d53359fdb97498a895a0cec97e3076558908a02改动的
 
 				  GSpawnChildSetupFunc_setenv,child_attribs,
@@ -1232,7 +1231,7 @@ static gboolean g_spawn_wrapper_(GList *file_list, char *dest_path, RFM_ChildAtt
 	       GError *spawn_err = NULL;
 
 	       g_log(RFM_LOG_GSPAWN,G_LOG_LEVEL_DEBUG,"g_spawn_sync, workingdir:%s, argv:%s",rfm_curPath, argv);
-	       if (!g_spawn_sync(rfm_curPath, v, child_attribs->env? child_attribs->env : env_for_g_spawn,G_SPAWN_SEARCH_PATH|child_attribs->runOpts, GSpawnChildSetupFunc_setenv,child_attribs,(child_attribs->runOpts & G_SPAWN_STDOUT_TO_DEV_NULL)? NULL : &child_attribs->stdOut, &child_attribs->stdErr,&child_attribs->status,&spawn_err)){
+	       if (!g_spawn_sync(rfm_curPath, v, child_attribs->env, G_SPAWN_SEARCH_PATH|child_attribs->runOpts, GSpawnChildSetupFunc_setenv,child_attribs,(child_attribs->runOpts & G_SPAWN_STDOUT_TO_DEV_NULL)? NULL : &child_attribs->stdOut, &child_attribs->stdErr,&child_attribs->status,&spawn_err)){
 	            g_warning("g_spawn_sync %s failed to execute: %s. Check command in config.h!", argv, spawn_err ? spawn_err->message : "Unknown error");
 	            if (spawn_err) g_error_free(spawn_err);
 	            free_child_attribs(child_attribs);
@@ -3410,15 +3409,15 @@ static void add_history_after_stdin_command_execution(GString * readlineResultSt
           g_string_free(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution,TRUE);
 }
 
-static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, int cmd_interpretor_index){
+static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, int cmd_interpretor_index, gchar** env){
     	      RFM_ChildAttribs *child_attribs = calloc(1,sizeof(RFM_ChildAttribs));
 	      // this child_attribs will be freed by g_spawn_wrapper call tree
 	      child_attribs->RunCmd = stdin_cmd_interpretors[cmd_interpretor_index].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str, TRUE);
 	      //child_attribs->runOpts = RFM_EXEC_NONE;
 	      child_attribs->spawn_async = TRUE;
+              child_attribs->env = env;
 	      g_spawn_wrapper_(NULL, NULL, child_attribs);
               g_debug("exec_stdin_command_in_new_VT(%s,%d)",readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,cmd_interpretor_index);
-	      g_strfreev(env_for_g_spawn);env_for_g_spawn=NULL;
 	      add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
 }
 
@@ -4163,7 +4162,8 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
         gboolean SearchResultAsInput=FALSE;
 	stdin_cmd_leading_space=FALSE;
         gboolean execCmdInNewVT=FALSE;//used by file_menu_exec, i.e., not from readline
-  
+        gchar **env_for_g_spawn_local = NULL;
+        
         gint len = strlen(readlineResult);
 	g_debug ("readline return length %u: %s", len, readlineResult);
         GString *readlineResultString = NULL;
@@ -4273,9 +4273,8 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 		}
 		if (ItemSelected==1){ //通过环境变量把当前选中的文件的数据(比如grepMatch列)传递给子进程,目前人为限制只有单选文件时起作用,因为多选文件时不同文件的同一列值可能不同
 		  if (execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT)){
-		    g_assert_null(env_for_g_spawn);
-		    env_for_g_spawn = g_get_environ();
-		    set_env_to_pass_into_child_process(&iter, &env_for_g_spawn); //正是因为这里对于 &iter 的使用，我们只能使用 stdin_cmd_selection_list, 而不能简单地使用filepath_lists_for_selection_on_view 
+		    env_for_g_spawn_local = g_get_environ();
+		    set_env_to_pass_into_child_process(&iter, &env_for_g_spawn_local); //正是因为这里对于 &iter 的使用，我们只能使用 stdin_cmd_selection_list, 而不能简单地使用filepath_lists_for_selection_on_view 
 		  }else{
 		    if (exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread) g_assert_null(env_for_g_spawn_used_by_exec_stdin_command);
 		    env_for_g_spawn_used_by_exec_stdin_command = g_get_environ();
@@ -4293,8 +4292,6 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 	      if (wordexp_retval==0 && parse_and_exec_stdin_builtin_command_in_gtk_thread(&parsed_msg, readlineResultString)){ //wordexp_retval 0 means success
 		readlineResultString=NULL; //since readlineInseperatethread function will check this, we must clear it here after cmd already been executed.
 #ifdef AiIntegration
-		//TODO: 这个env_for_g_spawn 要能参数化，而不是全局变量可能会好些，特别要是能纳入Child_Attribs
-		g_strfreev(env_for_g_spawn);env_for_g_spawn=NULL;
 		g_strfreev(env_for_g_spawn_used_by_exec_stdin_command);env_for_g_spawn_used_by_exec_stdin_command=NULL;
 		//读取一个用户输入readlineInSeperateThread 并执行，包括执行builtin cmd 我们就认为完成一个命令周期，上两行变量就都清空，不管此命令周期实际用的是哪个变量，反正g_strfreev(NULL)不报错
 #endif
@@ -4317,7 +4314,7 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 	  else if ((exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread || !from_stdin_readline) && !(execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT))) exec_stdin_command(readlineResultString, cmd_interpretor_index);
 	  
 	  if (from_stdin_readline && auto_execution_command_after_rfm_start==NULL) g_thread_join(readlineThread);//we won't have more than one readlineThread running at the same time since we join before new thread here
-	  if ((execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT)) && readlineResultString) exec_stdin_command_in_new_VT(readlineResultString, cmd_interpretor_index); // 在AI Mode下输入builtin cmd,如 help, 会因为是AI mode 一开始把 execStdinCmdInNewVT 设成true,所以这里加上 readlineResultString 非NULL判断
+	  if ((execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT)) && readlineResultString) exec_stdin_command_in_new_VT(readlineResultString, cmd_interpretor_index, env_for_g_spawn_local); // 在AI Mode下输入builtin cmd,如 help, 会因为是AI mode 一开始把 execStdinCmdInNewVT 设成true,所以这里加上 readlineResultString 非NULL判断
 
 	  if (from_stdin_readline && !SearchResultAsInput) readlineThread=g_thread_new("readline", readlineInSeperateThread, readlineResultString);
 	}
@@ -4923,7 +4920,7 @@ static int ProcessKeyValuePairInCmdOutputFromSearchResult(char *oneline, gboolea
    int cmd_interpretor_index = match_cmd_str_array_with_interpretors(cmdtemplate);
    char** cmd = stdin_cmd_interpretors[cmd_interpretor_index>=0 ? cmd_interpretor_index : current_stdin_cmd_interpretor].cmdTransformer(mailHeadCmd, FALSE);
 
-   if (!g_spawn_sync(rfm_curPath, cmd, env_for_g_spawn, G_SPAWN_SEARCH_PATH, NULL, NULL, &cmdOutput, &cmdError, NULL, &error)){
+   if (!g_spawn_sync(rfm_curPath, cmd, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, &cmdOutput, &cmdError, NULL, &error)){
      g_warning("error executing cmd %s, error:%s",mailHeadCmd, error==NULL?"":error->message);
      if (error) g_error_free(error);
    }else{
