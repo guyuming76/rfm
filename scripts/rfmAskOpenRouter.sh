@@ -2,7 +2,7 @@
 
 #gentoo上依赖 app-misc/jq
 
-set -x
+#set -x
 
 rfm_AI_MODEL_HOST_URL="$1"
 rfm_AI_MODEL_NAME="$2"
@@ -56,10 +56,10 @@ fi
 RESULT=$(echo "$RESPONSE" | jq -r $'
 if .error then
   "Error: " + (.error.message // .error | tostring)
-elif .choices and (.choices | length > 0) and .choices.message and .choices.message.content then
-  .choices.message.content
-elif .choices and (.choices | length > 0) and .choices.text then
-  .choices.text
+elif .choices and (.choices | length > 0) and .choices[0].message and .choices[0].message.content then
+  .choices[0].message.content
+elif .choices and (.choices | length > 0) and .choices[0].text then
+  .choices[0].text
 else
   .message // ("Error: Unexpected API response format: " + (tostring))
 end')
@@ -67,9 +67,6 @@ end')
 
 # Display the result
 echo "$RESULT"
-
-
-
 
 
 # 仅当成功时保存文件
@@ -83,9 +80,26 @@ if ! [[ "$RESULT" =~ ^Error: ]]; then
 ## 用户提示词 ##
 $PROMPT
 
-## 模型回复 ##
-$RESULT
+## 请求URL ##
+$rfm_AI_MODEL_HOST_URL
+
+## 模型名称 ##
+$rfm_AI_MODEL_NAME
+
+## 温度 ##
+$rfm_AI_MODEL_TEMPERATURE
+
+## 回复消息 ##
 EOF
 
+# 直接通过写回复json字符串遇到问题，改用下面方法追加
+echo '```' >> "$filename"
+# 然后将 $RESPONSE 的内容追加到文件，避免 heredoc 解析问题
+echo "$RESPONSE" >> "$filename"
+# 最后追加结束代码块的标记
+echo '```' >> "$filename"
+
+  echo
+  echo
   echo "回复已保存至: $filename" >&2
 fi
