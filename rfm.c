@@ -4914,14 +4914,19 @@ static int ProcessKeyValuePairInCmdOutputFromSearchResult(char *oneline, gboolea
    GError *error=NULL;
    gchar* cmdOutput=NULL;
    gchar* cmdError=NULL;
-   char mailHeadCmd[PATH_MAX];
-   snprintf(mailHeadCmd,PATH_MAX,cmdtemplate,oneline);
+   char SearchResultOnelineDocProcessingCmd[PATH_MAX];
+   
    int cmd_interpretor_index = match_cmd_str_array_with_interpretors(cmdtemplate);
-   char** cmd = stdin_cmd_interpretors[cmd_interpretor_index>=0 ? cmd_interpretor_index : current_stdin_cmd_interpretor].cmdTransformer(mailHeadCmd, FALSE);
+   if (cmd_interpretor_index>=0){//用户在config.h里定义的命令模板字符串数组，如果第0个字符串指定命令解释器，则第1个字符串指定命令模板; 否则，第0个字符串即是命令模板
+     snprintf(SearchResultOnelineDocProcessingCmd,PATH_MAX,cmdtemplate[1],oneline);
+   }else{
+     snprintf(SearchResultOnelineDocProcessingCmd,PATH_MAX,cmdtemplate[0],oneline);
+   }
+   char** cmd = stdin_cmd_interpretors[cmd_interpretor_index>=0 ? cmd_interpretor_index : current_stdin_cmd_interpretor].cmdTransformer(SearchResultOnelineDocProcessingCmd, FALSE);
 
-   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"ProcessKeyValuePairInCmdOutputFromSearchResult cmd:%s, MatchedCmdInterpretor:%d, current_stdin_cmd_interpretor %d",mailHeadCmd, cmd_interpretor_index, current_stdin_cmd_interpretor);
+   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"ProcessKeyValuePairInCmdOutputFromSearchResult cmd:%s, MatchedCmdInterpretor:%d, current_stdin_cmd_interpretor %d",SearchResultOnelineDocProcessingCmd, cmd_interpretor_index, current_stdin_cmd_interpretor);
    if (!g_spawn_sync(rfm_curPath, cmd, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, &cmdOutput, &cmdError, NULL, &error)){
-     g_warning("error executing cmd %s, error:%s",mailHeadCmd, error==NULL?"":error->message);
+     g_warning("error executing cmd %s, error:%s",SearchResultOnelineDocProcessingCmd, error==NULL?"":error->message);
      if (error) g_error_free(error);
    }else{
    
