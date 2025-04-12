@@ -259,7 +259,7 @@ static void g_spawn_wrapper_for_selected_fileList_(RFM_ChildAttribs *childAttrib
 /* instantiate childAttribs and call g_spawn_wrapper_ */
 /* caller should g_list_free(file_list), but usually not g_list_free_full, since the file char* is usually owned by rfm_fileattributes */
 /* callbackfuncUserData can be pointer of any type, but callbackfunc should take RFM_ChildAttribs* as input parameter, and retrieve callbackfuncUserData with (RFM_ChildAttribs *)->customCallbackUserData; */
-static gboolean g_spawn_wrapper(const char **action, GList *file_list, int run_opts, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData,gboolean output_read_by_program);
+static gboolean g_spawn_wrapper(const char **action, GList *file_list, int run_opts, gchar** env, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData,gboolean output_read_by_program);
 /* call build_cmd_vector to create the argv parameter for g_spawn_* */
 /* call different g_spawn_* functions based on child_attribs->spawn_async and child_attribs->runOpts */
 /* free child_attribs */
@@ -1259,7 +1259,7 @@ static gboolean g_spawn_wrapper_(GList *file_list, char *dest_path, RFM_ChildAtt
 }
 
 
-static gboolean g_spawn_wrapper(const char **action, GList *file_list, int run_opts, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData, gboolean output_read_by_program){
+static gboolean g_spawn_wrapper(const char **action, GList *file_list, int run_opts, gchar** env, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData, gboolean output_read_by_program){
   RFM_ChildAttribs *child_attribs=calloc(1,sizeof(RFM_ChildAttribs));
   child_attribs->customCallBackFunc=callbackfunc;
   child_attribs->customCallbackUserData=callbackfuncUserData;
@@ -1270,6 +1270,7 @@ static gboolean g_spawn_wrapper(const char **action, GList *file_list, int run_o
   child_attribs->spawn_async = async;
   child_attribs->name=g_strdup(action[0]);
   child_attribs->output_read_by_program=output_read_by_program;
+  child_attribs->env = env;
 	
   return g_spawn_wrapper_(file_list,dest_path,child_attribs);
 }
@@ -1450,7 +1451,7 @@ static gboolean mkThumb()
       gchar *thumb_path=g_build_filename(rfm_thumbDir, thumbData->thumb_name, NULL);
       GList * input_files=NULL;
       input_files=g_list_prepend(input_files, g_strdup(thumbData->path));
-      g_spawn_wrapper(thumbnailers[thumbData->t_idx].thumbCmd, input_files, G_SPAWN_STDOUT_TO_DEV_NULL, thumb_path, FALSE, load_thumbnail_as_asyn_callback,thumbData,FALSE);//当async参数设为TRUE的时候,运行多个ffmpeg实例,会产生很多g_warning的错误,包含ffmpeg运行的信息.在之前branch里mkThumb运行于gtk main thread 的时候,也能看到这些g_warning,但没看到对rfm本身造成啥问题.但现在mkThumb运行在单独线程里,会造成rfm 读取标准输入命令出错, 会不停显示新的命令提示符,有时直接就rfm退出了,我不知道为啥.这里async改为false,就没看到这个问题了.
+      g_spawn_wrapper(thumbnailers[thumbData->t_idx].thumbCmd, input_files, G_SPAWN_STDOUT_TO_DEV_NULL, NULL, thumb_path, FALSE, load_thumbnail_as_asyn_callback,thumbData,FALSE);//当async参数设为TRUE的时候,运行多个ffmpeg实例,会产生很多g_warning的错误,包含ffmpeg运行的信息.在之前branch里mkThumb运行于gtk main thread 的时候,也能看到这些g_warning,但没看到对rfm本身造成啥问题.但现在mkThumb运行在单独线程里,会造成rfm 读取标准输入命令出错, 会不停显示新的命令提示符,有时直接就rfm退出了,我不知道为啥.这里async改为false,就没看到这个问题了.
       g_list_free_full(input_files, (GDestroyNotify)g_free);
       g_free(thumb_path);
    }
@@ -1780,7 +1781,7 @@ static void load_latest_git_log_for_store_row(GtkTreeIter *iter){
 	file_list = g_list_append(file_list,g_value_get_string(&full_path));
 	GtkTreeIter **iterPointerPointer=calloc(1, sizeof(GtkTreeIter**));//This will be passed into childAttribs, which will be freed in g_spawn_wrapper. but we shall not free iter, so i use pointer to pointer here.
 	*iterPointerPointer=iter;
-	if(!g_spawn_wrapper(git_latest_log_cmd, file_list, G_SPAWN_DEFAULT ,NULL, FALSE, readLatestGitLogForFileAndUpdateStore, iterPointerPointer,TRUE)){
+	if(!g_spawn_wrapper(git_latest_log_cmd, file_list, G_SPAWN_DEFAULT, NULL, NULL, FALSE, readLatestGitLogForFileAndUpdateStore, iterPointerPointer,TRUE)){
 	  //if false returned here, g_warning would have been called in g_spawn_wrapper, so i write no log entry here
 	}
 	g_list_free(file_list);
@@ -1825,7 +1826,7 @@ static void load_ExtColumns_and_iconview_markup_tooltip(RFM_FileAttributes* file
 	    if (TREEVIEW_COLUMNS[i].ValueCmd!=NULL){
               gchar* ExtColumn_cmd = g_strdup_printf(TREEVIEW_COLUMNS[i].ValueCmd, fileAttributes->path);
 	      gchar* ExtColumn_cmd_template[] = {"/bin/bash", "-c", ExtColumn_cmd, NULL};
-	      g_spawn_wrapper(ExtColumn_cmd_template, NULL, G_SPAWN_DEFAULT, NULL, FALSE, Update_Store_ExtColumns, &cell, TRUE);
+	      g_spawn_wrapper(ExtColumn_cmd_template, NULL, G_SPAWN_DEFAULT, NULL, NULL, FALSE, Update_Store_ExtColumns, &cell, TRUE);
 	    }else if (TREEVIEW_COLUMNS[i].ValueFunc==getExtColumnValueFromHashTable){
 	      gtk_list_store_set(store,cell->iter, cell->store_column, TREEVIEW_COLUMNS[i].ValueFunc(fileAttributes->id,TREEVIEW_COLUMNS[i].enumCol-COL_Ext1), -1);
 	    }else if (TREEVIEW_COLUMNS[i].ValueFunc!=NULL){
@@ -2343,7 +2344,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
   }
 #ifdef GitIntegration
    if ((SearchResultViewInsteadOfDirectoryView^1) && curPath_is_git_repo)
-     g_spawn_wrapper(git_current_branch_cmd, NULL, G_SPAWN_DEFAULT, NULL, TRUE, set_window_title_with_git_branch_and_sort_view_with_git_status, NULL, TRUE);
+     g_spawn_wrapper(git_current_branch_cmd, NULL, G_SPAWN_DEFAULT, NULL, NULL, TRUE, set_window_title_with_git_branch_and_sort_view_with_git_status, NULL, TRUE);
    else set_Titles(title);
 #else
    set_Titles(title);
@@ -2430,9 +2431,9 @@ static void set_rfm_curPath_internal(gchar* path){
 	 chdir(rfm_curPath);//TODO: i don't know whether we really need this
 
 #ifdef GitIntegration
-	 g_spawn_wrapper(git_inside_work_tree_cmd, NULL, G_SPAWN_DEFAULT, NULL, FALSE, set_curPath_is_git_repo, NULL,TRUE);
+	 g_spawn_wrapper(git_inside_work_tree_cmd, NULL, G_SPAWN_DEFAULT, NULL, NULL, FALSE, set_curPath_is_git_repo, NULL,TRUE);
 #endif
-
+ 
          //g_setenv("PWD", rfm_curPath, 1);
 	 //TODO: i am not sure wether i shold set PWD env value here too, and remove the builtin command setpwd
    //when we run commands such as echo $PWD, we spawn child process with working directory rfm_curPath, so, even we do not set $PWD, we get result as expected with this kind of commands.
@@ -2582,10 +2583,9 @@ static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointe
       }
 
       if (index_of_default_file_activation_action_based_on_mime_or_searchresultType != -1){
-	gchar ** env_for_g_spawn_local = g_get_environ(); //局部变量，省得全局变量使用太多，差错太费脑.TODO:用childattribs->env替代掉这个局部变量
+	gchar ** env_for_g_spawn_local = g_get_environ();//这个传入child_attribs->env 后在 free_childattribs 里释放
 	set_env_to_pass_into_child_process(&iter,&env_for_g_spawn_local);
-	g_spawn_wrapper(run_actions[index_of_default_file_activation_action_based_on_mime_or_searchresultType].runCmd, activated_single_file_list, G_SPAWN_DEFAULT, NULL,TRUE,NULL,NULL,FALSE);
-	g_strfreev(env_for_g_spawn_local);
+	g_spawn_wrapper(run_actions[index_of_default_file_activation_action_based_on_mime_or_searchresultType].runCmd, activated_single_file_list, G_SPAWN_DEFAULT, env_for_g_spawn_local, NULL,TRUE,NULL,NULL,FALSE);
       }else {
          msg=g_strdup_printf("No default file activation action defined for mime type:\n %s/%s\n", fileAttributes->mime_root, fileAttributes->mime_sub_type);
          show_msgbox(msg, "Run Action", GTK_MESSAGE_INFO);
@@ -5380,7 +5380,7 @@ static gboolean compile_local_extension() {
     ending_parameters_for_compile_cmd=g_list_prepend(ending_parameters_for_compile_cmd, g_strdup(local_so_path));
     ending_parameters_for_compile_cmd=g_list_append(ending_parameters_for_compile_cmd, hash_define);
     ending_parameters_for_compile_cmd=g_list_append(ending_parameters_for_compile_cmd, g_strdup(local_c_path));
-    success = g_spawn_wrapper((gchar **)rfm_local_c_compile_cmd, ending_parameters_for_compile_cmd, G_SPAWN_SEARCH_PATH, NULL, FALSE, NULL, NULL, FALSE);
+    success = g_spawn_wrapper((gchar **)rfm_local_c_compile_cmd, ending_parameters_for_compile_cmd, G_SPAWN_SEARCH_PATH, NULL, NULL, FALSE, NULL, NULL, FALSE);
     g_list_free_full(ending_parameters_for_compile_cmd,(GDestroyNotify)g_free);
     return success;
 }
