@@ -4187,33 +4187,40 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 	      }
 	    }
 
-#ifdef AiIntegration
-            // NEW: Check for 'b>' prefix when in AI mode
-            gboolean run_as_bash_in_ai_mode = FALSE;
-            if (from_stdin_readline && current_stdin_cmd_interpretor == stdin_cmd_interpretor_index_for_AI && g_str_has_prefix(readlineResult, stdin_cmd_interpretors[0].activationKey)) {
-                int prefix_len = strlen(stdin_cmd_interpretors[0].activationKey);
-                memmove(readlineResult, readlineResult + prefix_len, strlen(readlineResult) - prefix_len + 1); // Shift string left
-                len = strlen(readlineResult); // Update length
-                run_as_bash_in_ai_mode = TRUE;
-                effective_cmd_interpretor_index = 0; // Set to Bash interpreter index
-                g_debug("Detected 'b>' prefix in AI mode. Will run as Bash command: %s", readlineResult);
+            // Check if the command starts with an interpreter prefix to override execution
+            gboolean prefix_found = FALSE;
+            if (from_stdin_readline) { // Only apply prefix override for user input from readline
+                for (guint i = 0; i < G_N_ELEMENTS(stdin_cmd_interpretors); i++) {
+                    int prefix_len = strlen(stdin_cmd_interpretors[i].activationKey);
+                    // Check if it has the prefix AND is longer than just the prefix itself
+                    if (g_str_has_prefix(readlineResult, stdin_cmd_interpretors[i].activationKey) && len > prefix_len) {
+                        memmove(readlineResult, readlineResult + prefix_len, len - prefix_len + 1); // Shift string left
+                        len = strlen(readlineResult); // Update length
+                        effective_cmd_interpretor_index = i; // Set effective interpreter for this command
+                        prefix_found = TRUE;
+                        g_debug("Detected '%s' prefix. Will run as %s command: %s",
+                                stdin_cmd_interpretors[i].activationKey, stdin_cmd_interpretors[i].name, readlineResult);
+                        break; // Found the prefix, stop checking
+                    }
+                }
             }
 
             //在AI提示符状态下，期望builtin命令能够执行，而一条重要的buildin命令cd(带空格)执行cmd_cd,跳转到查询结果窗口当前选中文件的parent目录，就依赖stdin_cmd_ending_space, 所以把第一次的stdin_cmd_ending_space 判断提前否则如果cmd_interpretor_index ！= stdin_cmd_interpretor_index_for_AI，就直接被跳过了
             stdin_cmd_ending_space = (len>=1 && readlineResult[len-1]==' ');
 	    while (len>=1 && readlineResult[len-1]==' ') { readlineResult[len-1]='\0'; len--; } //remove ending space
 
-            // Check for AI model activation keys (only if not running as bash in AI mode)
-            if (!run_as_bash_in_ai_mode) {
-	    for(guint i=0;i<G_N_ELEMENTS(AI_models);i++){
-	      if (g_strcmp0(readlineResult, AI_models[i].activationKey)==0){
-		g_assert(stdin_cmd_interpretor_index_for_AI>=0);//能运行到这一步，上面一个for循环肯定跑完了，这个值肯定被设置过了
-		current_stdin_cmd_interpretor = stdin_cmd_interpretor_index_for_AI;
-		current_AI_model_index = i;
-		goto switchToReadlineThread;
-	      }
-	    }
-            } // end if (!run_as_bash_in_ai_mode)
+#ifdef AiIntegration
+            // Check for AI model activation keys (only if an interpreter prefix wasn't found)
+            if (!prefix_found) {
+                for(guint i=0;i<G_N_ELEMENTS(AI_models);i++){
+                  if (g_strcmp0(readlineResult, AI_models[i].activationKey)==0){
+                    g_assert(stdin_cmd_interpretor_index_for_AI>=0);//能运行到这一步，上面一个for循环肯定跑完了，这个值肯定被设置过了
+                    current_stdin_cmd_interpretor = stdin_cmd_interpretor_index_for_AI;
+                    current_AI_model_index = i;
+                    goto switchToReadlineThread;
+                  }
+                }
+            }
 #endif
 
 	    //正则表达式替换发生在命令解释器识别之后
