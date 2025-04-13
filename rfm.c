@@ -4175,11 +4175,6 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
             }else
                 lastEnter=now_time;
 	}else{
-	    for (guint i=0;i<G_N_ELEMENTS(regex_rules);i++){
-	      if (regex_rules[i].pattern_compiled && str_regex_replace(&readlineResult, regex_rules[i].pattern_compiled, regex_rules[i].replacement) && regex_rules[i].action) (regex_rules[i].action)();
-	    }
-	    len = strlen(readlineResult);
-	    
             for(guint i=0;i<G_N_ELEMENTS(stdin_cmd_interpretors);i++){
 #ifdef AiIntegration
 	      if (strcmp(stdin_cmd_interpretors[i].name, AI_MODEL_AS_CMD_INTERPRETER)==0) stdin_cmd_interpretor_index_for_AI = i; //我们需要一个方法获取AI_models静态定义里面的对应AI的index,0表示默认cmd_interpretor比较合适，最大的数未来也不一定表示AI,用户也可能随意调整位置，不如就在这里动态设置，省得要用的时候查表
@@ -4203,7 +4198,15 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 		goto switchToReadlineThread;
 	      }
 	    }
+#endif
 
+	    //正则表达式替换发生在命令解释器识别之后
+	    for (guint i=0;i<G_N_ELEMENTS(regex_rules);i++){
+	      if (regex_rules[i].pattern_compiled && str_regex_replace(&readlineResult, regex_rules[i].pattern_compiled, regex_rules[i].replacement) && regex_rules[i].action) (regex_rules[i].action)();
+	    }
+	    len = strlen(readlineResult);
+
+#ifdef AiIntegration
 	    if (cmd_interpretor_index == stdin_cmd_interpretor_index_for_AI){ //注意这里是cmd_interpretor_index 而不是current_stdin_cmd_interpretor.
 	      if (from_stdin_readline) execStdinCmdInNewVT = AI_models[current_AI_model_index].InNewTerm;
 	      else execCmdInNewVT = AI_models[current_AI_model_index].InNewTerm;
