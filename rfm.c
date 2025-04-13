@@ -152,6 +152,7 @@ static char selected_filename_placeholder_in_space[34];       //" %s "  by defau
 static char selected_filename_placeholder_in_quotation[34];   //"'%s'"  by default
 static gchar** env_for_g_spawn_used_by_exec_stdin_command=NULL;
 static uint current_stdin_cmd_interpretor = 0;
+static int effective_cmd_interpretor_index = 0; //keep the init value the same as that of current_stdin_cmd_interpretor so that these two would be same for the first run of readlineInseperatethread
 static char cmd_to_set_terminal_title[PATH_MAX];
 static gboolean exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread = FALSE;
 static gboolean execStdinCmdInNewVT = FALSE;
@@ -3553,7 +3554,7 @@ static void writeSearchResultIntoFD_in_gtk_thread(gint *fd){
 
 static void readlineInSeperateThread(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution) {
   g_debug("readlineInSeperateThread");
-  if (!exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread && !execStdinCmdInNewVT) exec_stdin_command(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, current_stdin_cmd_interpretor); //因为这里exec_stdin_command 要通过 readlineInseperatethread 调用,添加一个参数ghcar **env不容易，所以保留了全局变量 env_for_g_spawn_used_by_exec_stdin_command
+  if (!exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread && !execStdinCmdInNewVT) exec_stdin_command(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, effective_cmd_interpretor_index); //因为这里exec_stdin_command 要通过 readlineInseperatethread 调用,添加一个参数ghcar **env不容易，所以保留了全局变量 env_for_g_spawn_used_by_exec_stdin_command
 
   execStdinCmdInNewVT = FALSE;
   
@@ -4163,7 +4164,7 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 	stdin_cmd_leading_space=FALSE;
         gboolean execCmdInNewVT=FALSE;//used by file_menu_exec, i.e., not from readline
         gchar **env_for_g_spawn_local = NULL;
-        int effective_cmd_interpretor_index = cmd_interpretor_index; // Use this for actual execution
+        effective_cmd_interpretor_index = cmd_interpretor_index; // Use this for actual execution
 
         gint len = strlen(readlineResult);
 	g_debug ("readline return length %u: %s", len, readlineResult);
