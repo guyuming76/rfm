@@ -4163,7 +4163,8 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 	stdin_cmd_leading_space=FALSE;
         gboolean execCmdInNewVT=FALSE;//used by file_menu_exec, i.e., not from readline
         gchar **env_for_g_spawn_local = NULL;
-        
+        int effective_cmd_interpretor_index = cmd_interpretor_index; // Use this for actual execution
+
         gint len = strlen(readlineResult);
 	g_debug ("readline return length %u: %s", len, readlineResult);
         GString *readlineResultString = NULL;
@@ -4185,11 +4186,24 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 	      }
 	    }
 
+#ifdef AiIntegration
+            // NEW: Check for 'b>' prefix when in AI mode
+            gboolean run_as_bash_in_ai_mode = FALSE;
+            if (from_stdin_readline && current_stdin_cmd_interpretor == stdin_cmd_interpretor_index_for_AI && g_str_has_prefix(readlineResult, stdin_cmd_interpretors[0].activationKey)) {
+                int prefix_len = strlen(stdin_cmd_interpretors[0].activationKey);
+                memmove(readlineResult, readlineResult + prefix_len, strlen(readlineResult) - prefix_len + 1); // Shift string left
+                len = strlen(readlineResult); // Update length
+                run_as_bash_in_ai_mode = TRUE;
+                effective_cmd_interpretor_index = 0; // Set to Bash interpreter index
+                g_debug("Detected 'b>' prefix in AI mode. Will run as Bash command: %s", readlineResult);
+            }
+
             //在AI提示符状态下，期望builtin命令能够执行，而一条重要的buildin命令cd(带空格)执行cmd_cd,跳转到查询结果窗口当前选中文件的parent目录，就依赖stdin_cmd_ending_space, 所以把第一次的stdin_cmd_ending_space 判断提前否则如果cmd_interpretor_index ！= stdin_cmd_interpretor_index_for_AI，就直接被跳过了
             stdin_cmd_ending_space = (len>=1 && readlineResult[len-1]==' ');
 	    while (len>=1 && readlineResult[len-1]==' ') { readlineResult[len-1]='\0'; len--; } //remove ending space
 
-#ifdef AiIntegration
+            // Check for AI model activation keys (only if not running as bash in AI mode)
+            if (!run_as_bash_in_ai_mode) {
 	    for(guint i=0;i<G_N_ELEMENTS(AI_models);i++){
 	      if (g_strcmp0(readlineResult, AI_models[i].activationKey)==0){
 		g_assert(stdin_cmd_interpretor_index_for_AI>=0);//能运行到这一步，上面一个for循环肯定跑完了，这个值肯定被设置过了
@@ -4198,6 +4212,7 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 		goto switchToReadlineThread;
 	      }
 	    }
+            } // end if (!run_as_bash_in_ai_mode)
 #endif
 
 	    //正则表达式替换发生在命令解释器识别之后
@@ -4207,7 +4222,8 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 	    len = strlen(readlineResult);
 
 #ifdef AiIntegration
-	    if (cmd_interpretor_index == stdin_cmd_interpretor_index_for_AI){ //注意这里是cmd_interpretor_index 而不是current_stdin_cmd_interpretor.
+	    // Use effective_cmd_interpretor_index here
+	    if (effective_cmd_interpretor_index == stdin_cmd_interpretor_index_for_AI){
 	      if (from_stdin_readline) execStdinCmdInNewVT = AI_models[current_AI_model_index].InNewTerm;
 	      else execCmdInNewVT = AI_models[current_AI_model_index].InNewTerm;
 	    }else{
@@ -4309,15 +4325,18 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 
 	} //end if (len == 0)
  switchToReadlineThread:
-        g_free (readlineResult);
+        g_free (readlineResult); // Free the original buffer
 
 	if(startWithVT() || auto_execution_command_after_rfm_start!=NULL){
-	  if (SearchResultAsInput) exec_stdin_command_with_SearchResultAsInput(readlineResultString, from_stdin_readline, cmd_interpretor_index);
-	  else if ((exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread || !from_stdin_readline) && !(execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT))) exec_stdin_command(readlineResultString, cmd_interpretor_index);
-	  
-	  if (from_stdin_readline && auto_execution_command_after_rfm_start==NULL) g_thread_join(readlineThread);//we won't have more than one readlineThread running at the same time since we join before new thread here
-	  if ((execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT)) && readlineResultString) exec_stdin_command_in_new_VT(readlineResultString, cmd_interpretor_index, env_for_g_spawn_local); // 在AI Mode下输入builtin cmd,如 help, 会因为是AI mode 一开始把 execStdinCmdInNewVT 设成true,所以这里加上 readlineResultString 非NULL判断
+          // Use effective_cmd_interpretor_index for execution calls
+	  if (SearchResultAsInput) exec_stdin_command_with_SearchResultAsInput(readlineResultString, from_stdin_readline, effective_cmd_interpretor_index);
+	  else if ((exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread || !from_stdin_readline) && !(execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT))) exec_stdin_command(readlineResultString, effective_cmd_interpretor_index);
 
+	  if (from_stdin_readline && auto_execution_command_after_rfm_start==NULL) g_thread_join(readlineThread);//we won't have more than one readlineThread running at the same time since we join before new thread here
+	  if ((execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT)) && readlineResultString) exec_stdin_command_in_new_VT(readlineResultString, effective_cmd_interpretor_index, env_for_g_spawn_local); // 在AI Mode下输入builtin cmd,如 help, 会因为是AI mode 一开始把 execStdinCmdInNewVT 设成true,所以这里加上 readlineResultString 非NULL判断
+
+          // Pass the original readlineResultString (potentially NULL if handled by builtin) to the next thread
+          // The next thread will use the global current_stdin_cmd_interpretor for its prompt
 	  if (from_stdin_readline && !SearchResultAsInput) readlineThread=g_thread_new("readline", readlineInSeperateThread, readlineResultString); //要是能在这里再传入一个 gchar** env 参数，就可以把env_for_g_spawn_used_by_exec_stdin_command 全局变量消灭掉
 	}
 }
