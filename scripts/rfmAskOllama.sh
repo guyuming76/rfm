@@ -4,7 +4,7 @@
 #deepseek第一次给的回答用grep,sed,awk处理json,比较难读，但提到jq工具
 #jq这样的JSON处理工具， 简单介绍下，使用这个工具改写下前面的例子怎么样？
 
-#gentoo上依赖 app-misc/jq
+#gentoo上依赖 app-misc/jq sys-apps/bat
 
 rfm_AI_MODEL_HOST_URL="$1"
 rfm_AI_MODEL_NAME="$2"
@@ -40,9 +40,7 @@ result=$(echo "$response" | jq -r '
   end')
 
 # 显示结果 渲染markdown
-# 依赖 gentoo 依赖 dev-python/rich 或 pip install rich
-# echo "from rich.markdown\n    import Markdown print(Markdown(r'''$result'''))" | python
-echo "$result"
+echo "$result" | bat -p --language=md
 
 # 仅当成功时保存文件
 if ! [[ "$result" =~ ^错误: ]]; then
@@ -52,13 +50,20 @@ if ! [[ "$result" =~ ^错误: ]]; then
   filename="rfmAI_${sanitized_model}___${timestamp}.md"  # 使用清理后的名称
 
   cat <<EOF > "$filename"
-## 用户提示词 ##
+# 用户提示词 #
 $prompt
 
-## 模型回复 ##
+# 模型名称 #
+$rfm_AI_MODEL_NAME
+
+# 温度 #
+$rfm_AI_MODEL_TEMPERATURE
+
+# 模型回复内容 #
 $result
 EOF
-
+  echo
+  echo
   echo "回复已保存至: $filename" >&2
 fi
 

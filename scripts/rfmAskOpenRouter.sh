@@ -1,6 +1,8 @@
 #!/bin/bash
 
-#gentoo上依赖 app-misc/jq
+#gentoo上依赖:
+	#app-misc/jq  生成和解析json
+	#sys-apps/bat 语法高亮显示markdown
 
 #set -x
 
@@ -66,7 +68,7 @@ end')
 
 
 # Display the result
-echo "$RESULT"
+echo "$RESULT" | bat -p --language=md
 
 
 # 仅当成功时保存文件
@@ -77,27 +79,29 @@ if ! [[ "$RESULT" =~ ^Error: ]]; then
   filename="rfmAI_${sanitized_model}___${timestamp}.md"  # 使用清理后的名称
 
   cat <<EOF > "$filename"
-## 用户提示词 ##
+# 用户提示词 #
 $PROMPT
 
-## 请求URL ##
+# 请求URL #
 $rfm_AI_MODEL_HOST_URL
 
-## 模型名称 ##
+# 模型名称 #
 $rfm_AI_MODEL_NAME
 
-## 温度 ##
+# 温度 #
 $rfm_AI_MODEL_TEMPERATURE
 
-## 回复消息 ##
+# 模型回复内容 #
+$RESULT
 EOF
 
+
 # 直接通过写回复json字符串遇到问题，改用下面方法追加
-echo '```' >> "$filename"
+#echo '```' >> "$filename"
 # 然后将 $RESPONSE 的内容追加到文件，避免 heredoc 解析问题
-echo "$RESPONSE" >> "$filename"
+#echo "$RESPONSE" >> "$filename"
 # 最后追加结束代码块的标记
-echo '```' >> "$filename"
+#echo '```' >> "$filename"
 
   echo
   echo
