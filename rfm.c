@@ -3418,7 +3418,7 @@ static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPrevi
 	      child_attribs->spawn_async = TRUE;
               child_attribs->env = env;
 	      g_spawn_wrapper_(NULL, NULL, child_attribs);
-              g_debug("exec_stdin_command_in_new_VT(%s,%d)",readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,cmd_interpretor_index);
+              g_debug("exec_stdin_command_in_new_VT(%s,cmd_interpretor_index:%d)",readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,cmd_interpretor_index);
 	      add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
 }
 
