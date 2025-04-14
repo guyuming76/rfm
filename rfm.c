@@ -4178,22 +4178,24 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
                 lastEnter=now_time;
 	}else{
             for(guint i=0;i<G_N_ELEMENTS(stdin_cmd_interpretors);i++){
-#ifdef AiIntegration
-	      if (strcmp(stdin_cmd_interpretors[i].name, AI_MODEL_AS_CMD_INTERPRETER)==0) stdin_cmd_interpretor_index_for_AI = i; //我们需要一个方法获取AI_models静态定义里面的对应AI的index,0表示默认cmd_interpretor比较合适，最大的数未来也不一定表示AI,用户也可能随意调整位置，不如就在这里动态设置，省得要用的时候查表
-#endif
-	      if (g_strcmp0(readlineResult, stdin_cmd_interpretors[i].activationKey)==0){
-		current_stdin_cmd_interpretor = i;
-		goto switchToReadlineThread;//如果当前输入命令是选择命令解释器,选择完后就直接进入一轮命令读取,无需再对当前输入命令进一步处理
-	      }
+
+
 	    }
 
             // Check if the command starts with an interpreter prefix to override execution
             gboolean prefix_found = FALSE;
-            if (from_stdin_readline) { // Only apply prefix override for user input from readline
-                for (guint i = 0; i < G_N_ELEMENTS(stdin_cmd_interpretors); i++) {
-                    int prefix_len = strlen(stdin_cmd_interpretors[i].activationKey);
+            int prefix_len;
+            for (guint i = 0; i < G_N_ELEMENTS(stdin_cmd_interpretors); i++) {
+#ifdef AiIntegration
+	            if (strcmp(stdin_cmd_interpretors[i].name, AI_MODEL_AS_CMD_INTERPRETER)==0) stdin_cmd_interpretor_index_for_AI = i; //我们需要一个方法获取AI_models静态定义里面的对应AI的index,0表示默认cmd_interpretor比较合适，最大的数未来也不一定表示AI,用户也可能随意调整位置，不如就在这里动态设置，省得要用的时候查表
+#endif
+                    prefix_len = strlen(stdin_cmd_interpretors[i].activationKey);
+	            if (g_strcmp0(readlineResult, stdin_cmd_interpretors[i].activationKey)==0){
+		       current_stdin_cmd_interpretor = i;
+		       goto switchToReadlineThread;//如果当前输入命令是选择命令解释器,选择完后就直接进入一轮命令读取,无需再对当前输入命令进一步处理
+		    
                     // Check if it has the prefix AND is longer than just the prefix itself
-                    if (g_str_has_prefix(readlineResult, stdin_cmd_interpretors[i].activationKey) && len > prefix_len) {
+                    }else if (g_str_has_prefix(readlineResult, stdin_cmd_interpretors[i].activationKey) && len > prefix_len) {
                         memmove(readlineResult, readlineResult + prefix_len, len - prefix_len + 1); // Shift string left
                         len = strlen(readlineResult); // Update length
                         effective_cmd_interpretor_index = i; // Set effective interpreter for this command
@@ -4202,7 +4204,6 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
                                 stdin_cmd_interpretors[i].activationKey, stdin_cmd_interpretors[i].name, readlineResult);
                         break; // Found the prefix, stop checking
                     }
-                }
             }
 
             //在AI提示符状态下，期望builtin命令能够执行，而一条重要的buildin命令cd(带空格)执行cmd_cd,跳转到查询结果窗口当前选中文件的parent目录，就依赖stdin_cmd_ending_space, 所以把第一次的stdin_cmd_ending_space 判断提前否则如果cmd_interpretor_index ！= stdin_cmd_interpretor_index_for_AI，就直接被跳过了
@@ -4212,13 +4213,22 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 #ifdef AiIntegration
             // Check for AI model activation keys (only if an interpreter prefix wasn't found)
             if (!prefix_found) {
-                for(guint i=0;i<G_N_ELEMENTS(AI_models);i++){
+              for(guint i=0;i<G_N_ELEMENTS(AI_models);i++){
+		  prefix_len = strlen(AI_models[i].activationKey);
+		  g_assert(stdin_cmd_interpretor_index_for_AI>=0);//能运行到这一步，上面一个for循环肯定跑完了，这个值肯定被设置过了
                   if (g_strcmp0(readlineResult, AI_models[i].activationKey)==0){
-                    g_assert(stdin_cmd_interpretor_index_for_AI>=0);//能运行到这一步，上面一个for循环肯定跑完了，这个值肯定被设置过了
                     current_stdin_cmd_interpretor = stdin_cmd_interpretor_index_for_AI;
                     current_AI_model_index = i;
                     goto switchToReadlineThread;
-                  }
+                  }else if (g_str_has_prefix(readlineResult, AI_models[i].activationKey)){
+                        memmove(readlineResult, readlineResult + prefix_len, len - prefix_len + 1); // Shift string left
+                        len = strlen(readlineResult); // Update length
+                        effective_cmd_interpretor_index = stdin_cmd_interpretor_index_for_AI; // Set effective interpreter for this command
+                        prefix_found = TRUE;
+                        g_debug("Detected '%s' prefix. Will run as %s , AI_model %s, command: %s",
+                                AI_models[i].activationKey, stdin_cmd_interpretors[effective_cmd_interpretor_index].name, AI_models[i].model_name, readlineResult);
+                        break; // Found the prefix, stop checking
+		  }
                 }
             }
 #endif
