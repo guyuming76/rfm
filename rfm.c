@@ -1813,6 +1813,7 @@ static void load_ExtColumns_and_iconview_markup_tooltip(RFM_FileAttributes* file
 	    if (TREEVIEW_COLUMNS[i].ValueCmd!=NULL){
               gchar* ExtColumn_cmd = g_strdup_printf(TREEVIEW_COLUMNS[i].ValueCmd, fileAttributes->path);
 	      gchar* ExtColumn_cmd_template[] = {"/bin/bash", "-c", ExtColumn_cmd, NULL};
+	      //TODO: 列表视图里自定义列的ValueCmd目前还只是用 bash 解析，将来也许可以考虑扩展成指定 cmd_interpretor , 比如用 AI 来执行
 	      g_spawn_wrapper(ExtColumn_cmd_template, NULL, G_SPAWN_DEFAULT, NULL, NULL, FALSE, Update_Store_ExtColumns, &cell, TRUE);
 	    }else if (TREEVIEW_COLUMNS[i].ValueFunc==getExtColumnValueFromHashTable){
 	      gtk_list_store_set(store,cell->iter, cell->store_column, TREEVIEW_COLUMNS[i].ValueFunc(fileAttributes->id,TREEVIEW_COLUMNS[i].enumCol-COL_Ext1), -1);
