@@ -24,11 +24,12 @@ response=$(curl -sS --fail-with-body "$rfm_AI_MODEL_HOST_URL" \
   -d "$(jq -n \
     --arg model "$rfm_AI_MODEL_NAME" \
     --arg prompt "$rfm_AI_MODEL_prompt" \
+    --argjson temp "$rfm_AI_MODEL_TEMPERATURE" \
     '{
       model: $model,
       prompt: $prompt,
       stream: false,
-      options: {temperature: 0.7}
+      options: {temperature: $temp}
     }')" 2>&1)  # 捕获标准错误和输出
 
 # 解析响应
@@ -51,7 +52,7 @@ if ! [[ "$result" =~ ^错误: ]]; then
 
   cat <<EOF > "$filename"
 # 用户提示词 #
-$prompt
+$rfm_AI_MODEL_prompt
 
 # 模型名称 #
 $rfm_AI_MODEL_NAME
