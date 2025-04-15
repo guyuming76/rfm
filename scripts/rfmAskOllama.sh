@@ -48,11 +48,14 @@ if ! [[ "$result" =~ ^错误: ]]; then
   # 清理模型名称中的非法字符（如冒号）
   sanitized_model=$(echo "$rfm_AI_MODEL_NAME" | sed 's/[:/\\*?<>|"]/_/g')  # 关键修改点
   timestamp=$(date +%Y%m%d_%H%M%S)
-  filename="rfmAI_${sanitized_model}___${timestamp}.md"  # 使用清理后的名称
+  filename="rfmAI_${sanitized_model}___${timestamp}.rfmAI.md"  # 使用清理后的名称
 
   cat <<EOF > "$filename"
 # 用户提示词 #
 $rfm_AI_MODEL_prompt
+
+# 模型回复内容 #
+$result
 
 # 模型名称 #
 $rfm_AI_MODEL_NAME
@@ -60,8 +63,6 @@ $rfm_AI_MODEL_NAME
 # 温度 #
 $rfm_AI_MODEL_TEMPERATURE
 
-# 模型回复内容 #
-$result
 EOF
   echo
   echo

@@ -308,38 +308,38 @@ static RFM_ToolButton tool_buttons[] = {
 
 static RFM_treeviewColumn treeviewColumns_init[] = {
 #ifdef GitIntegration
-  {"Git",                     COL_GIT_STATUS_STR,         TRUE,   NULL, show_gitColumns,      COL_GIT_STATUS_STR ,      NULL,            NULL,     "*",         "*",     FALSE,FALSE},
+  {"Git",                     COL_GIT_STATUS_STR,         TRUE,   NULL, show_gitColumns,      COL_GIT_STATUS_STR ,      NULL,            NULL,     "*",         "*",     FALSE,FALSE,NULL},
 #endif
-  {"Mode",                    COL_MODE_STR,               TRUE,   NULL, NULL,                 COL_MODE_STR,             NULL,            NULL,     "*",         "*",     FALSE,FALSE},
+  {"Mode",                    COL_MODE_STR,               TRUE,   NULL, NULL,                 COL_MODE_STR,             NULL,            NULL,     "*",         "*",     FALSE,FALSE,NULL},
   //  COL_DISPLAY_NAME,
-  {"FileName",                COL_FILENAME,               TRUE,   NULL, NULL,                 COL_FILENAME,             NULL,            NULL,     "*",         "*",     FALSE,FALSE},
+  {"FileName",                COL_FILENAME,               TRUE,   NULL, NULL,                 COL_FILENAME,             NULL,            NULL,     "*",         "*",     FALSE,FALSE,NULL},
 #ifdef GitIntegration
-  {"gitCommitID",             COL_GIT_COMMIT_ID,          FALSE,  NULL, show_gitColumns,      COL_GIT_COMMIT_MSG,       NULL,            NULL,     "*",         "*",     FALSE,FALSE},
-  {"gitCommitAuthor",         COL_GIT_AUTHOR,             FALSE,  NULL, show_gitColumns,      COL_GIT_COMMIT_MSG,       NULL,            NULL,     "*",         "*",     FALSE,FALSE},
-  {"gitCommitDate",           COL_GIT_COMMIT_DATE,        FALSE,  NULL, show_gitColumns,      COL_GIT_COMMIT_MSG,       NULL,            NULL,     "*",         "*",     FALSE,FALSE},
-  {"gitCommitMsg",            COL_GIT_COMMIT_MSG,         FALSE,  NULL, show_gitColumns,      COL_GIT_COMMIT_MSG,       NULL,            NULL,     "*",         "*",     FALSE,FALSE},
+  {"gitCommitID",             COL_GIT_COMMIT_ID,          FALSE,  NULL, show_gitColumns,      COL_GIT_COMMIT_MSG,       NULL,            NULL,     "*",         "*",     FALSE,FALSE,NULL},
+  {"gitCommitAuthor",         COL_GIT_AUTHOR,             FALSE,  NULL, show_gitColumns,      COL_GIT_COMMIT_MSG,       NULL,            NULL,     "*",         "*",     FALSE,FALSE,NULL},
+  {"gitCommitDate",           COL_GIT_COMMIT_DATE,        FALSE,  NULL, show_gitColumns,      COL_GIT_COMMIT_MSG,       NULL,            NULL,     "*",         "*",     FALSE,FALSE,NULL},
+  {"gitCommitMsg",            COL_GIT_COMMIT_MSG,         FALSE,  NULL, show_gitColumns,      COL_GIT_COMMIT_MSG,       NULL,            NULL,     "*",         "*",     FALSE,FALSE,NULL},
 #endif
   //  COL_FULL_PATH,
   //  COL_PIXBUF,
   //  COL_MTIME,
-  {"MTime",                   COL_MTIME_STR,              TRUE,   NULL, NULL,                 COL_MTIME_STR,            NULL,            NULL,     "*",         "*",    FALSE,FALSE},
-  {"Size",                    COL_SIZE,                   FALSE,  NULL, NULL,                 COL_SIZE,                 NULL,            NULL,     "*",         "*",    FALSE,FALSE},
-  {"HumanReadableSize",       COL_SIZE_DISPLAY,           TRUE,   NULL, NULL,                 COL_SIZE,                 NULL,            NULL,     "*",         "*",    FALSE,FALSE},
+  {"MTime",                   COL_MTIME_STR,              TRUE,   NULL, NULL,                 COL_MTIME_STR,            NULL,            NULL,     "*",         "*",    FALSE,FALSE,NULL},
+  {"Size",                    COL_SIZE,                   FALSE,  NULL, NULL,                 COL_SIZE,                 NULL,            NULL,     "*",         "*",    FALSE,FALSE,NULL},
+  {"HumanReadableSize",       COL_SIZE_DISPLAY,           TRUE,   NULL, NULL,                 COL_SIZE,                 NULL,            NULL,     "*",         "*",    FALSE,FALSE,NULL},
   // COL_ATTR,
-  {"Owner",                   COL_OWNER,                  TRUE,   NULL, NULL,                 COL_OWNER,                NULL,            NULL,     "*",         "*",    FALSE,FALSE},
-  {"Group",                   COL_GROUP,                  TRUE,   NULL, NULL,                 COL_GROUP,                NULL,            NULL,     "*",         "*",    FALSE,FALSE},
-  {"LinkTarget",              COL_LINK_TARGET,            TRUE,   NULL, NULL,                 COL_LINK_TARGET,          NULL,            NULL,     "*",         "*",    FALSE,FALSE},
-  {"MIME_root",               COL_MIME_ROOT,              TRUE,   NULL, NULL,                 COL_MIME_SORT,            NULL,            NULL,     "*",         "*",    FALSE,FALSE},
-  {"MIME_sub",                COL_MIME_SUB,               TRUE,   NULL, NULL,                 COL_MIME_SUB,             NULL,            NULL,     "*",         "*",    FALSE,FALSE},
+  {"Owner",                   COL_OWNER,                  TRUE,   NULL, NULL,                 COL_OWNER,                NULL,            NULL,     "*",         "*",    FALSE,FALSE,NULL},
+  {"Group",                   COL_GROUP,                  TRUE,   NULL, NULL,                 COL_GROUP,                NULL,            NULL,     "*",         "*",    FALSE,FALSE,NULL},
+  {"LinkTarget",              COL_LINK_TARGET,            TRUE,   NULL, NULL,                 COL_LINK_TARGET,          NULL,            NULL,     "*",         "*",    FALSE,FALSE,NULL},
+  {"MIME_root",               COL_MIME_ROOT,              TRUE,   NULL, NULL,                 COL_MIME_SORT,            NULL,            NULL,     "*",         "*",    FALSE,FALSE,NULL},
+  {"MIME_sub",                COL_MIME_SUB,               TRUE,   NULL, NULL,                 COL_MIME_SUB,             NULL,            NULL,     "*",         "*",    FALSE,FALSE,NULL},
   // COL_MIME_SORT, //mime root + sub for listview sort
-  {"ATime",                   COL_ATIME_STR,              FALSE,  NULL, NULL,                 COL_ATIME_STR,            NULL,            NULL,     "*",         "*",    FALSE,FALSE},
-  {"CTime",                   COL_CTIME_STR,              FALSE,  NULL, NULL,                 COL_CTIME_STR,            NULL,            NULL,     "*",         "*",    FALSE,FALSE},
-  {"ImageSize",               NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 getImageSize,    NULL,     "image",     "*",    FALSE,FALSE},
-  {"Comment",                 NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 getComment,      NULL,     "image",     "*",    FALSE,FALSE},
+  {"ATime",                   COL_ATIME_STR,              FALSE,  NULL, NULL,                 COL_ATIME_STR,            NULL,            NULL,     "*",         "*",    FALSE,FALSE,NULL},
+  {"CTime",                   COL_CTIME_STR,              FALSE,  NULL, NULL,                 COL_CTIME_STR,            NULL,            NULL,     "*",         "*",    FALSE,FALSE,NULL},
+  {"ImageSize",               NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 getImageSize,    NULL,     "image",     "*",    FALSE,FALSE,NULL},
+  {"Comment",                 NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 getComment,      NULL,     "image",     "*",    FALSE,FALSE,NULL},
 #ifdef AiIntegration && extractKeyValuePairFromMarkdown
-  {"AiPrompt",                NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 getAiPrompt,     NULL,     "text",      "markdown",FALSE,FALSE},
+  {"AiPrompt",                NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 getAiPrompt,     NULL,     "text",      "markdown",FALSE,FALSE,".rfmAI.md"},
 #endif
-  {"C1",                      NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 NULL,getExtColumnValueFromHashTable,"*","*",    FALSE,FALSE},
+  {"C1",                      NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 NULL,getExtColumnValueFromHashTable,"*","*",    FALSE,FALSE,NULL},
   //后面C2,C3,....在初始化时添加，注意C1 一定要是最后一个项, 虽然C1这一行放在这里有些奇怪，但如果放代码里初始化值，没有放这里静态数组里直观
 };
 

@@ -558,6 +558,7 @@ typedef struct {
   gchar* MIME_sub;
   gboolean iconview_markup;
   gboolean iconview_tooltip;
+  gchar *filenameSuffix;
 } RFM_treeviewColumn;
 
 static gchar* treeviewcolumn_init_order_sequence = NULL;
@@ -1804,6 +1805,8 @@ static void load_ExtColumns_and_iconview_markup_tooltip(RFM_FileAttributes* file
 	    ){
 	  //下面的if语句为啥不合并到上面的if,用&&连起来?
 	  if (g_strcmp0(TREEVIEW_COLUMNS[i].MIME_sub, "*") || g_strcmp0(TREEVIEW_COLUMNS[i].MIME_sub, fileAttributes->mime_sub_type)){ //treeviewColumns[i].MIME_sub 为*, 或者和当前文件相同
+	    if (TREEVIEW_COLUMNS[i].filenameSuffix && !g_str_has_suffix(fileAttributes->path, TREEVIEW_COLUMNS[i].filenameSuffix)) continue;//如果filenameSuffix不为NULL,则需匹配
+	    
 	    RFM_store_cell* cell=malloc(sizeof(RFM_store_cell));
 	    cell->iter = iter;
 	    cell->store_column = TREEVIEW_COLUMNS[i].enumCol;
@@ -1832,7 +1835,7 @@ static void load_ExtColumns_and_iconview_markup_tooltip(RFM_FileAttributes* file
 	      }
 	      if (cell->iconview_tooltip) gtk_list_store_set(store, cell->iter, COL_ICONVIEW_TOOLTIP, &enumColValue, -1);
 	    }
-	  }
+	  }//endif treeviewColumns[i].MIME_sub 为*, 或者和当前文件相同
 	}
       }  
 }
