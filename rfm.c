@@ -204,6 +204,10 @@ static void cmd_setenv(wordexp_t *parsed_msg, GString *readline_result_string_af
 static gchar shell_cmd_buffer[PATH_MAX]; //TODO: notice that this is shared single instance. But we only run shell command in sync mode now. so, no more than one thread will use this
 static gchar* stdin_cmd_template_bash[]={"/bin/bash","-i","-c", shell_cmd_buffer, NULL};
 static gchar* stdin_cmd_template_nu[]={"nu","-c", shell_cmd_buffer, NULL};
+static gchar* stdin_cmd_template_bash_newVT_nonHold[] = { "$RFM_TERM", "/bin/bash", "-i", "-c", shell_cmd_buffer, NULL };
+static gchar* stdin_cmd_template_bash_newVT_nonHold_with_e[] = { "$RFM_TERM", "$RFM_TERM_E" ,"/bin/bash", "-i", "-c", shell_cmd_buffer, NULL };
+static gchar* stdin_cmd_template_nu_newVT_nonHold[] = { "$RFM_TERM", "nu", "-i", "-c", shell_cmd_buffer, NULL };
+static gchar* stdin_cmd_template_nu_newVT_nonHold_with_e[] = { "$RFM_TERM", "$RFM_TERM_E" ,"nu", "-i", "-c", shell_cmd_buffer, NULL };
 static gchar** stdin_command_bash(gchar* user_input_cmd, gboolean inNewVT);
 static gchar** stdin_command_nu(gchar* user_input_cmd, gboolean inNewVT);
 
@@ -3361,7 +3365,9 @@ static gchar** stdin_command_bash(gchar* user_input_cmd, gboolean inNewVT) {
     //without set -o history and "bash -i", bash builtin history command will not show results.
     //Seems to be by design, but why? for the nu shell, nu -c "history" just works
     //without exit, rfm will quit after commands such as ls, nano, but commands such as echo 1 will work. if you change exit to sleep 20, even echo 1 will make rfm terminate. Are there any race condition here?
-    return stdin_cmd_template_bash_newVT_nonHold;
+    gchar * term_e = getenv("RFM_TERM_E");
+    if (term_e!=NULL && strcmp(term_e,"")!=0) return stdin_cmd_template_bash_newVT_nonHold_with_e;
+    else return stdin_cmd_template_bash_newVT_nonHold;
   }else {
     snprintf(shell_cmd_buffer,PATH_MAX,"set -o history; %s; exit \$? 2>/dev/null",user_input_cmd);
     return stdin_cmd_template_bash;
@@ -3370,7 +3376,8 @@ static gchar** stdin_command_bash(gchar* user_input_cmd, gboolean inNewVT) {
 static gchar** stdin_command_nu(gchar* user_input_cmd, gboolean inNewVT) {
 //TODO: add read -p into shell_cmd_buffer when inNewVT like stdin_command_bash
   snprintf(shell_cmd_buffer,PATH_MAX,"%s",user_input_cmd);
-  return inNewVT? stdin_cmd_template_nu_inNewVT_nonHold : stdin_cmd_template_nu;
+  gchar * term_e = getenv("RFM_TERM_E");
+  return inNewVT? ((term_e!=NULL && strcmp(term_e,"")!=0) ? stdin_cmd_template_nu_newVT_nonHold_with_e : stdin_cmd_template_nu_newVT_nonHold ) : stdin_cmd_template_nu;
 }
 
 

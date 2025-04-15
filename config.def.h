@@ -41,11 +41,6 @@ static char run_cmd_in_new_terminal_emulator_suffix[32] = { '&', 0 };
 #define RFM_LOG_READLINE "rfm-readline"
 
 
-static gchar* stdin_cmd_template_bash_newVT_nonHold[] = { "$RFM_TERM", "/bin/bash", "-i", "-c", shell_cmd_buffer, NULL };
-//if you use terminal emulator such as alacritty, which need the -e parameter, modify it here as follows:
-//static gchar* stdin_cmd_template_bash_newVT_nonHold[] = { "$RFM_TERM", "-e","/bin/bash", "-i", "-c", shell_cmd_buffer, NULL };
-static gchar* stdin_cmd_template_nu_inNewVT_nonHold[] = { "$RFM_TERM", "nu", "-c", shell_cmd_buffer, NULL };
-
 static gint RFM_THUMBNAIL_SIZE = 128; /* Maximum size for thumb dir normal is 128 */
 static gboolean UseTargetAddressWhenEnterSymbloicLinkForDir=TRUE;
 static gboolean auto_sort_entering_view = FALSE;
