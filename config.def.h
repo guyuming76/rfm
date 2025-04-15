@@ -301,6 +301,11 @@ static RFM_ToolButton tool_buttons[] = {
 #define getComment  "exiftool %s |grep '^Comment'|awk -F : '{print $2}'"
 //#define getComment  "exiv2 %s |grep \"^Exif comment\"|awk -F : '{print $2}'"
 
+#ifdef AiIntegration && extractKeyValuePairFromMarkdown
+	#define getAiPrompt "extractKeyValuePairFromMarkdown 0 %s 用户提示词 | grep '^用户提示词'| sed 's/^[^=]*=//'"
+        //返回 用户提示词=blablabal 字符串，匹配以任意字符开头直到第一个等号的部分（包括等号），然后将其替换为空。
+#endif
+
 static RFM_treeviewColumn treeviewColumns_init[] = {
 #ifdef GitIntegration
   {"Git",                     COL_GIT_STATUS_STR,         TRUE,   NULL, show_gitColumns,      COL_GIT_STATUS_STR ,      NULL,            NULL,     "*",         "*",     FALSE,FALSE},
@@ -331,6 +336,9 @@ static RFM_treeviewColumn treeviewColumns_init[] = {
   {"CTime",                   COL_CTIME_STR,              FALSE,  NULL, NULL,                 COL_CTIME_STR,            NULL,            NULL,     "*",         "*",    FALSE,FALSE},
   {"ImageSize",               NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 getImageSize,    NULL,     "image",     "*",    FALSE,FALSE},
   {"Comment",                 NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 getComment,      NULL,     "image",     "*",    FALSE,FALSE},
+#ifdef AiIntegration && extractKeyValuePairFromMarkdown
+  {"AiPrompt",                NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 getAiPrompt,     NULL,     "text",      "markdown",FALSE,FALSE},
+#endif
   {"C1",                      NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 NULL,getExtColumnValueFromHashTable,"*","*",    FALSE,FALSE},
   //后面C2,C3,....在初始化时添加，注意C1 一定要是最后一个项, 虽然C1这一行放在这里有些奇怪，但如果放代码里初始化值，没有放这里静态数组里直观
 };
