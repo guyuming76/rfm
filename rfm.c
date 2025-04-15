@@ -2780,7 +2780,7 @@ static void file_menu_exec(GtkMenuItem *menuitem, RFM_ChildAttribs *childAttribs
     gchar* cmd = strdup(childAttribs->RunCmd[1]);
     printf("\n%s\033[32m%s%s]\033[0m%s\n",InheritedPrompt, stdin_cmd_interpretors[cmd_interpretor_index].prompt,(ItemSelected==0)?"":"*",cmd);
     parse_and_exec_command_in_gtk_thread(cmd, FALSE, cmd_interpretor_index);
-  }g_spawn_wrapper_for_selected_fileList_(child_attribs);
+  }else g_spawn_wrapper_for_selected_fileList_(child_attribs);
 }
 
 //fileMenu.menu, fileMenu.menuItem[] 仅在首次运行时被初始化，但fileMenu.childattribs_for_menuItem[], fileMenu.menuItemSignalHandlers[]每次都会被重置刷新
