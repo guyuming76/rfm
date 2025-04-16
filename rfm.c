@@ -4309,6 +4309,7 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 
 	    if (stdin_cmd_selection_list!=NULL) {
 		listElement=g_list_first(stdin_cmd_selection_list);
+	        gchar *env_rfm_selected_files = NULL;
 		while(listElement!=NULL) {
 		  gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, listElement->data);
 		  gtk_tree_model_get (GTK_TREE_MODEL(store), &iter, COL_ATTR, &stdin_cmd_selection_fileAttributes, -1);
@@ -4320,9 +4321,17 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 		    if (strstr(stdin_cmd_selection_fileAttributes->path," ") != NULL) g_string_replace(readlineResultString, selected_filename_placeholder, selected_filename_placeholder_in_quotation, 1);
 		    g_string_replace(readlineResultString, selected_filename_placeholder,stdin_cmd_selection_fileAttributes->path, 1);
 		  }
-	      
+
+		  if (env_rfm_selected_files!=NULL){
+		    g_strconcat(env_rfm_selected_files, "\n",NULL);
+		    g_strconcat(env_rfm_selected_files, stdin_cmd_selection_fileAttributes->path, NULL);
+		  }else env_rfm_selected_files = strdup(stdin_cmd_selection_fileAttributes->path);
+
 		  listElement=g_list_next(listElement);
 		}
+
+		setenv("RFM_SELECTED_FILES",env_rfm_selected_files,1);
+	        g_free(env_rfm_selected_files);
 		if (ItemSelected==1){ //通过环境变量把当前选中的文件的数据(比如grepMatch列)传递给子进程,目前人为限制只有单选文件时起作用,因为多选文件时不同文件的同一列值可能不同
 		  if (execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT)){
 		    env_for_g_spawn_local = g_get_environ();
@@ -4333,7 +4342,9 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 		    set_env_to_pass_into_child_process(&iter, &env_for_g_spawn_used_by_exec_stdin_command);
 		  }
 		}
-	    }//end if (stdin_cmd_selection_list!=NULL)
+            } else { // end if (stdin_cmd_selection_list!=NULL)
+	      unsetenv("RFM_SELECTED_FILES");
+	    }
 #ifdef AiIntegration
 	    if (!execStdinCmdInNewVT && !(!from_stdin_readline && execCmdInNewVT) || cmd_interpretor_index == stdin_cmd_interpretor_index_for_AI){
 #else
