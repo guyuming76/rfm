@@ -4197,11 +4197,6 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
             }else
                 lastEnter=now_time;
 	}else{
-            for(guint i=0;i<G_N_ELEMENTS(stdin_cmd_interpretors);i++){
-
-
-	    }
-
             // Check if the command starts with an interpreter prefix to override execution
             gboolean prefix_found = FALSE;
             int prefix_len;

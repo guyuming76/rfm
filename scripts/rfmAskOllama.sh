@@ -13,24 +13,87 @@ rfm_AI_MODEL_API_KEY="$4"
 
 # 读取用户输入
 rfm_AI_MODEL_prompt=$(cat)
-if [ -z "$rfm_AI_MODEL_prompt" ]; then
-  echo "错误：未提供输入提示词" >&2
+
+# 检查是否有上传文件(环境变量优先)
+if [ -n "$RFM_SELECTED_FILES" ]; then
+  # 使用换行符作为分隔符分割文件列表
+  IFS=$'\n' read -d '' -ra files <<< "$RFM_SELECTED_FILES"
+  for filepath in "${files[@]}"; do
+    if [ ! -f "$filepath" ]; then
+      echo "警告：文件不存在或不可读: $filepath" >&2
+    fi
+  done
+elif [ $# -gt 4 ]; then
+  # 命令行参数作为文件列表(向后兼容)
+  shift 4
+  files=("$@")
+  for filepath in "${files[@]}"; do
+    if [ ! -f "$filepath" ]; then
+      echo "警告：文件不存在或不可读: $filepath" >&2
+    fi
+  done
+fi
+
+# 验证必须至少提供提示词或文件
+if [ -z "$rfm_AI_MODEL_prompt" ] && [ -z "$RFM_SELECTED_FILES" ] && [ $# -le 4 ]; then
+  echo "错误：必须提供提示词或至少一个文件" >&2
   exit 1
+fi
+
+# 构建JSON请求体
+request_json=$(jq -n \
+  --arg prompt "$rfm_AI_MODEL_prompt" \
+  --argjson temp "$rfm_AI_MODEL_TEMPERATURE" \
+  --arg model "$rfm_AI_MODEL_NAME" \
+  '{
+    model: $model,
+    prompt: {
+      instruction: $prompt,
+      files: []
+    },
+    stream: false,
+    options: {temperature: $temp}
+  }')
+
+# 添加文件内容到JSON
+if [ -n "$RFM_SELECTED_FILES" ]; then
+  IFS=$'\n' read -d '' -ra files <<< "$RFM_SELECTED_FILES"
+  
+  # 显示将要上传的文件列表
+  echo "以下文件将被上传给AI模型:"
+  for filepath in "${files[@]}"; do
+    if [ -f "$filepath" ]; then
+      echo "  - $filepath"
+    fi
+  done
+  
+  # 用户确认
+  read -p "确认上传这些文件吗? [Y/n] " confirm
+  confirm=${confirm:-Y}
+  if [[ "$confirm" =~ ^[Yy]$ ]]; then
+    for filepath in "${files[@]}"; do
+      if [ ! -f "$filepath" ]; then
+        continue
+      fi
+      filename=$(basename "$filepath")
+      content=$(cat "$filepath" 2>/dev/null || echo '无法读取文件内容')
+      request_json=$(echo "$request_json" | jq \
+        --arg name "$filename" \
+        --arg path "$filepath" \
+        --arg content "$content" \
+        '.prompt.files += [{"name": $name, "path": $path, "content": $content}]')
+    done
+  else
+    echo "文件上传已取消，继续处理提示词请求"
+    # 移除files数组保持JSON结构
+    request_json=$(echo "$request_json" | jq 'del(.prompt.files)')
+  fi
 fi
 
 # 发送请求并捕获原始 JSON 响应
 response=$(curl -sS --fail-with-body "$rfm_AI_MODEL_HOST_URL" \
   -H "Content-Type: application/json" \
-  -d "$(jq -n \
-    --arg model "$rfm_AI_MODEL_NAME" \
-    --arg prompt "$rfm_AI_MODEL_prompt" \
-    --argjson temp "$rfm_AI_MODEL_TEMPERATURE" \
-    '{
-      model: $model,
-      prompt: $prompt,
-      stream: false,
-      options: {temperature: $temp}
-    }')" 2>&1)  # 捕获标准错误和输出
+  -d "$request_json" 2>&1)
 
 # 解析响应
 result=$(echo "$response" | jq -r '
@@ -79,8 +142,16 @@ fi
 
 
 # 支持多种输入方式：
-# # 管道输入
-# echo "解释量子计算" | ./ask_ollama.sh
+# # 管道输入+文件(JSON格式处理)
+# RFM_SELECTED_FILES=$'/path/to/file1\n/path/to/file2' \
+#   echo "请分析以下代码文件" | ./rfmAskOllama.sh http://localhost:11434 deepseek-r1:1.5b 0.7 ""
+
+# # 纯文件分析
+# RFM_SELECTED_FILES=$'/path/to/file1' \
+#   ./rfmAskOllama.sh http://localhost:11434 deepseek-r1:1.5b 0.7 "" <<<"分析以下代码"
+
+# # 向后兼容模式(命令行参数传文件)
+# ./rfmAskOllama.sh http://localhost:11434 deepseek-r1:1.5b 0.7 "" /path/to/file1 /path/to/file2 <<<"分析以下文件"
 
 # # 文件重定向
 # ./ask_ollama.sh < prompt.txt
