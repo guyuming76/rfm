@@ -41,7 +41,14 @@ result=$(echo "$response" | jq -r '
   end')
 
 # 显示结果 渲染markdown
-echo "$result" | bat -p --language=md
+if which bat >/dev/null 2>&1; then
+    echo "$result" | bat -p --language=md
+else
+    echo "$result"
+    echo
+    echo
+    echo "安装 bat 软件(gentoo 上的包是sys-apps/bat)可以语法高亮显示当前markdown内容"
+fi
 
 # 仅当成功时保存文件
 if ! [[ "$result" =~ ^错误: ]]; then
