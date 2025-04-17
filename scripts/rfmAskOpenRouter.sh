@@ -12,24 +12,23 @@ rfm_AI_MODEL_TEMPERATURE=$3
 rfm_AI_MODEL_API_KEY="$4"
 
 
-# Read the user's prompt and handle file uploads
+# Always read the user's prompt
+PROMPT=$(cat)
+
+# Handle file uploads if any
+PROMPT_FILES_CONTENT=""
+FILES_LIST=""
 if [ -n "$RFM_SELECTED_FILES" ]; then
     # Process each selected file
-    PROMPT=""
     while IFS= read -r file; do
         if [ -f "$file" ]; then
             filename=$(basename "$file")
-            PROMPT+="=== 以下是文件内容 ===\n\n=== 文件: $filename ===\n"
-            PROMPT+=$(cat "$file")
-            PROMPT+="\n\n"
+            PROMPT_FILES_CONTENT+="=== 以下是文件内容 ===\n\n=== 文件: $filename ===\n"
+            PROMPT_FILES_CONTENT+=$(cat "$file")
+            PROMPT_FILES_CONTENT+="\n\n"
+            FILES_LIST+="$file\n"
         fi
     done <<< "$RFM_SELECTED_FILES"
-    
-    # Add the original prompt after file contents
-    user_prompt=$(cat)
-    if [ -n "$user_prompt" ]; then
-        PROMPT+="$user_prompt\n\n"
-    fi
     
     # Show which files will be uploaded
     echo "以下文件将被上传给AI模型:" >&2
@@ -39,13 +38,17 @@ if [ -n "$RFM_SELECTED_FILES" ]; then
         fi
     done <<< "$RFM_SELECTED_FILES"
     echo >&2
-else
-    # No files selected, just read the prompt
-    PROMPT=$(cat)
-    if [ -z "$PROMPT" ]; then
-        echo "Error: No prompt provided." >&2
-        exit 1
-    fi
+fi
+
+# Combine files content with original prompt
+if [ -n "$PROMPT_FILES_CONTENT" ]; then
+    PROMPT_FULL="$PROMT$PROMPT_FILES_CONTENT"
+fi
+
+# Only exit if both prompt and file content are empty
+if [ -z "$PROMPT" ] && [ -z "$PROMPT_FILES_CONTENT" ]; then
+    echo "Error: No prompt or file content provided." >&2
+    exit 1
 fi
 
 # Make the API call using curl
@@ -54,7 +57,7 @@ fi
 # Build the JSON payload using the messages array format
 JSON_PAYLOAD=$(jq -n \
   --arg model "$rfm_AI_MODEL_NAME" \
-  --arg content "$PROMPT" \
+  --arg content "$PROMPT_FULL" \
   --argjson temp "$rfm_AI_MODEL_TEMPERATURE" \
   '{
     model: $model,
@@ -117,6 +120,9 @@ if ! [[ "$RESULT" =~ ^Error: ]]; then
   cat <<EOF > "$filename"
 # 用户提示词 #
 $PROMPT
+
+# 附加文件 #
+$(echo -e "$FILES_LIST")
 
 # 模型回复内容 #
 $RESULT
