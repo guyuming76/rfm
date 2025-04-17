@@ -8,7 +8,8 @@
 
 rfm_AI_MODEL_HOST_URL="$1"
 rfm_AI_MODEL_NAME="$2"
-rfm_AI_MODEL_TEMPERATURE=$3
+#rfm_AI_MODEL_TEMPERATURE=$3
+rfm_AI_MODEL_TEMPERATURE=0.7
 rfm_AI_MODEL_API_KEY="$4"
 
 # 读取用户输入
@@ -40,22 +41,10 @@ if [ -z "$rfm_AI_MODEL_prompt" ] && [ -z "$RFM_SELECTED_FILES" ] && [ $# -le 4 ]
   exit 1
 fi
 
-# 构建JSON请求体
-request_json=$(jq -n \
-  --arg prompt "$rfm_AI_MODEL_prompt" \
-  --argjson temp "$rfm_AI_MODEL_TEMPERATURE" \
-  --arg model "$rfm_AI_MODEL_NAME" \
-  '{
-    model: $model,
-    prompt: {
-      instruction: $prompt,
-      files: []
-    },
-    stream: false,
-    options: {temperature: $temp}
-  }')
+# 构建基础prompt
+full_prompt="$rfm_AI_MODEL_prompt"
 
-# 添加文件内容到JSON
+# 处理文件内容添加到prompt
 if [ -n "$RFM_SELECTED_FILES" ]; then
   IFS=$'\n' read -d '' -ra files <<< "$RFM_SELECTED_FILES"
   
@@ -71,24 +60,41 @@ if [ -n "$RFM_SELECTED_FILES" ]; then
   read -p "确认上传这些文件吗? [Y/n] " confirm
   confirm=${confirm:-Y}
   if [[ "$confirm" =~ ^[Yy]$ ]]; then
+    # 添加文件分隔标记
+    full_prompt+="\n\n=== 以下是文件内容 ===\n"
+    
     for filepath in "${files[@]}"; do
       if [ ! -f "$filepath" ]; then
         continue
       fi
       filename=$(basename "$filepath")
       content=$(cat "$filepath" 2>/dev/null || echo '无法读取文件内容')
-      request_json=$(echo "$request_json" | jq \
-        --arg name "$filename" \
-        --arg path "$filepath" \
-        --arg content "$content" \
-        '.prompt.files += [{"name": $name, "path": $path, "content": $content}]')
+      
+      # 添加文件名和内容到prompt
+      full_prompt+="\n=== 文件: $filename ===\n"
+      full_prompt+="$content\n"
     done
   else
     echo "文件上传已取消，继续处理提示词请求"
-    # 移除files数组保持JSON结构
-    request_json=$(echo "$request_json" | jq 'del(.prompt.files)')
   fi
 fi
+
+full_prompt=$(echo "$full_prompt" | jq -Rs .)
+echo $full_prompt
+
+# 构建最终的JSON请求体
+request_json=$(jq -n \
+  --arg prompt "$full_prompt" \
+  --argjson temp "$rfm_AI_MODEL_TEMPERATURE" \
+  --arg model "$rfm_AI_MODEL_NAME" \
+  '{
+    model: $model,
+    prompt: $prompt,
+    stream: false,
+    options: {temperature: $temp}
+  }')
+
+echo "接下来发送请求并处理响应"
 
 # 发送请求并捕获原始 JSON 响应
 response=$(curl -sS --fail-with-body "$rfm_AI_MODEL_HOST_URL" \
