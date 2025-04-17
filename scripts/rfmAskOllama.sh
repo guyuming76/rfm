@@ -2,89 +2,16 @@
 
 #给baidu deepseek-r1 的需求： bash 脚本如何和 LLM 大模型交互， 给个简单脚本例子，读取用户输入的prompt, 发送给ollama 本地运行大模型，显示返回的内容
 #deepseek第一次给的回答用grep,sed,awk处理json,比较难读，但提到jq工具
-#jq这样的JSON处理工具， 简单介绍下，使用这个工具改写下前面的例子怎么样？
 
-#gentoo上依赖 app-misc/jq sys-apps/bat
+#gentoo上依赖 app-misc/jq
 
-rfm_AI_MODEL_HOST_URL="$1"
-rfm_AI_MODEL_NAME="$2"
-#rfm_AI_MODEL_TEMPERATURE=$3
-rfm_AI_MODEL_TEMPERATURE=0.7
-rfm_AI_MODEL_API_KEY="$4"
+source rfmAiGetParameterPromptAndFile.sh
 
-# 读取用户输入
-rfm_AI_MODEL_prompt=$(cat)
-
-# 检查是否有上传文件(环境变量优先)
-if [ -n "$RFM_SELECTED_FILES" ]; then
-  # 使用换行符作为分隔符分割文件列表
-  IFS=$'\n' read -d '' -ra files <<< "$RFM_SELECTED_FILES"
-  for filepath in "${files[@]}"; do
-    if [ ! -f "$filepath" ]; then
-      echo "警告：文件不存在或不可读: $filepath" >&2
-    fi
-  done
-elif [ $# -gt 4 ]; then
-  # 命令行参数作为文件列表(向后兼容)
-  shift 4
-  files=("$@")
-  for filepath in "${files[@]}"; do
-    if [ ! -f "$filepath" ]; then
-      echo "警告：文件不存在或不可读: $filepath" >&2
-    fi
-  done
-fi
-
-# 验证必须至少提供提示词或文件
-if [ -z "$rfm_AI_MODEL_prompt" ] && [ -z "$RFM_SELECTED_FILES" ] && [ $# -le 4 ]; then
-  echo "错误：必须提供提示词或至少一个文件" >&2
-  exit 1
-fi
-
-# 构建基础prompt
-full_prompt="$rfm_AI_MODEL_prompt"
-
-# 处理文件内容添加到prompt
-if [ -n "$RFM_SELECTED_FILES" ]; then
-  IFS=$'\n' read -d '' -ra files <<< "$RFM_SELECTED_FILES"
-  
-  # 显示将要上传的文件列表
-  echo "以下文件将被上传给AI模型:"
-  for filepath in "${files[@]}"; do
-    if [ -f "$filepath" ]; then
-      echo "  - $filepath"
-    fi
-  done
-  
-  # 用户确认
-  read -p "确认上传这些文件吗? [Y/n] " confirm
-  confirm=${confirm:-Y}
-  if [[ "$confirm" =~ ^[Yy]$ ]]; then
-    # 添加文件分隔标记
-    full_prompt+="\n\n=== 以下是文件内容 ===\n"
-    
-    for filepath in "${files[@]}"; do
-      if [ ! -f "$filepath" ]; then
-        continue
-      fi
-      filename=$(basename "$filepath")
-      content=$(cat "$filepath" 2>/dev/null || echo '无法读取文件内容')
-      
-      # 添加文件名和内容到prompt
-      full_prompt+="\n=== 文件: $filename ===\n"
-      full_prompt+="$content\n"
-    done
-  else
-    echo "文件上传已取消，继续处理提示词请求"
-  fi
-fi
-
-full_prompt=$(echo "$full_prompt" | jq -Rs .)
-echo $full_prompt
+source rfmAiAppendFileContentIntoPrompt.sh
 
 # 构建最终的JSON请求体
-request_json=$(jq -n \
-  --arg prompt "$full_prompt" \
+REQUEST_JSON=$(jq -n \
+  --arg prompt "$PROMPT_FULL" \
   --argjson temp "$rfm_AI_MODEL_TEMPERATURE" \
   --arg model "$rfm_AI_MODEL_NAME" \
   '{
@@ -94,57 +21,22 @@ request_json=$(jq -n \
     options: {temperature: $temp}
   }')
 
-echo "接下来发送请求并处理响应"
-
 # 发送请求并捕获原始 JSON 响应
-response=$(curl -sS --fail-with-body "$rfm_AI_MODEL_HOST_URL" \
+RESPONSE=$(curl -sS --fail-with-body "$rfm_AI_MODEL_HOST_URL" \
   -H "Content-Type: application/json" \
-  -d "$request_json" 2>&1)
+  -d "$REQUEST_JSON" 2>&1)
 
 # 解析响应
-result=$(echo "$response" | jq -r '
+RESULT=$(echo "$RESPONSE" | jq -r '
   if .error then
-    "错误: " + .error
+    "Error: " + .error
   else
     .response
   end')
 
-# 显示结果 渲染markdown
-if which bat >/dev/null 2>&1; then
-    echo "$result" | bat -p --language=md
-else
-    echo "$result"
-    echo
-    echo
-    echo "安装 bat 软件(gentoo 上的包是sys-apps/bat)可以语法高亮显示当前markdown内容"
-fi
+source rfmAiDisplayResult.sh
 
-# 仅当成功时保存文件
-if ! [[ "$result" =~ ^错误: ]]; then
-  # 清理模型名称中的非法字符（如冒号）
-  sanitized_model=$(echo "$rfm_AI_MODEL_NAME" | sed 's/[:/\\*?<>|"]/_/g')  # 关键修改点
-  timestamp=$(date +%Y%m%d_%H%M%S)
-  filename="rfmAI_${sanitized_model}___${timestamp}.rfmAI.md"  # 使用清理后的名称
-
-  cat <<EOF > "$filename"
-# 用户提示词 #
-$rfm_AI_MODEL_prompt
-
-# 模型回复内容 #
-$result
-
-# 模型名称 #
-$rfm_AI_MODEL_NAME
-
-# 温度 #
-$rfm_AI_MODEL_TEMPERATURE
-
-EOF
-  echo
-  echo
-  echo "回复已保存至: $filename" >&2
-fi
-
+source rfmAiSaveHistory.sh
 
 
 # 支持多种输入方式：
