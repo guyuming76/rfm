@@ -12,11 +12,40 @@ rfm_AI_MODEL_TEMPERATURE=$3
 rfm_AI_MODEL_API_KEY="$4"
 
 
-# Read the user's prompt from standard input
-PROMPT=$(cat)
-if [ -z "$PROMPT" ]; then
-  echo "Error: No prompt provided." >&2
-  exit 1
+# Read the user's prompt and handle file uploads
+if [ -n "$RFM_SELECTED_FILES" ]; then
+    # Process each selected file
+    PROMPT=""
+    while IFS= read -r file; do
+        if [ -f "$file" ]; then
+            filename=$(basename "$file")
+            PROMPT+="=== 以下是文件内容 ===\n\n=== 文件: $filename ===\n"
+            PROMPT+=$(cat "$file")
+            PROMPT+="\n\n"
+        fi
+    done <<< "$RFM_SELECTED_FILES"
+    
+    # Add the original prompt after file contents
+    user_prompt=$(cat)
+    if [ -n "$user_prompt" ]; then
+        PROMPT+="$user_prompt\n\n"
+    fi
+    
+    # Show which files will be uploaded
+    echo "以下文件将被上传给AI模型:" >&2
+    while IFS= read -r file; do
+        if [ -f "$file" ]; then
+            echo "  - $file" >&2
+        fi
+    done <<< "$RFM_SELECTED_FILES"
+    echo >&2
+else
+    # No files selected, just read the prompt
+    PROMPT=$(cat)
+    if [ -z "$PROMPT" ]; then
+        echo "Error: No prompt provided." >&2
+        exit 1
+    fi
 fi
 
 # Make the API call using curl
