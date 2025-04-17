@@ -154,6 +154,7 @@ endif
 ifneq ($(AiIntegration),)
 	@cp -f scripts/rfmAskOllama.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmAskOpenRouter.sh ${DESTDIR}${PREFIX}/bin
+	@cp -f scripts/rfmAskOpenRouter_FileArray.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmAiAppendFileContentIntoPrompt.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmAiGetParameterPromptAndFile.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmAiDisplayResult.sh ${DESTDIR}${PREFIX}/bin
@@ -209,6 +210,7 @@ endif
 ifneq ($(AiIntegration),)
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmAskOllama.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmAskOpenRouter.sh
+	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmAskOpenRouter_FileArray.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmAiAppendFileContentIntoPrompt.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmAiGetParameterPromptAndFile.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmAiDisplayResult.sh
@@ -258,6 +260,7 @@ endif
 ifneq ($(AiIntegration),)
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmAskOllama.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmAskOpenRouter.sh
+	@rm -f ${DESTDIR}${PREFIX}/bin/rfmAskOpenRouter_FileArray.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmAiAppendFileContentIntoPrompt.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmAiGetParameterPromptAndFile.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmAiDisplayResult.sh
