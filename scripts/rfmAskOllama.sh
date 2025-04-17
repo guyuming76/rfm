@@ -76,12 +76,11 @@ if [ -n "$RFM_SELECTED_FILES" ]; then
         continue
       fi
       filename=$(basename "$filepath")
-      # Read and properly escape file content
-      content=$(cat "$filepath" 2>/dev/null | jq -Rs . || echo '"无法读取文件内容"')
+      content=$(cat "$filepath" 2>/dev/null || echo '无法读取文件内容')
       request_json=$(echo "$request_json" | jq \
         --arg name "$filename" \
         --arg path "$filepath" \
-        --argjson content "$content" \
+        --arg content "$content" \
         '.prompt.files += [{"name": $name, "path": $path, "content": $content}]')
     done
   else
