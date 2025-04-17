@@ -34,12 +34,9 @@ RESPONSE=$(curl -sS --fail-with-body -X POST "$rfm_AI_MODEL_HOST_URL" \
 # Check if curl failed (using --fail-with-body helps capture HTTP errors)
 CURL_EXIT_CODE=$?
 if [ $CURL_EXIT_CODE -ne 0 ]; then
-    # Attempt to parse error from response body if curl failed
-    ERROR_MSG=$(echo "$RESPONSE" | jq -r '.error.message // .detail // "Unknown curl error or non-JSON response"')
-    echo "Error: curl command failed (Exit Code: $CURL_EXIT_CODE). $ERROR_MSG" >&2
-    # Optionally print the raw response for debugging
-    # echo "Raw Response: $RESPONSE" >&2
-    exit 1
+    echo "Raw REQUEST_JSON for debug : $REQUEST_JSON" >&2
+    echo "Raw RESPONSE for debug : $RESPONSE" >&2
+    exit 4
 fi
 
 

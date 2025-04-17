@@ -26,6 +26,15 @@ RESPONSE=$(curl -sS --fail-with-body "$rfm_AI_MODEL_HOST_URL" \
   -H "Content-Type: application/json" \
   -d "$REQUEST_JSON" 2>&1)
 
+# Check if curl failed (using --fail-with-body helps capture HTTP errors)
+CURL_EXIT_CODE=$?
+if [ $CURL_EXIT_CODE -ne 0 ]; then
+    echo "Raw REQUEST_JSON for debug : $REQUEST_JSON" >&2
+    echo "Raw RESPONSE for debug : $RESPONSE" >&2
+    exit 4
+fi
+
+
 # 解析响应
 RESULT=$(echo "$RESPONSE" | jq -r '
   if .error then
