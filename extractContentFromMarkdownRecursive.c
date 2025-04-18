@@ -54,7 +54,7 @@ char* matchTitleAndExtractContent(const char* headerTitle, const char* markdownT
     free(textCopy);
 
     if (!start_pos) return NULL;
-
+    //TODO: 我让AI写代码的时候，AI曾使用了 cmark_node_get_start_offset 这么一个不存在的函数，搜索会找到 这个帖子：https://github.com/commonmark/cmark/issues/253 ， 如果类似函数存在，就不用向下面这样麻烦计算了
     // Second pass to extract the content without using strtok
     const char *start = markdownText;
     const char *end = markdownText + strlen(markdownText);
