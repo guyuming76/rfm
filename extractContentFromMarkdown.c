@@ -54,18 +54,10 @@ void print_node(cmark_node *node, cmark_event_type ev_type) {
         //free(literal);
 
 	if ( nodetype == CMARK_NODE_TEXT && current_heading_level == heading_level_to_match && !current_heading_finished_testing_HeadersToMatch){
-	  if (HeadersToMatch_Count>0){
-	    for (int i=0;i<HeadersToMatch_Count;i++){
-	      if (strcmp(literal, HeadersToMatch[i])==0){
-		currently_in_matched_header = 1;
-		currently_matched_header_finished_printing = 0;
-		printf("\n%s=",HeadersToMatch[i]);// gkeyfile use = to seperate key and value
-	      }
-	    }
-	  }else{
+	  if (strcmp(literal, HeadersToMatch[0])==0){
 	    currently_in_matched_header = 1;
 	    currently_matched_header_finished_printing = 0;
-	    printf("\n%s=",literal);// gkeyfile use = to seperate key and value
+	    printf("\n%s=",HeadersToMatch[0]);// gkeyfile use = to seperate key and value
 	  }
 	  current_heading_finished_testing_HeadersToMatch = 1;
 	}else if (currently_in_matched_header && !currently_matched_header_finished_printing){
@@ -77,13 +69,12 @@ void print_node(cmark_node *node, cmark_event_type ev_type) {
 
 
 int main(int argc, char *argv[]){
-    if (argc < 3) {
-        printf("We parse a file specified by the MarkdownFilename argument with cmark, and output KeyValue pair lines. The HeadersToMatch arguments specify the keys, which are the highest level header texts in the markdown file. Note that we suppose the first header node we get in a file has the highest level. The first line of literal text for the matched header will be the value for the key\n\n");
-        printf("Usage:   %s (0|1) MarkdownFilename {HeadersToMatch}\n", argv[0]);
+    if (argc != 4) {
+        printf("We parse a file specified by the MarkdownFilename argument with cmark, and output KeyValue pair lines. The HeaderToMatch argument specifies the key, which is the highest level header text in the markdown file. Note that we suppose the first header node we get in a file has the highest level. The first line of literal text for the matched header will be the value for the key\n\n");
+        printf("Usage:   %s (0|1) MarkdownFilename HeaderToMatch\n", argv[0]);
 	printf("         0 or 1 for the debug option, 1 for debug\n");
-	printf("         HeadersToMatch is the list of markdown headers text to match, seperated with space\n");
-	printf("         All headers of the highest level will be in output if no HeadersToMatch is specified\n");
-	printf("example: %s 0 your_markdown_file.md Header_level1_text1 Header_level1_text2\n",argv[0]);
+	printf("         HeaderToMatch is the markdown header text to match\n");
+	printf("example: %s 0 your_markdown_file.md Header_level1_text\n",argv[0]);
 	return 1;
     }
 
@@ -97,7 +88,7 @@ int main(int argc, char *argv[]){
 
     debug = atoi(argv[1]);
     HeadersToMatch = argv + 3;
-    HeadersToMatch_Count = argc - 3;
+    HeadersToMatch_Count = 1;
 
     printf("[https://discourse.gnome.org/t/gkeyfile-to-handle-conf-without-groupname/23080/3]\n");
     cmark_event_type ev_type;
