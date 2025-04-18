@@ -3,16 +3,16 @@
 #include <string.h>
 #include <stdlib.h>
 
-int debug=0;
+int debug = 0;
 char **HeadersToMatch = NULL;
 int HeadersToMatch_Count = 0;
-// 文件中首次遇到的标题的级别将被设为最高级别，从此级别获取要输出的关键字。
-// TODO：gkeyfile支持组，是否有必要把最高级别映射成组，第二高级别映射成gkeyfile关键字
 int heading_level_to_match = -1;
 int current_heading_level = 0;
+int current_matching_level = 0; // Which header in the path we're currently matching
+int inside_matching_path = 0; // Are we inside a potential matching path
 int currently_in_matched_header = 0;
-int current_heading_finished_testing_HeadersToMatch = 0; //the first cmark_node_type_text is for header text, do not try for later text nodes
-int currently_matched_header_finished_printing = 0; //flag to track if we're in matched header content
+int current_heading_finished_testing_HeadersToMatch = 0;
+int currently_matched_header_finished_printing = 0;
 
 void print_event(cmark_event_type ev_type){
     switch (ev_type){
@@ -41,7 +41,13 @@ void print_node(cmark_node *node, cmark_event_type ev_type) {
 		currently_in_matched_header = 0;
 		currently_matched_header_finished_printing = 1;
 	    }
+	    // Reset matching state for new heading
 	    current_heading_finished_testing_HeadersToMatch = 0;
+	    if (current_heading_level <= heading_level_to_match) {
+		// Reset path matching if we're back to top level or higher
+		current_matching_level = 0;
+		inside_matching_path = 0;
+	    }
 	}
         if (debug) printf("heading level:%d\n",current_heading_level);
     }
@@ -57,13 +63,40 @@ void print_node(cmark_node *node, cmark_event_type ev_type) {
         if (debug) printf("%d:literal:%s\n", current_heading_level, literal);
         //free(literal);
 
-	if ( nodetype == CMARK_NODE_TEXT && current_heading_level == heading_level_to_match && !current_heading_finished_testing_HeadersToMatch){
-	  if (strcmp(literal, HeadersToMatch[0])==0){
-	    currently_in_matched_header = 1;
-	    currently_matched_header_finished_printing = 0;
-	    printf("\n%s=",HeadersToMatch[0]);// gkeyfile use = to seperate key and value
-	  }
-	  current_heading_finished_testing_HeadersToMatch = 1;
+	if (nodetype == CMARK_NODE_TEXT && !current_heading_finished_testing_HeadersToMatch) {
+	    if (current_matching_level == 0) {
+		// First header in path - set the heading level to match
+		if (strcmp(literal, HeadersToMatch[0]) == 0) {
+		    heading_level_to_match = current_heading_level;
+		    current_matching_level = 1;
+		    inside_matching_path = 1;
+		}
+	    } else if (inside_matching_path) {
+		// Subsequent headers in path
+		if (current_heading_level > heading_level_to_match) {
+		    // Child header - check if matches next in path
+		    if (current_matching_level < HeadersToMatch_Count && 
+			strcmp(literal, HeadersToMatch[current_matching_level]) == 0) {
+			current_matching_level++;
+		    }
+		} else if (current_heading_level <= heading_level_to_match) {
+		    // Same or higher level - reset matching
+		    inside_matching_path = 0;
+		    current_matching_level = 0;
+		}
+	    }
+
+	    // If we've matched all headers in path
+	    if (current_matching_level == HeadersToMatch_Count) {
+		currently_in_matched_header = 1;
+		currently_matched_header_finished_printing = 0;
+		printf("\n");
+		for (int i = 0; i < HeadersToMatch_Count; i++) {
+		    printf("%s%s", (i > 0) ? " > " : "", HeadersToMatch[i]);
+		}
+		printf("=");
+	    }
+	    current_heading_finished_testing_HeadersToMatch = 1;
 	}else if (currently_in_matched_header) {
 	    if (nodetype == CMARK_NODE_TEXT || nodetype == CMARK_NODE_CODE || nodetype == CMARK_NODE_PARAGRAPH) {
 	        printf("%s", literal);
@@ -79,12 +112,12 @@ void print_node(cmark_node *node, cmark_event_type ev_type) {
 
 
 int main(int argc, char *argv[]){
-    if (argc != 4) {
-        printf("We parse a file specified by the MarkdownFilename argument with cmark, and output KeyValue pair lines. The HeaderToMatch argument specifies the key, which is the highest level header text in the markdown file. Note that we suppose the first header node we get in a file has the highest level. The first line of literal text for the matched header will be the value for the key\n\n");
-        printf("Usage:   %s (0|1) MarkdownFilename HeaderToMatch\n", argv[0]);
+    if (argc < 4) {
+        printf("We parse a file specified by the MarkdownFilename argument with cmark, and output KeyValue pair lines. The HeaderToMatch arguments specify a path of headers to match, where each subsequent header must be a child of the previous one.\n\n");
+        printf("Usage:   %s (0|1) MarkdownFilename HeaderToMatch1 [HeaderToMatch2 ...]\n", argv[0]);
 	printf("         0 or 1 for the debug option, 1 for debug\n");
-	printf("         HeaderToMatch is the markdown header text to match\n");
-	printf("example: %s 0 your_markdown_file.md Header_level1_text\n",argv[0]);
+	printf("         HeaderToMatch arguments form a path of headers to match\n");
+	printf("example: %s 0 your_markdown_file.md \"Section\" \"Subsection\" \"Details\"\n",argv[0]);
 	return 1;
     }
 
@@ -98,7 +131,7 @@ int main(int argc, char *argv[]){
 
     debug = atoi(argv[1]);
     HeadersToMatch = argv + 3;
-    HeadersToMatch_Count = 1;
+    HeadersToMatch_Count = argc - 3;
 
     // Remove the debug URL output
     cmark_event_type ev_type;
