@@ -9,65 +9,85 @@ int debug;
 
 // Function to match a header title and extract its content
 char* matchTitleAndExtractContent(const char* headerTitle, const char* markdownText) {
-    cmark_node *root = cmark_parse_document(markdownText, strlen(markdownText), CMARK_OPT_DEFAULT);
-    cmark_iter *iter = cmark_iter_new(root);
+    // Make a copy of the original text to avoid modification
+    char* textCopy = strdup(markdownText);
+    cmark_node *root = cmark_parse_document(textCopy, strlen(textCopy), CMARK_OPT_DEFAULT);
     
-    int in_matched_section = 0;
-    int target_level = -1;
     size_t start_pos = 0;
-    size_t end_pos = SIZE_MAX;
-    
+    size_t end_pos = 0;
+    int target_level = 0;
+    int in_section = 0;
+
+    // First pass to find the section boundaries
+    cmark_iter *iter = cmark_iter_new(root);
     cmark_event_type ev_type;
     while ((ev_type = cmark_iter_next(iter)) != CMARK_EVENT_DONE) {
         cmark_node *node = cmark_iter_get_node(iter);
         
         if (node && cmark_node_get_type(node) == CMARK_NODE_HEADING) {
-            int current_level = cmark_node_get_heading_level(node);
+            int level = cmark_node_get_heading_level(node);
             
             if (ev_type == CMARK_EVENT_ENTER) {
-                if (!in_matched_section) {
+                if (!in_section) {
                     // Check if this is our target header
                     cmark_node *child = cmark_node_first_child(node);
                     if (child && cmark_node_get_type(child) == CMARK_NODE_TEXT) {
                         const char* text = cmark_node_get_literal(child);
                         if (text && strcmp(text, headerTitle) == 0) {
-                            in_matched_section = 1;
-                            target_level = current_level;
+                            in_section = 1;
+                            target_level = level;
                             start_pos = cmark_node_get_start_line(node);
-			    if (debug) fprintf(stderr, "%s start at line %ld\n", text, start_pos);
+                            if (debug) fprintf(stderr, "%s start at line %ld\n", text, start_pos);
                         }
                     }
-                } else if (current_level <= target_level) {
+                } else if (level <= target_level) {
                     // Found same or higher level heading - end of our section
-                    in_matched_section = 0;
-		    end_pos = cmark_node_get_start_line(node);
-		    if (debug) fprintf(stderr, "%s end at line %ld\n",headerTitle,end_pos);
+                    end_pos = cmark_node_get_start_line(node);
+                    if (debug) fprintf(stderr, "%s end at line %ld\n", headerTitle, end_pos);
+                    break;
                 }
             }
         }
     }
-    
     cmark_iter_free(iter);
     cmark_node_free(root);
+    free(textCopy);
 
-    if (start_pos == 0 || end_pos <= start_pos) {
-        return NULL;
+    if (!start_pos) return NULL;
+
+    // Second pass to extract the content without using strtok
+    const char *start = markdownText;
+    const char *end = markdownText + strlen(markdownText);
+    size_t current_line = 1;
+    const char *line_start = start;
+    const char *section_start = NULL;
+    const char *section_end = NULL;
+
+    while (line_start < end) {
+        const char *line_end = strchr(line_start, '\n');
+        if (!line_end) line_end = end;
+
+        if (current_line == start_pos + 1) {
+            section_start = line_start;
+        } else if (end_pos && current_line == end_pos) {
+            section_end = line_start;
+            break;
+        }
+
+        if (line_end < end) line_start = line_end + 1;
+        else line_start = end;
+        current_line++;
     }
 
-    // Allocate and copy the substring
-    char* result = calloc(strlen(markdownText),sizeof(char));
+    if (!section_start) return NULL;
+    if (!section_end) section_end = end;
 
-    char * oneline = strtok(markdownText, "\n");
-    size_t lineNumber = 0;
-    while (oneline && lineNumber < end_pos){
-      if (lineNumber>start_pos) {
-	result = strcat(result, oneline);
-	result = strcat(result, "\n");
-	if (debug) fprintf(stderr,"copy line %ld to return\n",lineNumber);
-      }
-      lineNumber ++;
-      oneline = strtok(NULL, "\n");
-    }
+    // Allocate and copy the section
+    size_t length = section_end - section_start;
+    char *result = malloc(length + 1);
+    memcpy(result, section_start, length);
+    result[length] = '\0';
+
     return result;
 }
 
