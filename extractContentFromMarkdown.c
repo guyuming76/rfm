@@ -67,6 +67,11 @@ void print_node(cmark_node *node, cmark_event_type ev_type) {
 	}else if (currently_in_matched_header) {
 	    if (nodetype == CMARK_NODE_TEXT || nodetype == CMARK_NODE_CODE || nodetype == CMARK_NODE_PARAGRAPH) {
 	        printf("%s", literal);
+	    } else if (nodetype == CMARK_NODE_LINEBREAK || nodetype == CMARK_NODE_SOFTBREAK) {
+	        printf("\n");
+	    } else if (nodetype == CMARK_NODE_CODE_BLOCK) {
+	        const char* info = cmark_node_get_fence_info(node);
+	        printf("\n```%s\n%s\n```\n", info ? info : "", literal);
 	    }
 	}
     }
@@ -95,7 +100,7 @@ int main(int argc, char *argv[]){
     HeadersToMatch = argv + 3;
     HeadersToMatch_Count = 1;
 
-    printf("[https://discourse.gnome.org/t/gkeyfile-to-handle-conf-without-groupname/23080/3]\n");
+    // Remove the debug URL output
     cmark_event_type ev_type;
     cmark_iter *iter = cmark_iter_new(root);
     while ((ev_type = cmark_iter_next(iter)) != CMARK_EVENT_DONE) {
