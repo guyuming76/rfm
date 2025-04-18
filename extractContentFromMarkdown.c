@@ -12,7 +12,7 @@ int heading_level_to_match = -1;
 int current_heading_level = 0;
 int currently_in_matched_header = 0;
 int current_heading_finished_testing_HeadersToMatch = 0; //the first cmark_node_type_text is for header text, do not try for later text nodes
-int currently_matched_header_finished_printing = 0; //we only print the first line of content for matched header
+int currently_matched_header_finished_printing = 0; //flag to track if we're in matched header content
 
 void print_event(cmark_event_type ev_type){
     switch (ev_type){
@@ -27,17 +27,21 @@ void print_node(cmark_node *node, cmark_event_type ev_type) {
     if (!node) return;
 
     cmark_node_type nodetype = cmark_node_get_type(node);
-    if ( nodetype == CMARK_NODE_HEADING) {
+    if (nodetype == CMARK_NODE_HEADING) {
         current_heading_level = cmark_node_get_heading_level(node);
 	if (heading_level_to_match == -1) heading_level_to_match = current_heading_level;
 	else if (heading_level_to_match > current_heading_level) { // 如果遇到的标题级别比第一次遇到的级别还高， 报错退出
 	  printf("Error: we suppose the first header node we get from file has the highest level, but we get level %d before %d here\n", heading_level_to_match, current_heading_level);
 	  exit(1);
-	}else if (current_heading_level != heading_level_to_match) return; // 只处理第一次遇到的标题级别，忽略子标题
+	}
 
 	if (ev_type == CMARK_EVENT_ENTER) {
-	  currently_in_matched_header = 0;
-	  current_heading_finished_testing_HeadersToMatch = 0;
+	    // If we encounter same or higher level heading while in matched content, stop printing
+	    if (currently_in_matched_header && current_heading_level <= heading_level_to_match) {
+		currently_in_matched_header = 0;
+		currently_matched_header_finished_printing = 1;
+	    }
+	    current_heading_finished_testing_HeadersToMatch = 0;
 	}
         if (debug) printf("heading level:%d\n",current_heading_level);
     }
@@ -60,9 +64,10 @@ void print_node(cmark_node *node, cmark_event_type ev_type) {
 	    printf("\n%s=",HeadersToMatch[0]);// gkeyfile use = to seperate key and value
 	  }
 	  current_heading_finished_testing_HeadersToMatch = 1;
-	}else if (currently_in_matched_header && !currently_matched_header_finished_printing){
-	      printf("%s",literal);
-	      currently_matched_header_finished_printing = 1;
+	}else if (currently_in_matched_header) {
+	    if (nodetype == CMARK_NODE_TEXT || nodetype == CMARK_NODE_CODE || nodetype == CMARK_NODE_PARAGRAPH) {
+	        printf("%s", literal);
+	    }
 	}
     }
 }
