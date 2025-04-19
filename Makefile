@@ -55,10 +55,17 @@ endif
 CC = gcc
 
 ifneq ($(RFM_FILE_CHOOSER),)
-all: options rfm ${LIBNAME} ${extractKeyValuePairFromMarkdown}
+all: options rfm ${LIBNAME} cmark_tools
 else
-all: options rfm ${extractKeyValuePairFromMarkdown}
+all: options rfm cmark_tools
 endif
+
+ifneq (${extractKeyValuePairFromMarkdown},)
+cmark_tools: extractKeyValuePairFromMarkdown extractContentFromMarkdownRecursive
+else
+cmark_tools:
+endif
+
 options:
 	@echo rfm build options:
 	@echo "CFLAGS   = ${CFLAGS}"
@@ -96,6 +103,10 @@ ifneq (${extractKeyValuePairFromMarkdown},)
 extractKeyValuePairFromMarkdown: extractKeyValuePairFromMarkdown.o
 	@echo CC -o $@
 	@${CC} -o $@ extractKeyValuePairFromMarkdown.o ${LDFLAGS}
+
+extractContentFromMarkdownRecursive: extractContentFromMarkdownRecursive.o
+	@echo CC -o $@
+	@${CC} -o $@ extractContentFromMarkdownRecursive.o ${LDFLAGS}
 endif
 
 clean:
@@ -106,7 +117,7 @@ else
 	@rm -f rfm rfm.o
 endif
 ifneq (${extractKeyValuePairFromMarkdown},)
-	@rm -f extractKeyValuePairFromMarkdown extractKeyValuePairFromMarkdown.o
+	@rm -f extractKeyValuePairFromMarkdown extractKeyValuePairFromMarkdown.o extractContentFromMarkdownRecursive extractContentFromMarkdownRecursive.o
 endif
 
 install: all
@@ -120,6 +131,7 @@ ifneq ($(RFM_FILE_CHOOSER),)
 endif
 ifneq (${extractKeyValuePairFromMarkdown},)
 	@cp -f extractKeyValuePairFromMarkdown ${DESTDIR}${PREFIX}/bin
+	@cp -f extractContentFromMarkdownRecursive ${DESTDIR}${PREFIX}/bin
 endif
 	@cp -f rfm ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfm.sh ${DESTDIR}${PREFIX}/bin
@@ -176,6 +188,7 @@ ifneq ($(RFM_FILE_CHOOSER),)
 endif
 ifneq (${extractKeyValuePairFromMarkdown},)
 	@chmod +x ${DESTDIR}${PREFIX}/bin/extractKeyValuePairFromMarkdown
+	@chmod +x ${DESTDIR}${PREFIX}/bin/extractContentFromMarkdownRecursive
 endif
 	@chmod 755 ${DESTDIR}${PREFIX}/bin/rfm
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfm.sh
@@ -226,6 +239,7 @@ ifneq ($(RFM_FILE_CHOOSER),)
 endif
 ifneq (${extractKeyValuePairFromMarkdown},)
 	@rm -f ${DESTDIR}${PREFIX}/bin/extractKeyValuePairFromMarkdown
+	@rm -f ${DESTDIR}${PREFIX}/bin/extractContentFromMarkdownRecursive
 endif
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfm
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfm.sh
