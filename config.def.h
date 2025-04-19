@@ -301,7 +301,7 @@ static RFM_ToolButton tool_buttons[] = {
 #define getComment  "exiftool %s |grep '^Comment'|awk -F : '{print $2}'"
 //#define getComment  "exiv2 %s |grep \"^Exif comment\"|awk -F : '{print $2}'"
 
-#ifdef AiIntegration && extractKeyValuePairFromMarkdown
+#ifdef AiIntegration && CmarkTools
 	#define getAiPrompt "extractKeyValuePairFromMarkdown 0 %s 用户提示词 | grep '^用户提示词'| sed 's/^[^=]*=//'"
         //返回 用户提示词=blablabal 字符串，匹配以任意字符开头直到第一个等号的部分（包括等号），然后将其替换为空。
 #endif
@@ -336,7 +336,7 @@ static RFM_treeviewColumn treeviewColumns_init[] = {
   {"CTime",                   COL_CTIME_STR,              FALSE,  NULL, NULL,                 COL_CTIME_STR,            NULL,            NULL,     "*",         "*",    FALSE,FALSE,NULL},
   {"ImageSize",               NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 getImageSize,    NULL,     "image",     "*",    FALSE,FALSE,NULL},
   {"Comment",                 NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 getComment,      NULL,     "image",     "*",    FALSE,FALSE,NULL},
-#ifdef AiIntegration && extractKeyValuePairFromMarkdown
+#ifdef AiIntegration && CmarkTools
   {"AiPrompt",                NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 getAiPrompt,     NULL,     "text",      "markdown",FALSE,FALSE,".rfmAI.md"},
 #endif
   {"C1",                      NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 NULL,getExtColumnValueFromHashTable,"*","*",    FALSE,FALSE,NULL},
@@ -352,7 +352,7 @@ static gchar* MailColumns[] = { "-FileName",",From,Subject,Date,Attachments",NUL
 #ifdef MU_VIEW
 static gchar* MU_VIEW_cmdTemplate[] = { stdin_cmd_interpretors[0].name, "mu view %s | rfmGetMailHeaderWithMuView.sh", NULL };
 #endif
-#ifdef extractKeyValuePairFromMarkdown
+#ifdef CmarkTools
 static gchar* MD_parsing_cmdTemplate[] = { stdin_cmd_interpretors[0].name, "extractKeyValuePairFromMarkdown 0 %s", NULL };
 static gchar* TODO_MD_parsing_cmdTemplate[] = { stdin_cmd_interpretors[0].name, "extractKeyValuePairFromMarkdown 0 %s 简述 问题状态", NULL };
 #endif
@@ -363,7 +363,7 @@ static RFM_SearchResultType searchresultTypes[] = {
 #ifdef MU_VIEW
   {"muview",   ProcessKeyValuePairInCmdOutputFromSearchResult, MailColumns    , "&" , MU_VIEW_cmdTemplate ,SearchResultType_muview }, //%s in cmdTemplate will be replaced by filename in searchresult
 #endif
-#ifdef extractKeyValuePairFromMarkdown
+#ifdef CmarkTools
   {".md",      ProcessKeyValuePairInCmdOutputFromSearchResult, EmptyShowColumn, NULL, MD_parsing_cmdTemplate, SearchResultType_markdown1 },
   {"TODO.md",  ProcessKeyValuePairInCmdOutputFromSearchResult, EmptyShowColumn, NULL, TODO_MD_parsing_cmdTemplate, SearchResultType_TODO_md },
 #endif

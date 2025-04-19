@@ -17,14 +17,10 @@ endif
 GTK_VERSION = gtk+-3.0
 # what shall be minimun gtk+ version for glib 2.80?
 
-CPPFLAGS = -DrfmBinPath=${rfmBinPath} --include ${languageInclude} -DG_LOG_DOMAIN=\"rfm\" ${GitIntegration} ${PythonEmbedded} ${RFM_FILE_CHOOSER} ${MU_VIEW} ${READLINE_LIB} ${AiIntegration} ${RFM_LOCAL}
+CPPFLAGS = -DrfmBinPath=${rfmBinPath} --include ${languageInclude} -DG_LOG_DOMAIN=\"rfm\" ${GitIntegration} ${PythonEmbedded} ${RFM_FILE_CHOOSER} ${MU_VIEW} ${READLINE_LIB} ${AiIntegration} ${RFM_LOCAL} ${CmarkTools}
 # 检查glib版本是否≥2.80
 ifeq ($(shell pkg-config --atleast-version=2.80 glib-2.0 && echo yes),yes)
 CPPFLAGS += -DGLIB280PLUS
-endif
-
-ifneq (${extractKeyValuePairFromMarkdown},)
-CPPFLAGS += -D${extractKeyValuePairFromMarkdown}
 endif
 
 # Uncomment the line below if compiling on a 32 bit system (otherwise stat() may fail on large directories; see man 2 stat)
@@ -38,7 +34,7 @@ endif
 ifeq (${READLINE_LIB},-DLINENOISE)
 LIBS += -I/usr/local/include -L/usr/local/lib -llinenoise 
 endif
-ifneq (${extractKeyValuePairFromMarkdown},)
+ifneq (${CmarkTools},)
 LIBS += `pkg-config --libs libcmark`
 endif
 CPPFLAGS += -DVERSION=\"${VERSION}\"
@@ -60,7 +56,7 @@ else
 all: options rfm cmark_tools
 endif
 
-ifneq (${extractKeyValuePairFromMarkdown},)
+ifneq (${CmarkTools},)
 cmark_tools: extractKeyValuePairFromMarkdown extractContentFromMarkdownRecursive
 else
 cmark_tools:
@@ -99,7 +95,7 @@ ${LIBNAME}: rfm.o
 # https://unix.stackexchange.com/questions/223385/why-and-how-are-some-shared-libraries-runnable-as-though-they-are-executables
 endif
 
-ifneq (${extractKeyValuePairFromMarkdown},)
+ifneq (${CmarkTools},)
 extractKeyValuePairFromMarkdown: extractKeyValuePairFromMarkdown.o
 	@echo CC -o $@
 	@${CC} -o $@ extractKeyValuePairFromMarkdown.o ${LDFLAGS}
@@ -116,7 +112,7 @@ ifneq ($(RFM_FILE_CHOOSER),)
 else
 	@rm -f rfm rfm.o
 endif
-ifneq (${extractKeyValuePairFromMarkdown},)
+ifneq (${CmarkTools},)
 	@rm -f extractKeyValuePairFromMarkdown extractKeyValuePairFromMarkdown.o extractContentFromMarkdownRecursive extractContentFromMarkdownRecursive.o
 endif
 
@@ -129,7 +125,7 @@ ifneq ($(RFM_FILE_CHOOSER),)
 	@ln -sf ./${LIBNAME} ${DESTDIR}${PREFIX}/lib64/${SONAME}
 	@ln -sf ./${LIBNAME} ${DESTDIR}${PREFIX}/lib64/${LINKERNAME}
 endif
-ifneq (${extractKeyValuePairFromMarkdown},)
+ifneq (${CmarkTools},)
 	@cp -f extractKeyValuePairFromMarkdown ${DESTDIR}${PREFIX}/bin
 	@cp -f extractContentFromMarkdownRecursive ${DESTDIR}${PREFIX}/bin
 endif
@@ -186,7 +182,7 @@ endif
 ifneq ($(RFM_FILE_CHOOSER),)
 	@chmod 755 ${DESTDIR}${PREFIX}/lib64/${LIBNAME}
 endif
-ifneq (${extractKeyValuePairFromMarkdown},)
+ifneq (${CmarkTools},)
 	@chmod +x ${DESTDIR}${PREFIX}/bin/extractKeyValuePairFromMarkdown
 	@chmod +x ${DESTDIR}${PREFIX}/bin/extractContentFromMarkdownRecursive
 endif
@@ -237,7 +233,7 @@ uninstall:
 ifneq ($(RFM_FILE_CHOOSER),)
 	@rm -f ${DESTDIR}${PREFIX}/lib64/${LIBNAME}
 endif
-ifneq (${extractKeyValuePairFromMarkdown},)
+ifneq (${CmarkTools},)
 	@rm -f ${DESTDIR}${PREFIX}/bin/extractKeyValuePairFromMarkdown
 	@rm -f ${DESTDIR}${PREFIX}/bin/extractContentFromMarkdownRecursive
 endif

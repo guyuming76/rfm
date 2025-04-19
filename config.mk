@@ -20,8 +20,8 @@ PythonEmbedded = -DPythonEmbedded
 #RFM_FILE_CHOOSER = -DRFM_FILE_CHOOSER
 RFM_FILE_CHOOSER =
 
-extractKeyValuePairFromMarkdown = extractKeyValuePairFromMarkdown
-#extractKeyValuePairFromMarkdown =
+CmarkTools = -DCmarkTools
+#CmarkTools =
 
 MU_VIEW = -DMU_VIEW
 #MU_VIEW =
