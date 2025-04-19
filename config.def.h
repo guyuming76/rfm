@@ -49,14 +49,14 @@ static gchar* dumb_keyfile_groupname = "https://discourse.gnome.org/t/gkeyfile-t
 
 //do not change the order of the following array,or change with care, it's referenced as stdin_cmd_interpretor[0] in code below
 static const stdin_cmd_interpretor stdin_cmd_interpretors[] = {
-        //Name             activationKey          prompt            cmdTransformer
-	{"Bash",           "b>",                  "b",              stdin_command_bash },
-	{"NuShell",        "n>",                  "n",              stdin_command_nu   },
+        //Name             activationKey          prompt            cmdTransformer       HistoryFilename
+	{"Bash",           "b>",                  "b",              stdin_command_bash,  ".rfm_history" },
+	{"NuShell",        "n>",                  "n",              stdin_command_nu,    ".rfm_history" },
 #ifdef AiIntegration
-	{AI_MODEL_AS_CMD_INTERPRETER,"a>",        "a",              stdin_LLM_prompt   }, //The prompt of AI will not show. The term_prompt of default AI_models will show instead. The acitivationKey of AI and that of the default AI_models have the same effect. DO NOT change the name AI here, it is hardcoded in code.
+	{AI_MODEL_AS_CMD_INTERPRETER,"a>",        "a",              stdin_LLM_prompt,    ".rfm_history_AI" }, //The prompt of AI will not show. The term_prompt of default AI_models will show instead. The acitivationKey of AI and that of the default AI_models have the same effect. DO NOT change the name AI here, it is hardcoded in code.
 #endif
 #ifdef PythonEmbedded
-	{"PythonEmbedded", "p>",                  "p",              NULL               },
+	{"PythonEmbedded", "p>",                  "p",              NULL,                ".rfm_history_python" },
 #endif
 };
 

@@ -139,6 +139,7 @@ typedef struct {
   gchar* activationKey;
   gchar* prompt;
   gchar** (*cmdTransformer)(gchar *, gboolean inNewVT);
+  gchar* HistoryFilename;
 } stdin_cmd_interpretor;
 
 static char* pipefd="0";
@@ -168,6 +169,7 @@ static gchar *auto_execution_command_after_rfm_start = NULL;
 /*keep the original user inputs for add_history*/
 static gchar *OriginalReadlineResult = NULL;
 static guint history_entry_added=0;
+static char rfm_historyFile_ParentDirectory[PATH_MAX] = { '\0' };
 static char *rfm_historyFileLocation;
 static char *rfm_historyDirectory_FileLocation;//used by script rfmReadlineWithSpecificHistoryFile.sh 
 static gboolean showHelpOnStart = TRUE;
@@ -198,6 +200,8 @@ static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * p
 static void toggle_exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread();
 static void add_history_timestamp();
 static void add_history_after_stdin_command_execution(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
+static void load_history_for_prompt();
+static void save_current_history();
 static void stdin_command_help(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
 static void cmd_glog(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
 static void cmd_setenv(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
@@ -3402,6 +3406,34 @@ static void add_history_timestamp(){
 }
 #endif
 
+static void save_current_history() {
+#ifdef GNU_readline
+    if (history_entry_added > 0) {
+        if (append_history(history_entry_added, rfm_historyFileLocation) != 0) {
+            write_history(rfm_historyFileLocation);
+        }
+    }
+#endif
+#ifdef LINENOISE
+    if (history_entry_added > 0) {
+        linenoiseHistorySave(rfm_historyFileLocation);
+    }
+#endif
+}
+
+static void load_history_for_prompt() {
+#ifdef GNU_readline
+    clear_history();
+    rfm_historyFileLocation = g_build_filename(rfm_historyFile_ParentDirectory, stdin_cmd_interpretors[current_stdin_cmd_interpretor].HistoryFilename ? stdin_cmd_interpretors[current_stdin_cmd_interpretor].HistoryFilename : ".rfm_history", NULL);
+    int e=0;
+    if ((e=read_history(rfm_historyFileLocation))) g_warning("failed to read_history(%s) error code:%d.",rfm_historyFileLocation,e);
+#endif
+#ifdef LINENOISE
+    if (linenoiseHistoryLoad(rfm_historyFileLocation)==-1); g_warning("failed to read_history(%s)",rfm_historyFileLocation);
+#endif
+    history_entry_added = 0;
+}
+
 static void add_history_after_stdin_command_execution(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution){
 #ifdef GNU_readline           
           add_history(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str);
@@ -4206,7 +4238,9 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 #endif
                     prefix_len = strlen(stdin_cmd_interpretors[i].activationKey);
 	            if (g_strcmp0(readlineResult, stdin_cmd_interpretors[i].activationKey)==0){
+		       save_current_history();
 		       current_stdin_cmd_interpretor = i;
+		       load_history_for_prompt();
 		       goto switchToReadlineThread;//如果当前输入命令是选择命令解释器,选择完后就直接进入一轮命令读取,无需再对当前输入命令进一步处理
 		    
                     // Check if it has the prefix AND is longer than just the prefix itself
@@ -4232,8 +4266,10 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 		  prefix_len = strlen(AI_models[i].activationKey);
 		  g_assert(stdin_cmd_interpretor_index_for_AI>=0);//能运行到这一步，上面一个for循环肯定跑完了，这个值肯定被设置过了
                   if (g_strcmp0(readlineResult, AI_models[i].activationKey)==0){
+		    save_current_history();
                     current_stdin_cmd_interpretor = stdin_cmd_interpretor_index_for_AI;
                     current_AI_model_index = i;
+		    load_history_for_prompt();
                     goto switchToReadlineThread;
                   }else if (g_str_has_prefix(readlineResult, AI_models[i].activationKey)){
                         memmove(readlineResult, readlineResult + prefix_len, len - prefix_len + 1); // Shift string left
@@ -4555,7 +4591,8 @@ static int setup(RFM_ctx *rfmCtx)
    if (getcwd(cwd, sizeof(cwd)) == NULL) die("ERROR: %s: getcwd() failed.\n", PROG_NAME); /* getcwd returns NULL if cwd[] not big enough! */
    ReadFromPipeStdinIfAny(pipefd); //rfm_SearchResultPath may be filled with cwd here
 
-   rfm_historyFileLocation = g_build_filename(getenv("HOME"),".rfm_history", NULL);
+   sprintf(rfm_historyFile_ParentDirectory, getenv("HOME"));
+   rfm_historyFileLocation = g_build_filename(rfm_historyFile_ParentDirectory, stdin_cmd_interpretors[current_stdin_cmd_interpretor].HistoryFilename ? stdin_cmd_interpretors[current_stdin_cmd_interpretor].HistoryFilename : ".rfm_history", NULL);
    rfm_historyDirectory_FileLocation = g_build_filename(getenv("HOME"),".rfm_history_directory", NULL);
 #ifdef GNU_readline  
    int e;
@@ -4630,11 +4667,7 @@ static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx)
    inotify_rm_watch(rfm_inotify_fd, rfm_curPath_wd);
    close(rfm_inotify_fd);
 #ifdef GNU_readline
-   if ((e=append_history(history_entry_added, rfm_historyFileLocation))){
-     if (e!=2) g_warning("failed to append_history(%d,%s) error code:%d",history_entry_added,rfm_historyFileLocation,e);
-     else if ((e=write_history(rfm_historyFileLocation)))
-       g_warning("failed to write_history(%s) error code:%d", rfm_historyFileLocation,e);
-   }  
+   save_current_history();
    rl_attempted_completion_function = OLD_rl_attempted_completion_function;
 #endif
 #ifdef LINENOISE
