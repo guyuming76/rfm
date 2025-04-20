@@ -65,6 +65,7 @@ static const stdin_cmd_interpretor stdin_cmd_interpretors[] = {
 static const AI_model_parameter AI_models[] = {
   //calling_script        host_url                         model_name                  term_prompt         activationKey  InNewTerm  Temperature   API_Key
   {"rfmAskOllama.sh",  "http://localhost:11434/api/generate","codegeex4:9B",           "codegeex4:9B",     "c>",           TRUE,        "0",          "别把key存config.def.h,存config.h" },
+  {"rfmAskOllama.sh",  "http://localhost:11434/api/generate","qwq:latest",             "qwq",              "q>",           TRUE,        "0",          "别把key存config.def.h,存config.h" },
   {"rfmAskOpenRouter.sh","https://openrouter.ai/api/v1/chat/completions","deepseek/deepseek-r1-zero:free","deepseek-r1:free","r>",TRUE, "0",          "别把key存config.def.h,存config.h" },
   {"rfmAskOpenRouter.sh","https://api.deepseek.com/chat/completions","deepseek-reasoner","deepseek-r1",    "d>",           TRUE,        "0",          "别把key存config.def.h,存config.h" },
 };
