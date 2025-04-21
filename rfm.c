@@ -169,7 +169,7 @@ static gchar *auto_execution_command_after_rfm_start = NULL;
 /*keep the original user inputs for add_history*/
 static gchar *OriginalReadlineResult = NULL;
 static guint history_entry_added=0;
-static char rfm_historyFile_ParentDirectory[PATH_MAX] = { '\0' };
+char rfm_historyFile_ParentDirectory[PATH_MAX] = { '\0' };
 static char *rfm_historyFileLocation;
 static char *rfm_historyDirectory_FileLocation;//used by script rfmReadlineWithSpecificHistoryFile.sh 
 static gboolean showHelpOnStart = TRUE;
@@ -200,8 +200,8 @@ static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * p
 static void toggle_exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread();
 static void add_history_timestamp();
 static void add_history_after_stdin_command_execution(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
-static void load_history_for_prompt();
-static void save_current_history();
+void load_history_for_prompt();
+void save_current_history();
 static void stdin_command_help(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
 static void cmd_glog(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
 static void cmd_setenv(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
@@ -3406,7 +3406,7 @@ static void add_history_timestamp(){
 }
 #endif
 
-static void save_current_history() {
+void save_current_history() {
 #ifdef GNU_readline
     if (history_entry_added > 0) {
         if (append_history(history_entry_added, rfm_historyFileLocation) != 0) {
@@ -3421,7 +3421,7 @@ static void save_current_history() {
 #endif
 }
 
-static void load_history_for_prompt() {
+void load_history_for_prompt() {
 #ifdef GNU_readline
     clear_history();
     rfm_historyFileLocation = g_build_filename(rfm_historyFile_ParentDirectory, stdin_cmd_interpretors[current_stdin_cmd_interpretor].HistoryFilename ? stdin_cmd_interpretors[current_stdin_cmd_interpretor].HistoryFilename : ".rfm_history", NULL);

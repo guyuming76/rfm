@@ -47,6 +47,10 @@ CFLAGS += `python3.11-config --cflags`
 LDFLAGS += `python3.11-config --ldflags --embed`
 endif
 
+ifneq (${RFM_LOCAL},)
+LDFLAGS += -rdynamic
+endif
+
 # compiler and linker
 CC = gcc
 

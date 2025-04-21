@@ -11,11 +11,30 @@ const char * const rfm_local_c_file_hash = NULL;
 
 // #include <gtk/gtk.h>
 #include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <string.h>
+#include <limits.h>
+
+extern char rfm_historyFile_ParentDirectory[PATH_MAX];
+extern void load_history_for_prompt();
+extern void save_current_history();
+static char *saved_history_dir = NULL;
 
 void rfm_local_enter() {
-     printf("rfm_local_enter called!\n");
+     fprintf(stderr,"rfm_local_enter called!\n");
+     saved_history_dir=strdup(rfm_historyFile_ParentDirectory);
+     save_current_history();
+     if (getcwd(rfm_historyFile_ParentDirectory,sizeof(rfm_historyFile_ParentDirectory))==NULL) fprintf(stderr,"getcwd return NULL");
+     load_history_for_prompt();
 }
 
 void rfm_local_leave() {
-     printf("rfm_local_leave called!\n");
+     fprintf(stderr,"rfm_local_leave called!\n");
+     if (saved_history_dir) {
+         save_current_history();
+         sprintf(rfm_historyFile_ParentDirectory,"%s",saved_history_dir);
+         free(saved_history_dir);
+         load_history_for_prompt();
+     }
 }
