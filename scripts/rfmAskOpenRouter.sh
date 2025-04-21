@@ -54,6 +54,8 @@ else
   .message // ("Error: Unexpected API response format: " + (tostring))
 end')
 
+RESPONSE_ID=$(echo $RESPONSE | jq '.id')
+
 source rfmAiDisplayResult.sh
 
 source rfmAiSaveHistory.sh

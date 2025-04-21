@@ -1,5 +1,7 @@
 #!/bin/bash
 
+echo $RESPONSE > .rfmAI_latest_response.json
+
 # 仅当成功时保存文件
 if ! [[ "$RESULT" =~ ^Error: ]]; then
   # 清理模型名称中的非法字符（如冒号）
@@ -25,6 +27,14 @@ $rfm_AI_MODEL_NAME
 
 # 温度 #
 $rfm_AI_MODEL_TEMPERATURE
+
+# ID #
+$(if [ -z "$RESPONSE_ID" ]; then 
+    echo "警告: 未提供RESPONSE_ID, 自动生成UUID" >&2
+    uuidgen
+  else
+    echo "$RESPONSE_ID"
+  fi)
 EOF
 
   echo
