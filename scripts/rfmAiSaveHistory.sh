@@ -28,6 +28,9 @@ $rfm_AI_MODEL_NAME
 # 温度 #
 $rfm_AI_MODEL_TEMPERATURE
 
+# 历史ID #
+$(echo "$RESPONSE_ID_ARRAY")
+
 # ID #
 $(if [ -z "$RESPONSE_ID" ]; then 
     echo "警告: 未提供RESPONSE_ID, 自动生成UUID" >&2

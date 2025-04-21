@@ -9,21 +9,29 @@ source rfmAiGetParameterPromptAndFile.sh
 
 source rfmAiAppendFileContentIntoPrompt.sh
 
+source rfmAiJsonMessagesArray.sh
 
 # Make the API call using curl
 # Append the correct endpoint path to the base URL
 
+# Add current prompt
+MESSAGES_ARRAY=$(echo "$MESSAGES_ARRAY" | jq \
+  --arg content "$PROMPT_FULL" \
+  '. += [{"role": "user", "content": $content}]')
+
 # Build the JSON payload using the messages array format
 REQUEST_JSON=$(jq -n \
   --arg model "$rfm_AI_MODEL_NAME" \
-  --arg content "$PROMPT_FULL" \
+  --argjson messages "$MESSAGES_ARRAY" \
   --argjson temp "$rfm_AI_MODEL_TEMPERATURE" \
   '{
     model: $model,
-    messages: [ { role: "user", content: $content } ],
+    messages: $messages,
     stream: false,
     temperature: $temp
   }')
+
+echo $REQUEST_JSON > .rfmAI_latest_request.json
 
 # The JSON payload includes the model name and the user's prompt
 RESPONSE=$(curl -sS --fail-with-body -X POST "$rfm_AI_MODEL_HOST_URL" \
