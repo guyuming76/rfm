@@ -4463,14 +4463,7 @@ static char** gnu_readline_completion(const char *text, int start, int end){
 	return NULL;
       }
     }
-    //若没有匹配到 regex_rules ,则替换为在命令历史中搜索newtext的命令
     free(newtext);
-    newtext=calloc(PATH_MAX, sizeof(char));//没找到最大命令行长度，就用PATH_MAX了
-    snprintf(newtext,PATH_MAX,SEARCH_RFM_CMD_HISTORY, rfm_historyFileLocation, text);
-    rl_replace_line(newtext,0);
-    rl_redisplay();
-    free(newtext);
-    return NULL;
   }
 
   if (OLD_rl_attempted_completion_function) {
