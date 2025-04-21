@@ -65,7 +65,7 @@
 "    with difference in layout, there are also two types of view: icon view and list view, icons such as picture thumbnails are shown in icon view.\n" \
 "\n\033[32m command prompt: \033[0m\n" \
 "    b*> means there is selected file(s) in rfm view, and current command interpreter is Bash, which can be configured in config.h\n" \
-"        press TAB with empty prefix will insert the current selected file fullpath; press TAB with non-empty prefix will match input with regular expressions defined in config.h and replace; input will be replaced with command to search in history if no regular expression matched.\n" \
+"        press TAB with empty prefix will insert the current selected file fullpath; otherwise, system TAB completion function such as filename completion will be called.\n" \
 "    b>  means no selected files\n" \
 "    b?> means in refreshing and file selection cannot be determined, try press enter after refresh.\n" \
 "    prompt won't update when selection changes in rfm view, press Enter to refresh\n" \

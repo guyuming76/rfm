@@ -4450,23 +4450,7 @@ static char** gnu_readline_completion(const char *text, int start, int end){
     //rl_attempted_completion_over = 1;
     rl_completion_suppress_append = 1;    
     return ret;
-  } else if (text && strlen(text)>0){ //光标上下文不为空
-    char *newtext=strdup(text);
-    for (guint i=0;i<G_N_ELEMENTS(regex_rules);i++){
-      if (regex_rules[i].pattern_compiled && str_regex_replace(&newtext, regex_rules[i].pattern_compiled, regex_rules[i].replacement)){
-	g_log(RFM_LOG_READLINE, G_LOG_LEVEL_DEBUG,"%s matched with %s, newtext:%s",text, regex_rules[i].pattern,newtext);
-	if (strcmp(text,newtext)!=0){
-	  rl_replace_line(newtext,0);//TODO: input showcolumn and TAB, newtext will still be showcolumn, but nothing will be displayed if this is called. if ShowColumn is inputted, showcolumn will be displayed. why readline behave like this? This is why we compare text with newtext above
-	  rl_redisplay();
-	}
-	free(newtext);
-	return NULL;
-      }
-    }
-    free(newtext);
-  }
-
-  if (OLD_rl_attempted_completion_function) {
+  } else if (OLD_rl_attempted_completion_function) {
     g_log(RFM_LOG_READLINE, G_LOG_LEVEL_DEBUG,"call OLD_rl_attempted_completion_function with %s, %d, %d",text, start, end);
     return OLD_rl_attempted_completion_function(text,start,end);
   }else return NULL;
