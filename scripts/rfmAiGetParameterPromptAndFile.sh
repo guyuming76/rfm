@@ -10,12 +10,19 @@ rfm_AI_MODEL_prompt=$(cat)
 
 # 初始化文件列表
 FILES_LIST=()
+MESSAGES_LIST=()
 
 # 从环境变量获取文件列表
 if [ -n "$RFM_SELECTED_FILES" ]; then
   while IFS= read -r filepath; do
     if [ -f "$filepath" ] && [ -r "$filepath" ]; then
-      FILES_LIST+=("$filepath")
+      # 检查是否是对话记录文件
+      if [[ "$filepath" == *.rfmAI.md ]]; then
+        MESSAGES_LIST+=("$filepath")
+        echo "提示：已添加对话记录文件到消息列表: $filepath" >&2
+      else
+        FILES_LIST+=("$filepath")
+      fi
     else
       echo "警告：文件不存在或不可读，已跳过: $filepath" >&2
     fi
@@ -27,7 +34,13 @@ if [ $# -gt 4 ]; then
   shift 4
   for filepath in "$@"; do
     if [ -f "$filepath" ] && [ -r "$filepath" ]; then
-      FILES_LIST+=("$filepath")
+      # 检查是否是对话记录文件
+      if [[ "$filepath" == *.rfmAI.md ]]; then
+        MESSAGES_LIST+=("$filepath")
+        echo "提示：已添加对话记录文件到消息列表: $filepath" >&2
+      else
+        FILES_LIST+=("$filepath")
+      fi
     else
       echo "警告：文件不存在或不可读，已跳过: $filepath" >&2
     fi
