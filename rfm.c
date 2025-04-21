@@ -3407,30 +3407,35 @@ static void add_history_timestamp(){
 #endif
 
 void save_current_history() {
-#ifdef GNU_readline
     if (history_entry_added > 0) {
-        if (append_history(history_entry_added, rfm_historyFileLocation) != 0) {
-            write_history(rfm_historyFileLocation);
-        }
-    }
+#ifdef GNU_readline
+        int e = append_history(history_entry_added, rfm_historyFileLocation);
+        if (e!= 0) {
+	  g_warning("failed to append_history, error code:%d",e);
+	  if (e==2){ // 在我的环境里，文件不存在时返回2,所以下面调用 write_history 函数
+	    e = write_history(rfm_historyFileLocation);
+	    if (e!=0) g_warning("failed to write_history, error code:%d",e);
+	  }
+	}
 #endif
 #ifdef LINENOISE
-    if (history_entry_added > 0) {
-        linenoiseHistorySave(rfm_historyFileLocation);
-    }
+        if (linenoiseHistorySave(rfm_historyFileLocation)==-1) g_warning("linenoiseHistorySave(%s) failed", rfm_historyFileLocation);
 #endif
+        g_debug("save command history to: %s",rfm_historyFileLocation);
+    }
 }
 
 void load_history_for_prompt() {
 #ifdef GNU_readline
     clear_history();
     rfm_historyFileLocation = g_build_filename(rfm_historyFile_ParentDirectory, stdin_cmd_interpretors[current_stdin_cmd_interpretor].HistoryFilename ? stdin_cmd_interpretors[current_stdin_cmd_interpretor].HistoryFilename : ".rfm_history", NULL);
-    int e=0;
-    if ((e=read_history(rfm_historyFileLocation))) g_warning("failed to read_history(%s) error code:%d.",rfm_historyFileLocation,e);
+    int e = read_history(rfm_historyFileLocation);
+    if (e!=0) g_warning("failed to read_history(%s) error code:%d.",rfm_historyFileLocation,e);
 #endif
 #ifdef LINENOISE
     if (linenoiseHistoryLoad(rfm_historyFileLocation)==-1); g_warning("failed to read_history(%s)",rfm_historyFileLocation);
 #endif
+    g_debug("read command history from: %s",rfm_historyFileLocation);
     history_entry_added = 0;
 }
 
@@ -4666,12 +4671,9 @@ static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx)
    //https://unix.stackexchange.com/questions/534657/do-inotify-watches-automatically-stop-when-a-program-ends
    inotify_rm_watch(rfm_inotify_fd, rfm_curPath_wd);
    close(rfm_inotify_fd);
-#ifdef GNU_readline
    save_current_history();
+#ifdef GNU_readline
    rl_attempted_completion_function = OLD_rl_attempted_completion_function;
-#endif
-#ifdef LINENOISE
-   if (linenoiseHistorySave(rfm_historyFileLocation)==-1) g_warning("linenoiseHistorySave(%s) failed", rfm_historyFileLocation);
 #endif
   
 #ifdef PythonEmbedded
