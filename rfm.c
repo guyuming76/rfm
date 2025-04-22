@@ -4970,7 +4970,7 @@ static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline, gboolean ne
    GKeyFile *keyfile=g_key_file_new();
    GError *error=NULL;
    if (!g_key_file_load_from_file(keyfile, oneline, G_KEY_FILE_NONE, &error)){
-     g_warning("error loading key value pair from file %s, error code: %d, message:%s",oneline, error==NULL?0:error->code, error==NULL?"":error->message);
+     g_warning("ProcessKeyValuePairInFilesFromSearchResult. error loading key value pair from file %s, error code: %d, message:%s",oneline, error==NULL?0:error->code, error==NULL?"":error->message);
      g_error_free(error);
    }else{
      ProcessKeyValuePairInData(keyfile, dumb_keyfile_groupname);
@@ -5007,12 +5007,12 @@ static int ProcessKeyValuePairInCmdOutputFromSearchResult(char *oneline, gboolea
 
    g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"ProcessKeyValuePairInCmdOutputFromSearchResult cmd:%s, MatchedCmdInterpretor:%d, current_stdin_cmd_interpretor %d",SearchResultOnelineDocProcessingCmd, cmd_interpretor_index, current_stdin_cmd_interpretor);
    if (!g_spawn_sync(rfm_curPath, cmd, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, &cmdOutput, &cmdError, NULL, &error)){
-     g_warning("error executing cmd %s, error:%s",SearchResultOnelineDocProcessingCmd, error==NULL?"":error->message);
+     g_warning("ProcessKeyValuePairInCmdOutputFromSearchResult. error executing cmd %s, error:%s",SearchResultOnelineDocProcessingCmd, error==NULL?"":error->message);
      if (error) g_error_free(error);
    }else{
    
      if (!g_key_file_load_from_data(keyfile, cmdOutput, strlen(cmdOutput), G_KEY_FILE_NONE, &error)){
-       g_warning("error loading key value pair in cmdOutput from file %s, error code: %d, message:%s",oneline, error==NULL?0:error->code, error==NULL?"":error->message);
+       g_warning("ProcessKeyValuePairInCmdOutputFromSearchResult. error loading key value pair in cmdOutput from file %s, error code: %d, message:%s",oneline, error==NULL?0:error->code, error==NULL?"":error->message);
        if (error) g_error_free(error);
      }else{
        ProcessKeyValuePairInData(keyfile, dumb_keyfile_groupname);
@@ -5060,7 +5060,7 @@ static int ProcessKeyValuePairInData(GKeyFile *keyfile, char* groupname){
        if (ExtColumnHashTable[currentExtColumnHashTableIndex]==NULL) ExtColumnHashTable[currentExtColumnHashTableIndex] = g_hash_table_new_full(g_str_hash, g_str_equal,g_free, g_free);
        gchar* currentExtColumnValue = g_key_file_get_string(keyfile, groupname, keys[i], &error);
        if (currentExtColumnValue==NULL){
-	 g_warning("groupname %s, keyvalue %s, not found, error:%s",groupname,keys[i],error? error->message:"");
+	 g_warning("ProcessKeyValuePairInData. groupname %s, keyvalue %s, not found, error:%s",groupname,keys[i],error? error->message:"");
 	 g_error_free(error); error=NULL;
 	 continue;
        }
