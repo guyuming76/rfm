@@ -2,7 +2,7 @@
 
 # Prepare conversation messages array
 MESSAGES_ARRAY="[]"
-RESPONSE_ID_ARRAY="[]"
+RESPONSE_ID_ARRAY=()
 
 # Add history messages if any
 if [ ${#MESSAGES_LIST[@]} -gt 0 ]; then
