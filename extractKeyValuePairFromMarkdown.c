@@ -13,6 +13,7 @@ int current_heading_level = 0;
 int currently_in_matched_header = 0;
 int current_heading_finished_testing_HeadersToMatch = 0; //the first cmark_node_type_text is for header text, do not try for later text nodes
 int currently_matched_header_finished_printing = 0; //we only print the first line of content for matched header
+int skip = 0;
 
 void print_event(cmark_event_type ev_type){
     switch (ev_type){
@@ -25,6 +26,16 @@ void print_event(cmark_event_type ev_type){
 void print_node(cmark_node *node, cmark_event_type ev_type) {
     if (debug) print_event(ev_type);
     if (!node) return;
+
+    const char* typestring = cmark_node_get_type_string(node);
+    if (typestring){
+        if (debug) printf("typestring:%s\n",typestring);
+        //free(typestring);
+        if (strcmp(typestring, "html_inline")==0) { skip = 0; return; }
+        if (strcmp(typestring, "html_block")==0)  { skip = 1; if (debug) printf("skip\n"); }
+        //deepseek回复内容的<think>会得到 html_block, </think>会得到html_inline
+    }
+    if (skip==1) return;
 
     cmark_node_type nodetype = cmark_node_get_type(node);
     if ( nodetype == CMARK_NODE_HEADING) {
@@ -40,12 +51,6 @@ void print_node(cmark_node *node, cmark_event_type ev_type) {
 	  current_heading_finished_testing_HeadersToMatch = 0;
 	}
         if (debug) printf("heading level:%d\n",current_heading_level);
-    }
-
-    const char* typestring = cmark_node_get_type_string(node);
-    if (typestring){
-        if (debug) printf("typestring:%s\n",typestring);
-        //free(typestring);
     }
 
     const char* literal = cmark_node_get_literal(node);
