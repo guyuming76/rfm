@@ -12,9 +12,11 @@ rfm_AI_MODEL_prompt=$(cat)
 FILES_LIST=()
 MESSAGES_LIST=()
 
+#echo -e "$RFM_SELECTED_FILES"
+
 # 从环境变量获取文件列表
 if [ -n "$RFM_SELECTED_FILES" ]; then
-  while IFS= read -r filepath; do
+  while IFS= read -e -r filepath; do
     if [ -f "$filepath" ] && [ -r "$filepath" ]; then
       # 检查是否是对话记录文件
       if [[ "$filepath" == *.rfmAI.md ]]; then

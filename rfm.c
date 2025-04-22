@@ -4363,10 +4363,13 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 		    g_string_replace(readlineResultString, selected_filename_placeholder,stdin_cmd_selection_fileAttributes->path, 1);
 		  }
 
-		  if (env_rfm_selected_files!=NULL){
-		    g_strconcat(env_rfm_selected_files, "\n",NULL);
-		    g_strconcat(env_rfm_selected_files, stdin_cmd_selection_fileAttributes->path, NULL);
-		  }else env_rfm_selected_files = strdup(stdin_cmd_selection_fileAttributes->path);
+		  if (env_rfm_selected_files != NULL) {
+		    gchar *new_str = g_strconcat(env_rfm_selected_files, "\n", stdin_cmd_selection_fileAttributes->path, NULL);
+		    g_free(env_rfm_selected_files);
+		    env_rfm_selected_files = new_str;
+		  } else {
+		    env_rfm_selected_files = g_strdup(stdin_cmd_selection_fileAttributes->path);
+		  }
 
 		  listElement=g_list_next(listElement);
 		}
