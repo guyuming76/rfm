@@ -2533,7 +2533,7 @@ static void set_env_to_pass_into_child_process(GtkTreeIter *iter, gchar*** env_f
     //TODO: deal with types such as G_TYPE_UINt64
     int i=get_treeviewColumnsIndexByEnum(c);
     if (i>0 && TREEVIEW_COLUMNS[i].Show){
-      gchar* env_var_name = strcat(strdup(RFM_ENV_VAR_NAME_PREFIX), TREEVIEW_COLUMNS[i].title);
+      gchar* env_var_name = g_strconcat(RFM_ENV_VAR_NAME_PREFIX, TREEVIEW_COLUMNS[i].title,NULL);
       gchar* env_var_value = NULL;
       gtk_tree_model_get(GTK_TREE_MODEL(store), iter, c, &env_var_value, -1);
       if(env_var_value!=NULL){
