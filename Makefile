@@ -172,6 +172,7 @@ ifneq ($(AiIntegration),)
 	@cp -f scripts/rfmAiDisplayResult.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmAiSaveHistory.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmAiJsonMessagesArray.sh ${DESTDIR}${PREFIX}/bin
+	@cp -f scripts/rfmAiFindRelatedMessages_Direct.sh ${DESTDIR}${PREFIX}/bin
 endif
 ifneq ($(CalledByEbuild),YES)
 # the CalledByEbuild variable is exported in rfm ebuild
@@ -230,6 +231,7 @@ ifneq ($(AiIntegration),)
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmAiDisplayResult.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmAiSaveHistory.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmAiJsonMessagesArray.sh
+	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmAiFindRelatedMessages_Direct.sh
 endif
 	@echo
 	@echo "***please copy the .inputrc file into your home directory (~) manually."
@@ -282,6 +284,7 @@ ifneq ($(AiIntegration),)
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmAiDisplayResult.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmAiSaveHistory.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmAiJsonMessagesArray.sh
+	@rm -f ${DESTDIR}${PREFIX}/bin/rfmAiFindRelatedMessages_Direct.sh
 endif
 ifneq ($(CalledByEbuild),YES)
 	-xdg-desktop-menu uninstall rfm.desktop

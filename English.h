@@ -16,12 +16,14 @@
 #define RunActionChangeOwner "ChangeOwner"
 #define RunActionCD "Enter parent directory of file"
 #define RunActionMkdirMoveFiles "new directory and move files into it"
+#define RunActionFindDRelated "find directly related Ai dialogs(based on ID and history)"
+
 #define SwitchPipeDir  "Pipe/Dir"
 #define cpPath "copy directory name to clipboard"
 #define START_MENU "Start menu"
 #define SAVESEARCHRESULT "save (selected) search result into file"
 #define FIND_FILES "all files (subdir)"
-
+#define ALL_AI_DIALOG "all AI dialog"
 #define PipeTitle "Current:%d/Total:%d, PageSize:%d"
 
 #define AI_MODEL_AS_CMD_INTERPRETER "Switch to the current AI model. The section below lists all candidate models. The first column is the command"

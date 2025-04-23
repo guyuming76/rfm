@@ -69,6 +69,9 @@ static const AI_model_parameter AI_models[] = {
   {"rfmAskOpenRouter.sh","https://openrouter.ai/api/v1/chat/completions","deepseek/deepseek-r1-zero:free","deepseek-r1:free","r>",TRUE, "0",          "别把key存config.def.h,存config.h" },
   {"rfmAskOpenRouter.sh","https://api.deepseek.com/chat/completions","deepseek-reasoner","deepseek-r1",    "d>",           TRUE,        "0",          "别把key存config.def.h,存config.h" },
 };
+
+static const char *findDirectlyRelatedMessages[] = { stdin_cmd_interpretors[0].name, "rfmAiFindRelatedMessages_Direct.sh %s >multitype", NULL };
+static const char *AllAiMessages[] = { stdin_cmd_interpretors[0].name, "locate '*.rfmAI.md'>multitype", NULL };
 #endif
 
 static const char *find_same_name[] = { stdin_cmd_interpretors[0].name, rfmBinPath "rfmFindFilesWithTheSameName.sh >multitype ", NULL };
@@ -202,6 +205,9 @@ static RFM_MenuItem run_actions[] = {
    { "Open with...", "*",              "*",                    NULL,			NULL,			NULL,		open_with,        		NULL },
    { RunActionChangeOwner,"*",         "*",                    NULL,			NULL,			NULL,		change_owner,                   NULL },
    { RunActionMkdirMoveFiles,"*",      "*",                    NULL,                    NULL,                   NULL,           mkdir_and_move_files_into_it,   NULL },
+#ifdef AiIntegration
+   { RunActionFindDRelated,"*",        "*",                    ".rfmAI.md",             NULL,                   NULL,           findDirectlyRelatedMessages,    NULL },
+#endif
    { "Open",         "message",        "rfc822",               NULL,			"muview",               NULL,		muview,                         NULL },
    { "Open",         "image",          "*",                    NULL,			NULL,			NULL,		show_image,       		NULL },
    { "Open",         "application",    "x-desktop",            NULL,                    NULL,                   NULL,           launch_desktop,                 NULL },
@@ -282,6 +288,9 @@ static RFM_ToolButton tool_buttons[] = {
    { Up,             "go-up",                   up_clicked,             NULL,              FALSE,          TRUE,      GDK_KEY_Up,            "MOD1(usually ALT)+Up",  NULL},
    { "Refresh",      "view-refresh",            refresh_store,          NULL,              TRUE,           TRUE,      0,                      NULL,                   NULL},
    { FIND_FILES,     NULL,                      NULL,                   find_files,        FALSE,          TRUE,      0,                      NULL,                   NULL},
+#ifdef AiIntegration
+   { ALL_AI_DIALOG,  NULL,                      NULL,                   AllAiMessages,     TRUE,           TRUE,      0,                      NULL,                   NULL},
+#endif
    { "Share",        NULL,                      NULL,                   share_dir,         FALSE,          TRUE,      0,                      "share directory",      NULL},
 // { "Terminal",     "utilities-terminal",      NULL,                   term_cmd,          TRUE,           TRUE,      0,                      NULL,                   NULL},
 // { "rfm",          "system-file-manager",     NULL,                   new_rfm,           TRUE,           TRUE,      0,                      NULL,                   NULL},
