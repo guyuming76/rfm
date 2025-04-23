@@ -34,6 +34,7 @@ void print_node(cmark_node *node, cmark_event_type ev_type) {
         if (strcmp(typestring, "html_inline")==0) { skip = 0; return; }
         if (strcmp(typestring, "html_block")==0)  { skip = 1; if (debug) printf("skip\n"); }
         //deepseek回复内容的<think>会得到 html_block, </think>会得到html_inline
+        //if (strcmp(typestring,"code_block")==0) { if (debug) printf("omit code_block"); return; }
     }
     if (skip==1) return;
 
@@ -74,7 +75,8 @@ void print_node(cmark_node *node, cmark_event_type ev_type) {
 	  }
 	  current_heading_finished_testing_HeadersToMatch = 1;
 	}else if (currently_in_matched_header && !currently_matched_header_finished_printing){
-	      printf("%s",literal);
+	      if (strcmp(typestring,"code_block")==0) printf("code_block");
+	      else printf("%s",literal);
 	      currently_matched_header_finished_printing = 1;
 	}
     }
