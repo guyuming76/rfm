@@ -4176,7 +4176,7 @@ static int MatchSearchResultType(gchar* readlineResult){
 	      }
 	      g_free(searchTypeNumberSuffix);
 	      
-      	      char* searchTypeNameSuffix=strcat(strdup(RFM_SearchResultTypeNamePrefix),searchresultTypes[i].name);
+      	      char* searchTypeNameSuffix=g_strconcat(RFM_SearchResultTypeNamePrefix,searchresultTypes[i].name,NULL);
 	      if (g_str_has_suffix(readlineResult, searchTypeNameSuffix)){
 		g_debug("SearchResultTypeIndex:%d; searchResultTypeName:%s",i,searchresultTypes[i].name);
 		readlineResult[len-strlen(searchTypeNameSuffix)]='\0';//remove suffix from readlineResult
