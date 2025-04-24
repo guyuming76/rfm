@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#set -x
+set -x
 
 # 验证输入参数为 *.rfmAI.md 文件
 if [ "$#" -ne 1 ]; then
@@ -45,7 +45,7 @@ while : ; do
     # 过滤掉已经处理过的文件
     readarray -t new_files < <(
         comm -23 <(printf "%s\n" "${new_files[@]}" | sort) \
-                 <(printf "%s\n" "${matched_files[@]}" | sort)
+                 <(printf "%s\n" "${matched_files[@]}" | sort) | grep -v '^[[:space:]]*$'
     )
     
     [ ${#new_files[@]} -eq 0 ] && break  # 没有新文件则退出
