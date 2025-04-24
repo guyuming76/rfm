@@ -31,11 +31,41 @@ for hid in "${HistoryID[@]}"; do
     [ -n "$hid" ] && unique_patterns["$hid"]=1
 done
 
-# 为每个pattern构建grep命令
-GREP_CMD="grep -l"
-for pattern in "${!unique_patterns[@]}"; do
-    GREP_CMD+=" -e \"$pattern\""
+# 递归查找相关ID
+while : ; do
+    # 为每个pattern构建grep命令
+    GREP_CMD="grep -l"
+    for pattern in "${!unique_patterns[@]}"; do
+        GREP_CMD+=" -e \"$pattern\""
+    done
+
+    # 在找到的文件中搜索匹配pattern的内容
+    matched_files=$(locate "*.rfmAI.md" | xargs -I {} sh -c "$GREP_CMD {} 2>/dev/null" | sort | uniq)
+    
+    # 如果没有匹配到新文件，退出循环
+    [ -z "$matched_files" ] && break
+
+    # 从匹配文件中提取新ID
+    new_ids=0
+    for file in $matched_files; do
+        # 提取ID
+        id=$(extractContentFromMarkdownRecursive 0 "$file" "ID" | tr -d '[:space:]')
+        [ -n "$id" ] && [ -z "${unique_patterns[$id]}" ] && unique_patterns["$id"]=1 && ((new_ids++))
+        
+        # 提取历史ID
+        readarray -t history_ids < <(extractContentFromMarkdownRecursive 0 "$file" "历史ID" | grep -v '^[[:space:]]*$' | tr -d '[:space:]')
+        for hid in "${history_ids[@]}"; do
+            [ -n "$hid" ] && [ -z "${unique_patterns[$hid]}" ] && unique_patterns["$hid"]=1 && ((new_ids++))
+        done
+    done
+
+    # 如果没有新ID加入，退出循环
+    [ $new_ids -eq 0 ] && break
 done
 
-# 在找到的文件中搜索匹配pattern的内容
-locate "*.rfmAI.md" | xargs -I {} sh -c "$GREP_CMD {} 2>/dev/null" | sort | uniq
+# 输出最终匹配的文件
+echo -e $matched_files
+
+#for pattern in "${!unique_patterns[@]}"; do
+#    grep -l -e "$pattern" $matched_files 2>/dev/null
+#done | sort | uniq

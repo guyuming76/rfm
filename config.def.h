@@ -71,6 +71,7 @@ static const AI_model_parameter AI_models[] = {
 };
 
 static const char *findDirectlyRelatedMessages[] = { stdin_cmd_interpretors[0].name, "rfmAiFindRelatedMessages_Direct.sh %s >multitype", NULL };
+static const char *findRelatedMessages[] = { stdin_cmd_interpretors[0].name, "rfmAiFindRelatedMessages.sh %s >multitype", NULL };
 static const char *AllAiMessages[] = { stdin_cmd_interpretors[0].name, "locate '*.rfmAI.md'>multitype", NULL };
 #endif
 
@@ -207,6 +208,7 @@ static RFM_MenuItem run_actions[] = {
    { RunActionMkdirMoveFiles,"*",      "*",                    NULL,                    NULL,                   NULL,           mkdir_and_move_files_into_it,   NULL },
 #ifdef AiIntegration
    { RunActionFindDRelated,"*",        "*",                    ".rfmAI.md",             NULL,                   NULL,           findDirectlyRelatedMessages,    NULL },
+   { RunActionFindRelated, "*",        "*",                    ".rfmAI.md",             NULL,                   NULL,           findRelatedMessages,            NULL },
 #endif
    { "Open",         "message",        "rfc822",               NULL,			"muview",               NULL,		muview,                         NULL },
    { "Open",         "image",          "*",                    NULL,			NULL,			NULL,		show_image,       		NULL },
