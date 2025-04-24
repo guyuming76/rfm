@@ -129,7 +129,7 @@ int main(int argc, char *argv[]) {
         current_content = new_content;
         
         if (!current_content || strlen(current_content) == 0) {
-            fprintf(stderr, "Header not found: %s\n", argv[i]);
+            fprintf(stderr, "Header %s not found in file: %s\n", argv[i], filename);
             free(current_content);
             free(content);
             return 1;
