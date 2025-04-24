@@ -24,18 +24,21 @@ fi
 # HistoryID是个数组，过滤空行和空白
 readarray -t HistoryID < <(extractContentFromMarkdownRecursive 0 "$INPUT_FILE" "历史ID" | grep -v '^[[:space:]]*$' | tr -d '[:space:]')
 
-# 将所有模式合并为一个数组，并去重
-declare -A unique_patterns
-unique_patterns["$ID"]=1
-for hid in "${HistoryID[@]}"; do
-    [ -n "$hid" ] && unique_patterns["$hid"]=1
-done
+# 查找所有.rfmAI.md文件
+FILES=$(locate "*.rfmAI.md")
 
-# 为每个pattern构建grep命令
-GREP_CMD="grep -l"
-for pattern in "${!unique_patterns[@]}"; do
-    GREP_CMD+=" -e \"$pattern\""
-done
-
-# 在找到的文件中搜索匹配pattern的内容
-locate "*.rfmAI.md" | xargs -I {} sh -c "$GREP_CMD {} 2>/dev/null" | sort | uniq
+# 1. 查找ID匹配HistoryID的文件
+{
+    for file in $FILES; do
+        file_id=$(extractContentFromMarkdownRecursive 0 "$file" "ID" | tr -d '[:space:]')
+        for hid in "${HistoryID[@]}"; do
+            if [ "$file_id" = "$hid" ]; then
+                echo "$file"
+                break
+            fi
+        done
+    done
+    
+    # 2. 查找内容包含ID的文件
+    grep -l "$ID" $FILES
+} | sort | uniq
