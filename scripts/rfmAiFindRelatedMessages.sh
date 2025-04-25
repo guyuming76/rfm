@@ -1,25 +1,14 @@
 #!/bin/bash
 
-set -x
-
-# 验证输入参数为 *.rfmAI.md 文件
-if [ "$#" -ne 1 ]; then
-    echo "Usage: $0 file.rfmAI.md" >&2
-    exit 1
-fi
-
-case "$1" in
-    *.rfmAI.md) INPUT_FILE="$1" ;;
-    *) echo "Error: Input must be a *.rfmAI.md file." >&2; exit 2 ;;
-esac
+#set -x
 
 # 首先获取直接关联的文件和ID
-readarray -t new_matched_files < <(source scripts/rfmAiFindRelatedMessages_Direct.sh "$INPUT_FILE")
+readarray -t new_matched_files < <(source scripts/rfmAiFindRelatedMessages_Direct.sh "$@")
 # 建立matched_files初始值
 matched_files=("${new_matched_files[@]}")
 
 
-# 递归查找间接关联的文件
+# 循环查找间接关联的文件
 while : ; do
     # 从新文件中提取ID和历史ID
     readarray -t ids_from_new_matched_files < <(
