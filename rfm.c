@@ -861,6 +861,11 @@ static gboolean ExecCallback_freeChildAttribs(RFM_ChildAttribs * child_attribs){
        (child_attribs->customCallBackFunc)(child_attribs);
    }
 
+   // Restart readline if this was a search command
+   if (child_attribs->customCallBackFunc == update_SearchResultFileNameList_and_refresh_store) {
+       readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);
+   }
+
    free_child_attribs(child_attribs);
    return TRUE;
 }
@@ -1194,7 +1199,7 @@ static void check_wait_status_and_set_exit_code(RFM_ChildAttribs *child_attribs)
 	            child_attribs->exitcode = -1; // Default to error unless status check passes
 		    
 		    if (!g_spawn_check_wait_status(child_attribs->status, &wait_err)) {
-	                g_log(RFM_LOG_GSPAWN,child_attribs->output_read_by_program? G_LOG_LEVEL_DEBUG: G_LOG_LEVEL_WARNING,"Child process exited abnormally: %s", wait_err ? wait_err->message : "Unknown reason");
+	                g_log(RFM_LOG_GSPAWN,child_attribs->output_read_by_program? G_LOG_LEVEL_DEBUG: G_LOG_LEVEL_WARNING,"Child process exited with code %d: %s", WEXITSTATUS(child_attribs->status), wait_err ? wait_err->message : "Unknown reason");
 	                if (wait_err) g_error_free(wait_err);
 	                // Keep exitcode as -1
 	            } else {
@@ -3528,10 +3533,16 @@ static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResult
 	      //}else childAttribs->runOpts = G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR;
 	      //不能保证writeSearchResultIntoFD执行的时候不向命令窗口输出内容,不知道子进程输出和writeSearchResultIntoFD同时争抢命令窗口会发生什么. 所以不如让 child_supervisor 读取子进程输出 fd 后再显示,至少都是在 gtk main loop 里面输出
 	    }
-	    if (!g_spawn_async_with_pipes_wrapper(childAttribs->RunCmd, childAttribs)) free_child_attribs(childAttribs);
-	    else writeSearchResultIntoFD_in_gtk_thread(&(childAttribs->stdIn_fd));//SearchResultAsInput 时exec_stdin_command 总是在gtk main thread 执行
-	    //异步启动 RunCmd 后，接着写文件，而RunCmd 会读取文件作为输入
-	    add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
+	    if (!g_spawn_async_with_pipes_wrapper(childAttribs->RunCmd, childAttribs)) {
+		g_warning("Failed to spawn search command");
+		if (readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution) {
+		    add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
+		}
+		readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);
+	    } else {
+		writeSearchResultIntoFD_in_gtk_thread(&(childAttribs->stdIn_fd));
+		add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
+	    }
 }
 
 gpointer transferPointerOwnership(gpointer *newOwner, gpointer *oldOwner)
