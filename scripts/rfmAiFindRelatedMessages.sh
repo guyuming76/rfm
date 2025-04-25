@@ -18,18 +18,21 @@ readarray -t new_matched_files < <(source scripts/rfmAiFindRelatedMessages_Direc
 # 建立matched_files初始值
 matched_files=("${new_matched_files[@]}")
 
-readarray -t ids_from_new_matched_files < <(
-    for file in "${new_matched_files[@]}"; do
-        # 提取ID
-        extractContentFromMarkdownRecursive 0 "$file" "ID" | tr -d '[:space:]'
-        # 提取历史ID
-        extractContentFromMarkdownRecursive 0 "$file" "历史ID" | grep -v '^[[:space:]]*$' | tr -d '[:space:]'
-    done | sort | uniq
-)
-
 
 # 递归查找间接关联的文件
 while : ; do
+    # 从新文件中提取ID和历史ID
+    readarray -t ids_from_new_matched_files < <(
+        for file in "${new_matched_files[@]}"; do
+            # 提取ID
+            extractContentFromMarkdownRecursive 0 "$file" "ID" | tr -d '[:space:]'
+	    echo # 确保每个ID后有换行
+            # 提取历史ID
+            extractContentFromMarkdownRecursive 0 "$file" "历史ID" | grep -v '^[[:space:]]*$' | tr -d '[:space:]'
+	    echo  # 确保每个ID后有换行
+        done | sort | uniq
+    )
+
     # 通过比较两个排序数组，找出新ID
     readarray -t new_ids < <(
         comm -23 <(printf "%s\n" "${ids_from_new_matched_files[@]}" | sort) \
@@ -59,16 +62,6 @@ while : ; do
     # 合并新ID, Matched_IDs 初始值源自 rfmAiFindRelatedMessages_Direct.sh
     Matched_IDs+=("${ids_from_new_matched_files[@]}")
     readarray -t Matched_IDs < <(printf "%s\n" "${Matched_IDs[@]}" | sort | uniq)
-    
-    # 从新文件中提取ID和历史ID
-    readarray -t ids_from_new_matched_files < <(
-        for file in "${new_matched_files[@]}"; do
-            # 提取ID
-            extractContentFromMarkdownRecursive 0 "$file" "ID" | tr -d '[:space:]'
-            # 提取历史ID
-            extractContentFromMarkdownRecursive 0 "$file" "历史ID" | grep -v '^[[:space:]]*$' | tr -d '[:space:]'
-        done | sort | uniq
-    )
 done
 
 # 输出最终结果
