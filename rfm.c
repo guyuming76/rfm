@@ -861,8 +861,8 @@ static gboolean ExecCallback_freeChildAttribs(RFM_ChildAttribs * child_attribs){
        (child_attribs->customCallBackFunc)(child_attribs);
    }
 
-   // Restart readline if this was a search command
-   if (child_attribs->customCallBackFunc == update_SearchResultFileNameList_and_refresh_store) {
+   // Restart readline if this was a search command from readlineinput and it failed
+   if (child_attribs->exitcode == -1 && child_attribs->customCallBackFunc == g_spawn_async_callback_to_new_readline_thread) {
        readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);
    }
 
@@ -3526,7 +3526,7 @@ static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResult
 	    RFM_ChildAttribs *childAttribs = calloc(1, sizeof(RFM_ChildAttribs));
 	    childAttribs->RunCmd = stdin_cmd_interpretors[cmd_interpretor_index].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE);
 	    childAttribs->stdIn_fd = -1; //set to non-zero, and will be set to a valid fd by g_spawn_async_with_pipes
-	    childAttribs->customCallBackFunc = from_stdin_readline ? g_spawn_async_callback_to_new_readline_thread : NULL;
+	    childAttribs->customCallBackFunc = from_stdin_readline ? g_spawn_async_callback_to_new_readline_thread : NULL; //TODO：如果不是从readline获取的命令，就把callback设成NULL,因为callback里面会创建新的readline线程，导致超过一个readline线程在运行, 但是如果不是from_stdin_readline, 就不用update_SearchResultFileNameList_and_refresh_store 了吗？
 	    if (SearchResultTypeIndex>=0) {
 	      childAttribs->output_read_by_program = TRUE;
 	      childAttribs->customCallbackUserData = update_SearchResultFileNameList_and_refresh_store;
