@@ -1199,7 +1199,8 @@ static void check_wait_status_and_set_exit_code(RFM_ChildAttribs *child_attribs)
 	            child_attribs->exitcode = -1; // Default to error unless status check passes
 		    
 		    if (!g_spawn_check_wait_status(child_attribs->status, &wait_err)) {
-	                g_log(RFM_LOG_GSPAWN,child_attribs->output_read_by_program? G_LOG_LEVEL_DEBUG: G_LOG_LEVEL_WARNING,"Child process exited with code %d: %s", WEXITSTATUS(child_attribs->status), wait_err ? wait_err->message : "Unknown reason");
+	                //g_log(RFM_LOG_GSPAWN,child_attribs->output_read_by_program? G_LOG_LEVEL_DEBUG: G_LOG_LEVEL_WARNING,"Child process exited with code %d: %s", WEXITSTATUS(child_attribs->status), wait_err ? wait_err->message : "Unknown reason"); 当初这么写可能是为了防止太多的warning，影响用户，但 SearchResult|nocmd>0 这样的找不到命令错也吞了会给用户更大困惑。这里也就不判断情况了，统一简化为warning, 使用中有问题再改。参见 g_spawn_async_with_pipes_wrapper_child_supervisor 中关于child_attribs->stderr 的注释，现在这里可以看到warning和error code 了，但 '未找到命令' 这样的错误消息还是debug显示
+		        g_warning("Child process exited with code %d: %s", WEXITSTATUS(child_attribs->status), wait_err ? wait_err->message : "Unknown reason");
 	                if (wait_err) g_error_free(wait_err);
 	                // Keep exitcode as -1
 	            } else {
