@@ -1,5 +1,16 @@
 #!/bin/bash
 
+echo
+echo
+echo "回车保存对话记录至当前目录"
+echo "或输入目的路径,可以是绝对路径或相对与当前路径($(pwd)),可用上下箭头方向键从历史输入中选择:"
+
+dirname="$(rfmReadlineWithSpecificHistoryFile.sh ~/.rfm_history_directory)"
+
+if [ ! -z "$dirname" ];then
+    cd "$dirname"
+fi
+
 echo $RESPONSE > .rfmAI_latest_response.json
 
 # 仅当成功时保存文件

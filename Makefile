@@ -165,12 +165,14 @@ endif
 	@cp -f scripts/rfmSaveSearchResultToFile_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmSaveSearchResultToFile.sh
 ifneq ($(AiIntegration),)
 	@cp -f scripts/rfmAskOllama.sh ${DESTDIR}${PREFIX}/bin
+	@cp -f scripts/rfmAskModelScope.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmAskOpenRouter.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmAskOpenRouter_FileArray.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmAiAppendFileContentIntoPrompt.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmAiGetParameterPromptAndFile.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmAiDisplayResult.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmAiSaveHistory.sh ${DESTDIR}${PREFIX}/bin
+	@cp -f scripts/rfmAiSaveHistory_WithDirectory.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmAiJsonMessagesArray.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmAiFindRelatedMessages_Direct.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmAiFindRelatedMessages.sh ${DESTDIR}${PREFIX}/bin
@@ -225,12 +227,14 @@ endif
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmSaveSearchResultToFile.sh
 ifneq ($(AiIntegration),)
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmAskOllama.sh
+	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmAskModelScope.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmAskOpenRouter.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmAskOpenRouter_FileArray.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmAiAppendFileContentIntoPrompt.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmAiGetParameterPromptAndFile.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmAiDisplayResult.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmAiSaveHistory.sh
+	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmAiSaveHistory_WithDirectory.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmAiJsonMessagesArray.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmAiFindRelatedMessages_Direct.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmAiFindRelatedMessages.sh
@@ -279,12 +283,14 @@ endif
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmSaveSearchResultToFile.sh
 ifneq ($(AiIntegration),)
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmAskOllama.sh
+	@rm -f ${DESTDIR}${PREFIX}/bin/rfmAskModelScope.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmAskOpenRouter.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmAskOpenRouter_FileArray.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmAiAppendFileContentIntoPrompt.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmAiGetParameterPromptAndFile.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmAiDisplayResult.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmAiSaveHistory.sh
+	@rm -f ${DESTDIR}${PREFIX}/bin/rfmAiSaveHistory_WithDirectory.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmAiJsonMessagesArray.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmAiFindRelatedMessages_Direct.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmAiFindRelatedMessages.sh

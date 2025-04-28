@@ -8,6 +8,9 @@ rfm_AI_MODEL_API_KEY="$4"
 # 读取用户输入
 rfm_AI_MODEL_prompt=$(cat)
 
+# 关闭连接到管道的0号文件（通常是标准输入），然后将其重新设置为从终端读取数据
+exec 0</dev/tty
+
 # 初始化文件列表
 FILES_LIST=()
 MESSAGES_LIST=()
