@@ -7,6 +7,7 @@ echo "或输入创建子目录的目的路径,可以是绝对路径或相对与�
 dirname="$(rfmReadlineWithSpecificHistoryFile.sh ~/.rfm_history_directory)"
 
 if [ ! -z "$dirname" ];then
+    dirname=${dirname/#~/${HOME}}
     cd "$dirname"
 fi
 
@@ -53,6 +54,9 @@ $(if [ -z "$RESPONSE_ID" ]; then
   else
     echo "$RESPONSE_ID"
   fi)
+
+# 反馈 #
+
 EOF
 
   echo
