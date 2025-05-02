@@ -14,14 +14,16 @@ fi
 
 echo $RESPONSE > .rfmAI_latest_response.json
 
+# 清理模型名称中的非法字符（如冒号）
+sanitized_model=$(echo "$rfm_AI_MODEL_NAME" | sed 's/[:/\\*?<>|"]/_/g')  # 关键修改点
+timestamp=$(date +%Y%m%d_%H%M%S)
+filename="rfmAI_${sanitized_model}___${timestamp}.rfmAI.md"  # 使用清理后的名称，开头的前缀便于在目录内排序，后缀便于满足 filenameSuffix 条件
+json_response_file_name="rfmAI_${sanitized_model}___${timestamp}.rfmAI.json"
+
 # 仅当成功时保存文件
 if ! [[ "$RESULT" =~ ^Error: ]]; then
-  # 清理模型名称中的非法字符（如冒号）
-  sanitized_model=$(echo "$rfm_AI_MODEL_NAME" | sed 's/[:/\\*?<>|"]/_/g')  # 关键修改点
-  timestamp=$(date +%Y%m%d_%H%M%S)
-  filename="rfmAI_${sanitized_model}___${timestamp}.rfmAI.md"  # 使用清理后的名称，开头的前缀便于在目录内排序，后缀便于满足 filenameSuffix 条件
 
-  cat <<EOF > "$filename"
+    cat <<EOF > "$filename"
 # 用户提示词 #
 $rfm_AI_MODEL_prompt
 
@@ -57,4 +59,12 @@ EOF
   echo
   echo
   echo "回复已保存至: $filename" >&2
+fi
+
+echo
+
+read -p "是否还要单独保存原始回复json? [y/N] " confirm
+confirm=${confirm:-N}
+if [[ "$confirm" =~ ^[Yy]$ ]]; then
+    echo $RESPONSE > $json_response_file_name
 fi
