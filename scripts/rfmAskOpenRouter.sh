@@ -15,18 +15,15 @@ source rfmAiJsonMessagesArray.sh
 # Append the correct endpoint path to the base URL
 
 # Add current prompt
-MESSAGES_ARRAY=$(echo "$MESSAGES_ARRAY" | jq \
-  --arg content "$PROMPT_FULL" \
-  '. += [{"role": "user", "content": $content}]')
+MESSAGES_ARRAY+=$(echo $PROMPT_FULL | jq -R '[{"role": "user", "content": .}]')
 
 # Build the JSON payload using the messages array format
-REQUEST_JSON=$(jq -n \
+REQUEST_JSON=$(echo $MESSAGES_ARRAY | jq \
   --arg model "$rfm_AI_MODEL_NAME" \
-  --argjson messages "$MESSAGES_ARRAY" \
   --argjson temp "$rfm_AI_MODEL_TEMPERATURE" \
   '{
     model: $model,
-    messages: $messages,
+    messages:.,
     stream: false,
     temperature: $temp
   }')
@@ -34,10 +31,10 @@ REQUEST_JSON=$(jq -n \
 echo $REQUEST_JSON > .rfmAI_latest_request.json
 
 # The JSON payload includes the model name and the user's prompt
-RESPONSE=$(curl -sS --fail-with-body -X POST "$rfm_AI_MODEL_HOST_URL" \
+RESPONSE=$(echo $REQUEST_JSON | curl -sS --fail-with-body -X POST "$rfm_AI_MODEL_HOST_URL" \
   -H "Authorization: Bearer $rfm_AI_MODEL_API_KEY" \
   -H "Content-Type: application/json" \
-  -d "$REQUEST_JSON" 2>&1) # Capture stderr as well
+  -d @- 2>&1) # Capture stderr as well
 
 # Check if curl failed (using --fail-with-body helps capture HTTP errors)
 CURL_EXIT_CODE=$?
@@ -54,8 +51,8 @@ fi
 RESULT=$(echo "$RESPONSE" | jq -r $'
 if .error then
   "Error: " + (.error.message // .error | tostring)
-elif .choices and (.choices | length > 0) and .choices[0].message and .choices[0].message.content then
-  .choices[0].message.content
+elif .choices and (.choices | length > 0) and .choices[0].message then
+  .choices[0].message.reasoning + .choices[0].message.content
 elif .choices and (.choices | length > 0) and .choices[0].text then
   .choices[0].text
 else

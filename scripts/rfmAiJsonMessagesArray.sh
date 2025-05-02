@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Prepare conversation messages array
-MESSAGES_ARRAY="[]"
+MESSAGES_ARRAY=""
 RESPONSE_ID_ARRAY=()
 
 # Add history messages if any
@@ -12,17 +12,13 @@ if [ ${#MESSAGES_LIST[@]} -gt 0 ]; then
     # Extract user prompt from history file
     user_prompt=$(extractContentFromMarkdownRecursive 0 "$history_file" "用户提示词")
     if [ -n "$user_prompt" ]; then
-      MESSAGES_ARRAY=$(echo "$MESSAGES_ARRAY" | jq \
-        --arg content "$user_prompt" \
-        '. += [{"role": "user", "content": $content}]')
+      MESSAGES_ARRAY+=$(echo "$user_prompt" | jq -R '[{"role": "user", "content": .}]')
     fi
 
     # Extract AI response from history file
     ai_response=$(extractContentFromMarkdownRecursive 0 "$history_file" "模型回复内容")
     if [ -n "$ai_response" ]; then
-      MESSAGES_ARRAY=$(echo "$MESSAGES_ARRAY" | jq \
-        --arg content "$ai_response" \
-        '. += [{"role": "assistant", "content": $content}]')
+      MESSAGES_ARRAY+=$(echo "$ai_response" | jq -R '[{"role": "assistant", "content": .}]')
     fi
 
     responseid=$(extractContentFromMarkdownRecursive 0 "$history_file" "ID")
