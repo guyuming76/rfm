@@ -26,7 +26,7 @@ if ! [[ "$RESULT" =~ ^Error: ]]; then
 $rfm_AI_MODEL_prompt
 
 # 附加文件 #
-$(echo -e "$FILES_LIST")
+$(printf '%s\n' "${FILES_LIST[@]}")
 
 # 模型回复内容 #
 $RESULT
@@ -44,7 +44,7 @@ $rfm_AI_MODEL_TEMPERATURE
 $(echo "$RESPONSE_ID_ARRAY")
 
 # ID #
-$(if [ -z "$RESPONSE_ID" ]; then 
+$(if [ -z "$RESPONSE_ID" ]; then
     echo "警告: 未提供RESPONSE_ID, 自动生成UUID" >&2
     uuidgen
   else

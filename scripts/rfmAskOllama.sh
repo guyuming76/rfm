@@ -10,21 +10,21 @@ source rfmAiGetParameterPromptAndFile.sh
 source rfmAiAppendFileContentIntoPrompt.sh
 
 # 构建最终的JSON请求体
-REQUEST_JSON=$(jq -n \
-  --arg prompt "$PROMPT_FULL" \
+REQUEST_JSON=$(echo $PROMPT_FULL | jq -R \
   --argjson temp "$rfm_AI_MODEL_TEMPERATURE" \
   --arg model "$rfm_AI_MODEL_NAME" \
   '{
     model: $model,
-    prompt: $prompt,
+    prompt: .,
     stream: false,
     options: {temperature: $temp}
   }')
 
 # 发送请求并捕获原始 JSON 响应
-RESPONSE=$(curl -sS --fail-with-body "$rfm_AI_MODEL_HOST_URL" \
+RESPONSE=$(echo $REQUEST_JSON | curl -sS --fail-with-body "$rfm_AI_MODEL_HOST_URL" \
   -H "Content-Type: application/json" \
-  -d "$REQUEST_JSON" 2>&1)
+  -d @- 2>&1)
+# curl @- 表示从标准输入获取数据
 
 # Check if curl failed (using --fail-with-body helps capture HTTP errors)
 CURL_EXIT_CODE=$?
