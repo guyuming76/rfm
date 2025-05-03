@@ -63,8 +63,11 @@ fi
 
 echo
 
-read -p "是否还要单独保存原始回复json? [y/N] " confirm
-confirm=${confirm:-N}
-if [[ "$confirm" =~ ^[Yy]$ ]]; then
-    echo $RESPONSE > $json_response_file_name
+# displayJSON 变量值源于 rfmAiDisplayResult.sh 脚本
+if [[ "$displayJSON" =~ ^[Yy]$ ]]; then
+    read -p "是否还要单独保存原始回复json? [y/N] " saveJSON
+    saveJSON=${saveJSON:-N}
+    if [[ "$saveJSON" =~ ^[Yy]$ ]]; then
+	echo $RESPONSE > $json_response_file_name
+    fi
 fi

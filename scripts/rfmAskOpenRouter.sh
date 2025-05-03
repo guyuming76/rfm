@@ -52,7 +52,7 @@ RESULT=$(echo "$RESPONSE" | jq -r $'
 if .error then
   "Error: " + (.error.message // .error | tostring)
 elif .choices and (.choices | length > 0) and .choices[0].message then
-  .choices[0].message.reasoning + .choices[0].message.content
+  "reasoning:\n" + .choices[0].message.reasoning + "\ncontent:\n" + .choices[0].message.content
 elif .choices and (.choices | length > 0) and .choices[0].text then
   .choices[0].text
 else
