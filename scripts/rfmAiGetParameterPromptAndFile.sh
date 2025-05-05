@@ -24,7 +24,6 @@ if [ -n "$RFM_SELECTED_FILES" ]; then
       # 检查是否是对话记录文件
       if [[ "$filepath" == *.rfmAI.md ]]; then
         MESSAGES_LIST+=("$filepath")
-        echo "提示：已添加对话记录文件到消息列表: $filepath" >&2
       else
         FILES_LIST+=("$filepath")
       fi
@@ -42,7 +41,6 @@ if [ $# -gt 4 ]; then
       # 检查是否是对话记录文件
       if [[ "$filepath" == *.rfmAI.md ]]; then
         MESSAGES_LIST+=("$filepath")
-        echo "提示：已添加对话记录文件到消息列表: $filepath" >&2
       else
         FILES_LIST+=("$filepath")
       fi
