@@ -20,13 +20,13 @@ if [ ${#MESSAGES_LIST[@]} -gt 0 ]; then
 	    # Extract user prompt from history file
 	    user_prompt=$(extractContentFromMarkdownRecursive 0 "$history_file" "用户提示词")
 	    if [ -n "$user_prompt" ]; then
-		MESSAGES_ARRAY+=$(echo "$user_prompt" | jq -R '[{"role": "user", "content": .}]')
+		MESSAGES_ARRAY+=$(echo -e "$user_prompt" | jq -sR '{"role": "user", "content": .}')
 	    fi
 
 	    # Extract AI response from history file
 	    ai_response=$(extractContentFromMarkdownRecursive 0 "$history_file" "模型回复内容")
 	    if [ -n "$ai_response" ]; then
-		MESSAGES_ARRAY+=$(echo "$ai_response" | jq -R '[{"role": "assistant", "content": .}]')
+		MESSAGES_ARRAY+=$(echo -e "$ai_response" | jq -sR '{"role": "assistant", "content": .}')
 	    fi
 
 	    responseid=$(extractContentFromMarkdownRecursive 0 "$history_file" "ID")

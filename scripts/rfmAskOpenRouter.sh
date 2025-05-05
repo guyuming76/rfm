@@ -15,10 +15,10 @@ source rfmAiJsonMessagesArray.sh
 # Append the correct endpoint path to the base URL
 
 # Add current prompt
-MESSAGES_ARRAY+=$(echo $PROMPT_FULL | jq -R '[{"role": "user", "content": .}]')
+MESSAGES_ARRAY+=$(echo -e $PROMPT_FULL | jq -sR '{"role": "user", "content": .}')
 
 # Build the JSON payload using the messages array format
-REQUEST_JSON=$(echo $MESSAGES_ARRAY | jq \
+REQUEST_JSON=$(echo $MESSAGES_ARRAY | jq -s \
   --arg model "$rfm_AI_MODEL_NAME" \
   --argjson temp "$rfm_AI_MODEL_TEMPERATURE" \
   '{
