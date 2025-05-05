@@ -43,7 +43,7 @@ $rfm_AI_MODEL_NAME
 $rfm_AI_MODEL_TEMPERATURE
 
 # 历史ID #
-$(echo "$RESPONSE_ID_ARRAY")
+$(printf '%s\n' "${RESPONSE_ID_ARRAY[@]}")
 
 # ID #
 $(if [ -z "$RESPONSE_ID" ]; then
