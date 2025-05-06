@@ -24,7 +24,10 @@
 #define START_MENU "开始菜单"
 #define SAVESEARCHRESULT "保存（选中的）查询结果到文件"
 #define FIND_FILES "含子目录文件"
-#define ALL_AI_DIALOG "全部AI对话"
+#define ALL_AI_DIALOG "locate AI对话"
+#define TREE_AI_DIALOG "find . AI对话"
+#define LS_AI_DIALOG "ls AI对话"
+
 #define PipeTitle "当前:%d/总数:%d, 每葉:%d"
 
 #define AI_MODEL_AS_CMD_INTERPRETER "切换到当前AI模型回答模式，下面AI MODELS部分列出所有候选模型，首列是切换至此模型的命令"

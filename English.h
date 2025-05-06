@@ -23,7 +23,9 @@
 #define START_MENU "Start menu"
 #define SAVESEARCHRESULT "save (selected) search result into file"
 #define FIND_FILES "all files (subdir)"
-#define ALL_AI_DIALOG "all AI dialog"
+#define ALL_AI_DIALOG "locate AI dialog"
+#define TREE_AI_DIALOG "find . AI dialog"
+#define LS_AI_DIALOG "ls AI dialog"
 #define PipeTitle "Current:%d/Total:%d, PageSize:%d"
 
 #define AI_MODEL_AS_CMD_INTERPRETER "Switch to the current AI model. The section below lists all candidate models. The first column is the command"
