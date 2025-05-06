@@ -72,7 +72,7 @@ static const AI_model_parameter AI_models[] = {
 
 static const char *findDirectlyRelatedMessages[] = { stdin_cmd_interpretors[0].name, "rfmAiFindRelatedMessages_Direct.sh %s >multitype", NULL };
 static const char *findRelatedMessages[] = { stdin_cmd_interpretors[0].name, "rfmAiFindRelatedMessages.sh %s >multitype", NULL };
-static const char *AllAiMessages[] = { stdin_cmd_interpretors[0].name, "locate '*.rfmAI.md'|sed -E 's/(.*___)([0-9]{8})(_.*)/\\1\\2\\3:\\2/'>multitype", NULL };
+static const char *AllAiMessages[] = { stdin_cmd_interpretors[0].name, "locate '*.rfmAI.md'|sed -E 's/(.*___)([0-9]{8})(_.*)/\\1\\2\\3:\\2/'|sort -t ':' -k2,2 -r>multitype", NULL };
 //上面原始命令是这样的，\\1\\2\\3是为了转义\。sed部分代码是识别文件名___后的8位日期数字，加冒号后添加到行未： locate '*.rfmAI.md'|sed -E 's/(.*___)([0-9]{8})(_.*)/\1\2\3:\2/'>multitype
 #endif
 
