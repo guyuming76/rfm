@@ -4213,8 +4213,9 @@ static void set_stdin_cmd_leading_space_true(){
 
 #ifdef AiIntegration
 static gchar** stdin_LLM_prompt(gchar* user_input_prompt, gboolean inNewVT) {
+  setenv("rfm_AI_MODEL_prompt",user_input_prompt,1);
   if (AI_models[current_AI_model_index].InNewTerm){
-    snprintf(shell_cmd_buffer,PATH_MAX,"set -o history; echo '%s' | %s %s %s %s %s; read -p '\033[33m%s\033[0m'; exit \$? 2>/dev/null", user_input_prompt,AI_models[current_AI_model_index].calling_script, AI_models[current_AI_model_index].host_url,AI_models[current_AI_model_index].model_name, AI_models[current_AI_model_index].model_temporature, AI_models[current_AI_model_index].API_key, PRESS_ENTER_TO_CLOSE_WINDOW);
+    snprintf(shell_cmd_buffer,PATH_MAX,"set -o history; %s %s %s %s %s; read -p '\033[33m%s\033[0m'; exit \$? 2>/dev/null", AI_models[current_AI_model_index].calling_script, AI_models[current_AI_model_index].host_url,AI_models[current_AI_model_index].model_name, AI_models[current_AI_model_index].model_temporature, AI_models[current_AI_model_index].API_key, PRESS_ENTER_TO_CLOSE_WINDOW);
     gchar * term_e = getenv("RFM_TERM_E"); // 获取环境变量
     // 根据环境变量的值选择正确的模板
     if (term_e!=NULL && strcmp(term_e,"")!=0) {
@@ -4223,7 +4224,7 @@ static gchar** stdin_LLM_prompt(gchar* user_input_prompt, gboolean inNewVT) {
         return stdin_cmd_template_bash_newVT_nonHold; // 返回不带 -e 的模板
     }
   }else {
-    snprintf(shell_cmd_buffer,PATH_MAX,"set -o history; echo '%s' | %s %s %s %s %s; exit \$? 2>/dev/null",user_input_prompt,AI_models[current_AI_model_index].calling_script, AI_models[current_AI_model_index].host_url, AI_models[current_AI_model_index].model_name, AI_models[current_AI_model_index].model_temporature, AI_models[current_AI_model_index].API_key);
+    snprintf(shell_cmd_buffer,PATH_MAX,"set -o history; %s %s %s %s %s; exit \$? 2>/dev/null",AI_models[current_AI_model_index].calling_script, AI_models[current_AI_model_index].host_url, AI_models[current_AI_model_index].model_name, AI_models[current_AI_model_index].model_temporature, AI_models[current_AI_model_index].API_key);
     return stdin_cmd_template_bash;
   }
 }

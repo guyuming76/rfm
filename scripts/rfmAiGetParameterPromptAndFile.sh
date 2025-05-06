@@ -5,11 +5,11 @@ rfm_AI_MODEL_NAME="$2"
 rfm_AI_MODEL_TEMPERATURE=$3
 rfm_AI_MODEL_API_KEY="$4"
 
-# 读取用户输入
-rfm_AI_MODEL_prompt=$(cat)
+# 读取用户输入, 现在新的方案是在rfm.c里面设置环境变量，通过环境变量传递prompt,避免用户prompt里面有引号的复杂的需要转义的情况
+# rfm_AI_MODEL_prompt=$(cat)
 
 # 关闭连接到管道的0号文件（通常是标准输入），然后将其重新设置为从终端读取数据
-exec 0</dev/tty
+# exec 0</dev/tty
 
 # 初始化文件列表
 FILES_LIST=()
