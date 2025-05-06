@@ -1593,9 +1593,14 @@ static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guin
    g_log(RFM_LOG_DATA,G_LOG_LEVEL_DEBUG,"fileAttributes->path:%s",fileAttributes->path);
    //attibuteList=g_strdup_printf("%s,%s,%s,%s",G_FILE_ATTRIBUTE_STANDARD_TYPE, G_FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE, G_FILE_ATTRIBUTE_TIME_MODIFIED, G_FILE_ATTRIBUTE_STANDARD_IS_SYMLINK);
    file=g_file_new_for_path(fileAttributes->path);
-   info=g_file_query_info(file, attibuteList, G_FILE_QUERY_INFO_NONE, NULL, NULL);
+   GError *err=NULL;
+   info=g_file_query_info(file, attibuteList, G_FILE_QUERY_INFO_NONE, NULL, &err);
    //g_free(attibuteList);
    g_object_unref(file); file=NULL;
+   if (err) {
+     g_warning("g_file_query_info error %d, %s",err->code,err->message);
+     g_error_free(err);
+   }
    if (info == NULL ) {
       g_warning("g_file_query_info return NULL for %s",fileAttributes->path);
       g_free(fileAttributes->path);
