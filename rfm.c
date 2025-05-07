@@ -479,6 +479,7 @@ static void cmd_cd(wordexp_t *parsed_msg, GString *readline_result_string_after_
 // the same as git status --porcelain
 static GHashTable *gitTrackedFiles;
 static gboolean curPath_is_git_repo = FALSE;
+static gchar * git_root = NULL;
 static guint rfm_gitCommitMsgScheduler = 0;
 static GtkTreeIter gitMsg_load_iter;
 static void set_curPath_is_git_repo(gpointer *child_attribs);
@@ -486,6 +487,7 @@ static gboolean show_gitColumns(RFM_FileAttributes * fileAttributes);
 static gboolean show_gitMenus(RFM_FileAttributes * fileAttributes);
 static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpointer *child_attribs);
 static void readLatestGitLogForFileAndUpdateStore(RFM_ChildAttribs * childAttribs);
+static void read_git_ls_files_cmd_output_into_hashtable(gpointer *child_attribs);
 static void load_GitTrackedFiles_into_HashTable();
 static void load_latest_git_log_for_store_row(GtkTreeIter *iter);
 //called in dir view when onebyone off
@@ -1980,11 +1982,22 @@ static void readLatestGitLogForFileAndUpdateStore(RFM_ChildAttribs * childAttrib
    g_log(RFM_LOG_DATA_GIT,G_LOG_LEVEL_DEBUG,"gitCommitid:%s",commitid);
 }
 
+static void read_git_ls_files_cmd_output_into_hashtable(gpointer *child_attribs) {
+  char *child_stdout=(char*)(((RFM_ChildAttribs *)child_attribs)->stdOut);
+  char *status=(char*)(((RFM_ChildAttribs *)child_attribs)->customCallbackUserData);
+  gchar * oneline=strtok(child_stdout,"\n");
+  while (oneline!=NULL){
+      gchar * fullpath=g_build_filename(git_root,oneline,NULL);
+      g_hash_table_insert(gitTrackedFiles,fullpath,g_strdup(status));
+      g_log(RFM_LOG_DATA_GIT,G_LOG_LEVEL_DEBUG,"gitTrackedFile status: %s, %s",status,fullpath);
+      oneline=strtok(NULL, "\n");
+  }
+}
+
 static void load_GitTrackedFiles_into_HashTable()
 {
   gchar * child_stdout;
   gchar * child_stderr;
-  gchar * git_root;
 
   if (g_spawn_sync(rfm_curPath, git_root_cmd, NULL, 0, NULL, NULL,&child_stdout, &child_stderr, 0, NULL)) {
     git_root = g_strdup(strtok(child_stdout, "\n"));
@@ -2000,22 +2013,9 @@ static void load_GitTrackedFiles_into_HashTable()
     return;
   }
   
-  if (g_spawn_sync(rfm_curPath, git_ls_files_cmd, NULL, 0, NULL, NULL, &child_stdout, &child_stderr, 0, NULL)){
+  g_spawn_wrapper(git_ls_files_cmd, NULL, G_SPAWN_DEFAULT, NULL, NULL, FALSE, read_git_ls_files_cmd_output_into_hashtable, strdup(""), TRUE);
 
-    gchar * oneline=strtok(child_stdout,"\n");
-    while (oneline!=NULL){
-      gchar * fullpath=g_build_filename(git_root,oneline,NULL);         
-      g_hash_table_insert(gitTrackedFiles,fullpath,g_strdup(""));
-      g_log(RFM_LOG_DATA_GIT,G_LOG_LEVEL_DEBUG,"gitTrackedFile:%s",fullpath);
-      oneline=strtok(NULL, "\n");
-    }
-  }
-  else{
-    g_warning("%s",child_stderr);
-  }
-  g_free(child_stdout);
-  g_free(child_stderr);
-
+  g_spawn_wrapper(git_ls_files_untracked_cmd, NULL, G_SPAWN_DEFAULT, NULL, NULL, FALSE, read_git_ls_files_cmd_output_into_hashtable, strdup("??"), TRUE);
 
   if (g_spawn_sync(rfm_curPath, git_modified_staged_info_cmd, NULL, 0, NULL, NULL, &child_stdout, &child_stderr, 0, NULL)){
 
