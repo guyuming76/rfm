@@ -482,7 +482,7 @@ static gboolean curPath_is_git_repo = FALSE;
 static gchar * git_root = NULL;
 static guint rfm_gitCommitMsgScheduler = 0;
 static GtkTreeIter gitMsg_load_iter;
-static void set_curPath_is_git_repo(gpointer *child_attribs);
+static void set_curPath_is_git_repo_and_git_root(gpointer *child_attribs);
 static gboolean show_gitColumns(RFM_FileAttributes * fileAttributes);
 static gboolean show_gitMenus(RFM_FileAttributes * fileAttributes);
 static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpointer *child_attribs);
@@ -2012,20 +2012,6 @@ static void load_GitTrackedFiles_into_HashTable()
 {
   gchar * child_stdout;
   gchar * child_stderr;
-
-  if (g_spawn_sync(rfm_curPath, git_root_cmd, NULL, 0, NULL, NULL,&child_stdout, &child_stderr, 0, NULL)) {
-    git_root = g_strdup(strtok(child_stdout, "\n"));
-
-    g_debug("git root:%s",git_root);
-
-    g_free(child_stdout);
-    g_free(child_stderr);
-  } else {
-    g_warning("%s", child_stderr);
-    g_free(child_stdout);
-    g_free(child_stderr);   
-    return;
-  }
   
   g_spawn_wrapper(git_ls_files_cmd, NULL, G_SPAWN_DEFAULT, NULL, NULL, FALSE, read_git_ls_files_cmd_output_into_hashtable, strdup(""), TRUE);
 
@@ -2120,7 +2106,6 @@ static void load_GitTrackedFiles_into_HashTable()
   }
   g_free(child_stdout);
   g_free(child_stderr);
-  g_free(git_root);
 }
 #endif
 
@@ -2394,16 +2379,24 @@ static void set_terminal_window_title(char * title)
 
 
 #ifdef GitIntegration
-static void set_curPath_is_git_repo(gpointer *child_attribs)
+static void set_curPath_is_git_repo_and_git_root(gpointer *child_attribs)
 {
+  if (git_root) { g_free(git_root); git_root=NULL; }
   char *child_StdOut=((RFM_ChildAttribs *)child_attribs)->stdOut;
-  if(child_StdOut!=NULL && strcmp(child_StdOut, "true\n")==0){
-    curPath_is_git_repo=TRUE;
-  }else{
-    curPath_is_git_repo=FALSE;
-  }
-  
-  g_debug("curPath_is_git_repo:%d",curPath_is_git_repo);
+  if (child_StdOut){
+    char *firstline=strtok(child_StdOut,"\n");
+    if(firstline!=NULL && strcmp(firstline, "true")==0){
+      curPath_is_git_repo=TRUE;
+      char *secondline=strtok(NULL,"\n");
+      if (secondline!=NULL) {
+	git_root=strdup(secondline);
+	g_debug("git root:%s",git_root);
+      }else g_warning("git_root NULL for git repo");
+    }else{
+      curPath_is_git_repo=FALSE;
+    }
+    g_debug("curPath_is_git_repo:%d",curPath_is_git_repo);
+  }else g_warning("git_root_cmd in config.h return NULL");
 }
 
 static gboolean show_gitMenus(RFM_FileAttributes *fileAttributes) {
@@ -2451,7 +2444,7 @@ static void set_rfm_curPath_internal(gchar* path){
 	 chdir(rfm_curPath);//TODO: i don't know whether we really need this
 
 #ifdef GitIntegration
-	 g_spawn_wrapper(git_inside_work_tree_cmd, NULL, G_SPAWN_DEFAULT, NULL, NULL, FALSE, set_curPath_is_git_repo, NULL,TRUE);
+	 g_spawn_wrapper(git_root_cmd, NULL,G_SPAWN_DEFAULT, NULL, NULL, FALSE, set_curPath_is_git_repo_and_git_root, NULL,TRUE);
 #endif
  
          //g_setenv("PWD", rfm_curPath, 1);
