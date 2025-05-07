@@ -2298,6 +2298,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
    clear_store();
 
 #ifdef GitIntegration
+   g_spawn_wrapper(git_root_cmd, NULL,G_SPAWN_DEFAULT, NULL, NULL, FALSE, set_curPath_is_git_repo_and_git_root, NULL,TRUE);
    if (curPath_is_git_repo) load_GitTrackedFiles_into_HashTable();
 #endif
 
@@ -2443,10 +2444,6 @@ static void set_rfm_curPath_internal(gchar* path){
          rfm_curPath = g_strdup(path);
 	 chdir(rfm_curPath);//TODO: i don't know whether we really need this
 
-#ifdef GitIntegration
-	 g_spawn_wrapper(git_root_cmd, NULL,G_SPAWN_DEFAULT, NULL, NULL, FALSE, set_curPath_is_git_repo_and_git_root, NULL,TRUE);
-#endif
- 
          //g_setenv("PWD", rfm_curPath, 1);
 	 //TODO: i am not sure wether i shold set PWD env value here too, and remove the builtin command setpwd
    //when we run commands such as echo $PWD, we spawn child process with working directory rfm_curPath, so, even we do not set $PWD, we get result as expected with this kind of commands.
