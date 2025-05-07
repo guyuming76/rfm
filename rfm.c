@@ -1985,12 +1985,26 @@ static void readLatestGitLogForFileAndUpdateStore(RFM_ChildAttribs * childAttrib
 static void read_git_ls_files_cmd_output_into_hashtable(gpointer *child_attribs) {
   char *child_stdout=(char*)(((RFM_ChildAttribs *)child_attribs)->stdOut);
   char *status=(char*)(((RFM_ChildAttribs *)child_attribs)->customCallbackUserData);
-  gchar * oneline=strtok(child_stdout,"\n");
+  gchar * savedptr;
+  gchar * oneline=strtok_r(child_stdout,"\n",&savedptr);
   while (oneline!=NULL){
       gchar * fullpath=g_build_filename(git_root,oneline,NULL);
       g_hash_table_insert(gitTrackedFiles,fullpath,g_strdup(status));
       g_log(RFM_LOG_DATA_GIT,G_LOG_LEVEL_DEBUG,"gitTrackedFile status: %s, %s",status,fullpath);
-      oneline=strtok(NULL, "\n");
+      //git ls-file 只列出文件，不列出目录，但我们希望当子目录有文件添加，状态为??时，状态能反映到目录上。又因为我们目前只显示当前目录下的一层子目录，所以我们下面只找一层
+      gchar *savedptr1;
+      gchar *dirname=strtok_r(oneline,"/",&savedptr1);
+      if (dirname!=NULL){
+	gchar *dir_fullpath=g_build_filename(git_root,g_strdup(dirname), NULL);
+	/* gchar* existingStatus=g_hash_table_lookup(gitTrackedFiles, dir_fullpath); */
+	/* if (g_strcmp0(status,"??")==0 && (g_strcmp0(existingStatus,"")==0 || g_strcmp0(existingStatus," ?")))//这里我作了一个定义：当目录下面只包含untracked文件时，目录状态显示为??,目录下面同时包含tracked文件和untracked文件，目录状态显示为" ?" */
+	/*   sprintf(status," ?"); */
+	/* else if (g_strcmp0(status,"")==0 && g_strcmp0(existingStatus,"??")==0)//这种情况一般不会发生，因为我们是先读取 git ls-file 后读取 git ls-file -o */
+	/*   sprintf(status," ?"); */
+	g_log(RFM_LOG_DATA_GIT,G_LOG_LEVEL_DEBUG,"gitTrackedFile dir status: %s, %s",status,dir_fullpath);
+	g_hash_table_insert(gitTrackedFiles, dir_fullpath, g_strdup(status));
+      }
+      oneline=strtok_r(NULL, "\n",&savedptr);
   }
 }
 
