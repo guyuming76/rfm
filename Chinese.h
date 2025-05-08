@@ -23,7 +23,7 @@
 #define cpPath "复制目录路径至剪贴板"
 #define START_MENU "开始菜单"
 #define SAVESEARCHRESULT "保存（选中的）查询结果到文件"
-#define FIND_FILES "含子目录文件"
+#define FIND_FILES "find ."
 #define ALL_AI_DIALOG "locate AI对话"
 #define TREE_AI_DIALOG "find . AI对话"
 #define LS_AI_DIALOG "ls AI对话"
