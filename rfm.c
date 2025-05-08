@@ -488,6 +488,7 @@ static gboolean show_gitMenus(RFM_FileAttributes * fileAttributes);
 static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpointer *child_attribs);
 static void readLatestGitLogForFileAndUpdateStore(RFM_ChildAttribs * childAttribs);
 static void read_git_ls_files_cmd_output_into_hashtable(gpointer *child_attribs);
+static void read_git_status_porcelain_cmd_output_into_hashtable(gpointer *child_attribs);
 static void load_GitTrackedFiles_into_HashTable();
 static void load_latest_git_log_for_store_row(GtkTreeIter *iter);
 //called in dir view when onebyone off
@@ -2010,15 +2011,15 @@ static void read_git_ls_files_cmd_output_into_hashtable(gpointer *child_attribs)
 
 static void load_GitTrackedFiles_into_HashTable()
 {
-  gchar * child_stdout;
-  gchar * child_stderr;
-  
   g_spawn_wrapper(git_ls_files_cmd, NULL, G_SPAWN_DEFAULT, NULL, NULL, FALSE, read_git_ls_files_cmd_output_into_hashtable, strdup(""), TRUE);
 
   g_spawn_wrapper(git_ls_files_untracked_cmd, NULL, G_SPAWN_DEFAULT, NULL, NULL, FALSE, read_git_ls_files_cmd_output_into_hashtable, strdup("??"), TRUE);
 
-  if (g_spawn_sync(rfm_curPath, git_modified_staged_info_cmd, NULL, 0, NULL, NULL, &child_stdout, &child_stderr, 0, NULL)){
+  g_spawn_wrapper(git_modified_staged_info_cmd, NULL, G_SPAWN_DEFAULT, NULL, NULL, FALSE, read_git_status_porcelain_cmd_output_into_hashtable,NULL, TRUE);
+}
 
+static void read_git_status_porcelain_cmd_output_into_hashtable(gpointer *child_attribs){
+    char *child_stdout=(char*)(((RFM_ChildAttribs *)child_attribs)->stdOut);
     gchar *oneline=strtok(child_stdout,"\n");
     while (oneline!=NULL && strlen(oneline)>3){
       //first 2 char of oneline is git status
@@ -2100,12 +2101,6 @@ static void load_GitTrackedFiles_into_HashTable()
       g_strfreev(filenames);
       oneline=strtok(NULL, "\n");
     }
-  }
-  else{
-    g_warning("%s",child_stderr);
-  }
-  g_free(child_stdout);
-  g_free(child_stderr);
 }
 #endif
 
