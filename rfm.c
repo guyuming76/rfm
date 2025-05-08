@@ -1988,6 +1988,8 @@ static void readLatestGitLogForFileAndUpdateStore(RFM_ChildAttribs * childAttrib
 //git本身只会给文件设置状态，不考虑目录，这里根据目录中文件的状态为目录也设置一个状态，方便了解哪些子目录有文件变动，需要stage等
 static void GitStatusForDirectory(gchar * filename, char* status) {
       gchar *savedptr1=NULL;
+      if (ignored_filename(basename(filename))) return;//防止子目录里添加的隐藏文件影响目录的gitstatus列，引起误解
+      //TODO:如果文件本身不是隐藏文件，但是位于一个隐藏的子目录，怎么办?得识别路径上各层目录有无隐藏，不过这种情况我这里暂时没遇到
       gchar *status_=g_strdup(status);
       gchar *dirname=strtok_r(filename,"/",&savedptr1);//TODO:调用当起函数的地方控制了filename是要有curPathRelativeToGitRoot前缀的，也就是当前目录下的文件和子目录，这里找第一个/符号，实际上找的是当前目录下第一层子目录，再下层的子目录不会显示在当前目录视图里，也就没必要更新gitstatus列了。这里主要是考虑目录视图，搜索结果视图(如git ls-files>0)一般无需显示目录，这里暂不考虑，如果讲来有需求，需要找第二，第三个/符号,更新各级目录,并且也不能限制filename要有curPathRelativeToGitRoot前缀了
       if (dirname!=NULL){
