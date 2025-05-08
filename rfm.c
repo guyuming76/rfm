@@ -1984,30 +1984,37 @@ static void readLatestGitLogForFileAndUpdateStore(RFM_ChildAttribs * childAttrib
    g_log(RFM_LOG_DATA_GIT,G_LOG_LEVEL_DEBUG,"gitCommitid:%s",commitid);
 }
 
+//git本身只会给文件设置状态，不考虑目录，这里根据目录中文件的状态为目录也设置一个状态，方便了解哪些子目录有文件变动，需要stage等
 static void GitStatusForDirectory(gchar * filename, char* status) {
-      gchar *savedptr1;
+      gchar *savedptr1=NULL;
+      gchar *status_=g_strdup(status);
       gchar *dirname=strtok_r(filename,"/",&savedptr1);
       if (dirname!=NULL){
-	gchar *dir_fullpath=g_build_filename(git_root,g_strdup(dirname), NULL);
+	gchar *dir_fullpath=g_build_filename(git_root,dirname,NULL);
 	gchar* existingStatus=g_hash_table_lookup(gitTrackedFiles, dir_fullpath);
 	if (existingStatus){
-	  
-	}
-	
-	g_log(RFM_LOG_DATA_GIT,G_LOG_LEVEL_DEBUG,"gitTrackedFile dir status: %s, %s",status,dir_fullpath);
-	g_hash_table_insert(gitTrackedFiles, dir_fullpath, g_strdup(status));
+          for (int i = 0; i <= 1; i++) {
+            if (existingStatus[i] != status_[i]) { // 相同就不用调整了
+              if (existingStatus[i] == ' ') continue; // 任何字符都覆盖空格，也就是说status这一位不用调整
+              if (status_[i] == ' ') { status_[i] = existingStatus[i];continue;} // 如果新的status为空格，则保留existing status, 这一种情况应该不会发生，因为我们是先读取git tracked file,也就是先读取空格status,后续读取的status应该都不会是空格
+              status_[i] = '*'; // 不同且不为空，就设为"*"
+            }
+          }
+	  g_hash_table_replace(gitTrackedFiles, dir_fullpath, status_);
+        }else g_hash_table_insert(gitTrackedFiles, dir_fullpath, status_);
+        g_log(RFM_LOG_DATA_GIT,G_LOG_LEVEL_DEBUG,"gitTrackedFile dir status:%s,%s",status_,dir_fullpath);
       }
 }
 
 static void read_git_ls_files_cmd_output_into_hashtable(gpointer *child_attribs) {
   char *child_stdout=(char*)(((RFM_ChildAttribs *)child_attribs)->stdOut);
   char *status=(char*)(((RFM_ChildAttribs *)child_attribs)->customCallbackUserData);
-  gchar * savedptr;
+  gchar * savedptr=NULL;
   gchar * oneline=strtok_r(child_stdout,"\n",&savedptr);
   while (oneline!=NULL){
       gchar * fullpath=g_build_filename(git_root,oneline,NULL);
       g_hash_table_insert(gitTrackedFiles,fullpath,g_strdup(status));
-      g_log(RFM_LOG_DATA_GIT,G_LOG_LEVEL_DEBUG,"gitTrackedFile status: %s, %s",status,fullpath);
+      g_log(RFM_LOG_DATA_GIT,G_LOG_LEVEL_DEBUG,"gitTrackedFile status:%s,%s",status,fullpath);
       //git ls-file 只列出文件，不列出目录，但我们希望当子目录有文件添加，状态为??时，状态能反映到目录上。又因为我们目前只显示当前目录下的一层子目录，所以我们下面只找一层
       GitStatusForDirectory(oneline,status);
       oneline=strtok_r(NULL, "\n",&savedptr);
@@ -2072,10 +2079,9 @@ static void read_git_status_porcelain_cmd_output_into_hashtable(gpointer *child_
 	}else if (g_strcmp0(status, "D ")==0 && g_strcmp0(existingStatus, "??")==0){
 	  status[1]='?';
 	}
+	g_hash_table_replace(gitTrackedFiles, g_strdup(fullpath), status);
 	//TODO: can there be something like "A "+" D"="AD"?
-      }
-
-      g_hash_table_insert(gitTrackedFiles,g_strdup(fullpath),status);
+      }else g_hash_table_insert(gitTrackedFiles,g_strdup(fullpath),status);
 
       struct stat statbuff;
       if ((SearchResultViewInsteadOfDirectoryView^1)
