@@ -294,7 +294,7 @@ static RFM_ToolButton tool_buttons[] = {
    { FIND_FILES,     NULL,                      NULL,                   find_files,        FALSE,          TRUE,      0,                      NULL,                   NULL},
 #ifdef AiIntegration
    { ALL_AI_DIALOG,  NULL,                      NULL,                   AllAiMessages,     TRUE,           TRUE,      0,                      NULL,                   NULL},
-   { TREE_AI_DIALOG, NULL,                      NULL,                   TreeAiMessages,    TRUE,           TRUE,      0,                      NULL,                   NULL},
+   { TREE_AI_DIALOG, NULL,                      NULL,                   TreeAiMessages,    FALSE,          TRUE,      0,                      NULL,                   NULL},
 #endif
    { "Share",        NULL,                      NULL,                   share_dir,         FALSE,          TRUE,      0,                      "share directory",      NULL},
 // { "Terminal",     "utilities-terminal",      NULL,                   term_cmd,          TRUE,           TRUE,      0,                      NULL,                   NULL},
