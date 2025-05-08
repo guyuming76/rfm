@@ -480,6 +480,7 @@ static void cmd_cd(wordexp_t *parsed_msg, GString *readline_result_string_after_
 static GHashTable *gitTrackedFiles;
 static gboolean curPath_is_git_repo = FALSE;
 static gchar * git_root = NULL;
+static gchar * curPathRelativeToGitRoot = NULL;
 static guint rfm_gitCommitMsgScheduler = 0;
 static GtkTreeIter gitMsg_load_iter;
 static void set_curPath_is_git_repo_and_git_root(gpointer *child_attribs);
@@ -2011,7 +2012,7 @@ static void read_git_ls_files_cmd_output_into_hashtable(gpointer *child_attribs)
   char *status=(char*)(((RFM_ChildAttribs *)child_attribs)->customCallbackUserData);
   gchar * savedptr=NULL;
   gchar * oneline=strtok_r(child_stdout,"\n",&savedptr);
-  while (oneline!=NULL){
+  while (oneline!=NULL && (curPathRelativeToGitRoot==NULL || (curPathRelativeToGitRoot && g_str_has_prefix(oneline, curPathRelativeToGitRoot)))){
       gchar * fullpath=g_build_filename(git_root,oneline,NULL);
       g_hash_table_insert(gitTrackedFiles,fullpath,g_strdup(status));
       g_log(RFM_LOG_DATA_GIT,G_LOG_LEVEL_DEBUG,"gitTrackedFile status:%s,%s",status,fullpath);
@@ -2059,6 +2060,7 @@ static void read_git_status_porcelain_cmd_output_into_hashtable(gpointer *child_
 	  if (i==0) sprintf(status,"D ");
 	  else status=strdup("A ");
 	}
+	if (curPathRelativeToGitRoot && !g_str_has_prefix(filenames[i],curPathRelativeToGitRoot)) continue;//只处理当前目录树
       //TODO: remove ending "/"
       //when i mkdir test in gitreporoot
       //cd test
@@ -2391,6 +2393,7 @@ static void set_terminal_window_title(char * title)
 static void set_curPath_is_git_repo_and_git_root(gpointer *child_attribs)
 {
   if (git_root) { g_free(git_root); git_root=NULL; }
+  if (curPathRelativeToGitRoot) {g_free(curPathRelativeToGitRoot); curPathRelativeToGitRoot=NULL;};
   char *child_StdOut=((RFM_ChildAttribs *)child_attribs)->stdOut;
   if (child_StdOut){
     char *firstline=strtok(child_StdOut,"\n");
@@ -2398,8 +2401,10 @@ static void set_curPath_is_git_repo_and_git_root(gpointer *child_attribs)
       curPath_is_git_repo=TRUE;
       char *secondline=strtok(NULL,"\n");
       if (secondline!=NULL) {
-	git_root=strdup(secondline);
+	git_root=g_strdup(secondline);
 	g_debug("git root:%s",git_root);
+	char *thirdline=strtok(NULL,"\n");
+	curPathRelativeToGitRoot = g_strdup(thirdline);
       }else g_warning("git_root NULL for git repo");
     }else{
       curPath_is_git_repo=FALSE;
