@@ -478,12 +478,11 @@ static void cmd_cd(wordexp_t *parsed_msg, GString *readline_result_string_after_
 // value "??" for untracked
 // the same as git status --porcelain
 static GHashTable *gitTrackedFiles;
-static gboolean curPath_is_git_repo = FALSE;
-static gchar * git_root = NULL;
+static gchar * git_root = NULL;//git_root non-NULL means current path is in git repository
 static gchar * curPathRelativeToGitRoot = NULL;
 static guint rfm_gitCommitMsgScheduler = 0;
 static GtkTreeIter gitMsg_load_iter;
-static void set_curPath_is_git_repo_and_git_root(gpointer *child_attribs);
+static void set_gitt_root_and_curPathRelativeToGitRoot(gpointer *child_attribs);
 static gboolean show_gitColumns(RFM_FileAttributes * fileAttributes);
 static gboolean show_gitMenus(RFM_FileAttributes * fileAttributes);
 static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpointer *child_attribs);
@@ -1781,7 +1780,7 @@ static void load_thumbnail_or_enqueue_thumbQueue_for_store_row(GtkTreeIter *iter
 
 #ifdef GitIntegration
 static void load_latest_git_log_for_store_row(GtkTreeIter *iter){
-      if (curPath_is_git_repo){
+      if (git_root){
 	//gchar* fullpath=calloc(PATH_MAX, sizeof(gchar));
 	GValue full_path=G_VALUE_INIT;
 	gtk_tree_model_get_value(treemodel, iter, COL_FULL_PATH, &full_path);
@@ -2310,8 +2309,8 @@ static void refresh_store(RFM_ctx *rfmCtx)
    clear_store();
 
 #ifdef GitIntegration
-   g_spawn_wrapper(git_root_cmd, NULL,G_SPAWN_DEFAULT, NULL, NULL, FALSE, set_curPath_is_git_repo_and_git_root, NULL,TRUE);
-   if (curPath_is_git_repo) load_gitTrackedFiles_HashTable();
+   g_spawn_wrapper(git_root_cmd, NULL,G_SPAWN_DEFAULT, NULL, NULL, FALSE, set_gitt_root_and_curPathRelativeToGitRoot, NULL,TRUE);
+   if (git_root) load_gitTrackedFiles_HashTable();
 #endif
 
    gchar * title;
@@ -2361,7 +2360,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
      }
   }
 #ifdef GitIntegration
-   if ((SearchResultViewInsteadOfDirectoryView^1) && curPath_is_git_repo)
+   if ((SearchResultViewInsteadOfDirectoryView^1) && git_root)
      g_spawn_wrapper(git_current_branch_cmd, NULL, G_SPAWN_DEFAULT, NULL, NULL, TRUE, set_window_title_with_git_branch_and_sort_view_with_git_status, NULL, TRUE);
    else set_Titles(title);
 #else
@@ -2392,7 +2391,7 @@ static void set_terminal_window_title(char * title)
 
 
 #ifdef GitIntegration
-static void set_curPath_is_git_repo_and_git_root(gpointer *child_attribs)
+static void set_gitt_root_and_curPathRelativeToGitRoot(gpointer *child_attribs)
 {
   if (git_root) { g_free(git_root); git_root=NULL; }
   if (curPathRelativeToGitRoot) {g_free(curPathRelativeToGitRoot); curPathRelativeToGitRoot=NULL;};
@@ -2400,7 +2399,6 @@ static void set_curPath_is_git_repo_and_git_root(gpointer *child_attribs)
   if (child_StdOut){
     char *firstline=strtok(child_StdOut,"\n");
     if(firstline!=NULL && strcmp(firstline, "true")==0){
-      curPath_is_git_repo=TRUE;
       char *secondline=strtok(NULL,"\n");
       if (secondline!=NULL) {
 	git_root=g_strdup(secondline);
@@ -2408,19 +2406,16 @@ static void set_curPath_is_git_repo_and_git_root(gpointer *child_attribs)
 	char *thirdline=strtok(NULL,"\n");
 	curPathRelativeToGitRoot = g_strdup(thirdline);
       }else g_warning("git_root NULL for git repo");
-    }else{
-      curPath_is_git_repo=FALSE;
     }
-    g_debug("curPath_is_git_repo:%d",curPath_is_git_repo);
   }else g_warning("git_root_cmd in config.h return NULL");
 }
 
 static gboolean show_gitMenus(RFM_FileAttributes *fileAttributes) {
-  return SearchResultViewInsteadOfDirectoryView ^ 1 && curPath_is_git_repo;
+  return SearchResultViewInsteadOfDirectoryView ^ 1 && git_root;
 }
 
 static gboolean show_gitColumns(RFM_FileAttributes * fileAttributes) {
-  return curPath_is_git_repo;
+  return git_root!=NULL;
 }
 
 static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpointer *child_attribs) {
