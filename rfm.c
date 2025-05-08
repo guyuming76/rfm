@@ -2020,7 +2020,8 @@ static void load_gitTrackedFiles_HashTable()
 
 static void read_git_status_porcelain_cmd_output_into_hashtable(gpointer *child_attribs){
     char *child_stdout=(char*)(((RFM_ChildAttribs *)child_attribs)->stdOut);
-    gchar *oneline=strtok(child_stdout,"\n");
+    gchar *savedptr=NULL;
+    gchar *oneline=strtok_r(child_stdout,"\n",&savedptr);
     while (oneline!=NULL && strlen(oneline)>3){
       //first 2 char of oneline is git status
       gchar *status=g_strndup(oneline, 2);
@@ -2099,7 +2100,7 @@ static void read_git_status_porcelain_cmd_output_into_hashtable(gpointer *child_
       }
       
       g_strfreev(filenames);
-      oneline=strtok(NULL, "\n");
+      oneline=strtok_r(NULL, "\n",&savedptr);
     }
 }
 #endif
