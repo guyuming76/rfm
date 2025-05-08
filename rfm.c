@@ -1989,7 +1989,7 @@ static void readLatestGitLogForFileAndUpdateStore(RFM_ChildAttribs * childAttrib
 static void GitStatusForDirectory(gchar * filename, char* status) {
       gchar *savedptr1=NULL;
       gchar *status_=g_strdup(status);
-      gchar *dirname=strtok_r(filename,"/",&savedptr1);
+      gchar *dirname=strtok_r(filename,"/",&savedptr1);//TODO:调用当起函数的地方控制了filename是要有curPathRelativeToGitRoot前缀的，也就是当前目录下的文件和子目录，这里找第一个/符号，实际上找的是当前目录下第一层子目录，再下层的子目录不会显示在当前目录视图里，也就没必要更新gitstatus列了。这里主要是考虑目录视图，搜索结果视图(如git ls-files>0)一般无需显示目录，这里暂不考虑，如果讲来有需求，需要找第二，第三个/符号,更新各级目录,并且也不能限制filename要有curPathRelativeToGitRoot前缀了
       if (dirname!=NULL){
 	gchar *dir_fullpath=g_build_filename(git_root,dirname,NULL);
 	gchar* existingStatus=g_hash_table_lookup(gitTrackedFiles, dir_fullpath);
