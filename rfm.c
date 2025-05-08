@@ -489,7 +489,7 @@ static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpoin
 static void readLatestGitLogForFileAndUpdateStore(RFM_ChildAttribs * childAttribs);
 static void read_git_ls_files_cmd_output_into_hashtable(gpointer *child_attribs);
 static void read_git_status_porcelain_cmd_output_into_hashtable(gpointer *child_attribs);
-static void load_GitTrackedFiles_into_HashTable();
+static void load_gitTrackedFiles_HashTable();
 static void load_latest_git_log_for_store_row(GtkTreeIter *iter);
 //called in dir view when onebyone off
 static gboolean iterate_through_store_to_load_latest_git_log_one_by_one_when_idle(GtkTreeIter *iter);
@@ -2009,7 +2009,7 @@ static void read_git_ls_files_cmd_output_into_hashtable(gpointer *child_attribs)
   }
 }
 
-static void load_GitTrackedFiles_into_HashTable()
+static void load_gitTrackedFiles_HashTable()
 {
   g_spawn_wrapper(git_ls_files_cmd, NULL, G_SPAWN_DEFAULT, NULL, NULL, FALSE, read_git_ls_files_cmd_output_into_hashtable, strdup(""), TRUE);
 
@@ -2294,7 +2294,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
 
 #ifdef GitIntegration
    g_spawn_wrapper(git_root_cmd, NULL,G_SPAWN_DEFAULT, NULL, NULL, FALSE, set_curPath_is_git_repo_and_git_root, NULL,TRUE);
-   if (curPath_is_git_repo) load_GitTrackedFiles_into_HashTable();
+   if (curPath_is_git_repo) load_gitTrackedFiles_HashTable();
 #endif
 
    gchar * title;
