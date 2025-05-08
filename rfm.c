@@ -487,6 +487,7 @@ static gboolean show_gitColumns(RFM_FileAttributes * fileAttributes);
 static gboolean show_gitMenus(RFM_FileAttributes * fileAttributes);
 static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpointer *child_attribs);
 static void readLatestGitLogForFileAndUpdateStore(RFM_ChildAttribs * childAttribs);
+static void GitStatusForDirectory(gchar * filename, char* status);
 static void read_git_ls_files_cmd_output_into_hashtable(gpointer *child_attribs);
 static void read_git_status_porcelain_cmd_output_into_hashtable(gpointer *child_attribs);
 static void load_gitTrackedFiles_HashTable();
@@ -1983,6 +1984,21 @@ static void readLatestGitLogForFileAndUpdateStore(RFM_ChildAttribs * childAttrib
    g_log(RFM_LOG_DATA_GIT,G_LOG_LEVEL_DEBUG,"gitCommitid:%s",commitid);
 }
 
+static void GitStatusForDirectory(gchar * filename, char* status) {
+      gchar *savedptr1;
+      gchar *dirname=strtok_r(filename,"/",&savedptr1);
+      if (dirname!=NULL){
+	gchar *dir_fullpath=g_build_filename(git_root,g_strdup(dirname), NULL);
+	gchar* existingStatus=g_hash_table_lookup(gitTrackedFiles, dir_fullpath);
+	if (existingStatus){
+	  
+	}
+	
+	g_log(RFM_LOG_DATA_GIT,G_LOG_LEVEL_DEBUG,"gitTrackedFile dir status: %s, %s",status,dir_fullpath);
+	g_hash_table_insert(gitTrackedFiles, dir_fullpath, g_strdup(status));
+      }
+}
+
 static void read_git_ls_files_cmd_output_into_hashtable(gpointer *child_attribs) {
   char *child_stdout=(char*)(((RFM_ChildAttribs *)child_attribs)->stdOut);
   char *status=(char*)(((RFM_ChildAttribs *)child_attribs)->customCallbackUserData);
@@ -1993,25 +2009,14 @@ static void read_git_ls_files_cmd_output_into_hashtable(gpointer *child_attribs)
       g_hash_table_insert(gitTrackedFiles,fullpath,g_strdup(status));
       g_log(RFM_LOG_DATA_GIT,G_LOG_LEVEL_DEBUG,"gitTrackedFile status: %s, %s",status,fullpath);
       //git ls-file 只列出文件，不列出目录，但我们希望当子目录有文件添加，状态为??时，状态能反映到目录上。又因为我们目前只显示当前目录下的一层子目录，所以我们下面只找一层
-      gchar *savedptr1;
-      gchar *dirname=strtok_r(oneline,"/",&savedptr1);
-      if (dirname!=NULL){
-	gchar *dir_fullpath=g_build_filename(git_root,g_strdup(dirname), NULL);
-	/* gchar* existingStatus=g_hash_table_lookup(gitTrackedFiles, dir_fullpath); */
-	/* if (g_strcmp0(status,"??")==0 && (g_strcmp0(existingStatus,"")==0 || g_strcmp0(existingStatus," ?")))//这里我作了一个定义：当目录下面只包含untracked文件时，目录状态显示为??,目录下面同时包含tracked文件和untracked文件，目录状态显示为" ?" */
-	/*   sprintf(status," ?"); */
-	/* else if (g_strcmp0(status,"")==0 && g_strcmp0(existingStatus,"??")==0)//这种情况一般不会发生，因为我们是先读取 git ls-file 后读取 git ls-file -o */
-	/*   sprintf(status," ?"); */
-	g_log(RFM_LOG_DATA_GIT,G_LOG_LEVEL_DEBUG,"gitTrackedFile dir status: %s, %s",status,dir_fullpath);
-	g_hash_table_insert(gitTrackedFiles, dir_fullpath, g_strdup(status));
-      }
+      GitStatusForDirectory(oneline,status);
       oneline=strtok_r(NULL, "\n",&savedptr);
   }
 }
 
 static void load_gitTrackedFiles_HashTable()
 {
-  g_spawn_wrapper(git_ls_files_cmd, NULL, G_SPAWN_DEFAULT, NULL, NULL, FALSE, read_git_ls_files_cmd_output_into_hashtable, strdup(""), TRUE);
+  g_spawn_wrapper(git_ls_files_cmd, NULL, G_SPAWN_DEFAULT, NULL, NULL, FALSE, read_git_ls_files_cmd_output_into_hashtable, strdup("  "), TRUE);
 
   g_spawn_wrapper(git_ls_files_untracked_cmd, NULL, G_SPAWN_DEFAULT, NULL, NULL, FALSE, read_git_ls_files_cmd_output_into_hashtable, strdup("??"), TRUE);
 
@@ -2097,6 +2102,7 @@ static void read_git_status_porcelain_cmd_output_into_hashtable(gpointer *child_
 	  //Furthur, think about we need to load extended attribs for files, such as those in email, shall we consider general multiple pass fileattributes loading framework?
 	}
       }
+      GitStatusForDirectory(filenames[i], status);
       }
       
       g_strfreev(filenames);
