@@ -250,7 +250,7 @@ static void g_spawn_wrapper_for_selected_fileList_(RFM_ChildAttribs *childAttrib
 /* instantiate childAttribs and call g_spawn_wrapper_ */
 /* caller should g_list_free(file_list), but usually not g_list_free_full, since the file char* is usually owned by rfm_fileattributes */
 /* callbackfuncUserData can be pointer of any type, but callbackfunc should take RFM_ChildAttribs* as input parameter, and retrieve callbackfuncUserData with (RFM_ChildAttribs *)->customCallbackUserData; */
-static gboolean g_spawn_wrapper(const char **action, GList *file_list, int run_opts, gchar** env, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData,gboolean output_read_by_program);
+static gboolean g_spawn_wrapper(const char **action, const GList *file_list, const int run_opts, const gchar** env, const char *dest_path, const gboolean async,const void(*callbackfunc)(gpointer),const gpointer callbackfuncUserData,const gboolean output_read_by_program);
 /* call build_cmd_vector to create the argv parameter for g_spawn_* */
 /* call different g_spawn_* functions based on child_attribs->spawn_async and child_attribs->runOpts */
 /* free child_attribs */
@@ -1261,7 +1261,7 @@ static gboolean g_spawn_wrapper_(const GList *file_list, const char *dest_path, 
 }
 
 
-static gboolean g_spawn_wrapper(const char **action, GList *file_list, int run_opts, gchar** env, char *dest_path, gboolean async,void(*callbackfunc)(gpointer),gpointer callbackfuncUserData, gboolean output_read_by_program){
+static gboolean g_spawn_wrapper(const char **action, const GList *file_list, const int run_opts, const gchar** env, const char *dest_path, const gboolean async,const void(*callbackfunc)(gpointer),const gpointer callbackfuncUserData, const gboolean output_read_by_program){
   RFM_ChildAttribs *child_attribs=calloc(1,sizeof(RFM_ChildAttribs));
   child_attribs->customCallBackFunc=callbackfunc;
   child_attribs->customCallbackUserData=callbackfuncUserData;
