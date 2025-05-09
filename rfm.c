@@ -257,7 +257,7 @@ static gboolean g_spawn_wrapper(const char **action, GList *file_list, int run_o
 static gboolean g_spawn_wrapper_(GList *file_list, char *dest_path, RFM_ChildAttribs * childAttribs);
 /* create argv parameter for g_spawn functions  */
 /* The char* in file_list will be used (WITHOUT strdup) in returned gchar** v and owned by rfm_FileAttributelist before */
-static gchar **build_cmd_vector(const char **cmd, GList *file_list, char *dest_path);
+static gchar **build_cmd_vector(const char **cmd, const GList *file_list, const char *dest_path);
 //caller will free v, child_attribs will free in ExecCallback_freeChildAttribs function if return TRUE, otherwize caller free child_attribs
 static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *child_attribs);
 static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_data);
@@ -1143,7 +1143,7 @@ static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *ch
 }
 
 
-static gchar **build_cmd_vector(const char **cmd, GList *file_list, char *dest_path)
+static gchar **build_cmd_vector(const char **cmd, const GList *file_list, const char *dest_path)
 {
    long j=0;
    gchar **v=NULL;
