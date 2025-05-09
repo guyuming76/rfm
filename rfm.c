@@ -545,7 +545,7 @@ static int CallMatchingProcessorForSearchResultLine(char *oneline, gboolean new_
 static void cmdSearchResultColumnSeperator(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
 //matched search result type suffix will be removed from readlineResults
 static int MatchSearchResultType(gchar *readlineResult);
-static void set_DisplayingPageSize_ForFileNameListFromPipesStdIn(char *pagesize);
+static void set_pagesize_for_searchresultview(const char *pagesize);
 static void cmdPagesize(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
 static void writeSearchResultIntoFD_in_gtk_thread(gint *fd);
 static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, gboolean from_stdin_readline, int cmd_interpretor_index);
@@ -2195,7 +2195,7 @@ static void FirstPage(RFM_ctx *rfmCtx){
   refresh_store(rfmCtx);
 }
 
-static void set_DisplayingPageSize_ForFileNameListFromPipesStdIn(char *pagesize){
+static void set_pagesize_for_searchresultview(const char *pagesize){
   if (pagesize){
     int ps = atoi(pagesize);
     if (ps>0){
@@ -4056,7 +4056,7 @@ static void cmdToggleInotifyHandler(wordexp_t *parsed_msg,GString *readline_resu
 
 static void cmdPagesize(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution){
         if (parsed_msg->we_wordc==2){
-	  set_DisplayingPageSize_ForFileNameListFromPipesStdIn(parsed_msg->we_wordv[1]);
+	  set_pagesize_for_searchresultview(parsed_msg->we_wordv[1]);
 	}else printf("%d\n",PageSize_SearchResultView);
 }
 
@@ -4097,7 +4097,7 @@ static void cmd_setenv(wordexp_t *parsed_msg, GString *readline_result_string_af
     }
 #endif
     if (strcmp(parsed_msg->we_wordv[1], "RFM_PAGESIZE")==0){
-      set_DisplayingPageSize_ForFileNameListFromPipesStdIn(parsed_msg->we_wordv[2]);
+      set_pagesize_for_searchresultview(parsed_msg->we_wordv[2]);
     }else setenv(parsed_msg->we_wordv[1],parsed_msg->we_wordv[2],1);
   }else printf(SETENV_USAGE);
 }
@@ -4778,7 +4778,7 @@ int main(int argc, char *argv[])
    sprintf(selected_filename_placeholder_in_quotation, "'%s'",selected_filename_placeholder);
    snprintf(thumbnailsize_str,8, "%dx%d",RFM_THUMBNAIL_SIZE,RFM_THUMBNAIL_SIZE);
 
-   set_DisplayingPageSize_ForFileNameListFromPipesStdIn(getenv("RFM_PAGESIZE"));
+   set_pagesize_for_searchresultview(getenv("RFM_PAGESIZE"));
 
    fileMenu.menu = NULL;
 
@@ -4816,7 +4816,7 @@ int main(int argc, char *argv[])
          return 0;
       case 'p':
 	   if (initDir!=NULL) die("if you have -d specified, and read file name list from pipeline, -p parameter must goes BEFORE -d\n");
-	   set_DisplayingPageSize_ForFileNameListFromPipesStdIn(argv[c] + 2 * sizeof(gchar));
+	   set_pagesize_for_searchresultview(argv[c] + 2 * sizeof(gchar));
 	   SearchResultViewInsteadOfDirectoryView = 1;
          break;
       case 'l':
