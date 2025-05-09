@@ -3431,7 +3431,7 @@ static void add_history_timestamp(){
     // 转换为本地时间
     local = localtime(&now);
     // 格式化为ISO日期时间
-    if (strftime(iso_date, sizeof(iso_date), "%Y-%m-%dT%H:%M:%S%z", local) == 0) {
+    if (strftime(iso_date, sizeof(iso_date), "# %Y-%m-%dT%H:%M:%S%z", local) == 0) {
         g_warning("strftime failed\n");
     }else add_history_time(iso_date);
 }
