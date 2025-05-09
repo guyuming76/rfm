@@ -80,7 +80,6 @@ static const char *TreeAiMessages[] = { stdin_cmd_interpretors[0].name, "find \"
 static const char *find_same_name[] = { stdin_cmd_interpretors[0].name, rfmBinPath "rfmFindFilesWithTheSameName.sh >multitype ", NULL };
 static const char *cd_in_searchresult[] = { stdin_cmd_interpretors[0].name, "cd ", NULL };
 static const char *start_menu[] = { stdin_cmd_interpretors[0].name, "cd /usr/share/applications", NULL };
-static const char *git_ls_files[] = { stdin_cmd_interpretors[0].name, "git ls-files>0", NULL };
 static const char *find_files[] = { stdin_cmd_interpretors[0].name,"find . ! -path '*/.git/*' -type f>0", NULL };
 static const char *extract_archive[] = { stdin_cmd_interpretors[0].name, "rfmExtractArchive.sh & ", NULL };
 static const char *mkdir_and_move_files_into_it[] = { stdin_cmd_interpretors[0].name, "rfm_mkdir_and_move_selected_files_into_it.sh & ",NULL };
@@ -141,6 +140,7 @@ static const char *launch_desktop[] = { "dex", "--term", "$RFM_TERM", NULL };
 #ifdef GitIntegration
 static const char *git_ls_files_cmd[] = {"git", "ls-files", NULL};
 static const char *git_ls_files_untracked_cmd[] = { "git", "ls-files", "-o",NULL};
+static const char *git_ls_files[] = { stdin_cmd_interpretors[0].name, "git ls-files;git ls-files -o>0", NULL };
 static const char *git_modified_staged_info_cmd[] = {"/usr/bin/git","status","--porcelain",NULL};
 static const char *git_stage_cmd[] = {"/usr/bin/git","stage",NULL};
 static const char *git_root_cmd[] = { "bash","-c", "git rev-parse --is-inside-work-tree --show-toplevel --show-prefix; exit 0",NULL};
