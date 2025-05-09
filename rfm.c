@@ -487,7 +487,7 @@ static gboolean show_gitColumns(RFM_FileAttributes * fileAttributes);
 static gboolean show_gitMenus(RFM_FileAttributes * fileAttributes);
 static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpointer *child_attribs);
 static void readLatestGitLogForFileAndUpdateStore(RFM_ChildAttribs * childAttribs);
-static void GitStatusForDirectory(gchar * filename, char* status);
+static void GitStatusForDirectory(gchar * filename, const char* status);
 static void read_git_ls_files_cmd_output_into_hashtable(gpointer *child_attribs);
 static void read_git_status_porcelain_cmd_output_into_hashtable(gpointer *child_attribs);
 static void load_gitTrackedFiles_HashTable();
@@ -1985,12 +1985,13 @@ static void readLatestGitLogForFileAndUpdateStore(RFM_ChildAttribs * childAttrib
 }
 
 //git本身只会给文件设置状态，不考虑目录，这里根据目录中文件的状态为目录也设置一个状态，方便了解哪些子目录有文件变动，需要stage等
-static void GitStatusForDirectory(gchar * filename, char* status) {
+//filename为git ls-files输出格式
+static void GitStatusForDirectory(gchar * filename, const char* status) {
       gchar *savedptr1=NULL;
       if (ignored_filename(basename(filename))) return;//防止子目录里添加的隐藏文件影响目录的gitstatus列，引起误解
       //TODO:如果文件本身不是隐藏文件，但是位于一个隐藏的子目录，怎么办?得识别路径上各层目录有无隐藏，不过这种情况我这里暂时没遇到
       gchar *status_=g_strdup(status);
-      gchar *dirname=strtok_r(filename,"/",&savedptr1);//TODO:调用当起函数的地方控制了filename是要有curPathRelativeToGitRoot前缀的，也就是当前目录下的文件和子目录，这里找第一个/符号，实际上找的是当前目录下第一层子目录，再下层的子目录不会显示在当前目录视图里，也就没必要更新gitstatus列了。这里主要是考虑目录视图，搜索结果视图(如git ls-files>0)一般无需显示目录，这里暂不考虑，如果讲来有需求，需要找第二，第三个/符号,更新各级目录,并且也不能限制filename要有curPathRelativeToGitRoot前缀了
+      gchar *dirname=strtok_r(filename,"/",&savedptr1);//TODO:这里找第一个/符号，实际上找的是当前目录下第一层子目录，再下层的子目录不会显示在当前目录视图里，也就没必要更新gitstatus列了。这里主要是考虑目录视图，搜索结果视图(如git ls-files>0)一般无需显示目录，这里暂不考虑，如果将来有需求，需要找第二，第三个/符号,更新各级目录
       if (dirname!=NULL){
 	gchar *dir_fullpath=g_build_filename(git_root,dirname,NULL);
 	gchar* existingStatus=g_hash_table_lookup(gitTrackedFiles, dir_fullpath);
@@ -2013,11 +2014,10 @@ static void read_git_ls_files_cmd_output_into_hashtable(gpointer *child_attribs)
   char *status=(char*)(((RFM_ChildAttribs *)child_attribs)->customCallbackUserData);
   gchar * savedptr=NULL;
   gchar * oneline=strtok_r(child_stdout,"\n",&savedptr);
-  while (oneline!=NULL && (curPathRelativeToGitRoot==NULL || (curPathRelativeToGitRoot && g_str_has_prefix(oneline, curPathRelativeToGitRoot)))){
-      gchar * fullpath=g_build_filename(git_root,oneline,NULL);
+  while (oneline!=NULL){
+      gchar * fullpath = curPathRelativeToGitRoot? g_build_filename(git_root,curPathRelativeToGitRoot, oneline,NULL) : g_build_filename(git_root,oneline,NULL);
       g_hash_table_insert(gitTrackedFiles,fullpath,g_strdup(status));
       g_log(RFM_LOG_DATA_GIT,G_LOG_LEVEL_DEBUG,"gitTrackedFile status:%s,%s",status,fullpath);
-      //git ls-file 只列出文件，不列出目录，但我们希望当子目录有文件添加，状态为??时，状态能反映到目录上。又因为我们目前只显示当前目录下的一层子目录，所以我们下面只找一层
       GitStatusForDirectory(oneline,status);
       oneline=strtok_r(NULL, "\n",&savedptr);
   }
@@ -2111,7 +2111,7 @@ static void read_git_status_porcelain_cmd_output_into_hashtable(gpointer *child_
 	  //Furthur, think about we need to load extended attribs for files, such as those in email, shall we consider general multiple pass fileattributes loading framework?
 	}
       }
-      GitStatusForDirectory(filenames[i], status);
+      GitStatusForDirectory(curPathRelativeToGitRoot?(filenames[i]+strlen(curPathRelativeToGitRoot)):filenames[i], status);//git status --porcelain 输出的文件名格式同git ls-files --full-name， 所以这里要去掉curPathRelativeToGitRoot前缀。并且上面代码已经过滤掉了输出里面不包含curPathRelativeToGitRoot前缀的路径了
       }
       
       g_strfreev(filenames);
