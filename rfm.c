@@ -43,6 +43,11 @@
 #include <glib/gchecksum.h> // For file hashing
 #endif
 
+#define FREE(x) x //indicate that it is freed here
+#define FREEFULL(x) x //indicate that it is freed full here
+#define MEMALLOC  //indicate that returned value is allocated memory here
+#define MEMALLOCFULL //indicate that returned value is allocated full memory here
+
 #define INOTIFY_MASK IN_MOVE|IN_CREATE|IN_CLOSE_WRITE|IN_DELETE|IN_DELETE_SELF|IN_MOVE_SELF
 #define PIPE_SZ 65535      /* Kernel pipe size */
 
@@ -253,11 +258,10 @@ static void g_spawn_wrapper_for_selected_fileList_(RFM_ChildAttribs *childAttrib
 static gboolean g_spawn_wrapper(const char **action, const GList *file_list, const int run_opts, const gchar** env, const char *dest_path, const gboolean async,const void(*callbackfunc)(gpointer),const gpointer callbackfuncUserData,const gboolean output_read_by_program);
 /* call build_cmd_vector to create the argv parameter for g_spawn_* */
 /* call different g_spawn_* functions based on child_attribs->spawn_async and child_attribs->runOpts */
-/* free child_attribs */
-static gboolean g_spawn_wrapper_(const GList *file_list, const char *dest_path, RFM_ChildAttribs * childAttribs);
+static gboolean g_spawn_wrapper_(const GList *file_list, const char *dest_path, FREEFULL(RFM_ChildAttribs * childAttribs));
 /* create argv parameter for g_spawn functions  */
 /* The char* in file_list will be used (WITHOUT strdup) in returned gchar** v and owned by rfm_FileAttributelist before */
-static gchar **build_cmd_vector(const char **cmd, const GList *file_list, const char *dest_path);
+static MEMALLOC gchar **build_cmd_vector(const char **cmd, const GList *file_list, const char *dest_path);
 //caller will free v, child_attribs will free in ExecCallback_freeChildAttribs function if return TRUE, otherwize caller free child_attribs
 static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *child_attribs);
 static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_data);
@@ -1143,7 +1147,7 @@ static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *ch
 }
 
 
-static gchar **build_cmd_vector(const char **cmd, const GList *file_list, const char *dest_path)
+static MEMALLOC gchar **build_cmd_vector(const char **cmd, const GList *file_list, const char *dest_path)
 {
    long j=0;
    gchar **v=NULL;
@@ -1214,7 +1218,7 @@ static void check_wait_status_and_set_exit_code(RFM_ChildAttribs *child_attribs)
 }
 
 //caller should g_list_free(file_list), but usually not g_list_free_full, since the file char* is usually owned by rfm_fileattributes
-static gboolean g_spawn_wrapper_(const GList *file_list, const char *dest_path, RFM_ChildAttribs * child_attribs)
+static gboolean g_spawn_wrapper_(const GList *file_list, const char *dest_path, FREEFULL(RFM_ChildAttribs * child_attribs))
 {
    gchar **v=NULL;
    gboolean ret=TRUE;
