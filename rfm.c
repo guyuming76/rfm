@@ -254,7 +254,7 @@ static gboolean g_spawn_wrapper(const char **action, GList *file_list, int run_o
 /* call build_cmd_vector to create the argv parameter for g_spawn_* */
 /* call different g_spawn_* functions based on child_attribs->spawn_async and child_attribs->runOpts */
 /* free child_attribs */
-static gboolean g_spawn_wrapper_(GList *file_list, char *dest_path, RFM_ChildAttribs * childAttribs);
+static gboolean g_spawn_wrapper_(const GList *file_list, const char *dest_path, RFM_ChildAttribs * childAttribs);
 /* create argv parameter for g_spawn functions  */
 /* The char* in file_list will be used (WITHOUT strdup) in returned gchar** v and owned by rfm_FileAttributelist before */
 static gchar **build_cmd_vector(const char **cmd, const GList *file_list, const char *dest_path);
@@ -1214,7 +1214,7 @@ static void check_wait_status_and_set_exit_code(RFM_ChildAttribs *child_attribs)
 }
 
 //caller should g_list_free(file_list), but usually not g_list_free_full, since the file char* is usually owned by rfm_fileattributes
-static gboolean g_spawn_wrapper_(GList *file_list, char *dest_path, RFM_ChildAttribs * child_attribs)
+static gboolean g_spawn_wrapper_(const GList *file_list, const char *dest_path, RFM_ChildAttribs * child_attribs)
 {
    gchar **v=NULL;
    gboolean ret=TRUE;
