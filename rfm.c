@@ -251,12 +251,12 @@ typedef struct RFM_ChildAttributes{
 
 static GList *rfm_childList = NULL;
 static int rfm_childListLength = 0;
-static void free_child_attribs(RFM_ChildAttribs *child_attribs);
-static void g_spawn_wrapper_for_selected_fileList_(RFM_ChildAttribs *childAttribs);
+static void free_child_attribs(FREE_FULL RFM_ChildAttribs *child_attribs);
+static void g_spawn_wrapper_for_selected_fileList_(FREE_FULL RFM_ChildAttribs *childAttribs);
 /* instantiate childAttribs and call g_spawn_wrapper_ */
 /* caller should g_list_free(file_list), but usually not g_list_free_full, since the file char* is usually owned by rfm_fileattributes */
 /* callbackfuncUserData can be pointer of any type, but callbackfunc should take RFM_ChildAttribs* as input parameter, and retrieve callbackfuncUserData with (RFM_ChildAttribs *)->customCallbackUserData; */
-static gboolean g_spawn_wrapper(const char **action, CALLER_OWN const GList *file_list, const int run_opts, FREE const gchar** env, const char *dest_path, const gboolean async,const void(*callbackfunc)(gpointer),CALLER_OWN const gpointer callbackfuncUserData,const gboolean output_read_by_program);
+static gboolean g_spawn_wrapper(CALLER_OWN const char **action, CALLER_OWN const GList *file_list, const int run_opts, FREE const gchar** env, const char *dest_path, const gboolean async,const void(*callbackfunc)(gpointer),CALLER_OWN const gpointer callbackfuncUserData,const gboolean output_read_by_program);
 /* call build_cmd_vector to create the argv parameter for g_spawn_* */
 /* call different g_spawn_* functions based on child_attribs->spawn_async and child_attribs->runOpts */
 static gboolean g_spawn_wrapper_(CALLER_OWN const GList *file_list, CALLER_OWN const char *dest_path, FREE_FULL RFM_ChildAttribs * childAttribs);
@@ -818,7 +818,7 @@ static void free_thumbQueueData(RFM_ThumbQueueData *thumbData)
    free(thumbData);
 }
 
-static void free_child_attribs(RFM_ChildAttribs *child_attribs)
+static void free_child_attribs(FREE_FULL RFM_ChildAttribs *child_attribs)
 {
    g_free(child_attribs->stdOut);
    g_free(child_attribs->stdErr);
@@ -1266,7 +1266,7 @@ static gboolean g_spawn_wrapper_(CALLER_OWN const GList *file_list, CALLER_OWN c
 }
 
 
-static gboolean g_spawn_wrapper(const char **action, CALLER_OWN const GList *file_list, const int run_opts, FREE const gchar** env, const char *dest_path, const gboolean async,const void(*callbackfunc)(gpointer),CALLER_OWN const gpointer callbackfuncUserData, const gboolean output_read_by_program){
+static gboolean g_spawn_wrapper(CALLER_OWN const char **action, CALLER_OWN const GList *file_list, const int run_opts, FREE const gchar** env, const char *dest_path, const gboolean async,const void(*callbackfunc)(gpointer),CALLER_OWN const gpointer callbackfuncUserData, const gboolean output_read_by_program){
   RFM_ChildAttribs *child_attribs=calloc(1,sizeof(RFM_ChildAttribs));
   child_attribs->customCallBackFunc=callbackfunc;
   child_attribs->customCallbackUserData=callbackfuncUserData;
@@ -2773,7 +2773,7 @@ middle-mouse-click.  */
 // 这个函数的主要目的就是获得当前选中文件,产生一个data为 fileAttributes->path
 // 的Glist,然后汇同参数childAttribs一起传递各g_spawn_wrapper
 // TODO: 直接往g_spawn_wrapper 里面传data 我fileAttributes 的GList不好吗?不过要注意释放问题,目前fileAttributes都是在refresh_store时统一释放的,其他地方都是引用
-static void g_spawn_wrapper_for_selected_fileList_(RFM_ChildAttribs *childAttribs)
+static void g_spawn_wrapper_for_selected_fileList_(FREE_FULL RFM_ChildAttribs *childAttribs)
 {
    GtkTreeIter iter;
    GList *listElement;
