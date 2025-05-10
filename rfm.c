@@ -272,7 +272,7 @@ static void check_wait_status_and_set_exit_code(CALLER_OWN RFM_ChildAttribs *chi
 static void show_child_output(CALLER_OWN RFM_ChildAttribs *child_attribs);
 static int read_char_pipe(gint fd, ssize_t block_size, char **buffer);
 static void GSpawnChildSetupFunc_setenv(gpointer user_data);
-static void set_env_to_pass_into_child_process(GtkTreeIter *iter, gchar*** env_for_g_spawn);
+static void set_env_to_pass_into_child_process(const GtkTreeIter *iter, gchar*** env_for_g_spawn);
 /******Process spawn related definitions end*********/
 /****************************************************/
 /******Thumbnail related definitions*****************/
@@ -2563,7 +2563,7 @@ static void selectionChanged(GtkWidget *view, gpointer user_data)
 }
 
 //establish environmental varables for columns
-static void set_env_to_pass_into_child_process(GtkTreeIter *iter, gchar*** env_for_g_spawn){
+static void set_env_to_pass_into_child_process(const GtkTreeIter *iter, gchar*** env_for_g_spawn){
   g_log(RFM_LOG_GSPAWN,G_LOG_LEVEL_DEBUG,"set_env_to_pass_into_child_process");
   for (enum RFM_treeviewCol c=0;c<NUM_COLS;c++){
     if (gtk_tree_model_get_column_type(GTK_TREE_MODEL(store), c)!=G_TYPE_STRING) continue;
