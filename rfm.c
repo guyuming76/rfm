@@ -267,9 +267,9 @@ static MEM_ALLOC gchar **build_cmd_vector(CALLER_OWN const char **cmd, CALLER_OW
 static gboolean g_spawn_async_with_pipes_wrapper(CALLER_OWN gchar **v, RFM_ChildAttribs *child_attribs);
 static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_data);
 static void child_handler_to_set_finished_status_for_child_supervisor(const GPid pid, const gint status, CALLER_OWN RFM_ChildAttribs *child_attribs);
-static gboolean ExecCallback_freeChildAttribs(RFM_ChildAttribs * child_attribs);
-static void check_wait_status_and_set_exit_code(RFM_ChildAttribs *child_attribs);
-static void show_child_output(RFM_ChildAttribs *child_attribs);
+static gboolean ExecCallback_freeChildAttribs(FREE_FULL RFM_ChildAttribs * child_attribs);
+static void check_wait_status_and_set_exit_code(CALLER_OWN RFM_ChildAttribs *child_attribs);
+static void show_child_output(CALLER_OWN RFM_ChildAttribs *child_attribs);
 static int read_char_pipe(gint fd, ssize_t block_size, char **buffer);
 static void GSpawnChildSetupFunc_setenv(gpointer user_data);
 static void set_env_to_pass_into_child_process(GtkTreeIter *iter, gchar*** env_for_g_spawn);
@@ -865,7 +865,7 @@ static void rfm_stop_all(RFM_ctx *rfmCtx) {
 }
 
 
-static gboolean ExecCallback_freeChildAttribs(RFM_ChildAttribs * child_attribs){
+static gboolean ExecCallback_freeChildAttribs(FREE_FULL RFM_ChildAttribs * child_attribs){
    if(child_attribs->exitcode==0 && (child_attribs->customCallBackFunc)!=NULL){
        (child_attribs->customCallBackFunc)(child_attribs);
    }
@@ -971,7 +971,8 @@ static void child_handler_to_set_finished_status_for_child_supervisor(const GPid
    g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_DEBUG, "child Pid %i status changed from %d to %d", child_attribs->pid, oldstatus, child_attribs->status);
 }
 
-static void show_child_output(RFM_ChildAttribs *child_attribs)
+//显示完 child_attribs->stdOut, stdErr后，会将其置为空字符串
+static void show_child_output(CALLER_OWN RFM_ChildAttribs *child_attribs)
 {
    gchar *msg=NULL;
    
@@ -1203,7 +1204,7 @@ static void GSpawnChildSetupFunc_setenv(gpointer user_data) {
 }
 
 
-static void check_wait_status_and_set_exit_code(RFM_ChildAttribs *child_attribs) {
+static void check_wait_status_and_set_exit_code(CALLER_OWN RFM_ChildAttribs *child_attribs) {
 	            GError *wait_err = NULL;
 	            child_attribs->exitcode = -1; // Default to error unless status check passes
 		    
