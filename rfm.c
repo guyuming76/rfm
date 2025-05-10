@@ -266,7 +266,7 @@ static MEM_ALLOC gchar **build_cmd_vector(CALLER_OWN const char **cmd, CALLER_OW
 //caller will free v, child_attribs will free in ExecCallback_freeChildAttribs function if return TRUE, otherwize caller free child_attribs
 static gboolean g_spawn_async_with_pipes_wrapper(CALLER_OWN gchar **v, RFM_ChildAttribs *child_attribs);
 static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_data);
-static void child_handler_to_set_finished_status_for_child_supervisor(const GPid pid, const gint status, CALLER_OWN RFM_ChildAttribs *child_attribs);
+static void set_finished_status_for_child_supervisor(const GPid pid, const gint status, CALLER_OWN RFM_ChildAttribs *child_attribs);
 static gboolean ExecCallback_freeChildAttribs(FREE_FULL RFM_ChildAttribs * child_attribs);
 static void check_wait_status_and_set_exit_code(CALLER_OWN RFM_ChildAttribs *child_attribs);
 static void show_child_output(CALLER_OWN RFM_ChildAttribs *child_attribs);
@@ -964,7 +964,7 @@ static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_
    return G_SOURCE_REMOVE;
 }
 
-static void child_handler_to_set_finished_status_for_child_supervisor(const GPid pid, const gint status, CALLER_OWN RFM_ChildAttribs *child_attribs)
+static void set_finished_status_for_child_supervisor(const GPid pid, const gint status, CALLER_OWN RFM_ChildAttribs *child_attribs)
 {
    int oldstatus = child_attribs->status;
    child_attribs->status=status; /* show_child_output() is called from child_supervisor() in case there is any data left in the pipes */
@@ -1136,7 +1136,7 @@ static gboolean g_spawn_async_with_pipes_wrapper(CALLER_OWN gchar **v, RFM_Child
          child_attribs->status=-1;  /* -1 indicates child is running; set to wait wstatus on exit */
 
          g_timeout_add(100, (GSourceFunc)g_spawn_async_with_pipes_wrapper_child_supervisor, (void*)child_attribs);
-         g_child_watch_add(child_attribs->pid, (GChildWatchFunc)child_handler_to_set_finished_status_for_child_supervisor, child_attribs);
+         g_child_watch_add(child_attribs->pid, (GChildWatchFunc)set_finished_status_for_child_supervisor, child_attribs);
          rfm_childList=g_list_prepend(rfm_childList, child_attribs);
 	 rfm_childListLength++;
          //gtk_widget_set_sensitive(GTK_WIDGET(info_button), TRUE);
