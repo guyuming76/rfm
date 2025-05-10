@@ -500,8 +500,8 @@ static void load_latest_git_log_for_store_row(GtkTreeIter *iter);
 //called in dir view when onebyone off
 static gboolean iterate_through_store_to_load_latest_git_log_one_by_one_when_idle(GtkTreeIter *iter);
 #endif
-static void set_terminal_window_title(char* title);
-static void set_Titles(gchar * title);
+static void set_terminal_window_title(CALLER_OWN const char* title);
+static void set_Titles(FREE const gchar * title);
 static void cmdToggleInotifyHandler(wordexp_t *parsed_msg,GString *readline_result_string_after_file_name_substitution);
 
 /******GtkListStore and refresh definitions end******/
@@ -2285,7 +2285,7 @@ static gint sort_func(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, gpoin
    return rv;
 }
 
-static void set_Titles(gchar * title){
+static void set_Titles(FREE const gchar * title){
    if (title==NULL) return;
    gboolean title_is_rfm_curPath = (title[0]=='/');
    if (title_is_rfm_curPath) gtk_window_set_title(GTK_WINDOW(window), title);
@@ -2390,7 +2390,7 @@ static void refresh_store_in_g_spawn_wrapper_callback(RFM_ChildAttribs* child_at
 
 
 //echo -en "\033]0;title\a"
-static void set_terminal_window_title(char * title)
+static void set_terminal_window_title(CALLER_OWN const char * title)
 {
   snprintf(cmd_to_set_terminal_title,PATH_MAX, "echo -en \"\\033]0;%s\\a\"", title);
   char* cmd[]={ "bash", "-c", cmd_to_set_terminal_title,NULL};
