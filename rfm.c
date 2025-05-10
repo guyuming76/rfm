@@ -264,9 +264,9 @@ static gboolean g_spawn_wrapper_(CALLER_OWN const GList *file_list, CALLER_OWN c
 /* The char* in file_list will be used (WITHOUT strdup) in returned gchar** v and owned by rfm_FileAttributelist before */
 static MEM_ALLOC gchar **build_cmd_vector(CALLER_OWN const char **cmd, CALLER_OWN const GList *file_list, CALLER_OWN const char *dest_path);
 //caller will free v, child_attribs will free in ExecCallback_freeChildAttribs function if return TRUE, otherwize caller free child_attribs
-static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *child_attribs);
+static gboolean g_spawn_async_with_pipes_wrapper(CALLER_OWN gchar **v, RFM_ChildAttribs *child_attribs);
 static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_data);
-static void child_handler_to_set_finished_status_for_child_supervisor(GPid pid, gint status, RFM_ChildAttribs *child_attribs);
+static void child_handler_to_set_finished_status_for_child_supervisor(const GPid pid, const gint status, CALLER_OWN RFM_ChildAttribs *child_attribs);
 static gboolean ExecCallback_freeChildAttribs(RFM_ChildAttribs * child_attribs);
 static void check_wait_status_and_set_exit_code(RFM_ChildAttribs *child_attribs);
 static void show_child_output(RFM_ChildAttribs *child_attribs);
@@ -964,7 +964,7 @@ static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_
    return G_SOURCE_REMOVE;
 }
 
-static void child_handler_to_set_finished_status_for_child_supervisor(GPid pid, gint status, RFM_ChildAttribs *child_attribs)
+static void child_handler_to_set_finished_status_for_child_supervisor(const GPid pid, const gint status, CALLER_OWN RFM_ChildAttribs *child_attribs)
 {
    int oldstatus = child_attribs->status;
    child_attribs->status=status; /* show_child_output() is called from child_supervisor() in case there is any data left in the pipes */
@@ -1106,7 +1106,7 @@ static void show_msgbox(gchar *msg, gchar *title, gint type)
 }
 
 
-static gboolean g_spawn_async_with_pipes_wrapper(gchar **v, RFM_ChildAttribs *child_attribs)
+static gboolean g_spawn_async_with_pipes_wrapper(CALLER_OWN gchar **v, RFM_ChildAttribs *child_attribs)
 {
    gboolean rv=FALSE;
    if (child_attribs!=NULL) {
