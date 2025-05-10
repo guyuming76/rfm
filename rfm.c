@@ -160,7 +160,6 @@ static char selected_filename_placeholder_in_quotation[34];   //"'%s'"  by defau
 static gchar** env_for_g_spawn_used_by_exec_stdin_command=NULL;
 static uint current_stdin_cmd_interpretor = 0;
 static int effective_cmd_interpretor_index = 0; //keep the init value the same as that of current_stdin_cmd_interpretor so that these two would be same for the first run of readlineInseperatethread
-static char cmd_to_set_terminal_title[PATH_MAX];
 static gboolean exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread = FALSE;
 static gboolean execStdinCmdInNewVT = FALSE;
 // since it's may be complicated if possible to update stdin prompt whenever the terminal window get focus, i just show ItemSelected prompt in new prompt, and user press two times to refresh gtk view.So, I need a way to recognize consecutive enter press.
@@ -2392,6 +2391,7 @@ static void refresh_store_in_g_spawn_wrapper_callback(RFM_ChildAttribs* child_at
 //echo -en "\033]0;title\a"
 static void set_terminal_window_title(CALLER_OWN const char * title)
 {
+  char cmd_to_set_terminal_title[PATH_MAX];
   snprintf(cmd_to_set_terminal_title,PATH_MAX, "echo -en \"\\033]0;%s\\a\"", title);
   char* cmd[]={ "bash", "-c", cmd_to_set_terminal_title,NULL};
   g_spawn_sync(rfm_curPath, cmd, NULL,
