@@ -473,8 +473,8 @@ static void inotify_insert_item(gchar *name, gboolean is_dir);
 static gboolean delayed_refreshAll(gpointer user_data);
 static void Update_Store_ExtColumns(RFM_ChildAttribs *childAttribs);
 static gchar* getExtColumnValueFromHashTable(guint fileAttributeId, guint ExtColumnHashTableIndex);
-static void set_rfm_curPath(gchar *path);
-static void set_rfm_curPath_internal(gchar* path);
+static void set_rfm_curPath(CALLER_OWN const gchar *path);
+static void set_rfm_curPath_internal(CALLER_OWN const gchar* path);
 static void cmd_cd(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
 #ifdef GitIntegration
 // value " M " for modified
@@ -2452,7 +2452,7 @@ static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpoin
 #endif
 
 
-static void set_rfm_curPath_internal(gchar* path){
+static void set_rfm_curPath_internal(CALLER_OWN const gchar* path){
 #ifdef RFM_LOCAL
       unload_local_extension(); // Unload previous extension if any, before path changes
 #endif
@@ -2478,7 +2478,7 @@ static void set_rfm_curPath_internal(gchar* path){
 }
 
 /* caller owns path, free(rfm_prePath), rfm_curPath assigned to rfm_prePath; strdup(path) will be assigned to rfm_curPath,*/
-static void set_rfm_curPath(gchar* path)
+static void set_rfm_curPath(CALLER_OWN const gchar* path)
 {
    char *msg;
    gchar * realpath=path;
