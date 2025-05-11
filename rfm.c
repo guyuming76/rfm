@@ -48,6 +48,7 @@
 #define MEM_ALLOC  //indicate that returned value is allocated memory here
 #define MEM_ALLOC_FULL //indicate that returned value is allocated full memory here
 #define CALLER_OWN //indicate that caller owns the pointer and should take care of freeing
+#define NO_FREE  //indicate that no need to free, for example, a static array compiled in code
 
 #define INOTIFY_MASK IN_MOVE|IN_CREATE|IN_CLOSE_WRITE|IN_DELETE|IN_DELETE_SELF|IN_MOVE_SELF
 #define PIPE_SZ 65535      /* Kernel pipe size */
@@ -92,7 +93,7 @@ typedef struct {
 static int current_AI_model_index = 0;
 static int stdin_cmd_interpretor_index_for_AI = -1;
 
-static gchar** stdin_LLM_prompt(gchar* user_input_prompt, gboolean inNewVT);
+static NO_FREE gchar** stdin_LLM_prompt(CALLER_OWN gchar* user_input_prompt, gboolean inNewVT);
 #endif
 /********AI related definitions end******************/
 /******Terminal Emulator related definitions*********/
@@ -144,7 +145,7 @@ typedef struct {
   gchar* name;
   gchar* activationKey;
   gchar* prompt;
-  gchar** (*cmdTransformer)(gchar *, gboolean inNewVT);
+  NO_FREE gchar** (*cmdTransformer)(CALLER_OWN gchar *, gboolean inNewVT);
   gchar* HistoryFilename;
 } stdin_cmd_interpretor;
 
@@ -217,8 +218,8 @@ static gchar* stdin_cmd_template_bash_newVT_nonHold[] = { "$RFM_TERM", "/bin/bas
 static gchar* stdin_cmd_template_bash_newVT_nonHold_with_e[] = { "$RFM_TERM", "$RFM_TERM_E" ,"/bin/bash", "-i", "-c", shell_cmd_buffer, NULL };
 static gchar* stdin_cmd_template_nu_newVT_nonHold[] = { "$RFM_TERM", "nu", "-i", "-c", shell_cmd_buffer, NULL };
 static gchar* stdin_cmd_template_nu_newVT_nonHold_with_e[] = { "$RFM_TERM", "$RFM_TERM_E" ,"nu", "-i", "-c", shell_cmd_buffer, NULL };
-static gchar** stdin_command_bash(gchar* user_input_cmd, gboolean inNewVT);
-static gchar** stdin_command_nu(gchar* user_input_cmd, gboolean inNewVT);
+static NO_FREE gchar** stdin_command_bash(CALLER_OWN gchar* user_input_cmd, gboolean inNewVT);
+static NO_FREE gchar** stdin_command_nu(CALLER_OWN gchar* user_input_cmd, gboolean inNewVT);
 
 static void null_log_handler(const gchar *log_domain,GLogLevelFlags log_level,const gchar *message,gpointer user_data){
 }
@@ -3404,7 +3405,7 @@ static void free_default_pixbufs(RFM_defaultPixbufs *defaultPixbufs)
 }
 
 
-static gchar** stdin_command_bash(gchar* user_input_cmd, gboolean inNewVT) {
+static NO_FREE gchar** stdin_command_bash(CALLER_OWN gchar* user_input_cmd, gboolean inNewVT) {
   if (inNewVT){
     snprintf(shell_cmd_buffer,PATH_MAX,"set -o history; %s;read -p '\033[33m%s\033[0m'; exit \$? 2>/dev/null", user_input_cmd, PRESS_ENTER_TO_CLOSE_WINDOW);
     //without set -o history and "bash -i", bash builtin history command will not show results.
@@ -3418,7 +3419,7 @@ static gchar** stdin_command_bash(gchar* user_input_cmd, gboolean inNewVT) {
     return stdin_cmd_template_bash;
   }
 }
-static gchar** stdin_command_nu(gchar* user_input_cmd, gboolean inNewVT) {
+static NO_FREE gchar** stdin_command_nu(CALLER_OWN gchar* user_input_cmd, gboolean inNewVT) {
 //TODO: add read -p into shell_cmd_buffer when inNewVT like stdin_command_bash
   snprintf(shell_cmd_buffer,PATH_MAX,"%s",user_input_cmd);
   gchar * term_e = getenv("RFM_TERM_E");
@@ -4239,7 +4240,7 @@ static void set_stdin_cmd_leading_space_true(){
 }
 
 #ifdef AiIntegration
-static gchar** stdin_LLM_prompt(gchar* user_input_prompt, gboolean inNewVT) {
+static NO_FREE gchar** stdin_LLM_prompt(CALLER_OWN gchar* user_input_prompt, gboolean inNewVT) {
   if (AI_models[current_AI_model_index].InNewTerm){
     snprintf(shell_cmd_buffer,PATH_MAX,"set -o history; %s %s %s %s %s; read -p '\033[33m%s\033[0m'; exit \$? 2>/dev/null", AI_models[current_AI_model_index].calling_script, AI_models[current_AI_model_index].host_url,AI_models[current_AI_model_index].model_name, AI_models[current_AI_model_index].model_temporature, AI_models[current_AI_model_index].API_key, PRESS_ENTER_TO_CLOSE_WINDOW);
     gchar * term_e = getenv("RFM_TERM_E"); // 获取环境变量
