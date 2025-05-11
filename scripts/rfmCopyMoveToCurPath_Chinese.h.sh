@@ -46,6 +46,7 @@ fi
 
 read -p "是否(y/n)检查移动或复制造成的符号链接破坏并修复?默认是(y)" -r check_and_update_symbolic_link
 
+cp_mv_ln_return0=true
 
 if [[ ! -z "$source" ]];then
 
@@ -67,7 +68,8 @@ if [[ ! -z "$source" ]];then
 					ln -sr $line $(echo $target/$(basename $line)); \
 				else \
 					ln -s $line $(echo $target/$(basename $line)); \
-				fi \
+				fi; \
+				[[ $? -ne 0 ]] && cp_mv_ln_return0=false; \
 			done <$namedpipe &
 			rfm -d $source -r $namedpipe
 			wait
@@ -86,6 +88,7 @@ if [[ ! -z "$source" ]];then
 		else
 			ln -s $source $(echo $target/$(basename $source))
 		fi
+		[[ $? -ne 0 ]] && cp_mv_ln_return0=false
 	else
 		echo "$source not directory or file" >&2
 		exit 3
@@ -105,13 +108,22 @@ else
 		else
 			ln -s $sourcefile $(echo $target/$(basename $sourcefile))
 		fi
+		[[ $? -ne 0 ]] && cp_mv_ln_return0=false
 	done
 fi
 
-if [[ -z "$check_and_update_symbolic_link" || "$check_and_update_symbolic_linj" == "y" || "$check_and_update_symbolic_link" == "Y" ]];then
+if [[ -z "$check_and_update_symbolic_link" || "$check_and_update_symbolic_link" == "y" || "$check_and_update_symbolic_link" == "Y" ]];then
         if [ -n "$G_MESSAGES_DEBUG" ];then
+                cp_mv_ln_return0=true
+	        #防止重复等待回车
 	        echo
 	        echo -e "\e[1;33m 按回车关闭窗口 \e[0m"
 	        read
 	fi
+fi
+
+if ! $cp_mv_ln_return0 ;then
+	        echo
+	        echo -e "\e[1;33m 按回车关闭窗口 \e[0m"
+	        read
 fi
