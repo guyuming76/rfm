@@ -4240,7 +4240,6 @@ static void set_stdin_cmd_leading_space_true(){
 
 #ifdef AiIntegration
 static gchar** stdin_LLM_prompt(gchar* user_input_prompt, gboolean inNewVT) {
-  setenv("rfm_AI_MODEL_prompt",user_input_prompt,1);
   if (AI_models[current_AI_model_index].InNewTerm){
     snprintf(shell_cmd_buffer,PATH_MAX,"set -o history; %s %s %s %s %s; read -p '\033[33m%s\033[0m'; exit \$? 2>/dev/null", AI_models[current_AI_model_index].calling_script, AI_models[current_AI_model_index].host_url,AI_models[current_AI_model_index].model_name, AI_models[current_AI_model_index].model_temporature, AI_models[current_AI_model_index].API_key, PRESS_ENTER_TO_CLOSE_WINDOW);
     gchar * term_e = getenv("RFM_TERM_E"); // 获取环境变量
@@ -4345,6 +4344,7 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 	    if (effective_cmd_interpretor_index == stdin_cmd_interpretor_index_for_AI){
 	      if (from_stdin_readline) execStdinCmdInNewVT = AI_models[current_AI_model_index].InNewTerm;
 	      else execCmdInNewVT = AI_models[current_AI_model_index].InNewTerm;
+	      setenv("rfm_AI_MODEL_prompt",readlineResult,1);
 	    }else{
 #endif
 	    //stdin_cmd_ending_space, execStdinCmdInNewVT, SearchResultAsInput 应该也可以通过正则表达式匹配实现.
