@@ -2575,7 +2575,7 @@ static void set_env_to_pass_into_child_process(const GtkTreeIter *iter, gchar***
       gtk_tree_model_get(GTK_TREE_MODEL(store), iter, c, &env_var_value, -1);
       if(env_var_value!=NULL){
 	 g_log(RFM_LOG_GSPAWN,G_LOG_LEVEL_DEBUG,"g_environ_setenv %s %s",env_var_name,env_var_value);
-         gchar ** updated_env_for_g_spawn = g_environ_setenv(*env_for_g_spawn, env_var_name, env_var_value, 1);
+         gchar ** updated_env_for_g_spawn = g_environ_setenv(*env_for_g_spawn, env_var_name, env_var_value, 1);//TODO:按文档上说,caller应该g_strfreev(*env_for_g_spawn),但gdb调试这一句过后,**env_for_g_spawn就内存不可访问了,这一句前还是有效值的,为啥?是文档错了吗?
 	 *env_for_g_spawn = updated_env_for_g_spawn;
 	 g_free(env_var_value);env_var_value=NULL;
       }
