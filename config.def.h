@@ -43,7 +43,6 @@ static char run_cmd_in_new_terminal_emulator_suffix[32] = { '&', 0 };
 
 static gint RFM_THUMBNAIL_SIZE = 128; /* Maximum size for thumb dir normal is 128 */
 static gboolean UseTargetAddressWhenEnterSymbloicLinkForDir=TRUE;
-static gboolean auto_sort_entering_view = FALSE;
 static gboolean keep_selection_on_view_across_refresh = TRUE;
 static gchar* dumb_keyfile_groupname = "https://discourse.gnome.org/t/gkeyfile-to-handle-conf-without-groupname/23080/3";
 
@@ -143,7 +142,7 @@ static const char *git_ls_files_untracked_cmd[] = { "git", "ls-files", "-o",NULL
 static const char *git_ls_files[] = { stdin_cmd_interpretors[0].name, "git ls-files;git ls-files -o>0", NULL };
 static const char *git_modified_staged_info_cmd[] = {"/usr/bin/git","status","--porcelain",NULL};
 static const char *git_stage_cmd[] = {"/usr/bin/git","stage",NULL};
-static const char *git_root_cmd[] = { "bash","-c", "git rev-parse --is-inside-work-tree --show-toplevel --show-prefix; exit 0",NULL};
+static const char *git_root_cmd[] = { "bash","-c", "git rev-parse --is-inside-work-tree --show-toplevel --show-prefix --abbrev-ref HEAD; exit 0",NULL};
 static const char *git_latest_log_cmd[] = {"/usr/bin/git","log","-1","--date=iso",NULL};
 static const char *git_log_cmd[] = { rfmBinPath "rfmVTforCMD.sh","/usr/bin/git","log",NULL};
 //现在只有很少的像上面这行的情况需要rfmVTforCMD_hold.sh脚本，如果想去掉它，统一用rfmVTforCMD.sh,就得想办法把类似read -p 这种代码插到上面的数组里，如果直接把 read 命令放在git log后面，NULL的前面，目前就会牺牲可以在末尾追加任意个选中文件的功能，我记得加一个""数组项可以表示替换一个文件
@@ -152,7 +151,6 @@ static const char *git_log_cmd[] = { rfmBinPath "rfmVTforCMD.sh","/usr/bin/git",
 //static const char *tig_cmd[] = { "$RFM_TERM","/usr/bin/tig",NULL};
 static const char *git_show_pics_cmd[] = { "$RFM_TERM", rfmBinPath "rfmGitShowPictures.sh",NULL};
 //static const char *git_commit[] = { "$RFM_TERM", rfmBinPath "rfmGitCommit.sh",NULL};
-static const char *git_current_branch_cmd[] =  { "/usr/bin/git","branch","--show-current",NULL };
 #endif
 
 static RFM_builtinCMD builtinCMD[] = {

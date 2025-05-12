@@ -485,12 +485,12 @@ static void cmd_cd(wordexp_t *parsed_msg, GString *readline_result_string_after_
 static GHashTable *gitTrackedFiles;
 static gchar * git_root = NULL;//git_root non-NULL means current path is in git repository
 static gchar * curPathRelativeToGitRoot = NULL;
+static gchar * git_current_branch = NULL;
 static guint rfm_gitCommitMsgScheduler = 0;
 static GtkTreeIter gitMsg_load_iter;
 static void set_gitt_root_and_curPathRelativeToGitRoot(gpointer *child_attribs);
 static gboolean show_gitColumns(RFM_FileAttributes * fileAttributes);
 static gboolean show_gitMenus(RFM_FileAttributes * fileAttributes);
-static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpointer *child_attribs);
 static void readLatestGitLogForFileAndUpdateStore(RFM_ChildAttribs * childAttribs);
 static void GitStatusForDirectory(gchar * filename, const char* status);
 static void read_git_ls_files_cmd_output_into_hashtable(gpointer *child_attribs);
@@ -501,7 +501,7 @@ static void load_latest_git_log_for_store_row(GtkTreeIter *iter);
 static gboolean iterate_through_store_to_load_latest_git_log_one_by_one_when_idle(GtkTreeIter *iter);
 #endif
 static void set_terminal_window_title(CALLER_OWN const char* title);
-static void set_Titles(FREE const gchar * title);
+static void set_Titles(CALLER_OWN const gchar * title);
 static void cmdToggleInotifyHandler(wordexp_t *parsed_msg,GString *readline_result_string_after_file_name_substitution);
 
 /******GtkListStore and refresh definitions end******/
@@ -2285,14 +2285,12 @@ static gint sort_func(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, gpoin
    return rv;
 }
 
-static void set_Titles(FREE const gchar * title){
+static void set_Titles(CALLER_OWN const gchar * title){
    if (title==NULL) return;
    gboolean title_is_rfm_curPath = (title[0]=='/');
    if (title_is_rfm_curPath) gtk_window_set_title(GTK_WINDOW(window), title);
-   if (!(SearchResultViewInsteadOfDirectoryView && title_is_rfm_curPath)) gtk_tool_button_set_label(PathAndRepositoryNameDisplay, title);
+   gtk_tool_button_set_label(GTK_TOOL_BUTTON(PathAndRepositoryNameDisplay), title);
    if (title_is_rfm_curPath && startWithVT() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)) set_terminal_window_title(title);
-
-   g_free(title);
 }
 
 
@@ -2349,7 +2347,11 @@ static void refresh_store(RFM_ctx *rfmCtx)
      GDir *dir=NULL;
      dir=g_dir_open(rfm_curPath, 0, NULL);
      if (!dir) return;
+#ifdef GitIntegration
+     title=git_current_branch? g_strdup_printf("%s [%s]",rfm_curPath,git_current_branch) : g_strdup(rfm_curPath);
+#else
      title=g_strdup(rfm_curPath);
+#endif
      read_one_file_couter = 0;
      if (insert_fileAttributes_into_store_one_by_one)
        rfm_readDirSheduler=g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, (GSourceFunc)read_one_DirItem_into_fileAttributeList_and_insert_into_store_if_onebyone, dir, (GDestroyNotify)g_dir_close);
@@ -2371,14 +2373,10 @@ static void refresh_store(RFM_ctx *rfmCtx)
        }
      }
   }
-#ifdef GitIntegration
-   if ((SearchResultViewInsteadOfDirectoryView^1) && git_root)
-     g_spawn_wrapper(git_current_branch_cmd, NULL, G_SPAWN_DEFAULT, NULL, NULL, TRUE, set_window_title_with_git_branch_and_sort_view_with_git_status, NULL, TRUE);
-   else set_Titles(title);
-#else
-   set_Titles(title);
-#endif
 
+   set_Titles(title);
+   g_free(title);
+  
    gtk_widget_show_all(window);
    refresh_toolbar();
    setup_file_menu(rfmCtx);
@@ -2407,7 +2405,8 @@ static void set_terminal_window_title(CALLER_OWN const char * title)
 static void set_gitt_root_and_curPathRelativeToGitRoot(gpointer *child_attribs)
 {
   if (git_root) { g_free(git_root); git_root=NULL; }
-  if (curPathRelativeToGitRoot) {g_free(curPathRelativeToGitRoot); curPathRelativeToGitRoot=NULL;};
+  if (curPathRelativeToGitRoot) {g_free(curPathRelativeToGitRoot); curPathRelativeToGitRoot=NULL;}
+  if (git_current_branch) {g_free(git_current_branch); git_current_branch=NULL; }
   char *child_StdOut=((RFM_ChildAttribs *)child_attribs)->stdOut;
   if (child_StdOut){
     char *firstline=strtok(child_StdOut,"\n");
@@ -2415,9 +2414,11 @@ static void set_gitt_root_and_curPathRelativeToGitRoot(gpointer *child_attribs)
       char *secondline=strtok(NULL,"\n");
       if (secondline!=NULL) {
 	git_root=g_strdup(secondline);
-	g_debug("git root:%s",git_root);
 	char *thirdline=strtok(NULL,"\n");
 	curPathRelativeToGitRoot = g_strdup(thirdline);
+	char *fourthline=strtok(NULL,"\n");
+        git_current_branch=g_strdup(fourthline);
+	g_debug("git root:%s, curPathRelativeToGitRoot:%s, current branch %s",git_root, curPathRelativeToGitRoot, git_current_branch);
       }else g_warning("git_root NULL for git repo");
     }
   }else g_warning("git_root_cmd in config.h return NULL");
@@ -2431,25 +2432,6 @@ static gboolean show_gitColumns(RFM_FileAttributes * fileAttributes) {
   return git_root!=NULL;
 }
 
-static void set_window_title_with_git_branch_and_sort_view_with_git_status(gpointer *child_attribs) {
-  char *child_StdOut=((RFM_ChildAttribs *)child_attribs)->stdOut;
-  gchar* title;
-  if(child_StdOut!=NULL) {
-    child_StdOut[strcspn(child_StdOut, "\n")] = 0;
-    g_debug("git current branch:%s",child_StdOut);
-    title=g_strdup_printf("%s [%s]",rfm_curPath,child_StdOut);
-  }else{
-    title=g_strdup_printf("%s [%s]",rfm_curPath,"detached HEAD");
-  }
-  set_Titles(title);
-  if (auto_sort_entering_view){
-    current_sort_column_id=COL_GIT_STATUS_STR;
-    current_sorttype=GTK_SORT_DESCENDING;
-    g_log(RFM_LOG_DATA_SORT, G_LOG_LEVEL_DEBUG, "set auto_sort_entering_view to false if you don't want to change the current view sorting");
-  }
-  gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(store), current_sort_column_id, current_sorttype);
-
-}
 #endif
 
 
@@ -3111,7 +3093,7 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
    //we add the following toolbutton here instead of define in config.def.h because we need its global reference.
    PathAndRepositoryNameDisplay = gtk_tool_button_new(NULL,rfm_curPath);
    gtk_tool_item_set_tooltip_text(PathAndRepositoryNameDisplay, TOOL_TIP_PathAndRepositoryNameDisplay);
-   gtk_toolbar_insert(GTK_TOOLBAR(tool_bar->toolbar), PathAndRepositoryNameDisplay, -1);
+   gtk_toolbar_insert(GTK_TOOLBAR(tool_bar->toolbar), GTK_TOOL_BUTTON(PathAndRepositoryNameDisplay), -1);
    g_signal_connect(PathAndRepositoryNameDisplay, "clicked", G_CALLBACK(Switch_SearchResultView_DirectoryView),rfmCtx);
    
    add_toolbar_buttons(tool_buttons,G_N_ELEMENTS(tool_buttons));
