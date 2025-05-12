@@ -488,7 +488,7 @@ static gchar * curPathRelativeToGitRoot = NULL;
 static gchar * git_current_branch = NULL;
 static guint rfm_gitCommitMsgScheduler = 0;
 static GtkTreeIter gitMsg_load_iter;
-static void set_gitt_root_and_curPathRelativeToGitRoot(gpointer *child_attribs);
+static void get_git_root_with_rev_parse(gpointer *child_attribs);
 static gboolean show_gitColumns(RFM_FileAttributes * fileAttributes);
 static gboolean show_gitMenus(RFM_FileAttributes * fileAttributes);
 static void readLatestGitLogForFileAndUpdateStore(RFM_ChildAttribs * childAttribs);
@@ -2315,7 +2315,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
    clear_store();
 
 #ifdef GitIntegration
-   g_spawn_wrapper(git_root_cmd, NULL,G_SPAWN_DEFAULT, NULL, NULL, FALSE, set_gitt_root_and_curPathRelativeToGitRoot, NULL,TRUE);
+   g_spawn_wrapper(git_root_cmd, NULL,G_SPAWN_DEFAULT, NULL, NULL, FALSE, get_git_root_with_rev_parse, NULL,TRUE);
    if (git_root) load_gitTrackedFiles_HashTable();
 #endif
 
@@ -2398,7 +2398,7 @@ static void set_terminal_window_title(CALLER_OWN const char * title)
 
 #ifdef GitIntegration
 //TODO:strtok命令会跳过连续的\n,也就是说，如果 git rev-parse --is-inside-work-tree --show-toplevel --abbrev-ref HEAD --show-prefix 4行结果中倒数第三行如果是空行得话数据就会出错，所以要确认 --abbrev-ref HEAD 不返回空
-static void set_gitt_root_and_curPathRelativeToGitRoot(gpointer *child_attribs)
+static void get_git_root_with_rev_parse(gpointer *child_attribs)
 {
   if (git_root) { g_free(git_root); git_root=NULL; }
   if (curPathRelativeToGitRoot) {g_free(curPathRelativeToGitRoot); curPathRelativeToGitRoot=NULL;}
