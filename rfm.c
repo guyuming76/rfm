@@ -2368,12 +2368,11 @@ static void refresh_store(RFM_ctx *rfmCtx)
        }
      }
   }
-
-   gtk_widget_show_all(window);
-   refresh_toolbar();
    set_Titles(title);
    g_free(title);
   
+   gtk_widget_show_all(window);
+   refresh_toolbar();
    setup_file_menu(rfmCtx);
 }
 
@@ -3046,8 +3045,14 @@ static void add_toolbar_buttons(const RFM_ToolButton buttons[], const size_t siz
    GtkWidget *buttonImage=NULL; /* Temp store for button image; gtk_tool_button_new() appears to take the reference */
    size_t existing_toolbar_buttons_array_size = sizeof(tool_bar_buttons)/sizeof(GtkWidget*); //当tool_bar->buttons为NULL时，此值为1
    size_t new_toolbar_buttons_array_size = size + existing_toolbar_buttons_array_size;
-   if(!(tool_bar_buttons = realloc(tool_bar_buttons, new_toolbar_buttons_array_size))) return;
-   g_debug("tool_bar_buttons array realloced from size %d to %d",existing_toolbar_buttons_array_size, new_toolbar_buttons_array_size);
+   GtkWidget **temp=realloc(tool_bar_buttons, new_toolbar_buttons_array_size*sizeof(GtkWidget*));
+   if(temp==NULL) {
+     g_error("failed to realloc tool_bar_buttons array from size %d to %d",existing_toolbar_buttons_array_size, new_toolbar_buttons_array_size);
+     return;
+   }else{
+     g_debug("tool_bar_buttons array realloced from size %d to %d",existing_toolbar_buttons_array_size, new_toolbar_buttons_array_size);
+     tool_bar_buttons=temp;
+   }
 
    for (guint i = 0; i < size; i++) {
        GdkPixbuf *buttonIcon=NULL;
