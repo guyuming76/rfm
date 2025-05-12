@@ -1247,6 +1247,7 @@ static gboolean g_spawn_wrapper_(CALLER_OWN const GList *file_list, CALLER_OWN c
 	            }else if ((child_attribs->stdOut && strlen(child_attribs->stdOut)>0) || (child_attribs->stdErr && strlen(child_attribs->stdErr)>0)) show_child_output(child_attribs);
 
 		    check_wait_status_and_set_exit_code(child_attribs);
+		    ret = (child_attribs->exitcode==0);
 	            ExecCallback_freeChildAttribs(child_attribs);
 	       }
       }
