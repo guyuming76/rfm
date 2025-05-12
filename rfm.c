@@ -2563,7 +2563,8 @@ static void selectionChanged(GtkWidget *view, gpointer user_data)
   if (rfm_prePath!=NULL) { g_free(rfm_prePath); rfm_prePath=NULL; }
 }
 
-//establish environmental varables for columns
+// establish environmental varables for view columns
+// 为把列表试图字段值通过同名环境变量传递给子进程作准备，以便在脚本中使用
 static void set_env_to_pass_into_child_process(const GtkTreeIter *iter, gchar*** env_for_g_spawn){
   g_log(RFM_LOG_GSPAWN,G_LOG_LEVEL_DEBUG,"set_env_to_pass_into_child_process");
   for (enum RFM_treeviewCol c=0;c<NUM_COLS;c++){
