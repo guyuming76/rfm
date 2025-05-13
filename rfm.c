@@ -3027,7 +3027,7 @@ static void refresh_toolbar()
    }
 }
 
-static void add_toolbar_buttons(const RFM_ToolButton buttons[], const size_t size) {
+static void add_toolbar_buttons(const RFM_ToolButton button_definitions[], const size_t size) {
    GtkWidget *buttonImage=NULL; /* Temp store for button image; gtk_tool_button_new() appears to take the reference */
    size_t existing_toolbar_buttons_array_size = sizeof(tool_bar_buttons)/sizeof(GtkWidget*); //当tool_bar->buttons为NULL时，此值为1
    size_t new_toolbar_buttons_array_size = size + existing_toolbar_buttons_array_size;
@@ -3042,7 +3042,7 @@ static void add_toolbar_buttons(const RFM_ToolButton buttons[], const size_t siz
 
    for (guint i = 0; i < size; i++) {
        GdkPixbuf *buttonIcon=NULL;
-       if (buttons[i].buttonIcon!=NULL) buttonIcon=gtk_icon_theme_load_icon(icon_theme, buttons[i].buttonIcon, RFM_TOOL_SIZE, 0, NULL);
+       if (button_definitions[i].buttonIcon!=NULL) buttonIcon=gtk_icon_theme_load_icon(icon_theme, button_definitions[i].buttonIcon, RFM_TOOL_SIZE, 0, NULL);
        if (buttonIcon==NULL)
 	 buttonImage=NULL;
        else{
@@ -3050,18 +3050,18 @@ static void add_toolbar_buttons(const RFM_ToolButton buttons[], const size_t siz
 	 g_object_unref(buttonIcon);
        }
 
-       tool_bar_buttons[i + existing_toolbar_buttons_array_size - 1]=gtk_tool_button_new(buttonImage, buttons[i].buttonName);
+       tool_bar_buttons[i + existing_toolbar_buttons_array_size - 1]=gtk_tool_button_new(buttonImage, button_definitions[i].buttonName);
        gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), tool_bar_buttons[i + existing_toolbar_buttons_array_size - 1], -1);
-       if(buttons[i].tooltip!=NULL) gtk_tool_item_set_tooltip_text(tool_bar_buttons[i + existing_toolbar_buttons_array_size - 1],buttons[i].tooltip);
+       if(button_definitions[i].tooltip!=NULL) gtk_tool_item_set_tooltip_text(tool_bar_buttons[i + existing_toolbar_buttons_array_size - 1],button_definitions[i].tooltip);
 
       RFM_ChildAttribs *child_attribs = calloc(1,sizeof(RFM_ChildAttribs));
-      child_attribs->RunCmd = buttons[i].RunCmd;
+      child_attribs->RunCmd = button_definitions[i].RunCmd;
       child_attribs->runOpts = G_SPAWN_DEFAULT;
       child_attribs->stdOut = NULL;
       child_attribs->stdErr = NULL;
       child_attribs->spawn_async = TRUE;
-      child_attribs->name = g_strdup(buttons[i].buttonName);
-      child_attribs->customCallBackFunc = buttons[i].func;
+      child_attribs->name = g_strdup(button_definitions[i].buttonName);
+      child_attribs->customCallBackFunc = button_definitions[i].func;
       child_attribs->customCallbackUserData = rfmCtx;
 
       g_signal_connect(tool_bar_buttons[i + existing_toolbar_buttons_array_size - 1], "clicked", G_CALLBACK(toolbar_button_exec),child_attribs);
