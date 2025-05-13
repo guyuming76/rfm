@@ -3021,7 +3021,11 @@ static void refresh_toolbar()
 }
 
 void remove_toolbar_buttons(GtkWidget ***buttons, const size_t size) {
-  for (int i=0; i<size; i++) if ((*buttons)[i]) gtk_container_remove(GTK_CONTAINER(tool_bar), (*buttons)[i]);
+  for (int i=0; i<size; i++) if ((*buttons)[i]) {
+    g_signal_handlers_disconnect_matched((*buttons)[i], G_SIGNAL_MATCH_FUNC, 0, 0, NULL, G_CALLBACK(toolbar_button_exec), NULL);
+    gtk_container_remove(GTK_CONTAINER(tool_bar), (*buttons)[i]);
+    gtk_widget_destroy((*buttons)[i]);
+  }
   free(*buttons); *buttons=NULL;
 }
 
