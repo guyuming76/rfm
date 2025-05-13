@@ -447,7 +447,7 @@ static void free_fileAttributes(RFM_FileAttributes *fileAttributes);
 char * get_drwxrwxrwx(mode_t st_mode);
 static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guint64 mtimeThreshold, GHashTable *mount_hash);
 static void refresh_store(RFM_ctx *rfmCtx);
-static void refresh_store_in_g_spawn_wrapper_callback(RFM_ChildAttribs*);
+static void refresh_store_on_searchresult(RFM_ctx* ctx);
 static void clear_store(void);
 static void rfm_stop_all(RFM_ctx *rfmCtx);
 static gboolean fill_fileAttributeList_with_filenames_from_search_result_and_then_insert_into_store();
@@ -2368,8 +2368,9 @@ static void refresh_store(RFM_ctx *rfmCtx)
    setup_file_menu(rfmCtx);
 }
 
-static void refresh_store_in_g_spawn_wrapper_callback(RFM_ChildAttribs* child_attribs){
-  refresh_store((RFM_ctx*)child_attribs->customCallbackUserData);
+//在目录视图，添加删除文件会有inotify handler促发刷新，在searchresultview才需要作为动作的后续调用刷新
+static void refresh_store_on_searchresult(RFM_ctx* ctx){
+  if (SearchResultViewInsteadOfDirectoryView) refresh_store(ctx);
 }
 
 
@@ -2785,30 +2786,26 @@ static void toolbar_button_exec(GtkToolItem *item, RFM_ToolButton *button_defini
 
 static void file_menu_exec(GtkMenuItem *menuitem, RFM_MenuItem *file_menu_item_definition)
 { 
-  RFM_ChildAttribs *child_attribs=calloc(1, sizeof(RFM_ChildAttribs));
-  child_attribs->RunCmd = file_menu_item_definition->runCmd;
-  child_attribs->runOpts = G_SPAWN_DEFAULT;
-  child_attribs->stdOut = NULL;
-  child_attribs->stdErr = NULL;
-  child_attribs->spawn_async = TRUE;
-  child_attribs->name = g_strdup(file_menu_item_definition->runName);
-  if ((g_strcmp0(child_attribs->name, RunActionGitStage)==0) ||
-	  (SearchResultViewInsteadOfDirectoryView &&
-	       ((g_strcmp0(child_attribs->name, RunActionMove)==0
-	       ||g_strcmp0(child_attribs->name, RunActionDelete)==0)))){
-	 child_attribs->customCallBackFunc = refresh_store_in_g_spawn_wrapper_callback;
-         child_attribs->customCallbackUserData = rfmCtx;
-  } else {
-         child_attribs->customCallBackFunc = NULL;
-	 child_attribs->customCallbackUserData = NULL;
-  }
+  if (file_menu_item_definition->runCmd==NULL) //如果runCmd为空，则直接执行func,否则，先执行runCmd,后通过callbackfunc指针执行func
+     file_menu_item_definition->func(rfmCtx);
+  else{
+     RFM_ChildAttribs *child_attribs=calloc(1, sizeof(RFM_ChildAttribs));
+     child_attribs->RunCmd = file_menu_item_definition->runCmd;
+     child_attribs->runOpts = G_SPAWN_DEFAULT;
+     child_attribs->stdOut = NULL;
+     child_attribs->stdErr = NULL;
+     child_attribs->spawn_async = TRUE;
+     child_attribs->name = g_strdup(file_menu_item_definition->runName);
+     child_attribs->customCallBackFunc = file_menu_item_definition->func;
+     child_attribs->customCallbackUserData = rfmCtx;
 
-  int cmd_interpretor_index = match_cmd_str_array_with_interpretors(child_attribs->RunCmd);
-  if (cmd_interpretor_index>=0){
-    gchar* cmd = strdup(child_attribs->RunCmd[1]);
-    printf("\n%s\033[32m%s%s]\033[0m%s\n",InheritedPrompt, stdin_cmd_interpretors[cmd_interpretor_index].prompt,(ItemSelected==0)?"":"*",cmd);
-    parse_and_exec_command_in_gtk_thread(cmd, FALSE, cmd_interpretor_index);
-  }else g_spawn_wrapper_for_selected_fileList_(child_attribs);
+     int cmd_interpretor_index = match_cmd_str_array_with_interpretors(child_attribs->RunCmd);
+     if (cmd_interpretor_index>=0){
+       gchar* cmd = strdup(child_attribs->RunCmd[1]);
+       printf("\n%s\033[32m%s%s]\033[0m%s\n",InheritedPrompt, stdin_cmd_interpretors[cmd_interpretor_index].prompt,(ItemSelected==0)?"":"*",cmd);
+       parse_and_exec_command_in_gtk_thread(cmd, FALSE, cmd_interpretor_index);
+     }else g_spawn_wrapper_for_selected_fileList_(child_attribs);
+  }
 }
 
 //fileMenu.menu, fileMenu.menuItem[] 仅在首次运行时被初始化，但fileMenu.menuItemSignalHandlers[]每次都会被重置刷新
@@ -2827,7 +2824,7 @@ static void setup_file_menu(RFM_ctx * rfmCtx){
    for(i=0; i<G_N_ELEMENTS(run_actions); i++) {
       if (fileMenu.menuItemSignalHandlers[i]>0)
         g_signal_handler_disconnect(fileMenu.menuItem[i], fileMenu.menuItemSignalHandlers[i]);
-      fileMenu.menuItemSignalHandlers[i] = g_signal_connect(fileMenu.menuItem[i], "activate", (run_actions[i].func ? G_CALLBACK(run_actions[i].func) : G_CALLBACK(file_menu_exec)), &(run_actions[i]));
+      fileMenu.menuItemSignalHandlers[i] = g_signal_connect(fileMenu.menuItem[i], "activate", G_CALLBACK(file_menu_exec), &(run_actions[i]));
    }
 }
 

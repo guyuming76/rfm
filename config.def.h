@@ -191,14 +191,14 @@ static RFM_builtinCMD builtinCMD[] = {
 static RFM_MenuItem run_actions[] = {
    /* name           mime root        mime sub type            filenameSuffix           OrSearchResultType	func		runCmd            		showCondition	*/
    { RunActionCopy,  "*",              "*",                    NULL,			NULL,			NULL,		f_cp,             		NULL },
-   { RunActionMove,  "*",              "*",                    NULL,			NULL,			NULL,		f_mv,             		NULL },
-   { RunActionDelete, "*",             "*",                    NULL,			NULL,			NULL,		f_rm,             		NULL },
+   { RunActionMove,  "*",              "*",                    NULL,			NULL,	refresh_store_on_searchresult,  f_mv,             		NULL },
+   { RunActionDelete, "*",             "*",                    NULL,			NULL,   refresh_store_on_searchresult,	f_rm,             		NULL },
    { RunActionSL,    "*",              "*",                    NULL,			NULL,			NULL,		create_softlink,                NULL },
    { RunActionFindSL,"*",              "*",                    NULL,			NULL,			NULL,		find_softlink,                  NULL },
    { RunActionFindSameFile, "*",       "*",                    NULL,			NULL,			NULL,		find_same_name,                 NULL },
    { RunActionCD,    "*",              "*",                    NULL,                    NULL,                   NULL,           cd_in_searchresult,             InSearchResultView },
 #ifdef GitIntegration
-   { RunActionGitStage,  "*",          "*",                    NULL,			NULL,			NULL,		git_stage_cmd,    		show_gitMenus },
+   { RunActionGitStage,  "*",          "*",                    NULL,			NULL,			refresh_store,  git_stage_cmd,    		show_gitMenus },
    { "git log",      "*",              "*",                    NULL,			NULL,			NULL,		git_log_cmd,      		show_gitMenus },
 // { "tig",          "*",              "*",                    NULL,			NULL,			NULL,		tig_cmd,          		show_gitMenus },
 #endif
