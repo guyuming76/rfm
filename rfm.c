@@ -645,6 +645,13 @@ static GtkWidget *scroll_window = NULL;
 static GtkWidget * PathAndRepositoryNameDisplay;
 static GtkWidget *tool_bar = NULL;
 static GtkWidget **tool_bar_buttons = NULL;
+
+#ifdef RFM_LOCAL
+GtkWidget **tool_bar_buttons_local = NULL;
+RFM_ToolButton *toolbar_button_definitions_local = NULL;
+size_t toolbar_button_definitions_local_array_size = 0;
+#endif
+
 static void up_clicked(gpointer user_data);
 static void home_clicked(gpointer user_data);
 static void PreviousPage(RFM_ctx *rfmCtx);
@@ -676,7 +683,8 @@ static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx);
 
 //TODO: shall we call signal disconnect, like in setup_file_menu?
 static GtkWidget *add_view(RFM_ctx *rfmCtx);
-static void add_toolbar_buttons(GtkWidget ***buttons, const RFM_ToolButton button_definitions[], const size_t size);
+void add_toolbar_buttons(GtkWidget ***buttons, const RFM_ToolButton button_definitions[], const size_t size);
+void remove_toolbar_buttons(GtkWidget ***buttons, const size_t size);
 static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixbufs, RFM_ctx *rfmCtx);
 static void refresh_toolbar();
 static gboolean view_key_press(GtkWidget *widget, GdkEvent *event,RFM_ctx *rfmCtx);
@@ -701,7 +709,7 @@ typedef struct {
 
 RFM_fileMenu fileMenu;
 
-#define SHOW_TOOLBAR_BUTTON(i) (((SearchResultViewInsteadOfDirectoryView && tool_buttons[i].showInSearchResultView) || (!SearchResultViewInsteadOfDirectoryView && tool_buttons[i].showInDirectoryView)) && (tool_buttons[i].showCondition == NULL || tool_buttons[i].showCondition()))
+#define SHOW_TOOLBAR_BUTTON(x,i) (((SearchResultViewInsteadOfDirectoryView && x[i].showInSearchResultView) || (!SearchResultViewInsteadOfDirectoryView && x[i].showInDirectoryView)) && (x[i].showCondition == NULL || x[i].showCondition()))
 
 #ifdef RFM_LOCAL
 static void load_local_extension();
@@ -2964,7 +2972,7 @@ static gboolean view_key_press(GtkWidget *widget, GdkEvent *event,RFM_ctx *rfmCt
       if (tool_buttons[i].Accel &&
 	  ek->keyval == tool_buttons[i].Accel &&
           (ek->state & GDK_MOD1_MASK) == GDK_MOD1_MASK &&
-          SHOW_TOOLBAR_BUTTON(i)) {
+          SHOW_TOOLBAR_BUTTON(tool_buttons,i)) {
         tool_buttons[i].func(rfmCtx);
         return TRUE;
       }
@@ -3023,12 +3031,23 @@ static void refresh_toolbar()
 {
    gtk_widget_show(PathAndRepositoryNameDisplay);
    for (guint i = 0; i < G_N_ELEMENTS(tool_buttons); i++) {
-     if (SHOW_TOOLBAR_BUTTON(i)) gtk_widget_show(tool_bar_buttons[i]);
+     if (SHOW_TOOLBAR_BUTTON(tool_buttons,i)) gtk_widget_show(tool_bar_buttons[i]);
      else gtk_widget_hide(tool_bar_buttons[i]);
    }
+#ifdef RFM_LOCAL
+   for (guint i = 0; i < toolbar_button_definitions_local_array_size; i++) {
+     if (SHOW_TOOLBAR_BUTTON(toolbar_button_definitions_local ,i)) gtk_widget_show(tool_bar_buttons_local[i]);
+     else gtk_widget_hide(tool_bar_buttons_local[i]);
+   }
+#endif
 }
 
-static void add_toolbar_buttons(GtkWidget ***buttons, const RFM_ToolButton button_definitions[], const size_t size) {
+void remove_toolbar_buttons(GtkWidget ***buttons, const size_t size) {
+  for (int i=0; i<size; i++) if ((*buttons)[i]) gtk_container_remove(GTK_CONTAINER(tool_bar), (*buttons)[i]);
+  free(*buttons); *buttons=NULL;
+}
+
+void add_toolbar_buttons(GtkWidget ***buttons, const RFM_ToolButton button_definitions[], const size_t size) {
    GtkWidget *buttonImage=NULL; /* Temp store for button image; gtk_tool_button_new() appears to take the reference */
    assert(*buttons==NULL);
    *buttons=calloc(size + 1, sizeof(GtkWidget*));

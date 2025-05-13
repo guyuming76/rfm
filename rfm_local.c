@@ -22,8 +22,12 @@ extern void load_history_for_prompt();
 extern void save_current_history();
 extern GtkWidget **tool_bar_buttons_local;
 extern const stdin_cmd_interpretor stdin_cmd_interpretors[];
+extern RFM_ToolButton *toolbar_button_definitions_local;
+extern size_t toolbar_button_definitions_local_array_size;
+extern void add_toolbar_buttons(GtkWidget ***buttons, const RFM_ToolButton button_definitions[], const size_t size);
+extern void remove_toolbar_buttons(GtkWidget ***buttons, const size_t size);
 
-static const char *rfmTODO[] = { NULL, "find . -nanme '*.rfmTODO.*'>multitype", NULL };
+static const char *rfmTODO[] = { NULL, "find . -name '*.rfmTODO.*'>multitype", NULL };
 static char *saved_history_dir = NULL;
 
 
@@ -32,14 +36,27 @@ RFM_ToolButton tool_buttons_local[] = {
    { "rfmTODO",      NULL,                      NULL,                   rfmTODO,             FALSE,        TRUE,      0,                     NULL,                    NULL},
 };
 
+void add_local_toolbar_buttons(){
+     rfmTODO[0] = stdin_cmd_interpretors[0].name;
+     toolbar_button_definitions_local = tool_buttons_local;
+     toolbar_button_definitions_local_array_size = G_N_ELEMENTS(tool_buttons_local);
+     add_toolbar_buttons(&tool_bar_buttons_local,tool_buttons_local,toolbar_button_definitions_local_array_size);
+}
+
+void remove_local_toolbar_buttons(){
+     toolbar_button_definitions_local = NULL;
+     remove_toolbar_buttons(&tool_bar_buttons_local,toolbar_button_definitions_local_array_size);
+     toolbar_button_definitions_local_array_size = 0;
+}
 
 void rfm_local_enter() {
      fprintf(stderr,"rfm_local_enter called!\n");
-     rfmTODO[0] = stdin_cmd_interpretors[0].name;
      saved_history_dir=strdup(rfm_historyFile_ParentDirectory);
      save_current_history();
      if (getcwd(rfm_historyFile_ParentDirectory,sizeof(rfm_historyFile_ParentDirectory))==NULL) fprintf(stderr,"getcwd return NULL");
      load_history_for_prompt();
+
+     add_local_toolbar_buttons();
 }
 
 void rfm_local_leave() {
@@ -50,4 +67,6 @@ void rfm_local_leave() {
          free(saved_history_dir);
          load_history_for_prompt();
      }
+
+     remove_local_toolbar_buttons();
 }
