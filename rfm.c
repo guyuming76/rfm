@@ -666,7 +666,7 @@ static void Switch_SearchResultView_DirectoryView(GtkToolItem *item,RFM_ctx *rfm
 static void toolbar_button_exec(GtkToolItem *item, RFM_ToolButton *button_definition);
 /* callback function for contextual file menu, which appear after mouse right click on selected file, or the after the menu key on keyboard pressed */
 /* since g_spawn_wrapper will free child_attribs, and we don't want the childAttribs object associated with UI interface item to be freed, we duplicate childAttribs here. */
-static void file_menu_exec(GtkMenuItem *menuitem, RFM_ChildAttribs *childAttribs);
+static void file_menu_exec(GtkMenuItem *menuitem, RFM_MenuItem *file_menu_item_definition);
 /* Every action defined in config.h is added to the menu here; each menu item is associated with
  * the corresponding index in the run_actions_array.
  * Items are shown or hidden in popup_file_menu() depending on the selected files mime types.
@@ -703,7 +703,6 @@ static RFM_treeviewColumn ViewColumnsLayouts[2][G_N_ELEMENTS(treeviewColumns)];
 typedef struct {
    GtkWidget* menu;
    GtkWidget* menuItem[G_N_ELEMENTS(run_actions)];
-   RFM_ChildAttribs* childattribs_for_menuItem[G_N_ELEMENTS(run_actions)];
    gulong menuItemSignalHandlers[G_N_ELEMENTS(run_actions)];
 } RFM_fileMenu;
 
@@ -2785,68 +2784,52 @@ static int match_cmd_str_array_with_interpretors(gchar** RunCmd){
   return -1;
 }
 
-//这个函数做的主要就是复制一份childAttribs, 因为child_attribs包含stdOut这类执行完后要释放的内容,而依附于菜单项的childAttribs模板要在setup_file_menu时才销毁重建
-static void file_menu_exec(GtkMenuItem *menuitem, RFM_ChildAttribs *childAttribs)
+
+static void file_menu_exec(GtkMenuItem *menuitem, RFM_MenuItem *file_menu_item_definition)
 { 
   RFM_ChildAttribs *child_attribs=calloc(1, sizeof(RFM_ChildAttribs));
-  child_attribs->customCallBackFunc=childAttribs->customCallBackFunc;
-  child_attribs->customCallbackUserData=childAttribs->customCallbackUserData;
-  child_attribs->runOpts=childAttribs->runOpts;
-  child_attribs->RunCmd = childAttribs->RunCmd;
+  child_attribs->RunCmd = file_menu_item_definition->runCmd;
+  child_attribs->runOpts = G_SPAWN_DEFAULT;
   child_attribs->stdOut = NULL;
   child_attribs->stdErr = NULL;
-  child_attribs->spawn_async = childAttribs->spawn_async;
-  child_attribs->name=g_strdup(childAttribs->name);
+  child_attribs->spawn_async = TRUE;
+  child_attribs->name = g_strdup(file_menu_item_definition->runName);
+  if ((g_strcmp0(child_attribs->name, RunActionGitStage)==0) ||
+	  (SearchResultViewInsteadOfDirectoryView &&
+	       ((g_strcmp0(child_attribs->name, RunActionMove)==0
+	       ||g_strcmp0(child_attribs->name, RunActionDelete)==0)))){
+	 child_attribs->customCallBackFunc = refresh_store_in_g_spawn_wrapper_callback;
+         child_attribs->customCallbackUserData = rfmCtx;
+  } else {
+         child_attribs->customCallBackFunc = NULL;
+	 child_attribs->customCallbackUserData = NULL;
+  }
 
   int cmd_interpretor_index = match_cmd_str_array_with_interpretors(child_attribs->RunCmd);
   if (cmd_interpretor_index>=0){
-    gchar* cmd = strdup(childAttribs->RunCmd[1]);
+    gchar* cmd = strdup(child_attribs->RunCmd[1]);
     printf("\n%s\033[32m%s%s]\033[0m%s\n",InheritedPrompt, stdin_cmd_interpretors[cmd_interpretor_index].prompt,(ItemSelected==0)?"":"*",cmd);
     parse_and_exec_command_in_gtk_thread(cmd, FALSE, cmd_interpretor_index);
   }else g_spawn_wrapper_for_selected_fileList_(child_attribs);
 }
 
-//fileMenu.menu, fileMenu.menuItem[] 仅在首次运行时被初始化，但fileMenu.childattribs_for_menuItem[], fileMenu.menuItemSignalHandlers[]每次都会被重置刷新
+//fileMenu.menu, fileMenu.menuItem[] 仅在首次运行时被初始化，但fileMenu.menuItemSignalHandlers[]每次都会被重置刷新
 static void setup_file_menu(RFM_ctx * rfmCtx){
    guint i;
-   RFM_ChildAttribs *child_attribs;
    
    if (fileMenu.menu==NULL) {
      fileMenu.menu=gtk_menu_new();
      for(i=0; i<G_N_ELEMENTS(run_actions); i++) {
        fileMenu.menuItem[i]=gtk_menu_item_new_with_label(run_actions[i].runName);
        gtk_menu_shell_append(GTK_MENU_SHELL(fileMenu.menu), fileMenu.menuItem[i]);
-       fileMenu.childattribs_for_menuItem[i]=NULL;
+       fileMenu.menuItemSignalHandlers[i]=0;
      }
    }
 
    for(i=0; i<G_N_ELEMENTS(run_actions); i++) {
-      child_attribs=fileMenu.childattribs_for_menuItem[i];
-      if (child_attribs!=NULL) {
+      if (fileMenu.menuItemSignalHandlers[i]>0)
         g_signal_handler_disconnect(fileMenu.menuItem[i], fileMenu.menuItemSignalHandlers[i]);
-	free_child_attribs(child_attribs);
-      }
-      child_attribs = calloc(1,sizeof(RFM_ChildAttribs));
-      fileMenu.childattribs_for_menuItem[i]=child_attribs;
-      // child_attribs will be copied to a new instance in file_menu_exec.
-      child_attribs->RunCmd = run_actions[i].runCmd;      
-      child_attribs->runOpts = G_SPAWN_DEFAULT;
-      child_attribs->stdOut = NULL;
-      child_attribs->stdErr = NULL;
-      child_attribs->spawn_async = TRUE;
-      child_attribs->name = g_strdup(run_actions[i].runName);
-      if ((g_strcmp0(child_attribs->name, RunActionGitStage)==0) ||
-	  (SearchResultViewInsteadOfDirectoryView &&
-	       ((g_strcmp0(child_attribs->name, RunActionMove)==0
-	       ||g_strcmp0(child_attribs->name, RunActionDelete)==0)))){
-	 child_attribs->customCallBackFunc = refresh_store_in_g_spawn_wrapper_callback;
-         child_attribs->customCallbackUserData = rfmCtx;
-      } else {
-         child_attribs->customCallBackFunc = NULL;
-	 child_attribs->customCallbackUserData = NULL;
-      }
-
-      fileMenu.menuItemSignalHandlers[i] = g_signal_connect(fileMenu.menuItem[i], "activate", (run_actions[i].func ? G_CALLBACK(run_actions[i].func) : G_CALLBACK(file_menu_exec)), child_attribs);
+      fileMenu.menuItemSignalHandlers[i] = g_signal_connect(fileMenu.menuItem[i], "activate", (run_actions[i].func ? G_CALLBACK(run_actions[i].func) : G_CALLBACK(file_menu_exec)), &(run_actions[i]));
    }
 }
 
