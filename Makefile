@@ -133,6 +133,7 @@ ifneq (${CmarkTools},)
 	@cp -f extractKeyValuePairFromMarkdown ${DESTDIR}${PREFIX}/bin
 	@cp -f extractContentFromMarkdownRecursive ${DESTDIR}${PREFIX}/bin
 endif
+	@cp -f rfm_local.h /usr/include
 	@cp -f rfm ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfm.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmRefreshImage.sh ${DESTDIR}${PREFIX}/bin
@@ -251,6 +252,7 @@ ifneq (${CmarkTools},)
 	@rm -f ${DESTDIR}${PREFIX}/bin/extractKeyValuePairFromMarkdown
 	@rm -f ${DESTDIR}${PREFIX}/bin/extractContentFromMarkdownRecursive
 endif
+	@rm -f /usr/include/rfm_local.h
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfm
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfm.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmRefreshImage.sh

@@ -15,6 +15,7 @@ const char * const rfm_local_c_file_hash = NULL;
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
+#include <rfm_local.h>
 
 extern char rfm_historyFile_ParentDirectory[PATH_MAX];
 extern void load_history_for_prompt();
@@ -22,18 +23,19 @@ extern void save_current_history();
 extern GtkWidget **tool_bar_buttons_local;
 extern const stdin_cmd_interpretor stdin_cmd_interpretors[];
 
-static const char *rfmTODO[] = { stdin_cmd_interpretors[0].name, "find . -nanme '*.rfmTODO.*'>multitype", NULL };
+static const char *rfmTODO[] = { NULL, "find . -nanme '*.rfmTODO.*'>multitype", NULL };
 static char *saved_history_dir = NULL;
 
 
 RFM_ToolButton tool_buttons_local[] = {
    /* name           icon                       function    		RunCmd      SearchResultView   DirectoryView   Accel                 tooltip                showCondition*/
    { "rfmTODO",      NULL,                      NULL,                   rfmTODO,             FALSE,        TRUE,      0,                     NULL,                    NULL},
-}
+};
 
 
 void rfm_local_enter() {
      fprintf(stderr,"rfm_local_enter called!\n");
+     rfmTODO[0] = stdin_cmd_interpretors[0].name;
      saved_history_dir=strdup(rfm_historyFile_ParentDirectory);
      save_current_history();
      if (getcwd(rfm_historyFile_ParentDirectory,sizeof(rfm_historyFile_ParentDirectory))==NULL) fprintf(stderr,"getcwd return NULL");

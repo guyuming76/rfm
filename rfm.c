@@ -50,6 +50,8 @@
 #define CALLER_OWN //indicate that caller owns the pointer and should take care of freeing
 #define NO_FREE  //indicate that no need to free, for example, a static array compiled in code
 
+#include <rfm_local.h>
+
 #define INOTIFY_MASK IN_MOVE|IN_CREATE|IN_CLOSE_WRITE|IN_DELETE|IN_DELETE_SELF|IN_MOVE_SELF
 #define PIPE_SZ 65535      /* Kernel pipe size */
 
@@ -141,13 +143,6 @@ typedef struct {
   gchar *help_msg;
 } RFM_builtinCMD;
 
-typedef struct {
-  gchar* name;
-  gchar* activationKey;
-  gchar* prompt;
-  NO_FREE gchar** (*cmdTransformer)(CALLER_OWN gchar *, gboolean inNewVT);
-  gchar* HistoryFilename;
-} stdin_cmd_interpretor;
 
 static char* pipefd="0";
 static FILE *pipeStream=NULL;
@@ -643,18 +638,6 @@ typedef struct {
   //gint  runOpts;
    gboolean (*showCondition)();
 } RFM_MenuItem;
-
-typedef struct {
-   gchar *buttonName;
-   gchar *buttonIcon;
-   void (*func)(gpointer);
-   const gchar **RunCmd;
-   gboolean showInSearchResultView;
-   gboolean showInDirectoryView;
-   guint Accel;
-   gchar *tooltip;
-   gboolean (*showCondition)();
-} RFM_ToolButton;
 
 static GtkWidget *window=NULL;      /* Main window */
 static GtkWidget *rfm_main_box;
