@@ -663,7 +663,7 @@ static void Switch_SearchResultView_DirectoryView(GtkToolItem *item,RFM_ctx *rfm
 /* callback function for toolbar buttons. Its possible to make function such as home_clicked as callback directly, instead of use toolbar_button_exec as a wrapper. However,i would add GtkToolItems as first parameter for so many different callback functions then. */
 /* since g_spawn_wrapper will free child_attribs, and we don't want the childAttribs object associated with UI interface item to be freed, we duplicate childAttribs here. */
 /* tool_buttons actions are basically defined at current directory level, or current view level, for example: to go to parent directory, or to switch between icon or tree view */
-static void toolbar_button_exec(GtkToolItem *item, RFM_ChildAttribs *childAttribs);
+static void toolbar_button_exec(GtkToolItem *item, RFM_ToolButton *button_definition);
 /* callback function for contextual file menu, which appear after mouse right click on selected file, or the after the menu key on keyboard pressed */
 /* since g_spawn_wrapper will free child_attribs, and we don't want the childAttribs object associated with UI interface item to be freed, we duplicate childAttribs here. */
 static void file_menu_exec(GtkMenuItem *menuitem, RFM_ChildAttribs *childAttribs);
@@ -2683,24 +2683,24 @@ static void info_clicked(gpointer user_data)
 }
 
 
-static void toolbar_button_exec(GtkToolItem *item, RFM_ChildAttribs *childAttribs)
+static void toolbar_button_exec(GtkToolItem *item, RFM_ToolButton *button_definition)
 {
-   if (childAttribs->RunCmd==NULL) /* Argument is an internal function */
-     childAttribs->customCallBackFunc(childAttribs->customCallbackUserData);
+   if (button_definition->RunCmd==NULL) /* Argument is an internal function */
+     button_definition->func(rfmCtx);
    else { /* Assume argument is a shell exec */
      RFM_ChildAttribs *child_attribs=calloc(1, sizeof(RFM_ChildAttribs));
-     child_attribs->customCallBackFunc=childAttribs->customCallBackFunc;
-     child_attribs->customCallbackUserData=childAttribs->customCallbackUserData;
-     child_attribs->runOpts=childAttribs->runOpts;
-     child_attribs->RunCmd = childAttribs->RunCmd;
+     child_attribs->RunCmd = button_definition->RunCmd;
+     child_attribs->runOpts = G_SPAWN_DEFAULT;
      child_attribs->stdOut = NULL;
      child_attribs->stdErr = NULL;
-     child_attribs->spawn_async = childAttribs->spawn_async;
-     child_attribs->name=g_strdup(childAttribs->name);
+     child_attribs->spawn_async = TRUE;
+     child_attribs->name = g_strdup(button_definition->buttonName);
+     child_attribs->customCallBackFunc = button_definition->func;
+     child_attribs->customCallbackUserData = rfmCtx;
 
      int cmd_interpretor_index = match_cmd_str_array_with_interpretors(child_attribs->RunCmd);
      if (cmd_interpretor_index>=0){
-       gchar* cmd = strdup(childAttribs->RunCmd[1]);
+       gchar* cmd = strdup(child_attribs->RunCmd[1]);
        printf("\n%s\033[32m%s%s]\033[0m%s\n",InheritedPrompt, stdin_cmd_interpretors[cmd_interpretor_index].prompt,(ItemSelected==0)?"":"*",cmd);
        parse_and_exec_command_in_gtk_thread(cmd, FALSE, cmd_interpretor_index);
      }else g_spawn_wrapper_(NULL, NULL, child_attribs);
@@ -3066,17 +3066,7 @@ void add_toolbar_buttons(GtkWidget ***buttons, const RFM_ToolButton button_defin
        gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), (*buttons)[i], -1);
        if(button_definitions[i].tooltip!=NULL) gtk_tool_item_set_tooltip_text((*buttons)[i],button_definitions[i].tooltip);
 
-      RFM_ChildAttribs *child_attribs = calloc(1,sizeof(RFM_ChildAttribs));
-      child_attribs->RunCmd = button_definitions[i].RunCmd;
-      child_attribs->runOpts = G_SPAWN_DEFAULT;
-      child_attribs->stdOut = NULL;
-      child_attribs->stdErr = NULL;
-      child_attribs->spawn_async = TRUE;
-      child_attribs->name = g_strdup(button_definitions[i].buttonName);
-      child_attribs->customCallBackFunc = button_definitions[i].func;
-      child_attribs->customCallbackUserData = rfmCtx;
-
-      g_signal_connect((*buttons)[i], "clicked", G_CALLBACK(toolbar_button_exec),child_attribs);
+      g_signal_connect((*buttons)[i], "clicked", G_CALLBACK(toolbar_button_exec), &(button_definitions[i]));
    }
 }
 
