@@ -2682,31 +2682,6 @@ static void info_clicked(gpointer user_data)
 }
 
 
-static void toolbar_button_exec(GtkToolItem *item, RFM_ToolButton *button_definition)
-{
-   if (button_definition->RunCmd==NULL) /* Argument is an internal function */
-     button_definition->func(rfmCtx);
-   else { /* Assume argument is a shell exec */
-     RFM_ChildAttribs *child_attribs=calloc(1, sizeof(RFM_ChildAttribs));
-     child_attribs->RunCmd = button_definition->RunCmd;
-     child_attribs->runOpts = G_SPAWN_DEFAULT;
-     child_attribs->stdOut = NULL;
-     child_attribs->stdErr = NULL;
-     child_attribs->spawn_async = TRUE;
-     child_attribs->name = g_strdup(button_definition->buttonName);
-     child_attribs->customCallBackFunc = button_definition->func;
-     child_attribs->customCallbackUserData = rfmCtx;
-
-     int cmd_interpretor_index = match_cmd_str_array_with_interpretors(child_attribs->RunCmd);
-     if (cmd_interpretor_index>=0){
-       gchar* cmd = strdup(child_attribs->RunCmd[1]);
-       printf("\n%s\033[32m%s%s]\033[0m%s\n",InheritedPrompt, stdin_cmd_interpretors[cmd_interpretor_index].prompt,(ItemSelected==0)?"":"*",cmd);
-       parse_and_exec_command_in_gtk_thread(cmd, FALSE, cmd_interpretor_index);
-     }else g_spawn_wrapper_(NULL, NULL, child_attribs);
-   }
-}
-
-
 /* Helper function to get treepath from treeview or iconview. This return value needs to be freed */
 static void get_path_at_view_pos(GtkWidget* view, gboolean treeview,gint x,gint y, GtkTreePath ** retval)
 {
@@ -2784,6 +2759,29 @@ static int match_cmd_str_array_with_interpretors(gchar** RunCmd){
   return -1;
 }
 
+static void toolbar_button_exec(GtkToolItem *item, RFM_ToolButton *button_definition)
+{
+   if (button_definition->RunCmd==NULL) /* Argument is an internal function */
+     button_definition->func(rfmCtx);
+   else { /* Assume argument is a shell exec */
+     RFM_ChildAttribs *child_attribs=calloc(1, sizeof(RFM_ChildAttribs));
+     child_attribs->RunCmd = button_definition->RunCmd;
+     child_attribs->runOpts = G_SPAWN_DEFAULT;
+     child_attribs->stdOut = NULL;
+     child_attribs->stdErr = NULL;
+     child_attribs->spawn_async = TRUE;
+     child_attribs->name = g_strdup(button_definition->buttonName);
+     child_attribs->customCallBackFunc = button_definition->func;
+     child_attribs->customCallbackUserData = rfmCtx;
+
+     int cmd_interpretor_index = match_cmd_str_array_with_interpretors(child_attribs->RunCmd);
+     if (cmd_interpretor_index>=0){
+       gchar* cmd = strdup(child_attribs->RunCmd[1]);
+       printf("\n%s\033[32m%s%s]\033[0m%s\n",InheritedPrompt, stdin_cmd_interpretors[cmd_interpretor_index].prompt,(ItemSelected==0)?"":"*",cmd);
+       parse_and_exec_command_in_gtk_thread(cmd, FALSE, cmd_interpretor_index);
+     }else g_spawn_wrapper_(NULL, NULL, child_attribs);
+   }
+}
 
 static void file_menu_exec(GtkMenuItem *menuitem, RFM_MenuItem *file_menu_item_definition)
 { 
