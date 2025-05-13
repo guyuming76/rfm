@@ -676,6 +676,7 @@ static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx);
 
 //TODO: shall we call signal disconnect, like in setup_file_menu?
 static GtkWidget *add_view(RFM_ctx *rfmCtx);
+static void add_toolbar_buttons(GtkWidget ***buttons, const RFM_ToolButton button_definitions[], const size_t size);
 static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixbufs, RFM_ctx *rfmCtx);
 static void refresh_toolbar();
 static gboolean view_key_press(GtkWidget *widget, GdkEvent *event,RFM_ctx *rfmCtx);
@@ -3027,18 +3028,10 @@ static void refresh_toolbar()
    }
 }
 
-static void add_toolbar_buttons(const RFM_ToolButton button_definitions[], const size_t size) {
+static void add_toolbar_buttons(GtkWidget ***buttons, const RFM_ToolButton button_definitions[], const size_t size) {
    GtkWidget *buttonImage=NULL; /* Temp store for button image; gtk_tool_button_new() appears to take the reference */
-   size_t existing_toolbar_buttons_array_size = sizeof(tool_bar_buttons)/sizeof(GtkWidget*); //当tool_bar->buttons为NULL时，此值为1
-   size_t new_toolbar_buttons_array_size = size + existing_toolbar_buttons_array_size;
-   GtkWidget **temp=realloc(tool_bar_buttons, new_toolbar_buttons_array_size*sizeof(GtkWidget*));
-   if(temp==NULL) {
-     g_error("failed to realloc tool_bar_buttons array from size %d to %d",existing_toolbar_buttons_array_size, new_toolbar_buttons_array_size);
-     return;
-   }else{
-     g_debug("tool_bar_buttons array realloced from size %d to %d",existing_toolbar_buttons_array_size, new_toolbar_buttons_array_size);
-     tool_bar_buttons=temp;
-   }
+   assert(*buttons==NULL);
+   *buttons=calloc(size + 1, sizeof(GtkWidget*));
 
    for (guint i = 0; i < size; i++) {
        GdkPixbuf *buttonIcon=NULL;
@@ -3050,9 +3043,9 @@ static void add_toolbar_buttons(const RFM_ToolButton button_definitions[], const
 	 g_object_unref(buttonIcon);
        }
 
-       tool_bar_buttons[i + existing_toolbar_buttons_array_size - 1]=gtk_tool_button_new(buttonImage, button_definitions[i].buttonName);
-       gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), tool_bar_buttons[i + existing_toolbar_buttons_array_size - 1], -1);
-       if(button_definitions[i].tooltip!=NULL) gtk_tool_item_set_tooltip_text(tool_bar_buttons[i + existing_toolbar_buttons_array_size - 1],button_definitions[i].tooltip);
+       (*buttons)[i]=gtk_tool_button_new(buttonImage, button_definitions[i].buttonName);
+       gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), (*buttons)[i], -1);
+       if(button_definitions[i].tooltip!=NULL) gtk_tool_item_set_tooltip_text((*buttons)[i],button_definitions[i].tooltip);
 
       RFM_ChildAttribs *child_attribs = calloc(1,sizeof(RFM_ChildAttribs));
       child_attribs->RunCmd = button_definitions[i].RunCmd;
@@ -3064,7 +3057,7 @@ static void add_toolbar_buttons(const RFM_ToolButton button_definitions[], const
       child_attribs->customCallBackFunc = button_definitions[i].func;
       child_attribs->customCallbackUserData = rfmCtx;
 
-      g_signal_connect(tool_bar_buttons[i + existing_toolbar_buttons_array_size - 1], "clicked", G_CALLBACK(toolbar_button_exec),child_attribs);
+      g_signal_connect((*buttons)[i], "clicked", G_CALLBACK(toolbar_button_exec),child_attribs);
    }
 }
 
@@ -3080,7 +3073,7 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
    gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), GTK_TOOL_BUTTON(PathAndRepositoryNameDisplay), -1);
    g_signal_connect(PathAndRepositoryNameDisplay, "clicked", G_CALLBACK(Switch_SearchResultView_DirectoryView),rfmCtx);
    
-   add_toolbar_buttons(tool_buttons,G_N_ELEMENTS(tool_buttons));
+   add_toolbar_buttons(&tool_bar_buttons,tool_buttons,G_N_ELEMENTS(tool_buttons));
 }
 
 static GtkWidget *add_view(RFM_ctx *rfmCtx)
