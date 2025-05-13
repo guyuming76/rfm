@@ -1,4 +1,3 @@
-#include <gtk/gtk.h>
 #ifdef RFM_LOCAL_C_HASH
 // 使用编译时定义的宏 RFM_LOCAL_C_HASH 来初始化这个常量指针
 // 这个变量会成为 .so 文件中的一个符号，可以被 dlsym 找到
@@ -10,7 +9,7 @@ const char * const rfm_local_c_file_hash = RFM_LOCAL_C_HASH;
 const char * const rfm_local_c_file_hash = NULL;
 #endif
 
-// #include <gtk/gtk.h>
+#include <gtk/gtk.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -50,4 +49,3 @@ void rfm_local_leave() {
          load_history_for_prompt();
      }
 }
-
