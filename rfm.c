@@ -4625,11 +4625,10 @@ static int setup(RFM_ctx *rfmCtx)
 
    rfm_prePath= getenv("OLDPWD");
    if (rfm_prePath!=NULL) rfm_prePath=strdup(rfm_prePath); //i don't remember exactly, but i think i do this because i read somewhere that getenv result is special and i should not free it.
+   add_toolbar(rfm_main_box, defaultPixbufs, rfmCtx);
 
    if (initDir == NULL) initDir = cwd;
    set_rfm_curPath(initDir);
-
-   add_toolbar(rfm_main_box, defaultPixbufs, rfmCtx);
  
    if (showHelpOnStart && startWithVT() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)) stdin_command_help(NULL,NULL);
    if (auto_execution_command_after_rfm_start==NULL){
