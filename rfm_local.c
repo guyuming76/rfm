@@ -54,10 +54,24 @@ void add_local_toolbar_buttons(){
      add_toolbar_buttons(&tool_bar_buttons_local,tool_buttons_local,toolbar_button_definitions_local_array_size);
 }
 
+void add_local_file_menuitems(){
+     file_menuitem_definitions_local = file_menus_local;
+     file_menuitem_definitions_local_array_size = G_N_ELEMENTS(file_menus_local);
+     add_file_menuitems(&menuItems_local, file_menus_local, file_menuitem_definitions_local_array_size);
+}
+
 void remove_local_toolbar_buttons(){
+     if (toolbar_button_definitions_local_array_size == 0) return;
      toolbar_button_definitions_local = NULL;
      remove_toolbar_buttons(&tool_bar_buttons_local,toolbar_button_definitions_local_array_size);
      toolbar_button_definitions_local_array_size = 0;
+}
+
+void remove_local_file_menuitems(){
+     if (file_menuitem_definitions_local_array_size == 0) return;
+     file_menuitem_definitions_local = NULL;
+     remove_file_menuitems(&menuItems_local, file_menuitem_definitions_local_array_size);
+     file_menuitem_definitions_local_array_size = 0;
 }
 
 void rfm_local_enter() {
@@ -68,6 +82,7 @@ void rfm_local_enter() {
      load_history_for_prompt();
 
      add_local_toolbar_buttons();
+     add_local_file_menuitems();
 }
 
 void rfm_local_leave() {
@@ -80,4 +95,5 @@ void rfm_local_leave() {
      }
 
      remove_local_toolbar_buttons();
+     remove_local_file_menuitems();
 }
