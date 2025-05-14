@@ -627,17 +627,6 @@ static gchar** rfmFileChooser_CMD(enum rfmTerminal startWithVT, gchar* search_cm
 /******FileChooser related definitions end***********/
 /********************************************************************/
 /**************gtk UI, filemenu, toolbar*****************************/
-typedef struct {
-   gchar *runName;
-   gchar *runRoot;
-   gchar *runSub;
-   gchar *filenameSuffix;
-   gchar *OrSearchResultType;
-   void (*func)(gpointer);
-   const gchar **runCmd;
-  //gint  runOpts;
-   gboolean (*showCondition)();
-} RFM_MenuItem;
 
 static GtkWidget *window=NULL;      /* Main window */
 static GtkWidget *rfm_main_box;
@@ -650,6 +639,7 @@ static GtkWidget **tool_bar_buttons = NULL;
 GtkWidget **tool_bar_buttons_local = NULL;
 RFM_ToolButton *toolbar_button_definitions_local = NULL;
 size_t toolbar_button_definitions_local_array_size = 0;
+
 #endif
 
 static void up_clicked(gpointer user_data);
@@ -700,13 +690,10 @@ static RFM_treeviewColumn ViewColumnsLayouts[2][G_N_ELEMENTS(treeviewColumns)];
 #define SearchResultViewColumnsLayout ViewColumnsLayouts[1]
 #define TREEVIEW_COLUMNS ViewColumnsLayouts[SearchResultViewInsteadOfDirectoryView]
 
-typedef struct {
-   GtkWidget* menu;
-   GtkWidget* menuItem[G_N_ELEMENTS(run_actions)];
-   gulong menuItemSignalHandlers[G_N_ELEMENTS(run_actions)];
-} RFM_fileMenu;
+GtkWidget* menu = NULL;
+GtkWidget* menuItem[G_N_ELEMENTS(run_actions)];
+gulong menuItemSignalHandlers[G_N_ELEMENTS(run_actions)];
 
-RFM_fileMenu fileMenu;
 
 #define SHOW_TOOLBAR_BUTTON(x,i) (((SearchResultViewInsteadOfDirectoryView && x[i].showInSearchResultView) || (!SearchResultViewInsteadOfDirectoryView && x[i].showInDirectoryView)) && (x[i].showCondition == NULL || x[i].showCondition()))
 
@@ -2812,19 +2799,19 @@ static void file_menu_exec(GtkMenuItem *menuitem, RFM_MenuItem *file_menu_item_d
 static void setup_file_menu(RFM_ctx * rfmCtx){
    guint i;
    
-   if (fileMenu.menu==NULL) {
-     fileMenu.menu=gtk_menu_new();
+   if (menu==NULL) {
+     menu=gtk_menu_new();
      for(i=0; i<G_N_ELEMENTS(run_actions); i++) {
-       fileMenu.menuItem[i]=gtk_menu_item_new_with_label(run_actions[i].runName);
-       gtk_menu_shell_append(GTK_MENU_SHELL(fileMenu.menu), fileMenu.menuItem[i]);
-       fileMenu.menuItemSignalHandlers[i]=0;
+       menuItem[i]=gtk_menu_item_new_with_label(run_actions[i].runName);
+       gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuItem[i]);
+       menuItemSignalHandlers[i]=0;
      }
    }
 
    for(i=0; i<G_N_ELEMENTS(run_actions); i++) {
-      if (fileMenu.menuItemSignalHandlers[i]>0)
-        g_signal_handler_disconnect(fileMenu.menuItem[i], fileMenu.menuItemSignalHandlers[i]);
-      fileMenu.menuItemSignalHandlers[i] = g_signal_connect(fileMenu.menuItem[i], "activate", G_CALLBACK(file_menu_exec), &(run_actions[i]));
+      if (menuItemSignalHandlers[i]>0)
+        g_signal_handler_disconnect(menuItem[i], menuItemSignalHandlers[i]);
+      menuItemSignalHandlers[i] = g_signal_connect(menuItem[i], "activate", G_CALLBACK(file_menu_exec), &(run_actions[i]));
    }
 }
 
@@ -2894,12 +2881,12 @@ static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx)
 
    for(i=0; i<G_N_ELEMENTS(run_actions); i++) {
       if (showMenuItem[i]>0 && (run_actions[i].showCondition == NULL || run_actions[i].showCondition()))
-         gtk_widget_show(fileMenu.menuItem[i]);
+         gtk_widget_show(menuItem[i]);
       else
-         gtk_widget_hide(fileMenu.menuItem[i]);
+         gtk_widget_hide(menuItem[i]);
    }
 
-   gtk_menu_popup_at_pointer(GTK_MENU(fileMenu.menu), event);
+   gtk_menu_popup_at_pointer(GTK_MENU(menu), event);
    g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
    return TRUE;
 }
@@ -4740,8 +4727,6 @@ int main(int argc, char *argv[])
    snprintf(thumbnailsize_str,8, "%dx%d",RFM_THUMBNAIL_SIZE,RFM_THUMBNAIL_SIZE);
 
    set_pagesize_for_searchresultview(getenv("RFM_PAGESIZE"));
-
-   fileMenu.menu = NULL;
 
    regcomp_for_regex_rules();
    
