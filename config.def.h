@@ -47,7 +47,7 @@ static gboolean keep_selection_on_view_across_refresh = TRUE;
 static gchar* dumb_keyfile_groupname = "https://discourse.gnome.org/t/gkeyfile-to-handle-conf-without-groupname/23080/3";
 
 //do not change the order of the following array,or change with care, it's referenced as stdin_cmd_interpretor[0] in code below
-static const stdin_cmd_interpretor stdin_cmd_interpretors[] = {
+const stdin_cmd_interpretor stdin_cmd_interpretors[] = {
         //Name             activationKey          prompt            cmdTransformer       HistoryFilename
 	{"Bash",           "b>",                  "b",              stdin_command_bash,  ".rfm_history" },
 	{"NuShell",        "n>",                  "n",              stdin_command_nu,    ".rfm_history" },
