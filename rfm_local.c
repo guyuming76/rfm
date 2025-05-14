@@ -20,15 +20,20 @@ const char * const rfm_local_c_file_hash = NULL;
 extern char rfm_historyFile_ParentDirectory[PATH_MAX];
 extern void load_history_for_prompt();
 extern void save_current_history();
-extern GtkWidget **tool_bar_buttons_local;
 extern const stdin_cmd_interpretor stdin_cmd_interpretors[];
+extern GtkWidget **tool_bar_buttons_local;
 extern RFM_ToolButton *toolbar_button_definitions_local;//静态数组在本文件中定义，但是通过rfm.c文件中定义的指针访问
 extern size_t toolbar_button_definitions_local_array_size;
+extern GtkWidget **menuItems_local;
+extern RFM_MenuItem *file_menuitem_definitions_local;
+extern size_t file_menuitem_definitions_local_array_size;
 extern void add_toolbar_buttons(GtkWidget ***buttons, const RFM_ToolButton button_definitions[], const size_t size);
 extern void add_file_menuitems(GtkWidget ***menuitems, const RFM_MenuItem menuitem_definitions[], const size_t size);
 extern void remove_toolbar_buttons(GtkWidget ***buttons, const size_t size);
+extern void remove_file_menuitems(GtkWidget ***menuitems, const size_t size);
 
 static const char *rfmTODO[] = { NULL, "find . -name '*.rfmTODO.*'>multitype", NULL };
+static const char *testcmd[] = { "echo","test local file menu command",NULL };
 static char *saved_history_dir = NULL;
 
 
@@ -39,8 +44,8 @@ RFM_ToolButton tool_buttons_local[] = {
 
 RFM_MenuItem file_menus_local[] = {
    /* name           mime root        mime sub type            filenameSuffix           OrSearchResultType	func		runCmd            		showCondition	*/
-   { RunActionCopy,  "*",              "*",                    NULL,			NULL,			NULL,		f_cp,             		NULL },
-}
+   { "test cmd",     "*",              "*",                    NULL,			NULL,			NULL,		testcmd,             		NULL },
+};
 
 void add_local_toolbar_buttons(){
      rfmTODO[0] = stdin_cmd_interpretors[0].name;

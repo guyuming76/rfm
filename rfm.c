@@ -639,9 +639,11 @@ static GtkWidget **menuItem = NULL;
 
 #ifdef RFM_LOCAL
 GtkWidget **tool_bar_buttons_local = NULL;
-RFM_ToolButton *toolbar_button_definitions_local = NULL;
+RFM_ToolButton *toolbar_button_definitions_local = NULL;//静态数组在rfm_local.c中定义，但是通过本指针访问
 size_t toolbar_button_definitions_local_array_size = 0;
-
+GtkWidget **menuItems_local = NULL;
+RFM_MenuItem *file_menuitem_definitions_local = NULL;
+size_t file_menuitem_definitions_local_array_size = 0;
 #endif
 
 static void up_clicked(gpointer user_data);
@@ -659,6 +661,7 @@ static void toolbar_button_exec(GtkToolItem *item, RFM_ToolButton *button_defini
 /* callback function for contextual file menu, which appear after mouse right click on selected file, or the after the menu key on keyboard pressed */
 /* since g_spawn_wrapper will free child_attribs, and we don't want the childAttribs object associated with UI interface item to be freed, we duplicate childAttribs here. */
 static void file_menu_exec(GtkMenuItem *menuitem, RFM_MenuItem *file_menu_item_definition);
+void remove_file_menuitems(GtkWidget ***menuitems, const size_t size);
 void add_file_menuitems(GtkWidget ***menuitems, const RFM_MenuItem menuitem_definitions[], const size_t size);
 /* Every action defined in config.h is added to the menu here; each menu item is associated with
  * the corresponding index in the run_actions_array.
@@ -2793,6 +2796,7 @@ static void file_menu_exec(GtkMenuItem *menuitem, RFM_MenuItem *file_menu_item_d
 }
 
 void add_file_menuitems(GtkWidget ***menuitems, const RFM_MenuItem menuitem_definitions[], const size_t size){
+     assert(*menuitems==NULL);
      *menuitems = calloc(size + 1, sizeof(GtkWidget*));
      for(int i=0; i<size; i++) {
        (*menuitems)[i]=gtk_menu_item_new_with_label(menuitem_definitions[i].runName);
@@ -2800,6 +2804,16 @@ void add_file_menuitems(GtkWidget ***menuitems, const RFM_MenuItem menuitem_defi
        g_signal_connect((*menuitems)[i], "activate", G_CALLBACK(file_menu_exec), &(menuitem_definitions[i]));;
      }
 }
+
+void remove_file_menuitems(GtkWidget ***menuitems, const size_t size) {
+  for (int i=0; i<size; i++) if ((*menuitems)[i]) {
+    g_signal_handlers_disconnect_matched((*menuitems)[i], G_SIGNAL_MATCH_FUNC, 0, 0, NULL, G_CALLBACK(file_menu_exec), NULL);
+    gtk_container_remove(GTK_CONTAINER(menu), (*menuitems)[i]);
+    gtk_widget_destroy((*menuitems)[i]);
+  }
+  free(*menuitems); *menuitems=NULL;
+}
+
 
 static void setup_file_menu(){
    if (menu==NULL) {
