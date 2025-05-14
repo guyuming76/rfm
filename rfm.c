@@ -643,6 +643,9 @@ size_t toolbar_button_definitions_local_array_size = 0;
 GtkWidget **menuItems_local = NULL;
 RFM_MenuItem *file_menuitem_definitions_local = NULL;
 size_t file_menuitem_definitions_local_array_size = 0;
+
+void remove_toolbar_buttons(GtkWidget ***buttons, const size_t size);
+void remove_file_menuitems(GtkWidget ***menuitems, const size_t size);
 #endif
 
 static void up_clicked(gpointer user_data);
@@ -660,7 +663,6 @@ static void toolbar_button_exec(GtkToolItem *item, RFM_ToolButton *button_defini
 /* callback function for contextual file menu, which appear after mouse right click on selected file, or the after the menu key on keyboard pressed */
 /* since g_spawn_wrapper will free child_attribs, and we don't want the childAttribs object associated with UI interface item to be freed, we duplicate childAttribs here. */
 static void file_menu_exec(GtkMenuItem *menuitem, RFM_MenuItem *file_menu_item_definition);
-void remove_file_menuitems(GtkWidget ***menuitems, const size_t size);
 /* Every action defined in config.h is added to the menu here; each menu item is associated with
  * the corresponding index in the run_actions_array.
  * Items are shown or hidden in popup_file_menu() depending on the selected files mime types.
@@ -676,10 +678,8 @@ static void show_hide_file_menu_item(GtkWidget ***menuitems, RFM_MenuItem menuit
 
 #include "config.h"
 
-//TODO: shall we call signal disconnect, like in setup_file_menu?
 static GtkWidget *add_view(RFM_ctx *rfmCtx);
 void add_toolbar_buttons(GtkWidget ***buttons, const RFM_ToolButton button_definitions[], const size_t size);
-void remove_toolbar_buttons(GtkWidget ***buttons, const size_t size);
 static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixbufs, RFM_ctx *rfmCtx);
 static void refresh_toolbar();
 static gboolean view_key_press(GtkWidget *widget, GdkEvent *event,RFM_ctx *rfmCtx);
@@ -2804,6 +2804,7 @@ void add_file_menuitems(GtkWidget ***menuitems, const RFM_MenuItem menuitem_defi
      }
 }
 
+#ifdef RFM_LOCAL
 void remove_file_menuitems(GtkWidget ***menuitems, const size_t size) {
   for (int i=0; i<size; i++) if ((*menuitems)[i]) {
     g_signal_handlers_disconnect_matched((*menuitems)[i], G_SIGNAL_MATCH_FUNC, 0, 0, NULL, G_CALLBACK(file_menu_exec), NULL);
@@ -2812,6 +2813,7 @@ void remove_file_menuitems(GtkWidget ***menuitems, const size_t size) {
   }
   free(*menuitems); *menuitems=NULL;
 }
+#endif
 
 static void show_hide_file_menu_item(GtkWidget ***menuitems, RFM_MenuItem menuitem_definitions[],size_t menuitem_definitions_size, gboolean match_mimeRoot, gboolean match_mimeSub, RFM_FileAttributes* first_selection_fileAttributes, GList *selectionList) {
    int *showMenuItem = calloc(menuitem_definitions_size, sizeof(int));
@@ -2887,8 +2889,9 @@ static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx)
    }
 
    show_hide_file_menu_item(&menuItem, run_actions, G_N_ELEMENTS(run_actions), match_mimeRoot, match_mimeSub, fileAttributes_of_the_first_selected_file, selectionList);
+#ifdef RFM_LOCAL
    if (file_menuitem_definitions_local_array_size>0) show_hide_file_menu_item(&menuItems_local, file_menuitem_definitions_local, file_menuitem_definitions_local_array_size, match_mimeRoot, match_mimeSub, fileAttributes_of_the_first_selected_file, selectionList);
-
+#endif
    gtk_menu_popup_at_pointer(GTK_MENU(menu), event);
    g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
    return TRUE;
@@ -3010,6 +3013,7 @@ static void refresh_toolbar()
 #endif
 }
 
+#ifdef RFM_LOCAL
 void remove_toolbar_buttons(GtkWidget ***buttons, const size_t size) {
   for (int i=0; i<size; i++) if ((*buttons)[i]) {
     g_signal_handlers_disconnect_matched((*buttons)[i], G_SIGNAL_MATCH_FUNC, 0, 0, NULL, G_CALLBACK(toolbar_button_exec), NULL);
@@ -3018,6 +3022,7 @@ void remove_toolbar_buttons(GtkWidget ***buttons, const size_t size) {
   }
   free(*buttons); *buttons=NULL;
 }
+#endif
 
 void add_toolbar_buttons(GtkWidget ***buttons, const RFM_ToolButton button_definitions[], const size_t size) {
    GtkWidget *buttonImage=NULL; /* Temp store for button image; gtk_tool_button_new() appears to take the reference */
@@ -3057,6 +3062,7 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
    add_toolbar_buttons(&tool_bar_buttons,tool_buttons,G_N_ELEMENTS(tool_buttons));
 }
 
+//TODO: shall we call disconnect for the signal handlers? consider we destroy scroll_window in refresh_store
 static GtkWidget *add_view(RFM_ctx *rfmCtx)
 {
    GtkWidget *_view;
