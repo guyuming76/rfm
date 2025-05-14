@@ -59,7 +59,6 @@
 typedef struct {
    gint        rfm_sortColumn;   /* The column in the tree model to sort on */
    GUnixMountMonitor *rfm_mountMonitor;   /* Reference for monitor mount events */
-   gint        showMimeType;              /* Display detected mime type on stdout when a file is right-clicked: toggled via -i option */
    guint       delayedRefresh_GSourceID;  /* Main loop source ID for refresh_store() delayed refresh timer */
 } RFM_ctx;
 static RFM_ctx *rfmCtx = NULL;
@@ -2857,9 +2856,6 @@ static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx)
       listElement=g_list_next(listElement);
    }
 
-   if (rfmCtx->showMimeType==1)
-      g_info("%s: %s-%s", selection_fileAttributes->file_name, selection_fileAttributes->mime_root, selection_fileAttributes->mime_sub_type);
-
    for(i=0; i<G_N_ELEMENTS(run_actions); i++) {
       if (match_mimeSub) { /* All selected files are the same type */
          if (strcmp(selection_fileAttributes->mime_root, run_actions[i].runRoot)==0 && strcmp(selection_fileAttributes->mime_sub_type, run_actions[i].runSub)==0)
@@ -4713,7 +4709,6 @@ int main(int argc, char *argv[])
    if (rfmCtx==NULL) return 1;
    //rfmCtx->rfm_sortColumn=GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID;
    rfmCtx->rfm_mountMonitor=g_unix_mount_monitor_get();
-   rfmCtx->showMimeType=0;
    rfmCtx->delayedRefresh_GSourceID=0;
 
    if (thumbnailers[0].thumbRoot==NULL)
@@ -4761,9 +4756,6 @@ int main(int argc, char *argv[])
          }           
 	 c++;
 	 while(argc>c+1 && argv[c+1][0]!='-') filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView] = g_list_prepend(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView], g_strdup(argv[++c]));
-         break;
-      case 'i':
-            rfmCtx->showMimeType=1;
          break;
       case 'v':
          printf("%s-%s, Copyright (C) Rodney Padgett, guyuming, see LICENSE for details\n", PROG_NAME, VERSION);
