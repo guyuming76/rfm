@@ -673,6 +673,7 @@ static void setup_file_menu();
  * If all the files are completely different types, both root and sub types are set to NULL
  */
 static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx);
+static void show_hide_file_menu_item(GtkWidget ***menuitems, RFM_MenuItem menuitem_definitions[],size_t menuitem_definitions_size, gboolean match_mimeRoot, gboolean match_mimeSub, RFM_FileAttributes* first_selection_fileAttributes, GList *selectionList);
 
 #include "config.h"
 
@@ -2821,16 +2822,54 @@ static void setup_file_menu(){
    }
 }
 
+static void show_hide_file_menu_item(GtkWidget ***menuitems, RFM_MenuItem menuitem_definitions[],size_t menuitem_definitions_size, gboolean match_mimeRoot, gboolean match_mimeSub, RFM_FileAttributes* first_selection_fileAttributes, GList *selectionList) {
+   int *showMenuItem = calloc(menuitem_definitions_size, sizeof(int));
+   GtkTreeIter iter;
+   RFM_FileAttributes *fileAttributes;
+
+   for(int i=0; i<menuitem_definitions_size; i++) {
+      if (match_mimeSub) { /* All selected files are the same type */
+         if (strcmp(first_selection_fileAttributes->mime_root, menuitem_definitions[i].runRoot)==0 && strcmp(first_selection_fileAttributes->mime_sub_type, menuitem_definitions[i].runSub)==0)
+            showMenuItem[i]++; /* Exact match */
+      }
+      if (match_mimeRoot) {
+         if (strcmp(first_selection_fileAttributes->mime_root, menuitem_definitions[i].runRoot)==0 && strncmp("*", menuitem_definitions[i].runSub, 1)==0)
+            showMenuItem[i]++; /* Selected files have the same mime root type */
+      }
+      if (strncmp("*", menuitem_definitions[i].runRoot, 1)==0)
+         showMenuItem[i]++;   /* Run actions to show for all files */
+      if (SearchResultViewInsteadOfDirectoryView && g_strcmp0(menuitem_definitions[i].OrSearchResultType, searchresultTypes[SearchResultTypeIndexForCurrentExistingSearchResult].name)==0) showMenuItem[i]++;
+      if (menuitem_definitions[i].filenameSuffix){
+	 GList *listElement=g_list_first(selectionList);
+	 while (listElement) {
+	    gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, listElement->data);
+	    gtk_tree_model_get (GTK_TREE_MODEL(store), &iter, COL_ATTR, &fileAttributes, -1);
+            if (!g_str_has_suffix(fileAttributes->path, menuitem_definitions[i].filenameSuffix)){
+	      showMenuItem[i]=0;
+	      break;
+	    }
+	    listElement=g_list_next(listElement);
+	 }
+      }
+   }
+
+   for(int i=0; i<menuitem_definitions_size; i++) {
+      if (showMenuItem[i]>0 && (menuitem_definitions[i].showCondition == NULL || menuitem_definitions[i].showCondition()))
+         gtk_widget_show((*menuitems)[i]);
+      else
+         gtk_widget_hide((*menuitems)[i]);
+   }
+
+   free(showMenuItem);
+}
 
 static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx)
 {
-   int showMenuItem[G_N_ELEMENTS(run_actions)]={0};
    GtkTreeIter iter;
    GList *selectionList;
    GList *listElement;
-   guint i;
    
-   RFM_FileAttributes *selection_fileAttributes, *fileAttributes;
+   RFM_FileAttributes *fileAttributes_of_the_first_selected_file, *fileAttributes;
    gboolean match_mimeRoot=TRUE, match_mimeSub=TRUE;
 
    selectionList=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
@@ -2840,54 +2879,24 @@ static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx)
    listElement=g_list_first(selectionList);
    if (listElement!=NULL) {   /* Get file attributes for first item in the list */
       gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, listElement->data);
-      gtk_tree_model_get (GTK_TREE_MODEL(store), &iter, COL_ATTR, &selection_fileAttributes, -1);
+      gtk_tree_model_get (GTK_TREE_MODEL(store), &iter, COL_ATTR, &fileAttributes_of_the_first_selected_file, -1);
       listElement=g_list_next(listElement);
    }
    while(listElement!=NULL) { /* Compare first item with any other selected items */
       gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, listElement->data);
       gtk_tree_model_get (GTK_TREE_MODEL(store), &iter, COL_ATTR, &fileAttributes, -1);
-      if (strcmp(selection_fileAttributes->mime_root, fileAttributes->mime_root)!=0) {
+      if (strcmp(fileAttributes_of_the_first_selected_file->mime_root, fileAttributes->mime_root)!=0) {
          match_mimeRoot=FALSE;
          break;   /* Finish here: files are different */
       }
-      if (strcmp(selection_fileAttributes->mime_sub_type, fileAttributes->mime_sub_type)!=0)
+      if (strcmp(fileAttributes_of_the_first_selected_file->mime_sub_type, fileAttributes->mime_sub_type)!=0)
          match_mimeSub=FALSE;
 
       listElement=g_list_next(listElement);
    }
 
-   for(i=0; i<G_N_ELEMENTS(run_actions); i++) {
-      if (match_mimeSub) { /* All selected files are the same type */
-         if (strcmp(selection_fileAttributes->mime_root, run_actions[i].runRoot)==0 && strcmp(selection_fileAttributes->mime_sub_type, run_actions[i].runSub)==0)
-            showMenuItem[i]++; /* Exact match */
-      }
-      if (match_mimeRoot) {
-         if (strcmp(selection_fileAttributes->mime_root, run_actions[i].runRoot)==0 && strncmp("*", run_actions[i].runSub, 1)==0)
-            showMenuItem[i]++; /* Selected files have the same mime root type */
-      }
-      if (strncmp("*", run_actions[i].runRoot, 1)==0)
-         showMenuItem[i]++;   /* Run actions to show for all files */
-      if (SearchResultViewInsteadOfDirectoryView && g_strcmp0(run_actions[i].OrSearchResultType, searchresultTypes[SearchResultTypeIndexForCurrentExistingSearchResult].name)==0) showMenuItem[i]++;
-      if (run_actions[i].filenameSuffix){
-	 listElement=g_list_first(selectionList);
-	 while (listElement) {
-	    gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, listElement->data);
-	    gtk_tree_model_get (GTK_TREE_MODEL(store), &iter, COL_ATTR, &fileAttributes, -1);
-            if (!g_str_has_suffix(fileAttributes->path, run_actions[i].filenameSuffix)){
-	      showMenuItem[i]=0;
-	      break;
-	    }
-	    listElement=g_list_next(listElement);
-	 }
-      }
-   }
-
-   for(i=0; i<G_N_ELEMENTS(run_actions); i++) {
-      if (showMenuItem[i]>0 && (run_actions[i].showCondition == NULL || run_actions[i].showCondition()))
-         gtk_widget_show(menuItem[i]);
-      else
-         gtk_widget_hide(menuItem[i]);
-   }
+   show_hide_file_menu_item(&menuItem, run_actions, G_N_ELEMENTS(run_actions), match_mimeRoot, match_mimeSub, fileAttributes_of_the_first_selected_file, selectionList);
+   if (file_menuitem_definitions_local_array_size>0) show_hide_file_menu_item(&menuItems_local, file_menuitem_definitions_local, file_menuitem_definitions_local_array_size, match_mimeRoot, match_mimeSub, fileAttributes_of_the_first_selected_file, selectionList);
 
    gtk_menu_popup_at_pointer(GTK_MENU(menu), event);
    g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
