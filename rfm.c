@@ -634,8 +634,8 @@ static GtkWidget *scroll_window = NULL;
 static GtkWidget * PathAndRepositoryNameDisplay;
 static GtkWidget *tool_bar = NULL;
 static GtkWidget **tool_bar_buttons = NULL;
-static GtkWidget* menu = NULL;
-static GtkWidget** menuItem = NULL;
+static GtkWidget *menu = NULL;
+static GtkWidget **menuItem = NULL;
 
 #ifdef RFM_LOCAL
 GtkWidget **tool_bar_buttons_local = NULL;
@@ -659,12 +659,13 @@ static void toolbar_button_exec(GtkToolItem *item, RFM_ToolButton *button_defini
 /* callback function for contextual file menu, which appear after mouse right click on selected file, or the after the menu key on keyboard pressed */
 /* since g_spawn_wrapper will free child_attribs, and we don't want the childAttribs object associated with UI interface item to be freed, we duplicate childAttribs here. */
 static void file_menu_exec(GtkMenuItem *menuitem, RFM_MenuItem *file_menu_item_definition);
+void add_file_menuitems(GtkWidget ***menuitems, const RFM_MenuItem menuitem_definitions[], const size_t size);
 /* Every action defined in config.h is added to the menu here; each menu item is associated with
  * the corresponding index in the run_actions_array.
  * Items are shown or hidden in popup_file_menu() depending on the selected files mime types.
  */
 static void setup_file_menu();
-/* Generate a filemenu based on mime type of the files selected and show
+/* show/hide a filemenu based on mime type of the files selected and other critierias
  * If all files are the same type selection_mimeRoot and selection_mimeSub are set
  * If all files are the same mime root but different sub, then selection_mimeSub is set to NULL
  * If all the files are completely different types, both root and sub types are set to NULL
@@ -2791,16 +2792,19 @@ static void file_menu_exec(GtkMenuItem *menuitem, RFM_MenuItem *file_menu_item_d
   }
 }
 
+void add_file_menuitems(GtkWidget ***menuitems, const RFM_MenuItem menuitem_definitions[], const size_t size){
+     *menuitems = calloc(size + 1, sizeof(GtkWidget*));
+     for(int i=0; i<size; i++) {
+       (*menuitems)[i]=gtk_menu_item_new_with_label(menuitem_definitions[i].runName);
+       gtk_menu_shell_append(GTK_MENU_SHELL(menu), (*menuitems)[i]);
+       g_signal_connect((*menuitems)[i], "activate", G_CALLBACK(file_menu_exec), &(menuitem_definitions[i]));;
+     }
+}
 
 static void setup_file_menu(){
    if (menu==NULL) {
      menu=gtk_menu_new();
-     menuItem = calloc(G_N_ELEMENTS(run_actions)+1, sizeof(GtkWidget*));
-     for(int i=0; i<G_N_ELEMENTS(run_actions); i++) {
-       menuItem[i]=gtk_menu_item_new_with_label(run_actions[i].runName);
-       gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuItem[i]);
-       g_signal_connect(menuItem[i], "activate", G_CALLBACK(file_menu_exec), &(run_actions[i]));;
-     }
+     add_file_menuitems(&menuItem,run_actions,G_N_ELEMENTS(run_actions));
    }
 }
 
