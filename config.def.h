@@ -433,5 +433,5 @@ static RFM_cmd_regex_rule regex_rules[] = {
 #define RFM_LOCAL_SO_FILE "rfm_local.so"
 #define RFM_LOCAL_ENTER_FUNC "rfm_local_enter"
 #define RFM_LOCAL_LEAVE_FUNC "rfm_local_leave"
-static const gchar *rfm_local_c_compile_cmd[] = {"gcc","-I/usr/include/gtk-3.0","-I/usr/include/glib-2.0","-I/usr/lib64/glib-2.0/include","-I/usr/include/pango-1.0","-I/usr/include/harfbuzz","-I/usr/include/cairo","-I/usr/include/gdk-pixbuf-2.0","-I/usr/include/at-spi2-atk/2.0", "-I/usr/include/at-spi-2.0", "-I/usr/include/atk-1.0","-O0","-g","-shared", "-fPIC", "-o", NULL};
+static const gchar *rfm_local_c_compile_cmd_template = "gcc -O0 -g -shared -fPIC $(pkg-config --cflags gtk+-3.0) -o %s %s %s";
 #endif

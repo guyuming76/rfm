@@ -189,12 +189,12 @@ static gboolean startWithVT();
 static void readlineInSeperateThread();
 static void ReadFromPipeStdinIfAny(char *fd);
 static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, int cmd_interpretor_index, gchar** env);
-static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, int cmd_interpretor_index);
+static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, int cmd_interpretor_index);
 static void g_spawn_async_callback_to_new_readline_thread(gpointer child_attribs);
 static void regcomp_for_regex_rules();
 static void set_stdin_cmd_leading_space_true();
 static gboolean match_cmd_str_array_with_interpretors(gchar** RunCmd);
-static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboolean from_stdin_readline, int cmd_interpretor_index);
+static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboolean from_stdin_readline, int cmd_interpretor_index);
 static void parse_and_exec_stdin_command_in_gtk_thread(gchar *msg);
 static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * parsed_msg, GString* readline_result_string);
 static void toggle_exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread();
@@ -3462,7 +3462,8 @@ static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPrevi
 	      add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
 }
 
-static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, int cmd_interpretor_index){
+static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, int cmd_interpretor_index){
+  gboolean ret = FALSE;
   if (auto_execution_command_after_rfm_start!=NULL){
     //auto_execution_command_after_rfm_start was freed in exec_stdin_command as readlineresult
     auto_execution_command_after_rfm_start = NULL;
@@ -3471,38 +3472,41 @@ static void exec_stdin_command(GString * readlineResultStringFromPreviousReadlin
   if (readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution!=NULL){ //this means it's not initial run after rfm start, so i should first run cmd from previous readline here
 #ifdef PythonEmbedded
 	  if (pyProgramName!=NULL && g_strcmp0(stdin_cmd_interpretors[cmd_interpretor_index].name,"PythonEmbedded")==0){
-		PyRun_SimpleString(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str);
+	        ret = (PyRun_SimpleString(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str)==0);
 		g_strfreev(env_for_g_spawn_used_by_exec_stdin_command);env_for_g_spawn_used_by_exec_stdin_command=NULL;
 		add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
-		return;
+		return ret;
 	  }
 #endif
 	  GError *err = NULL;
           gint exit_status;
-	  if (SearchResultTypeIndex>=0 && g_spawn_sync(rfm_curPath, 
+	  if (SearchResultTypeIndex>=0 && (ret = g_spawn_sync(rfm_curPath,
 						       stdin_cmd_interpretors[cmd_interpretor_index].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE),
 					      env_for_g_spawn_used_by_exec_stdin_command,
 					      G_SPAWN_SEARCH_PATH|G_SPAWN_CHILD_INHERITS_STDIN|G_SPAWN_CHILD_INHERITS_STDERR,
-					      NULL,NULL,&stdout_read_by_search_result,NULL,&exit_status,&err)){
+							      NULL,NULL,&stdout_read_by_search_result,NULL,&exit_status,&err))){
 	      g_idle_add_once(update_SearchResultFileNameList_and_refresh_store, (gpointer)stdout_read_by_search_result);
 
-	  } else if (SearchResultTypeIndex<0 && g_spawn_sync(rfm_curPath,
+	  } else if (SearchResultTypeIndex<0 && (ret = g_spawn_sync(rfm_curPath,
 							     stdin_cmd_interpretors[cmd_interpretor_index].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE), env_for_g_spawn_used_by_exec_stdin_command,
                            G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN |
                                G_SPAWN_CHILD_INHERITS_STDOUT |
                                G_SPAWN_CHILD_INHERITS_STDERR,
-			   NULL, NULL, NULL, NULL, &exit_status, &err)) {
+								    NULL, NULL, NULL, NULL, &exit_status, &err))) {
 
 	  } else {
               g_warning("%d;%s", err->code, err->message);
 	      g_error_free(err);
 	  }
 
-	  if (WIFEXITED(exit_status)) g_debug("exec_stdin_command(%s,%d): child process of g_spawn_sync WIFEXITED true with status:%d", readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str, cmd_interpretor_index, WEXITSTATUS(exit_status));
-	  else g_debug("exec_stdin_command(%s,%d): child process of g_spawn_sync WIFEXITED false",readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str, cmd_interpretor_index);
+	  if (WIFEXITED(exit_status)) {
+	    ret = (WEXITSTATUS(exit_status)==0);
+	    g_debug("exec_stdin_command(%s,%d): child process of g_spawn_sync WIFEXITED true with status:%d", readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str, cmd_interpretor_index, WEXITSTATUS(exit_status));
+	  }else g_debug("exec_stdin_command(%s,%d): child process of g_spawn_sync WIFEXITED false",readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str, cmd_interpretor_index);
 	  add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
   }else g_debug("exec_stdin_command(NULL,%d)",cmd_interpretor_index);
-  g_strfreev(env_for_g_spawn_used_by_exec_stdin_command);env_for_g_spawn_used_by_exec_stdin_command=NULL; //If str_array is NULL, this function simply returns.  https://docs.gtk.org/glib/func.strfreev.html 
+  g_strfreev(env_for_g_spawn_used_by_exec_stdin_command);env_for_g_spawn_used_by_exec_stdin_command=NULL; //If str_array is NULL, this function simply returns.  https://docs.gtk.org/glib/func.strfreev.html
+  return ret;
 }
 
 //this runs in gtk main thread
@@ -4211,8 +4215,10 @@ static NO_FREE gchar** stdin_LLM_prompt(CALLER_OWN gchar* user_input_prompt, gbo
 // this runs in gtk thread
 // from_stdin_readline 为 TRUE 时，表示用户从命令窗口输入的字符串，这时忽略 cmd_interpretor_index 参数为调用时的 current_stdin_cmd_interpretor
 // from_stdin_readline 为假时，readlineResults 通常是 config.h 里面配置好的命令字符串。此时命令字符串数组头部会配置 cmd_interpretor_index 对应的name
-static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboolean from_stdin_readline, int cmd_interpretor_index)
+// 目前布尔返回值只在!from_stdin_readline情况下返回 exec_stdin_command 的返回值，用于编译 rfm_local.c 后返回成败
+static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboolean from_stdin_readline, int cmd_interpretor_index)
 {
+        gboolean ret = FALSE;
         gboolean SearchResultAsInput=FALSE;
 	stdin_cmd_leading_space=FALSE;
         gboolean execCmdInNewVT=FALSE;//used by file_menu_exec, i.e., not from readline
@@ -4415,7 +4421,7 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
 	if(startWithVT() || auto_execution_command_after_rfm_start!=NULL){
           // Use effective_cmd_interpretor_index for execution calls
 	  if (SearchResultAsInput) exec_stdin_command_with_SearchResultAsInput(readlineResultString, from_stdin_readline, effective_cmd_interpretor_index);
-	  else if ((exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread || !from_stdin_readline) && !(execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT))) exec_stdin_command(readlineResultString, effective_cmd_interpretor_index);
+	  else if ((exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread || !from_stdin_readline) && !(execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT))) ret = exec_stdin_command(readlineResultString, effective_cmd_interpretor_index);
 
 	  if (from_stdin_readline && auto_execution_command_after_rfm_start==NULL) g_thread_join(readlineThread);//we won't have more than one readlineThread running at the same time since we join before new thread here
 	  if ((execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT)) && readlineResultString) exec_stdin_command_in_new_VT(readlineResultString, effective_cmd_interpretor_index, env_for_g_spawn_local); // 在AI Mode下输入builtin cmd,如 help, 会因为是AI mode 一开始把 execStdinCmdInNewVT 设成true,所以这里加上 readlineResultString 非NULL判断
@@ -4423,7 +4429,8 @@ static void parse_and_exec_command_in_gtk_thread (gchar * readlineResult, gboole
           // Pass the original readlineResultString (potentially NULL if handled by builtin) to the next thread
           // The next thread will use the global current_stdin_cmd_interpretor for its prompt
 	  if (from_stdin_readline && !SearchResultAsInput) readlineThread=g_thread_new("readline", readlineInSeperateThread, readlineResultString); //要是能在这里再传入一个 gchar** env 参数，就可以把env_for_g_spawn_used_by_exec_stdin_command 全局变量消灭掉
-	}
+        }
+        return ret;
 }
 
 static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult){
@@ -5448,16 +5455,11 @@ static gboolean compile_local_extension() {
     g_debug("Hash of %s: %s", local_c_path, c_file_hash);
 
     // Prepare the hash definition for the compiler command
-    gchar *hash_define = g_strdup_printf("-DRFM_LOCAL_C_HASH=\"%s\"", c_file_hash);
+    gchar *hash_define = g_strdup_printf("-DRFM_LOCAL_C_HASH=\\\"%s\\\"", c_file_hash);
     g_free(c_file_hash); // Free the calculated hash string
   
-    GList * ending_parameters_for_compile_cmd=NULL;
-    ending_parameters_for_compile_cmd=g_list_prepend(ending_parameters_for_compile_cmd, g_strdup(local_so_path));
-    ending_parameters_for_compile_cmd=g_list_append(ending_parameters_for_compile_cmd, hash_define);
-    ending_parameters_for_compile_cmd=g_list_append(ending_parameters_for_compile_cmd, g_strdup(local_c_path));
-    success = g_spawn_wrapper((gchar **)rfm_local_c_compile_cmd, ending_parameters_for_compile_cmd, G_SPAWN_SEARCH_PATH, NULL, NULL, FALSE, NULL, NULL, FALSE);
-    g_list_free_full(ending_parameters_for_compile_cmd,(GDestroyNotify)g_free);
-    return success;
+    gchar* rfm_local_c_compile_cmd = g_strdup_printf(rfm_local_c_compile_cmd_template, local_so_path, hash_define, local_c_path);
+    return parse_and_exec_command_in_gtk_thread(rfm_local_c_compile_cmd, FALSE, 0);
 }
 
 // Load rfm_local.so if it exists and is up-to-date or successfully compiled
