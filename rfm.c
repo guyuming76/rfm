@@ -661,12 +661,11 @@ static void toolbar_button_exec(GtkToolItem *item, RFM_ToolButton *button_defini
 /* since g_spawn_wrapper will free child_attribs, and we don't want the childAttribs object associated with UI interface item to be freed, we duplicate childAttribs here. */
 static void file_menu_exec(GtkMenuItem *menuitem, RFM_MenuItem *file_menu_item_definition);
 void remove_file_menuitems(GtkWidget ***menuitems, const size_t size);
-void add_file_menuitems(GtkWidget ***menuitems, const RFM_MenuItem menuitem_definitions[], const size_t size);
 /* Every action defined in config.h is added to the menu here; each menu item is associated with
  * the corresponding index in the run_actions_array.
  * Items are shown or hidden in popup_file_menu() depending on the selected files mime types.
  */
-static void setup_file_menu();
+void add_file_menuitems(GtkWidget ***menuitems, const RFM_MenuItem menuitem_definitions[], const size_t size);
 /* show/hide a filemenu based on mime type of the files selected and other critierias
  * If all files are the same type selection_mimeRoot and selection_mimeSub are set
  * If all files are the same mime root but different sub, then selection_mimeSub is set to NULL
@@ -2814,14 +2813,6 @@ void remove_file_menuitems(GtkWidget ***menuitems, const size_t size) {
   free(*menuitems); *menuitems=NULL;
 }
 
-
-static void setup_file_menu(){
-   if (menu==NULL) {
-     menu=gtk_menu_new();
-     add_file_menuitems(&menuItem,run_actions,G_N_ELEMENTS(run_actions));
-   }
-}
-
 static void show_hide_file_menu_item(GtkWidget ***menuitems, RFM_MenuItem menuitem_definitions[],size_t menuitem_definitions_size, gboolean match_mimeRoot, gboolean match_mimeSub, RFM_FileAttributes* first_selection_fileAttributes, GList *selectionList) {
    int *showMenuItem = calloc(menuitem_definitions_size, sizeof(int));
    GtkTreeIter iter;
@@ -4597,7 +4588,8 @@ static int setup(RFM_ctx *rfmCtx)
    rfm_prePath= getenv("OLDPWD");
    if (rfm_prePath!=NULL) rfm_prePath=strdup(rfm_prePath); //i don't remember exactly, but i think i do this because i read somewhere that getenv result is special and i should not free it.
    add_toolbar(rfm_main_box, defaultPixbufs, rfmCtx);
-   setup_file_menu();
+   menu=gtk_menu_new();
+   add_file_menuitems(&menuItem,run_actions,G_N_ELEMENTS(run_actions));
 
    if (initDir == NULL) initDir = cwd;
    set_rfm_curPath(initDir);
