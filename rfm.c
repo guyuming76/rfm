@@ -634,6 +634,8 @@ static GtkWidget *scroll_window = NULL;
 static GtkWidget * PathAndRepositoryNameDisplay;
 static GtkWidget *tool_bar = NULL;
 static GtkWidget **tool_bar_buttons = NULL;
+static GtkWidget* menu = NULL;
+static GtkWidget** menuItem = NULL;
 
 #ifdef RFM_LOCAL
 GtkWidget **tool_bar_buttons_local = NULL;
@@ -661,7 +663,7 @@ static void file_menu_exec(GtkMenuItem *menuitem, RFM_MenuItem *file_menu_item_d
  * the corresponding index in the run_actions_array.
  * Items are shown or hidden in popup_file_menu() depending on the selected files mime types.
  */
-static void setup_file_menu(RFM_ctx * rfmCtx);
+static void setup_file_menu();
 /* Generate a filemenu based on mime type of the files selected and show
  * If all files are the same type selection_mimeRoot and selection_mimeSub are set
  * If all files are the same mime root but different sub, then selection_mimeSub is set to NULL
@@ -689,11 +691,6 @@ static RFM_treeviewColumn ViewColumnsLayouts[2][G_N_ELEMENTS(treeviewColumns)];
 #define DirectoryViewColumnsLayout ViewColumnsLayouts[0]
 #define SearchResultViewColumnsLayout ViewColumnsLayouts[1]
 #define TREEVIEW_COLUMNS ViewColumnsLayouts[SearchResultViewInsteadOfDirectoryView]
-
-GtkWidget* menu = NULL;
-GtkWidget* menuItem[G_N_ELEMENTS(run_actions)];
-gulong menuItemSignalHandlers[G_N_ELEMENTS(run_actions)];
-
 
 #define SHOW_TOOLBAR_BUTTON(x,i) (((SearchResultViewInsteadOfDirectoryView && x[i].showInSearchResultView) || (!SearchResultViewInsteadOfDirectoryView && x[i].showInDirectoryView)) && (x[i].showCondition == NULL || x[i].showCondition()))
 
@@ -2352,7 +2349,6 @@ static void refresh_store(RFM_ctx *rfmCtx)
   
    gtk_widget_show_all(window);
    refresh_toolbar();
-   setup_file_menu(rfmCtx);
 }
 
 //在目录视图，添加删除文件会有inotify handler促发刷新，在searchresultview才需要作为动作的后续调用刷新
@@ -2795,23 +2791,16 @@ static void file_menu_exec(GtkMenuItem *menuitem, RFM_MenuItem *file_menu_item_d
   }
 }
 
-//fileMenu.menu, fileMenu.menuItem[] 仅在首次运行时被初始化，但fileMenu.menuItemSignalHandlers[]每次都会被重置刷新
-static void setup_file_menu(RFM_ctx * rfmCtx){
-   guint i;
-   
+
+static void setup_file_menu(){
    if (menu==NULL) {
      menu=gtk_menu_new();
-     for(i=0; i<G_N_ELEMENTS(run_actions); i++) {
+     menuItem = calloc(G_N_ELEMENTS(run_actions)+1, sizeof(GtkWidget*));
+     for(int i=0; i<G_N_ELEMENTS(run_actions); i++) {
        menuItem[i]=gtk_menu_item_new_with_label(run_actions[i].runName);
        gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuItem[i]);
-       menuItemSignalHandlers[i]=0;
+       g_signal_connect(menuItem[i], "activate", G_CALLBACK(file_menu_exec), &(run_actions[i]));;
      }
-   }
-
-   for(i=0; i<G_N_ELEMENTS(run_actions); i++) {
-      if (menuItemSignalHandlers[i]>0)
-        g_signal_handler_disconnect(menuItem[i], menuItemSignalHandlers[i]);
-      menuItemSignalHandlers[i] = g_signal_connect(menuItem[i], "activate", G_CALLBACK(file_menu_exec), &(run_actions[i]));
    }
 }
 
@@ -4585,6 +4574,7 @@ static int setup(RFM_ctx *rfmCtx)
    rfm_prePath= getenv("OLDPWD");
    if (rfm_prePath!=NULL) rfm_prePath=strdup(rfm_prePath); //i don't remember exactly, but i think i do this because i read somewhere that getenv result is special and i should not free it.
    add_toolbar(rfm_main_box, defaultPixbufs, rfmCtx);
+   setup_file_menu();
 
    if (initDir == NULL) initDir = cwd;
    set_rfm_curPath(initDir);
