@@ -21,11 +21,9 @@ else
         # -s 表示不解析符号链接
 	destination="$(realpath -s $input_destination)";
 
-	export rfm_overwrite_destination="y"
-
 	if [[ -e "$destination" ]]; then
 		if [ -d "$destination" ] && [ ! -L "$destination" ];then
-			read -p "目的路径存在且是目录，是否(y/n)覆盖,即先删除现有目录?默认是(y);否(n)表示输入路径为目的父路径" -r rfm_overwrite_destination
+			read -p "目的路径存在且是目录，是否(y/n)覆盖,即先删除现有目录? 直接回车默认否(n),表示输入路径为目的父路径" -r rfm_overwrite_destination
 			# y 对应cp/mv -T, n 对应cp/mv -t?
 			if [[ "$rfm_overwrite_destination" == "y" || "$rfm_overwrite_destination" == "Y" ]];then
 				autoselection="$destination"
@@ -39,7 +37,7 @@ else
 			fi
 		else
 			# 如果目的地存在且不是目录，只能是覆盖，mv 命令后如果有 -f 则不提示，否则 mv 命令会提示
-			read -p "目的路径存在且不是目录（是文件或符号链接,包括指向目录的符号链接），是否(y/n)覆盖，即先删除现有?默认是(y)，否(n)则退出" -r rfm_overwrite_destination
+			read -p "目的路径存在且不是目录（是文件或符号链接,包括指向目录的符号链接），是否(y/n)覆盖，即先删除现有文件? 直接回车默认否(n)，退出当前操作" -r rfm_overwrite_destination
 			if [[ "$rfm_overwrite_destination" == "y" || "$rfm_overwrite_destination" == "Y" ]];then
 				autoselection="$destination"
 			else
@@ -58,8 +56,12 @@ else
 	fi
 
 	if [[ "$1" == "cp" ]];then
-		#TODO:考虑rfm_overwrite_destination
-		cp -p -r -i ${@:2} "$destination"
+		if [[ "$rfm_overwrite_destination" == "y" || "$rfm_overwrite_destination" == "Y" ]];then
+			rm -rf "$destination"
+			cp -p -r -T -i ${@:2} "$destination"
+		else
+			cp -p -r -i ${@:2} "$destination"
+		fi
 	elif [[ "$1" == "mv" ]];then
 		if [[ -z "$check_and_update_symbolic_link" || "$check_and_update_symbolic_linj" == "y" || "$check_and_update_symbolic_link" == "Y" ]];then
 			# 从第2个参数开始，每个参数循环一次
@@ -72,8 +74,12 @@ else
 				fi
 			done
 		else
-			#TODO:考虑rfm_overwrite_destination
-			mv -v -i ${@:2} "$destination"
+			if [[ "$rfm_overwrite_destination" == "y" || "$rfm_overwrite_destination" == "Y" ]];then
+				rm -rf "$destination"
+				mv -T -v -i ${@:2} "$destination"
+			else
+				mv -v -i ${@:2} "$destination"
+			fi
 		fi
 	else
 		echo "parameter 1 should be either cp or mv" > 2
