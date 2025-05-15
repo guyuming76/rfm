@@ -644,8 +644,8 @@ GtkWidget **menuItems_local = NULL;
 RFM_MenuItem *file_menuitem_definitions_local = NULL;
 size_t file_menuitem_definitions_local_array_size = 0;
 
-void remove_toolbar_buttons(GtkWidget ***buttons, const size_t size);
-void remove_file_menuitems(GtkWidget ***menuitems, const size_t size);
+void remove_toolbar_buttons(FREE GtkWidget ***buttons, const size_t size);
+void remove_file_menuitems(FREE GtkWidget ***menuitems, const size_t size);
 #endif
 
 static void up_clicked(gpointer user_data);
@@ -2805,12 +2805,8 @@ void add_file_menuitems(GtkWidget ***menuitems, const RFM_MenuItem menuitem_defi
 }
 
 #ifdef RFM_LOCAL
-void remove_file_menuitems(GtkWidget ***menuitems, const size_t size) {
-  for (int i=0; i<size; i++) if ((*menuitems)[i]) {
-    g_signal_handlers_disconnect_matched((*menuitems)[i], G_SIGNAL_MATCH_FUNC, 0, 0, NULL, G_CALLBACK(file_menu_exec), NULL);
-    gtk_container_remove(GTK_CONTAINER(menu), (*menuitems)[i]);
-    gtk_widget_destroy((*menuitems)[i]);
-  }
+void remove_file_menuitems(FREE GtkWidget ***menuitems, const size_t size) {
+  for (int i=0; i<size; i++) if ((*menuitems)[i]) gtk_widget_destroy((*menuitems)[i]);
   free(*menuitems); *menuitems=NULL;
 }
 #endif
@@ -3014,12 +3010,8 @@ static void refresh_toolbar()
 }
 
 #ifdef RFM_LOCAL
-void remove_toolbar_buttons(GtkWidget ***buttons, const size_t size) {
-  for (int i=0; i<size; i++) if ((*buttons)[i]) {
-    g_signal_handlers_disconnect_matched((*buttons)[i], G_SIGNAL_MATCH_FUNC, 0, 0, NULL, G_CALLBACK(toolbar_button_exec), NULL);
-    gtk_container_remove(GTK_CONTAINER(tool_bar), (*buttons)[i]);
-    gtk_widget_destroy((*buttons)[i]);
-  }
+void remove_toolbar_buttons(FREE GtkWidget ***buttons, const size_t size) {
+  for (int i=0; i<size; i++) if ((*buttons)[i]) gtk_widget_destroy((*buttons)[i]);
   free(*buttons); *buttons=NULL;
 }
 #endif
@@ -3062,7 +3054,7 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
    add_toolbar_buttons(&tool_bar_buttons,tool_buttons,G_N_ELEMENTS(tool_buttons));
 }
 
-//TODO: shall we call disconnect for the signal handlers? consider we destroy scroll_window in refresh_store
+
 static GtkWidget *add_view(RFM_ctx *rfmCtx)
 {
    GtkWidget *_view;
