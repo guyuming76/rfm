@@ -372,36 +372,6 @@ enum RFM_treeviewCol{
 };
 #define NUM_Ext_Columns (NUM_COLS - COL_Ext1)
 
-typedef struct {  /* Update free_fileAttributes() and malloc_fileAttributes() if new items are added */
-   guint id; // usually, path can be unique id for fileAttributelist, however, for searchresult from grep, same file can appear more than once, so we need a id as key for grepMatch_hash and others.
-   gchar *path; // absolute path
-   gchar *file_name;
-   gchar *file_name_escaped_for_iconview_markup_column;
-  //gchar *display_name;
-   gboolean is_dir;
-   gboolean is_mountPoint;
-   gchar *icon_name;
-   GdkPixbuf *pixbuf;
-   gchar *mime_root;
-   gchar *mime_sub_type;
-   gboolean is_symlink;
-   GDateTime* file_mtime;
-
-   gchar *owner;
-   gchar *group;
-   GDateTime* file_atime;
-   GDateTime* file_ctime;
-   guint32 file_mode;
-   gchar * file_mode_str;
-   guint64 file_size;
-   gchar * mime_sort;
-   gchar * link_target_filename;
-
-   gchar * mtime;
-   gchar * atime;
-   gchar * ctime;
-
-} RFM_FileAttributes;
 
 //TODO: keep GtkTreeIter somewhere such as in fileAttribute, so that we can try load gitmsg and extcolumns with spawn async instead of sync. However, that can be complicated, what if we have spawned so many processes and user clicked refresh? we have to build Stop mechanism into it. Simple strategy is not to load this slow columns unless user configures to show them.
 typedef struct {
@@ -675,6 +645,9 @@ void add_file_menuitems(GtkWidget ***menuitems, const RFM_MenuItem menuitem_defi
  */
 static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx);
 static void show_hide_file_menu_item(GtkWidget ***menuitems, RFM_MenuItem menuitem_definitions[],size_t menuitem_definitions_size, gboolean match_mimeRoot, gboolean match_mimeSub, RFM_FileAttributes* first_selection_fileAttributes, GList *selectionList);
+
+static gboolean mountpoint_mounted(RFM_FileAttributes *fileAttributes);
+static gboolean mountpoint_unmounted(RFM_FileAttributes *fileAttributes);
 
 #include "config.h"
 
@@ -1550,6 +1523,10 @@ static RFM_FileAttributes *malloc_fileAttributes(void)
      g_error("calloc failed!");
    return fileAttributes;
 }
+
+static gboolean mountpoint_mounted(RFM_FileAttributes *fileAttributes) { return fileAttributes->is_mountPoint && fileAttributes->pixbuf==defaultPixbufs->mounted;}
+
+static gboolean mountpoint_unmounted(RFM_FileAttributes *fileAttributes) { return fileAttributes->is_mountPoint && fileAttributes->pixbuf==defaultPixbufs->unmounted;}
 
 static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guint64 mtimeThreshold, GHashTable *mount_hash)
 {
@@ -2843,7 +2820,7 @@ static void show_hide_file_menu_item(GtkWidget ***menuitems, RFM_MenuItem menuit
    }
 
    for(int i=0; i<menuitem_definitions_size; i++) {
-      if (showMenuItem[i]>0 && (menuitem_definitions[i].showCondition == NULL || menuitem_definitions[i].showCondition()))
+      if (showMenuItem[i]>0 && (menuitem_definitions[i].showCondition == NULL || menuitem_definitions[i].showCondition(fileAttributes)))
          gtk_widget_show((*menuitems)[i]);
       else
          gtk_widget_hide((*menuitems)[i]);
