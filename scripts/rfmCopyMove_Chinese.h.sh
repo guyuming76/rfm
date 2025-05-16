@@ -63,7 +63,7 @@ else
 			cp -p -r -i ${@:2} "$destination"
 		fi
 	elif [[ "$1" == "mv" ]];then
-		if [[ -z "$check_and_update_symbolic_link" || "$check_and_update_symbolic_linj" == "y" || "$check_and_update_symbolic_link" == "Y" ]];then
+		if [[ -z "$check_and_update_symbolic_link" || "$check_and_update_symbolic_link" == "y" || "$check_and_update_symbolic_link" == "Y" ]];then
 			# 从第2个参数开始，每个参数循环一次
 			for sourcefile in ${@:2};do
 				if [[ "$rfm_overwrite_destination" == "y" || "$rfm_overwrite_destination" == "Y" ]];then
