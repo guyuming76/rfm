@@ -1,14 +1,16 @@
 #!/bin/bash
-# 接受一个或多个文件名作为参数,目前从rfm上下文菜单点击操作里面传出的都是完整路径文件名
+# Accept one or more filenames as parameters, currently receiving full path filenames from rfm context menu clicks
 
 #set -x
 
-echo "press enter to copy selected filenames into clipboard;"
-echo "or input the destination(fullpath or relative to current $(pwd)), up and down arrow keys can be used to choose from input history:"
+echo "Press enter to copy selected filenames to clipboard;"
+echo "Or input destination (fullpath or relative to current $(pwd)), use up/down arrow keys to browse input history:"
 
 input_destination="$(rfmReadlineWithSpecificHistoryFile.sh ~/.rfm_history_directory)"
 
-# 用户很有可能是在查询结果视图里面选中文件,然后复制到当前目录的,所以目的地默认为当前目录还是很有必要,虽然会遇到来源文件也是当前目录的情况, 我测试的结果是cp -i 会直接忽略这个文件,并不提示
+# Users are likely to select files in search results view and copy to current directory.
+# Default destination to current directory is necessary, though may encounter source files in same directory.
+# Test shows cp -i will ignore existing files without prompting.
 
 if [[ -z "$input_destination" ]]; then
 	if [ -n "$G_MESSAGES_DEBUG" ]; then
@@ -16,14 +18,14 @@ if [[ -z "$input_destination" ]]; then
 	fi
 	echo "${@:2}" | xargs rfmToClipboard.sh
 else
-	read -p "是否(y/n)检查移动或复制造成的符号链接破坏并修复?默认是(y)" -r check_and_update_symbolic_link
+	read -p "Check and repair broken symbolic links after operation? (y/n, default y): " -r check_and_update_symbolic_link
 
         # -s 表示不解析符号链接
 	destination="$(realpath -s $input_destination)";
 
 	if [[ -e "$destination" ]]; then
 		if [ -d "$destination" ] && [ ! -L "$destination" ];then
-			read -p "目的路径存在且是目录，是否(y/n)覆盖,即先删除现有目录? 直接回车默认否(n),表示输入路径为目的父路径" -r rfm_overwrite_destination
+			read -p "Destination path exists and is a directory, overwrite? (y/n, default n). y=delete existing dir, n=use as parent dir: " -r rfm_overwrite_destination
 			export rfm_overwrite_destination
 			# y 对应cp/mv -T, n 对应cp/mv -t?
 			if [[ "$rfm_overwrite_destination" == "y" || "$rfm_overwrite_destination" == "Y" ]];then
@@ -37,8 +39,8 @@ else
 				done
 			fi
 		else
-			# 如果目的地存在且不是目录，只能是覆盖，mv 命令后如果有 -f 则不提示，否则 mv 命令会提示
-			read -p "目的路径存在且不是目录（是文件或符号链接,包括指向目录的符号链接），是否(y/n)覆盖，即先删除现有文件? 直接回车默认否(n)，退出当前操作" -r rfm_overwrite_destination
+			# If destination exists and is not a directory (file/symlink), must overwrite
+			read -p "Destination exists (file/symlink), overwrite? (y/n, default n). y=delete existing, n=abort: " -r rfm_overwrite_destination
 			if [[ "$rfm_overwrite_destination" == "y" || "$rfm_overwrite_destination" == "Y" ]];then
 				autoselection="$destination"
 			else
@@ -47,9 +49,9 @@ else
 
 		fi
 	elif [[ ! -z "$destination" ]]; then
-		# i ensure destination -z here to prevent that something wrong from transformation from input_destination to destination and cp use the last selected filename parameter as destination
-		# since destionation does not exists before, my test show that there can only be one source file
-		# it's not possible to copy multiple source items into a non-existing destionation
+		# Prevent issues when transforming input_destination to destination
+		# When destination doesn't exist, only single source file allowed
+		# Cannot copy multiple items to non-existing destination
 		autoselection=$destination
 	else
 		echo "$input_destination;$destination" > 2
@@ -65,7 +67,7 @@ else
 		fi
 	elif [[ "$1" == "mv" ]];then
 		if [[ -z "$check_and_update_symbolic_link" || "$check_and_update_symbolic_link" == "y" || "$check_and_update_symbolic_link" == "Y" ]];then
-			# 从第2个参数开始，每个参数循环一次
+			# Process each source file starting from 2nd parameter
 			for sourcefile in ${@:2};do
 				if [[ "$rfm_overwrite_destination" == "y" || "$rfm_overwrite_destination" == "Y" ]];then
 					rfmMoveDirAndUpdateSymbolicLinks.sh "$sourcefile" "$destination"
