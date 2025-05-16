@@ -5426,8 +5426,8 @@ static gboolean compile_local_extension() {
     // Prepare the hash definition for the compiler command
     gchar *hash_define = g_strdup_printf("-DRFM_LOCAL_C_HASH=\\\"%s\\\"", c_file_hash);
     g_free(c_file_hash); // Free the calculated hash string
-  
-    gchar* rfm_local_c_compile_cmd = g_strdup_printf(rfm_local_c_compile_cmd_template, local_so_path, hash_define, local_c_path);
+
+    gchar* rfm_local_c_compile_cmd = g_strdup_printf(rfm_local_c_compile_cmd_template, RFM_SearchResultTypeNamePrefix, local_so_path, hash_define, local_c_path);
     return parse_and_exec_command_in_gtk_thread(rfm_local_c_compile_cmd, FALSE, 0);
 }
 

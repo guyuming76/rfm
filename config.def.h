@@ -17,6 +17,7 @@
 #define RFM_FILE_CHOOSER_NAMED_PIPE_PREFIX "/tmp/rfmFileChooser_"
 #define RFM_ENV_VAR_NAME_PREFIX ""  //change this if your extented column name conflicts with existing ENV Variable name
 #define RFM_SEARCH_RESULT_AS_INPUT_PREFIX "SearchResult|"
+#define RFM_SearchResultTypeNamePrefix ">"
 //#define SEARCH_RFM_CMD_HISTORY "cat %s|grep -ih ^%s|sort|uniq"
 
 static char selected_filename_placeholder[32] = {'%', 's', 0 };
@@ -69,17 +70,17 @@ static const AI_model_parameter AI_models[] = {
   {"rfmAskOpenRouter.sh","https://api.deepseek.com/chat/completions","deepseek-reasoner","deepseek-r1",    "d>",           TRUE,        "0",          "别把key存config.def.h,存config.h" },
 };
 
-static const char *findDirectlyRelatedMessages[] = { stdin_cmd_interpretors[0].name, "rfmAiFindRelatedMessages_Direct.sh %s >multitype", NULL };
-static const char *findRelatedMessages[] = { stdin_cmd_interpretors[0].name, "rfmAiFindRelatedMessages.sh %s >multitype", NULL };
-static const char *AllAiMessages[] = { stdin_cmd_interpretors[0].name, "locate '*.rfmAI.md'|sed -E 's/(.*___)([0-9]{8})(_.*)/\\1\\2\\3:\\2/'|sort -t ':' -k2,2 -r>multitype", NULL };
+static const char *findDirectlyRelatedMessages[] = { stdin_cmd_interpretors[0].name, "rfmAiFindRelatedMessages_Direct.sh %s "RFM_SearchResultTypeNamePrefix"multitype", NULL };
+static const char *findRelatedMessages[] = { stdin_cmd_interpretors[0].name, "rfmAiFindRelatedMessages.sh %s "RFM_SearchResultTypeNamePrefix"multitype", NULL };
+static const char *AllAiMessages[] = { stdin_cmd_interpretors[0].name, "locate '*.rfmAI.md'|sed -E 's/(.*___)([0-9]{8})(_.*)/\\1\\2\\3:\\2/'|sort -t ':' -k2,2 -r"RFM_SearchResultTypeNamePrefix"multitype", NULL };
 //上面原始命令是这样的，\\1\\2\\3是为了转义\。sed部分代码是识别文件名___后的8位日期数字，加冒号后添加到行未： locate '*.rfmAI.md'|sed -E 's/(.*___)([0-9]{8})(_.*)/\1\2\3:\2/'>multitype
-static const char *TreeAiMessages[] = { stdin_cmd_interpretors[0].name, "find \"$(pwd)\" -name 'rfmAI*rfmAI.md'|sed -E 's/(.*___)([0-9]{8})(_.*)/\\1\\2\\3:\\2/'|sort -t ':' -k2,2 -r>multitype", NULL };
+static const char *TreeAiMessages[] = { stdin_cmd_interpretors[0].name, "find \"$(pwd)\" -name 'rfmAI*rfmAI.md'|sed -E 's/(.*___)([0-9]{8})(_.*)/\\1\\2\\3:\\2/'|sort -t ':' -k2,2 -r"RFM_SearchResultTypeNamePrefix"multitype", NULL };
 #endif
 
-static const char *find_same_name[] = { stdin_cmd_interpretors[0].name, rfmBinPath "rfmFindFilesWithTheSameName.sh >multitype ", NULL };
+static const char *find_same_name[] = { stdin_cmd_interpretors[0].name, rfmBinPath "rfmFindFilesWithTheSameName.sh "RFM_SearchResultTypeNamePrefix"multitype ", NULL };
 static const char *cd_in_searchresult[] = { stdin_cmd_interpretors[0].name, "cd ", NULL };
 static const char *start_menu[] = { stdin_cmd_interpretors[0].name, "cd /usr/share/applications", NULL };
-static const char *find_files[] = { stdin_cmd_interpretors[0].name,"find .>0", NULL };
+static const char *find_files[] = { stdin_cmd_interpretors[0].name,"find ."RFM_SearchResultTypeNamePrefix"0", NULL };
 static const char *extract_archive[] = { stdin_cmd_interpretors[0].name, "rfmExtractArchive.sh & ", NULL };
 static const char *mkdir_and_move_files_into_it[] = { stdin_cmd_interpretors[0].name, "rfm_mkdir_and_move_selected_files_into_it.sh & ",NULL };
 static const char *save_searchresult_to_file[] = { stdin_cmd_interpretors[0].name, "SearchResult|tee>rfmSearchResult.csv", NULL };
@@ -139,7 +140,7 @@ static const char *launch_desktop[] = { "dex", "--term", "$RFM_TERM", NULL };
 #ifdef GitIntegration
 static const char *git_ls_files_cmd[] = {"git", "ls-files", NULL};
 static const char *git_ls_files_untracked_cmd[] = { "git", "ls-files", "-o",NULL};
-static const char *git_ls_files[] = { stdin_cmd_interpretors[0].name, "git ls-files;git ls-files -o>0", NULL };
+static const char *git_ls_files[] = { stdin_cmd_interpretors[0].name, "git ls-files;git ls-files -o"RFM_SearchResultTypeNamePrefix"0", NULL };
 static const char *git_modified_staged_info_cmd[] = {"/usr/bin/git","status","--porcelain",NULL};
 static const char *git_stage_cmd[] = {"/usr/bin/git","stage",NULL};
 static const char *git_root_cmd[] = { "bash","-c", "git rev-parse --is-inside-work-tree --show-toplevel --abbrev-ref HEAD --show-prefix; exit 0",NULL};
@@ -358,7 +359,6 @@ static RFM_treeviewColumn treeviewColumns_init[] = {
 
 static RFM_treeviewColumn treeviewColumns[G_N_ELEMENTS(treeviewColumns_init) + NUM_Ext_Columns - 1]; // 因为C1已经包含在treeviewColumns_init 里了，所以要-1
 
-#define RFM_SearchResultTypeNamePrefix ">"
 static char SearchResultColumnSeperator[32]={':', 0}; //this is the default value and can be override by specific searchresulttype and can also be set manually with builtin cmd
 static gchar* EmptyShowColumn[] = { NULL };
 static gchar* MailColumns[] = { "-FileName",",From,Subject,Date,Attachments",NULL };
@@ -419,7 +419,6 @@ static RFM_cmd_regex_rule regex_rules[] = {
   { "^[S|s]earch[R|r]esult \\+|",   "SearchResult|",                     NULL,NULL },// \\+ 中第一个\是字符串里面用来escape第二个\的,\+是basic regular expression 要求的,相当于extended regular express 里面的+,表示一个或多个
   { "^[S|s]how[C|c]olumns* ",       "showcolumn ",                       NULL,NULL },
   { "^[S|s]how[C|c]olumns*$",       "showcolumn",                        NULL,NULL },
-  { "^rfm[T|t][O|o][D|d][O|o]$",    "locate rfmTODO.>multitype",         NULL,NULL },
   { "^[E|e]build[S|s]amples*$",     "locate .ebuild|xargs grep inherit|grep cmake|cut -d: -f1 |xargs grep CMAKE_CXX_FLAGS", NULL,NULL},
   { "fzfall",                       "fzf --multi --bind ctrl-a:select-all,ctrl-d:deselect-all",NULL,NULL },
 };
@@ -433,5 +432,5 @@ static RFM_cmd_regex_rule regex_rules[] = {
 #define RFM_LOCAL_SO_FILE "rfm_local.so"
 #define RFM_LOCAL_ENTER_FUNC "rfm_local_enter"
 #define RFM_LOCAL_LEAVE_FUNC "rfm_local_leave"
-static const gchar *rfm_local_c_compile_cmd_template = "gcc -O0 -g -shared -fPIC $(pkg-config --cflags gtk+-3.0) -o %s %s %s";
+static const gchar *rfm_local_c_compile_cmd_template = "gcc -O0 -g -shared -fPIC $(pkg-config --cflags gtk+-3.0) -DRFM_SearchResultTypeNamePrefix=%s -o %s %s %s";
 #endif
