@@ -41,13 +41,17 @@ fi
 	# 因为 $rfmFindScope 是绝对路径形式, find 的输出也是绝对路径形式
 find "$rfmFindScope" -type l -exec rfm_Update_affected_SymbolicLinks_for_move_or_copy.sh "$Destination" "$Source" {} \;
 
-if [[ "$rfmFindScope"=="/" ]]; then
-	#TODO:考虑 $rfm_overwrite_destination
-	mv "$Source" "$Destination"
+if [[ "$rfmFindScope" == "/" ]]; then
+    if [[ "$rfm_overwrite_destination" == "y" || "$rfm_overwrite_destination" == "Y" ]]; then
+        rm -rf "$Destination"
+        mv -T -f "$Source" "$Destination"
+    else
+        mv "$Source" "$Destination"
+    fi
 else
-	#git mv 和 mv 不同，没有 -t,-T 参数, -f 参数的作用是否类似 -T?
-        #顺便提一下，git mv 文档提到会保持 git log, 但我发现不是
-	git mv -f "$Source" "$Destination"
+     #git mv 和 mv 不同，没有 -t,-T 参数, -f 参数的作用是否类似 -T?
+     #顺便提一下，git mv 文档提到会保持 git log, 但我发现不是
+     git mv -f "$Source" "$Destination"
 fi
 
 if [ -n "$G_MESSAGES_DEBUG" ]; then
