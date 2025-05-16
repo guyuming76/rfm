@@ -83,7 +83,7 @@ static const char *start_menu[] = { stdin_cmd_interpretors[0].name, "cd /usr/sha
 static const char *find_files[] = { stdin_cmd_interpretors[0].name,"find ."RFM_SearchResultTypeNamePrefix"0", NULL };
 static const char *extract_archive[] = { stdin_cmd_interpretors[0].name, "rfmExtractArchive.sh "RFM_NEW_TERM_SUFFIX" ", NULL };
 static const char *mkdir_and_move_files_into_it[] = { stdin_cmd_interpretors[0].name, "rfm_mkdir_and_move_selected_files_into_it.sh "RFM_NEW_TERM_SUFFIX" ",NULL };
-static const char *save_searchresult_to_file[] = { stdin_cmd_interpretors[0].name, "SearchResult|tee>rfmSearchResult.csv", NULL };
+static const char *save_searchresult_to_file[] = { stdin_cmd_interpretors[0].name, RFM_SEARCH_RESULT_AS_INPUT_PREFIX "tee>rfmSearchResult.csv", NULL };
 
 //there are two types of command definition string array here:
 //1. those above, the first array item specify the command interpretor, and the second is the string you can input and run in rfm standard input command window, you can put everything in one string, and ending space means that selected file nanme will be appended, just as what happens when you input command in rfm standard input.
@@ -416,7 +416,7 @@ static gboolean ignored_filename(const gchar *name){
 static RFM_cmd_regex_rule regex_rules[] = {
 // pattern                          replacement                          action                           pattern_compiled
   { "^ \\+",                        "",                                  set_stdin_cmd_leading_space_true,NULL},
-  { "^[S|s]earch[R|r]esult \\+|",   "SearchResult|",                     NULL,NULL },// \\+ 中第一个\是字符串里面用来escape第二个\的,\+是basic regular expression 要求的,相当于extended regular express 里面的+,表示一个或多个
+  { "^[S|s]earch[R|r]esult \\+|",   RFM_SEARCH_RESULT_AS_INPUT_PREFIX,   NULL,NULL },// \\+ 中第一个\是字符串里面用来escape第二个\的,\+是basic regular expression 要求的,相当于extended regular express 里面的+,表示一个或多个
   { "^[S|s]how[C|c]olumns* ",       "showcolumn ",                       NULL,NULL },
   { "^[S|s]how[C|c]olumns*$",       "showcolumn",                        NULL,NULL },
   { "^[E|e]build[S|s]amples*$",     "locate .ebuild|xargs grep inherit|grep cmake|cut -d: -f1 |xargs grep CMAKE_CXX_FLAGS", NULL,NULL},
@@ -433,5 +433,5 @@ static RFM_cmd_regex_rule regex_rules[] = {
 #define RFM_LOCAL_ENTER_FUNC "rfm_local_enter"
 #define RFM_LOCAL_LEAVE_FUNC "rfm_local_leave"
 
-static const gchar *rfm_local_c_compile_cmd_template = "gcc -O0 -g -shared -fPIC $(pkg-config --cflags gtk+-3.0) -D'RFM_SearchResultTypeNamePrefix=\"%s\"' -D'RFM_NEW_TERM_SUFFIX=\"%s\"' -D'RFM_selected_filename_placeholder=\"%s\"' -o %s %s %s";
+static const gchar *rfm_local_c_compile_cmd_template = "gcc -O0 -g -shared -fPIC $(pkg-config --cflags gtk+-3.0) -D'RFM_SearchResultTypeNamePrefix=\"%s\"' -D'RFM_NEW_TERM_SUFFIX=\"%s\"' -D'RFM_selected_filename_placeholder=\"%s\"' -D'RFM_SEARCH_RESULT_AS_INPUT_PREFIX=\"%s\"' -o %s %s %s";
 #endif
