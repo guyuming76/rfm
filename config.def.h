@@ -19,9 +19,8 @@
 #define RFM_SEARCH_RESULT_AS_INPUT_PREFIX "SearchResult|"
 #define RFM_SearchResultTypeNamePrefix ">"
 #define RFM_NEW_TERM_SUFFIX "&"
+#define RFM_selected_filename_placeholder "%s"
 //#define SEARCH_RFM_CMD_HISTORY "cat %s|grep -ih ^%s|sort|uniq"
-
-static char selected_filename_placeholder[32] = {'%', 's', 0 };
 
 //add the two line follows into ~/.inputrc so that readline can search history based on prefix. read https://www.man7.org/linux/man-pages/man3/readline.3.html  for more
 // arrow up
@@ -130,7 +129,7 @@ static const char *audioSpect[] = { "/usr/local/bin/spectrogram.sh", NULL };
 static const char *open_with[]  = { rfmBinPath "open_with_dmenu.sh", NULL };
 static const char *gnumeric[]   = { "/usr/bin/gnumeric", NULL };
 static const char *ftview[] = { "/usr/bin/ftview", "14", NULL }; /* pacman -S freetype2-demos */
-static const char *ffmpegThumb[] =  { "/usr/bin/ffmpeg", "-i",selected_filename_placeholder, "-frames", "1", "-y","-s", thumbnailsize_str,NULL  };
+static const char *ffmpegThumb[] =  { "/usr/bin/ffmpeg", "-i",RFM_selected_filename_placeholder, "-frames", "1", "-y","-s", thumbnailsize_str,NULL  };
 static const char *geogebraThumb[] = { rfmBinPath "rfmMakeThumbnailForGGB.sh",thumbnailsize_str,NULL };
 static const char *term_cmd[]  = { "$RFM_TERM", NULL };
 static const char *new_rfm[]  = { "$RFM_TERM", rfmBinPath "rfm", NULL };
@@ -433,5 +432,6 @@ static RFM_cmd_regex_rule regex_rules[] = {
 #define RFM_LOCAL_SO_FILE "rfm_local.so"
 #define RFM_LOCAL_ENTER_FUNC "rfm_local_enter"
 #define RFM_LOCAL_LEAVE_FUNC "rfm_local_leave"
-static const gchar *rfm_local_c_compile_cmd_template = "gcc -O0 -g -shared -fPIC $(pkg-config --cflags gtk+-3.0) -D'RFM_SearchResultTypeNamePrefix=\"%s\"' -D'RFM_NEW_TERM_SUFFIX=\"%s\"' -o %s %s %s";
+
+static const gchar *rfm_local_c_compile_cmd_template = "gcc -O0 -g -shared -fPIC $(pkg-config --cflags gtk+-3.0) -D'RFM_SearchResultTypeNamePrefix=\"%s\"' -D'RFM_NEW_TERM_SUFFIX=\"%s\"' -D'RFM_selected_filename_placeholder=\"%s\"' -o %s %s %s";
 #endif

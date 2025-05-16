@@ -1107,7 +1107,7 @@ static MEM_ALLOC gchar **build_cmd_vector(CALLER_OWN const char **cmd, CALLER_OW
       return NULL;
 
    while (cmd[j]!=NULL && j<RFM_MX_ARGS) {
-     if (strcmp(cmd[j],selected_filename_placeholder)==0 && listElement!=NULL){
+     if (strcmp(cmd[j],RFM_selected_filename_placeholder)==0 && listElement!=NULL){
        // before this commit, file_list and dest_path are all appended after cmd, but commands like ffmpeg to create thumbnail need to have file name in the middle of the argv, appended at the end won't work. So i modify the rule here so that if we have placeholder in cmd, we replace it with item in file_list. So, file_list can work as generic argument list later, not necessarily the filename. And replacing empty string place holders in cmd with items in file_list can be something like printf.
        v[j]=listElement->data; //this data is owned by rfm_FileAttributes and was not freed before, but now, v and file_list share the reference.  g_list_free_full never called on file_list, and filename char* is not freed when free(v),  but freed with rfm_FileAttributes.
        listElement=g_list_next(listElement);
@@ -4329,10 +4329,10 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 
 		  //if there is %s in msg, replace it with selected filename one by one, otherwise, append filenames to the end.
 		  if (stdin_cmd_ending_space){
-		    if (strstr(readlineResultString->str, selected_filename_placeholder) == NULL) g_string_append(readlineResultString, selected_filename_placeholder_in_space);
+		    if (strstr(readlineResultString->str, RFM_selected_filename_placeholder) == NULL) g_string_append(readlineResultString, selected_filename_placeholder_in_space);
 		    //if file path contains space, wrap path inside ''
-		    if (strstr(stdin_cmd_selection_fileAttributes->path," ") != NULL) g_string_replace(readlineResultString, selected_filename_placeholder, selected_filename_placeholder_in_quotation, 1);
-		    g_string_replace(readlineResultString, selected_filename_placeholder,stdin_cmd_selection_fileAttributes->path, 1);
+		    if (strstr(stdin_cmd_selection_fileAttributes->path," ") != NULL) g_string_replace(readlineResultString, RFM_selected_filename_placeholder, selected_filename_placeholder_in_quotation, 1);
+		    g_string_replace(readlineResultString, RFM_selected_filename_placeholder,stdin_cmd_selection_fileAttributes->path, 1);
 		  }
 
 		  if (env_rfm_selected_files != NULL) {
@@ -4708,8 +4708,8 @@ int main(int argc, char *argv[])
    //但 treeviewColumns_init 到 treeviewColumns 的复制，主要是为了config.def.h 看起来更清爽，也减少了 AI 编程时传给大模型prompt量，减少珍贵的context window 的占用。主要是我不知道C语言里还能有啥好办法初始化时扩展静态数组，才这么做的，也许将来会改。而下面的memcpy是除了初始化外，程序运行时还多次要用到的。这两步数组复制的目的和功能不同，treeviewColumns 这点本身运行内存的占用在现代计算机上算不得啥，所以就不合并了。
    memcpy(SearchResultViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
    memcpy(DirectoryViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
-   sprintf(selected_filename_placeholder_in_space," %s ",selected_filename_placeholder);
-   sprintf(selected_filename_placeholder_in_quotation, "'%s'",selected_filename_placeholder);
+   sprintf(selected_filename_placeholder_in_space," %s ",RFM_selected_filename_placeholder);
+   sprintf(selected_filename_placeholder_in_quotation, "'%s'",RFM_selected_filename_placeholder);
    snprintf(thumbnailsize_str,8, "%dx%d",RFM_THUMBNAIL_SIZE,RFM_THUMBNAIL_SIZE);
 
    set_pagesize_for_searchresultview(getenv("RFM_PAGESIZE"));
@@ -5427,7 +5427,7 @@ static gboolean compile_local_extension() {
     gchar *hash_define = g_strdup_printf("-DRFM_LOCAL_C_HASH=\\\"%s\\\"", c_file_hash);
     g_free(c_file_hash); // Free the calculated hash string
 
-    gchar* rfm_local_c_compile_cmd = g_strdup_printf(rfm_local_c_compile_cmd_template, RFM_SearchResultTypeNamePrefix, RFM_NEW_TERM_SUFFIX, local_so_path, hash_define, local_c_path);
+    gchar* rfm_local_c_compile_cmd = g_strdup_printf(rfm_local_c_compile_cmd_template, RFM_SearchResultTypeNamePrefix, RFM_NEW_TERM_SUFFIX, RFM_selected_filename_placeholder, local_so_path, hash_define, local_c_path);
     return parse_and_exec_command_in_gtk_thread(rfm_local_c_compile_cmd, FALSE, 0);
 }
 
