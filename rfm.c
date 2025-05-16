@@ -4279,7 +4279,7 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 	    //再者有些人可能不喜欢正则表达式,而这些又是对rfm来说比较核心的功能,所以就暂不改用正则表达式识别
 	    //目前正则表达式匹配主要是解决一些字母大小写,消除空格等,把用户输入命令规范化成统一定义的格式
 
-            if (g_str_has_suffix(readlineResult, run_cmd_in_new_terminal_emulator_suffix)){
+            if (g_str_has_suffix(readlineResult, RFM_NEW_TERM_SUFFIX)){
 	      if (from_stdin_readline) execStdinCmdInNewVT = TRUE;
 	      else execCmdInNewVT = TRUE;
 	      readlineResult[len-1] = '\0'; //remove ending '&'
@@ -4301,7 +4301,7 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 
 	    if (g_str_has_prefix(readlineResult, RFM_SEARCH_RESULT_AS_INPUT_PREFIX)) {
 	        if ((from_stdin_readline && execStdinCmdInNewVT) || execCmdInNewVT){
-		  g_warning("%s does not work with %s for now. TODO: we might save search result into temp file and use it in new terminal emulator in future.", RFM_SEARCH_RESULT_AS_INPUT_PREFIX, run_cmd_in_new_terminal_emulator_suffix);
+		  g_warning("%s does not work with %s for now. TODO: we might save search result into temp file and use it in new terminal emulator in future.", RFM_SEARCH_RESULT_AS_INPUT_PREFIX, RFM_NEW_TERM_SUFFIX);
 		  readlineResult[0]='\0';//设置读取字符串为空，执行一个空命令
 		}else{
 	          SearchResultAsInput=TRUE;
@@ -5427,7 +5427,7 @@ static gboolean compile_local_extension() {
     gchar *hash_define = g_strdup_printf("-DRFM_LOCAL_C_HASH=\\\"%s\\\"", c_file_hash);
     g_free(c_file_hash); // Free the calculated hash string
 
-    gchar* rfm_local_c_compile_cmd = g_strdup_printf(rfm_local_c_compile_cmd_template, RFM_SearchResultTypeNamePrefix, local_so_path, hash_define, local_c_path);
+    gchar* rfm_local_c_compile_cmd = g_strdup_printf(rfm_local_c_compile_cmd_template, RFM_SearchResultTypeNamePrefix, RFM_NEW_TERM_SUFFIX, local_so_path, hash_define, local_c_path);
     return parse_and_exec_command_in_gtk_thread(rfm_local_c_compile_cmd, FALSE, 0);
 }
 

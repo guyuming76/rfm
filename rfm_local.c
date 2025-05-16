@@ -32,7 +32,7 @@ extern void add_file_menuitems(GtkWidget ***menuitems, const RFM_MenuItem menuit
 extern void remove_toolbar_buttons(GtkWidget ***buttons, const size_t size);
 extern void remove_file_menuitems(GtkWidget ***menuitems, const size_t size);
 
-static const char *rfmTODO[] = { NULL, "find . -name '*.rfmTODO.*'"RFM_SearchResultTypeNamePrefix"multitype", NULL };
+static const char *rfmTODO[] = { NULL, "find . -name '*.rfmTODO.*'" RFM_SearchResultTypeNamePrefix "multitype", NULL };
 static const char *testcmd[] = { "echo","test local file menu command",NULL };
 static char *saved_history_dir = NULL;
 

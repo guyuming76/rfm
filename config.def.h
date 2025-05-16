@@ -18,10 +18,11 @@
 #define RFM_ENV_VAR_NAME_PREFIX ""  //change this if your extented column name conflicts with existing ENV Variable name
 #define RFM_SEARCH_RESULT_AS_INPUT_PREFIX "SearchResult|"
 #define RFM_SearchResultTypeNamePrefix ">"
+#define RFM_NEW_TERM_SUFFIX "&"
 //#define SEARCH_RFM_CMD_HISTORY "cat %s|grep -ih ^%s|sort|uniq"
 
 static char selected_filename_placeholder[32] = {'%', 's', 0 };
-static char run_cmd_in_new_terminal_emulator_suffix[32] = { '&', 0 };
+
 //add the two line follows into ~/.inputrc so that readline can search history based on prefix. read https://www.man7.org/linux/man-pages/man3/readline.3.html  for more
 // arrow up
 // "\e[A":history-search-backward
@@ -81,8 +82,8 @@ static const char *find_same_name[] = { stdin_cmd_interpretors[0].name, rfmBinPa
 static const char *cd_in_searchresult[] = { stdin_cmd_interpretors[0].name, "cd ", NULL };
 static const char *start_menu[] = { stdin_cmd_interpretors[0].name, "cd /usr/share/applications", NULL };
 static const char *find_files[] = { stdin_cmd_interpretors[0].name,"find ."RFM_SearchResultTypeNamePrefix"0", NULL };
-static const char *extract_archive[] = { stdin_cmd_interpretors[0].name, "rfmExtractArchive.sh & ", NULL };
-static const char *mkdir_and_move_files_into_it[] = { stdin_cmd_interpretors[0].name, "rfm_mkdir_and_move_selected_files_into_it.sh & ",NULL };
+static const char *extract_archive[] = { stdin_cmd_interpretors[0].name, "rfmExtractArchive.sh "RFM_NEW_TERM_SUFFIX" ", NULL };
+static const char *mkdir_and_move_files_into_it[] = { stdin_cmd_interpretors[0].name, "rfm_mkdir_and_move_selected_files_into_it.sh "RFM_NEW_TERM_SUFFIX" ",NULL };
 static const char *save_searchresult_to_file[] = { stdin_cmd_interpretors[0].name, "SearchResult|tee>rfmSearchResult.csv", NULL };
 
 //there are two types of command definition string array here:
@@ -97,7 +98,7 @@ static const char *f_mv[]   = { "$RFM_TERM",rfmBinPath "rfmCopyMove.sh", "mv",NU
 static const char *cp_clipboard_to_curPath[] = { "$RFM_TERM",rfmBinPath "rfmCopyMoveToCurPath.sh","cp",NULL };
 static const char *mv_clipboard_to_curPath[] = { "$RFM_TERM",rfmBinPath "rfmCopyMoveToCurPath.sh","mv",NULL };
 static const char *ln_clipboard_to_curPath[] = { "$RFM_TERM",rfmBinPath "rfmCopyMoveToCurPath.sh","sl",NULL };
-static const char *create_softlink[] = { stdin_cmd_interpretors[0].name, "rfmCreateSoftLink.sh & ",NULL };
+static const char *create_softlink[] = { stdin_cmd_interpretors[0].name, "rfmCreateSoftLink.sh "RFM_NEW_TERM_SUFFIX" ",NULL };
 static const char *find_softlink[] = { "$RFM_TERM",rfmBinPath "rfmFindLinksToTheSameFile.sh",NULL };
 static const char *change_owner[] = { "$RFM_TERM", rfmBinPath "rfmChangeOwner.sh",NULL };
 static const char *play_video[] = { "/usr/bin/xdg-open", NULL };
@@ -432,5 +433,5 @@ static RFM_cmd_regex_rule regex_rules[] = {
 #define RFM_LOCAL_SO_FILE "rfm_local.so"
 #define RFM_LOCAL_ENTER_FUNC "rfm_local_enter"
 #define RFM_LOCAL_LEAVE_FUNC "rfm_local_leave"
-static const gchar *rfm_local_c_compile_cmd_template = "gcc -O0 -g -shared -fPIC $(pkg-config --cflags gtk+-3.0) -DRFM_SearchResultTypeNamePrefix=%s -o %s %s %s";
+static const gchar *rfm_local_c_compile_cmd_template = "gcc -O0 -g -shared -fPIC $(pkg-config --cflags gtk+-3.0) -D'RFM_SearchResultTypeNamePrefix=\"%s\"' -D'RFM_NEW_TERM_SUFFIX=\"%s\"' -o %s %s %s";
 #endif
