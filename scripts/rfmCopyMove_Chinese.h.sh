@@ -24,6 +24,7 @@ else
 	if [[ -e "$destination" ]]; then
 		if [ -d "$destination" ] && [ ! -L "$destination" ];then
 			read -p "目的路径存在且是目录，是否(y/n)覆盖,即先删除现有目录? 直接回车默认否(n),表示输入路径为目的父路径" -r rfm_overwrite_destination
+			export rfm_overwrite_destination
 			# y 对应cp/mv -T, n 对应cp/mv -t?
 			if [[ "$rfm_overwrite_destination" == "y" || "$rfm_overwrite_destination" == "Y" ]];then
 				autoselection="$destination"
