@@ -506,8 +506,8 @@ static void showSearchResultExtColumnsBasedOnHashTableValues();
 static int ProcessOnelineForSearchResult(CALLER_OWN gchar *oneline, gboolean new_search);
 static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboolean new_search, gboolean first_line_column_title);
 static int ProcessOnelineForSearchResult_with_title(CALLER_OWN char* oneline, gboolean new_search);
-static void CallDefaultSearchResultFunctionForNewSearch(char *one_line_in_search_result);
-static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline, gboolean new_search);
+static void CallDefaultSearchResultFunctionForNewSearch(CALLER_OWN char *one_line_in_search_result);
+static int ProcessKeyValuePairInFilesFromSearchResult(CALLER_OWN char *oneline, gboolean new_search);
 static int ProcessKeyValuePairInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char **cmdtemplate);
 static int ProcessKeyValuePairInData(GKeyFile* keyfile, char *groupname);
 static int CallMatchingProcessorForSearchResultLine(char *oneline, gboolean new_search, char *cmdtemplate, RFM_FileAttributes* fileAttributes);
@@ -4910,7 +4910,7 @@ static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboo
 	   return currentColumnTitleIndex;
 }
 
-static void CallDefaultSearchResultFunctionForNewSearch(char *one_line_in_search_result){
+static void CallDefaultSearchResultFunctionForNewSearch(CALLER_OWN char *one_line_in_search_result){
      if (fileAttributeID==1) {
        currentSearchResultTypeStartingColumnTitleIndex = ProcessOnelineForSearchResult(one_line_in_search_result,TRUE);
        currentPageStartingColumnTitleIndex = currentSearchResultTypeStartingColumnTitleIndex;
@@ -4921,7 +4921,7 @@ static void CallDefaultSearchResultFunctionForNewSearch(char *one_line_in_search
 // 处理存储键值对文件(类似INI)数据,每行一个文件,每个文件可包含不同的键
 // 搜索结果除了包含文件名,还可以包含其他类似csv行数据,也就是先用 ProcessOnelineForSearchResult 处理
 // if new_search, oneline contains leading filename plus optional columns, otherwise, oneline contains only filename
-static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline, gboolean new_search){
+static int ProcessKeyValuePairInFilesFromSearchResult(CALLER_OWN char *oneline, gboolean new_search){
    if (new_search){
      CallDefaultSearchResultFunctionForNewSearch(oneline);
      return 0;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
@@ -4929,13 +4929,15 @@ static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline, gboolean ne
 
    GKeyFile *keyfile=g_key_file_new();
    GError *error=NULL;
-   if (!g_key_file_load_from_file(keyfile, oneline, G_KEY_FILE_NONE, &error)){
+   gchar * absolute_address = g_canonicalize_filename(oneline, rfm_SearchResultPath);
+   if (!g_key_file_load_from_file(keyfile, absolute_address, G_KEY_FILE_NONE, &error)){
      g_warning("ProcessKeyValuePairInFilesFromSearchResult. error loading key value pair from file %s, error code: %d, message:%s",oneline, error==NULL?0:error->code, error==NULL?"":error->message);
      g_error_free(error);
    }else{
      ProcessKeyValuePairInData(keyfile, dumb_keyfile_groupname);
      g_key_file_free(keyfile);
    }
+   g_free(absolute_address);
 }
 
 // 查看 SearchResultLineProcessingFunc 函数指针了解此函数调用
