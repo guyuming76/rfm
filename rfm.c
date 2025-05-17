@@ -503,12 +503,12 @@ static gchar* stdout_read_by_search_result=NULL;
 static gboolean showSearchResultExtColumnsBasedOnHashTableValues_has_already_been_called_for_searchresult = FALSE;//方便用showcolumn命令手工调整SearchResult的列布局
 static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamelist);
 static void showSearchResultExtColumnsBasedOnHashTableValues();
-static int ProcessOnelineForSearchResult(gchar *oneline, gboolean new_search);
-static int ProcessOnelineForSearchResult_internel(char* oneline, gboolean new_search, gboolean first_line_column_title);
-static int ProcessOnelineForSearchResult_with_title(char* oneline, gboolean new_search);
+static int ProcessOnelineForSearchResult(CALLER_OWN gchar *oneline, gboolean new_search);
+static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboolean new_search, gboolean first_line_column_title);
+static int ProcessOnelineForSearchResult_with_title(CALLER_OWN char* oneline, gboolean new_search);
 static void CallDefaultSearchResultFunctionForNewSearch(char *one_line_in_search_result);
 static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline, gboolean new_search);
-static int ProcessKeyValuePairInCmdOutputFromSearchResult(char *oneline, gboolean new_search, char **cmdtemplate);
+static int ProcessKeyValuePairInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char **cmdtemplate);
 static int ProcessKeyValuePairInData(GKeyFile* keyfile, char *groupname);
 static int CallMatchingProcessorForSearchResultLine(char *oneline, gboolean new_search, char *cmdtemplate, RFM_FileAttributes* fileAttributes);
 static void cmdSearchResultColumnSeperator(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
@@ -1541,14 +1541,7 @@ static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guin
    gint i;
    RFM_FileAttributes *fileAttributes=malloc_fileAttributes();
    fileAttributes->id = fileAttributeID;
-   gchar *absoluteaddr;
-   if (name[0]=='/')
-     absoluteaddr = g_build_filename(name, NULL); /*if mlocate index not updated with updatedb, address returned by locate will return NULL after canonicalize */
-   else if (SearchResultViewInsteadOfDirectoryView)
-     absoluteaddr = g_build_filename(rfm_SearchResultPath, name, NULL);
-   else
-     absoluteaddr = g_build_filename(rfm_curPath, name, NULL);
-     //address returned by find can be ./blabla, and g_build_filename return something like /rfm/./blabla, so, need to be canonicalized here
+   gchar *absoluteaddr = SearchResultViewInsteadOfDirectoryView ? g_canonicalize_filename(name, rfm_SearchResultPath) : g_canonicalize_filename(name, rfm_curPath); //address returned by find can be ./blabla, and g_build_filename return something like /rfm/./blabla, so, need to be canonicalized here
 
    fileAttributes->path=absoluteaddr;
    g_log(RFM_LOG_DATA,G_LOG_LEVEL_DEBUG,"fileAttributes->path:%s",fileAttributes->path);
@@ -4825,12 +4818,12 @@ int main(int argc, char *argv[])
    return 0;
 }
 
-static int ProcessOnelineForSearchResult(char* oneline, gboolean new_search){
+static int ProcessOnelineForSearchResult(CALLER_OWN char* oneline, gboolean new_search){
   first_line_column_title = FALSE;
   return ProcessOnelineForSearchResult_internel(oneline, new_search, first_line_column_title);
 }
 
-static int ProcessOnelineForSearchResult_with_title(char* oneline, gboolean new_search){
+static int ProcessOnelineForSearchResult_with_title(CALLER_OWN char* oneline, gboolean new_search){
   first_line_column_title = TRUE;
   return ProcessOnelineForSearchResult_internel(oneline, new_search, first_line_column_title);
 }
@@ -4840,7 +4833,7 @@ static int ProcessOnelineForSearchResult_with_title(char* oneline, gboolean new_
 // 同一searchresult包含的多行结果分隔符数相同,类似 csv 格式
 // first_line_column_title 为FALSE时,搜索结果第一行不包含表头,显示C1,C2,C3,...的顺序列名
 // first_line_column_title 为TRUE的时候,第一行为表头,且只能用于扩展列,不会去查找现有同名列
-static int ProcessOnelineForSearchResult_internel(char* oneline, gboolean new_search, gboolean first_line_column_title){
+static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboolean new_search, gboolean first_line_column_title){
            if (oneline == NULL || !new_search) return 0;
 	   char* key=calloc(10, sizeof(char));
 	   uint seperatorPositionAfterCurrentExtColumnValue = strcspn(oneline, SearchResultColumnSeperator);
@@ -4952,7 +4945,7 @@ static int ProcessKeyValuePairInFilesFromSearchResult(char *oneline, gboolean ne
 // cmdtemplate的解析结果会通过 cmdOutput 局部变量传递到下一环节。这个cmdOutput会对应到查询结果的一行
 // 而parse_and_exec_cmd_in_gtk_thread 里的readlineResult是返回这个查询结果多行记录的，每行一个文件。
 // 所以这两个函数看上去都是执行命令模板的，有类似之处，却不好合并
-static int ProcessKeyValuePairInCmdOutputFromSearchResult(char *oneline, gboolean new_search, char** cmdtemplate){
+static int ProcessKeyValuePairInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate){
    if (new_search){
      CallDefaultSearchResultFunctionForNewSearch(oneline);
      return 0;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
@@ -4965,11 +4958,13 @@ static int ProcessKeyValuePairInCmdOutputFromSearchResult(char *oneline, gboolea
    char SearchResultOnelineDocProcessingCmd[PATH_MAX];
    
    int cmd_interpretor_index = match_cmd_str_array_with_interpretors(cmdtemplate);
+   gchar * absolute_address = g_canonicalize_filename(oneline, rfm_SearchResultPath);
    if (cmd_interpretor_index>=0){//用户在config.h里定义的命令模板字符串数组，如果第0个字符串指定命令解释器，则第1个字符串指定命令模板; 否则，第0个字符串即是命令模板
-     snprintf(SearchResultOnelineDocProcessingCmd,PATH_MAX,cmdtemplate[1],oneline);
+     snprintf(SearchResultOnelineDocProcessingCmd,PATH_MAX,cmdtemplate[1],absolute_address);
    }else{
-     snprintf(SearchResultOnelineDocProcessingCmd,PATH_MAX,cmdtemplate[0],oneline);
+     snprintf(SearchResultOnelineDocProcessingCmd,PATH_MAX,cmdtemplate[0],absolute_address);
    }
+   g_free(absolute_address);
    char** cmd = stdin_cmd_interpretors[cmd_interpretor_index>=0 ? cmd_interpretor_index : current_stdin_cmd_interpretor].cmdTransformer(SearchResultOnelineDocProcessingCmd, FALSE);
 
    g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"ProcessKeyValuePairInCmdOutputFromSearchResult cmd:%s, MatchedCmdInterpretor:%d, current_stdin_cmd_interpretor %d",SearchResultOnelineDocProcessingCmd, cmd_interpretor_index, current_stdin_cmd_interpretor);
@@ -5206,6 +5201,9 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
   }
   SearchResultFileNameListLength=0;
   fileAttributeID=1;
+  g_free(rfm_SearchResultPath);
+  rfm_SearchResultPath=strdup(rfm_curPath);
+
   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"update_SearchResultFileNameList, length: %ld charactor(s)",filenamelist?strlen((gchar*)filenamelist):0);
   gchar * oneline=strtok((gchar*)filenamelist,"\n");
   while (oneline!=NULL){
@@ -5219,8 +5217,6 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
   if (searchresultTypes[SearchResultTypeIndex].SearchResultColumnSeperator) {
     strcpy(SearchResultColumnSeperator, old_searchresultcolumnSeperator);
   }
-  g_free(rfm_SearchResultPath);
-  rfm_SearchResultPath=strdup(rfm_curPath);
  
   FirstPage(rfmCtx);
   if (old_filenamelist!=NULL) g_list_free(old_filenamelist);
