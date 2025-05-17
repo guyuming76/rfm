@@ -2966,6 +2966,9 @@ static gboolean view_button_press(GtkWidget *widget, GdkEvent *event, RFM_ctx *r
 
 static void refresh_toolbar()
 {
+   gchar *tooltip = SearchResultViewInsteadOfDirectoryView? g_strdup_printf("rfm_curPath:%s\nrfm_SearchResultPath:%s\n%s",rfm_curPath,rfm_SearchResultPath,TOOL_TIP_PathAndRepositoryNameDisplay):g_strdup(TOOL_TIP_PathAndRepositoryNameDisplay);
+   gtk_tool_item_set_tooltip_text(PathAndRepositoryNameDisplay, tooltip);
+   g_free(tooltip);
    gtk_widget_show(PathAndRepositoryNameDisplay);
    for (guint i = 0; i < G_N_ELEMENTS(tool_buttons); i++) {
      if (SHOW_TOOLBAR_BUTTON(tool_buttons,i)) gtk_widget_show(tool_bar_buttons[i]);
@@ -3017,7 +3020,6 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
 
    //we add the following toolbutton here instead of define in config.def.h because we need its global reference.
    PathAndRepositoryNameDisplay = gtk_tool_button_new(NULL,rfm_curPath);
-   gtk_tool_item_set_tooltip_text(PathAndRepositoryNameDisplay, TOOL_TIP_PathAndRepositoryNameDisplay);
    gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), GTK_TOOL_BUTTON(PathAndRepositoryNameDisplay), -1);
    g_signal_connect(PathAndRepositoryNameDisplay, "clicked", G_CALLBACK(Switch_SearchResultView_DirectoryView),rfmCtx);
    
