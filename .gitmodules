@@ -4,3 +4,6 @@
 [submodule "devPicAndVideo"]
 	path = devPicAndVideo
 	url = https://gitee.com/guyuming76/rfm-dev-pic-and-video.git
+[submodule "AI_model_API_config"]
+	path = AI_model_API_config
+	url = https://gitee.com/guyuming76/AI_model_API_config
