@@ -1,0 +1,17 @@
+本文档列举一些把现有编译选项AiIntegration内实现的功能迁移到AI_model_API_config仓库项目所需要的改动思路和问题:
+
+1. 现有功能通过在rfm命令行输入activationKey比如 d> 进入相应模型问答提示符状态, 调用config.h中AI_models静态数组内定义的脚本和参数实现和AI模型的对话
+
+2. 把config.h中AI_models静态数组内容移入 AI_model_API_config 仓库后, 可以大致按host->model这样的目录结构保存调用脚本和参数. 
+
+3. 如果AI_model_API_config仓库在rfm文件管理器中使用,可以选中某个.AI_model.json文件,然后在文件上下文菜单中添加比如"AI对话",切换到相应AI模型提示符, 选择相应 .AI_model.json 的作用实际上可以是为一系列AI模型对话需要的环境变量设置值, 而现有 rfm 功能已有根据查询结果页面文件中列名和值设置环境变量的功能. 一个细节是现有.AI_model.json文件中并未包括host base_url 键和值,这个位于文件同目录(或最临近的父目录)内.AI_host.json文件,可能需要查询代码把相应结果放入查询结果同一行
+
+4. 上述第3点描述的操作场景和现有基于 config.h 中 AI_models 定义的使用场景的一个区别是会占用一个查询结果窗口,好处是给用户选择, 坏处可能是有时操作不方便,有没有更快捷的操作?
+
+5. 上述第3点提到的"AI对话"文件上下文菜单,应该是特定于.AI_model.json文件名后缀或某种查询结果类型的定义,是放在config.h里作为rfm全局设置呢还是AI_model_API_config仓库内的rfm_local.c里? 放在AI_model_API_config仓库里似乎更合理, 但在rfm内使用AI对话功能时,用户不可能时刻停留在模型配置仓库目录里,所以我们似乎要在rfm内提供一种类似全局Addon的架构,如果把rfm_local.c看作一种局部Addon架构得话. 也就是说通过类似rfm_local.c里首次目录促发资源加载,但并不会随退出目录立刻卸载资源,而是需要手工卸载. 着似乎就要扩展现有rfm_local.c架构,比如把Addon资源变量从全局singleton变为某种和rfm_local.c对于的hash关联的内存结构,比如hashtable
+
+6. 如果第5点所述全局addon架构就绪,代码修改最少的一个改动路径应该是当AI_model_API_config全局Addon激活后,根据目录文件内容初始化现有 AI_models 数组内容. 这里AI_models就变成了一个全局Addon提供的资源, 对 rfm 命令提示对应的 stdin_cmd_interpreter 中AI项的扩充, 类似将来也可以扩充一些用于网络聊天的全局或局部Addon.
+
+7. 也就是说我们可能期望同时提供第3点和第6点两种进入AI模型对话的操作方式,但如何让两种尽量重用更多的代码?
+
+8. 我们对AI_model_API_config仓库的另一个设计理想是也可以脱离rfm,在终端模拟器内独立使用,也就是仅仅提供一组配置参数和工具脚本, 也就是说我们至少要提供一个工具在终端模拟器内根据选中的模型配置文件设置终端模拟器当前会话环境变量值.第6点所提到的初始化AI_models数组内容我们也可以循环调用此工具完成.第3点提到rfm现有代码可以根据查询结果选中的行设置环境变量,我们在此处要放弃这个功能而使用此工具吗?
