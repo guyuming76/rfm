@@ -98,7 +98,7 @@ else
 		if [[ "$1" == "cp" ]];then
 			cp -i -v -r $sourcefile $target
 		elif [[ "$1" == "mv" ]];then
-		        if [[ -z "$check_and_update_symbolic_link" || "$check_and_update_symbolic_linj" == "y" || "$check_and_update_symbolic_link" == "Y" ]];then
+		        if [[ -z "$check_and_update_symbolic_link" || "$check_and_update_symbolic_link" == "y" || "$check_and_update_symbolic_link" == "Y" ]];then
 		                rfmMoveDirAndUpdateSymbolicLinks.sh $sourcefile $target
 			else
 			        mv -i -v $sourcefile $target
