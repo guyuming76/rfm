@@ -22,11 +22,11 @@ sourcefiles=$(rfmFromClipboard.sh)
 
 clipboardContent=0
 for src in $sourcefiles;do
-	echo $src
-	clipboardContent+=1
+	echo "$src"
+	((clipboardContent++))
 done
 
-if [[ $clipboardContent -eq 0 ]];then
+if [[ $clipboardContent -eq 0 || -z "$sourcefiles" ]];then
 	echo "请输入源路径(键盘上下箭头选取历史输入):"
 else
 	echo -e "\e[1;33m"
@@ -96,12 +96,14 @@ if [[ ! -z "$source" ]];then
 else
 	for sourcefile in $sourcefiles;do
 		if [[ "$1" == "cp" ]];then
-			cp -i -v -r $sourcefile $target
+			cp -i -v -r "$sourcefile" "$target"
 		elif [[ "$1" == "mv" ]];then
 		        if [[ -z "$check_and_update_symbolic_link" || "$check_and_update_symbolic_link" == "y" || "$check_and_update_symbolic_link" == "Y" ]];then
-		                rfmMoveDirAndUpdateSymbolicLinks.sh $sourcefile $target
+		                if ! rfmMoveDirAndUpdateSymbolicLinks.sh "$sourcefile" "$target"; then
+					cp_mv_ln_return0=false
+				fi
 			else
-			        mv -i -v $sourcefile $target
+			        mv -i -v "$sourcefile" "$target"
 			fi
 		elif [[ -z "$useRelativeInSL" || "$useRelativeInSL" == "y" || "$useRelativeInSL" == "Y" ]];then
 			ln -sr $sourcefile $(echo $target/$(basename $sourcefile))

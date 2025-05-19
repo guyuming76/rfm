@@ -1,5 +1,7 @@
 #!/bin/bash
 
+#set -x
+
 # Source 和 Destination 需要是不同的目录
 # 或者 Source 是文件, 而Destination 是目录,如同mv 命令参数
 # 从 Source 移动到 Destination
@@ -39,19 +41,22 @@ fi
 
 	# 下面 SpecificDir 实际指的是 Source
 	# 因为 $rfmFindScope 是绝对路径形式, find 的输出也是绝对路径形式
-find "$rfmFindScope" -type l -exec rfm_Update_affected_SymbolicLinks_for_move_or_copy.sh "$Destination" "$Source" {} \;
+find "$rfmFindScope" -type l -exec rfm_Update_affected_SymbolicLinks_for_move_or_copy.sh "$Destination" "$Source" {} \; || {
+    echo "find命令执行失败" >&2
+    exit 3
+}
 
 if [[ "$rfmFindScope" == "/" ]]; then
     if [[ "$rfm_overwrite_destination" == "y" || "$rfm_overwrite_destination" == "Y" ]]; then
-        rm -rf "$Destination"
-        mv -T -f "$Source" "$Destination"
+        rm -rf "$Destination" || { echo "删除目标目录失败" >&2; exit 4; }
+        mv -T -f "$Source" "$Destination" || { echo "强制移动失败" >&2; exit 5; }
     else
-        mv "$Source" "$Destination"
+        mv "$Source" "$Destination" || { echo "普通移动失败" >&2; exit 6; }
     fi
 else
      #git mv 和 mv 不同，没有 -t,-T 参数, -f 参数的作用是否类似 -T?
      #顺便提一下，git mv 文档提到会保持 git log, 但我发现不是
-     git mv -f "$Source" "$Destination"
+     git mv -f "$Source" "$Destination" || { echo "git移动失败" >&2; exit 7; }
 fi
 
 if [ -n "$G_MESSAGES_DEBUG" ]; then
@@ -60,4 +65,24 @@ fi
 
 #find "$Destination" -type l | while read -r symlink; do symlink_target=$(readlink "$symlink"); if [ -n "$G_MESSAGES_DEBUG" ]; then echo "#####:" "$symlink"; echo "$symlink_target"; fi; ln -srfn "$symlink_target" "$symlink"; done
 # Destination 下面所有符号链接，若是使用绝对路径（以 / 开头）， 使用相对路径重建
-find "$Destination" -type l | while read -r symlink; do symlink_target=$(readlink "$symlink"); if [[ ${symlink_target:0:1} == "/" ]]; then ln -srfn "$symlink_target" "$symlink"; fi; done
+symbolic_link_errors=0
+find "$Destination" -type l | while read -r symlink; do 
+    if ! symlink_target=$(readlink "$symlink"); then
+        echo "读取符号链接失败: $symlink" >&2
+        ((symbolic_link_errors++))
+        continue
+    fi
+    
+    if [[ ${symlink_target:0:1} == "/" ]]; then 
+        if ! ln -srfn "$symlink_target" "$symlink"; then
+            echo "重建符号链接失败: $symlink" >&2
+            ((symbolic_link_errors++))
+        fi
+    fi
+done
+
+# 检查错误计数并退出
+if (( symbolic_link_errors > 0 )); then
+    echo "发现 $symbolic_link_errors 个符号链接处理错误" >&2
+    exit 8
+fi

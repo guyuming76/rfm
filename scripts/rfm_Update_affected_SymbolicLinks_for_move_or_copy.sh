@@ -1,5 +1,7 @@
 #!/bin/bash
 
+#set -x
+
 #如果文件 $3 是符号链接,且指向某目录 $2 下的文件,则更新符号链接,指向新的路径 $1 (因为目录 $2 将会被移动到 $1)
 
 # 源自传递给 rfmMoveDirAndUpdateSymbolicLink.sh 的传入参数 Destination, 再由 rfmMoveDirAndUpdateSymbolicLink.sh 传入本脚本
@@ -78,14 +80,20 @@ if [[ -L "$SymbolicLink" ]]; then
 		#目前的使用场景都是在git仓库内部,所以下面建立符号链接使用相对地址, 但如果$SymbolicLink位于OldAddress下面,也就是说结下来会被移动或复制,那么移动后的符号链接相对路径就失效了,所以我们用绝对路径,移动后再更新为相对路径
 		#即使现在mv还没有发生, new_link_target_fullpath 文件还不存在, 但我运行下来以这个还不存在的路径作为目标建立符号链接是可以的
 		if [ $? -eq 0 ]; then
-			ln -sfT "$new_link_target_fullpath" "$SymbolicLink"
+			if ! ln -sfT "$new_link_target_fullpath" "$SymbolicLink"; then
+				echo "创建绝对路径符号链接失败: $SymbolicLink -> $new_link_target_fullpath" >&2
+				exit 10
+			fi
 			if [ -n "$G_MESSAGES_DEBUG" ]; then
 				echo "  target will be changed back to relative after move or copy"
 			fi
 		else
 		#如果NewAddress已存在，也就是说在mv/cp后会被覆盖，这时生成的new relative target 会错误, 如devPicAndVideo/20241106_04h01m30s_grim.png 所示 
 		#本commit解决办法是在运行本脚本前 git rm 掉 $Destination
-			ln -srfT "$new_link_target_fullpath" "$SymbolicLink"
+			if ! ln -srfT "$new_link_target_fullpath" "$SymbolicLink"; then
+				echo "创建相对路径符号链接失败: $SymbolicLink -> $new_link_target_fullpath" >&2
+				exit 11
+			fi
 			if [ -n "$G_MESSAGES_DEBUG" ]; then
 				echo "  new relativ target:" $(readlink "$SymbolicLink")
 			fi
