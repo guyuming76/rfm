@@ -19,45 +19,43 @@ elif [ -n "$G_MESSAGES_DEBUG" ]; then
 	echo "Source:" "$Source" "     Destination:" "$Destination"
 fi
 
+if [[ "$rfm_overwrite_destination" == "y" || "$rfm_overwrite_destination" == "Y" ]]; then
+        rm -rf "$Destination" || { echo "删除目标目录失败" >&2; exit 4; }
+fi
+
 # 获取查找范围,参见rfmFindLinksToTheSameFile_Chinese.h.sh
 # rfmFindScope 会是绝对路径形式
-rfmFindScope=$(git rev-parse --show-toplevel 2>/dev/null)
-if [[ -z  "$rfmFindScope" ]]; then
-       	rfmFindScope="/"
+# 获取源和目标的git仓库根目录
+if [[ -d "$Source" ]];then
+	sourceGitRoot=$(cd "$Source" && git rev-parse --show-toplevel 2>/dev/null)
 else
-	#如图 devPicAndVideo/20241106_04h15m16s_grim.png 和 20241106_04h30m04s_grim.png 所示
-	#当Destination已存在，并且恰好又指向Source的时候，git mv 似乎有问题
-	#再结合 commit b070f502d70542efae1d0e2152c71c1938db0e02 里 rfm_Update_affected_SymbolicLinks_for_move_or_copy.sh 所描述问题
-	#所以先删掉Destination.
-	#TODO:这里实际上是处理 rfmCopyMove.sh 调用 rfm_overwrite_destination 用户选y的情况. rfmCopyMoveToCurPath.sh 调用本脚本的情况还没考虑，也有可能有同名需要覆盖的情况
-	if [[ -n "$rfm_overwrite_destination" ]] && [[ "$rfm_overwrite_destination" == "y" || "$rfm_overwrite_destination" == "Y" ]];then
-		if [[ -d "$Destination" ]]; then
-			git rm -r "$Destination"
-		else
-			git rm "$Destination"
-		fi
-	fi
+	sourceGitRoot=$(cd $(dirname "$Source") && git rev-parse --show-toplevel 2>/dev/null)
+fi
+if [[ -d "$Destination" ]];then
+	destGitRoot=$(cd "$Destination" && git rev-parse --show-toplevel 2>/dev/null)
+else
+	destGitRoot=$(cd $(dirname "$Destination") && git rev-parse --show-toplevel 2>/dev/null)
+fi
+
+if [[ -n "$sourceGitRoot" && -n "$destGitRoot" && "$sourceGitRoot" == "$destGitRoot" ]]; then
+    rfmFindScope="$sourceGitRoot"
+    echo "提示: 源和目标在同一git仓库，将在仓库内($rfmFindScope)查找指向源(目录内)文件的软链接，而不是全文件系统查找，以节省时间"
+else
+    rfmFindScope="/"
+    echo "提示: 需要在整个文件系统(/)范围查找指向源(目录内)文件的软链接，可能耗时比较长"
 fi
 
 	# 下面 SpecificDir 实际指的是 Source
 	# 因为 $rfmFindScope 是绝对路径形式, find 的输出也是绝对路径形式
-find "$rfmFindScope" -type l -exec rfm_Update_affected_SymbolicLinks_for_move_or_copy.sh "$Destination" "$Source" {} \; || {
-    echo "find命令执行失败" >&2
-    exit 3
-}
+#find命令在遇到目录权限不够的情况会导致返回值非0，不能因此退出脚本
+find "$rfmFindScope" -type l -exec rfm_Update_affected_SymbolicLinks_for_move_or_copy.sh "$Destination" "$Source" {} \;
 
-if [[ "$rfmFindScope" == "/" ]]; then
-    if [[ "$rfm_overwrite_destination" == "y" || "$rfm_overwrite_destination" == "Y" ]]; then
-        rm -rf "$Destination" || { echo "删除目标目录失败" >&2; exit 4; }
+if [[ "$rfm_overwrite_destination" == "y" || "$rfm_overwrite_destination" == "Y" ]]; then
         mv -T -f "$Source" "$Destination" || { echo "强制移动失败" >&2; exit 5; }
-    else
-        mv "$Source" "$Destination" || { echo "普通移动失败" >&2; exit 6; }
-    fi
 else
-     #git mv 和 mv 不同，没有 -t,-T 参数, -f 参数的作用是否类似 -T?
-     #顺便提一下，git mv 文档提到会保持 git log, 但我发现不是
-     git mv -f "$Source" "$Destination" || { echo "git移动失败" >&2; exit 7; }
+        mv "$Source" "$Destination" || { echo "普通移动失败" >&2; exit 6; }
 fi
+
 
 if [ -n "$G_MESSAGES_DEBUG" ]; then
 	echo "###########################"
