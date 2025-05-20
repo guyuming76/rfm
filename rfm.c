@@ -607,13 +607,7 @@ static GtkWidget *menu = NULL;
 static GtkWidget **menuItem = NULL;
 
 #ifdef RFM_LOCAL
-GtkWidget **tool_bar_buttons_local = NULL;
-RFM_ToolButton *toolbar_button_definitions_local = NULL;//静态数组在rfm_local.c中定义，但是通过本指针访问
-size_t toolbar_button_definitions_local_array_size = 0;
-GtkWidget **menuItems_local = NULL;
-RFM_MenuItem *file_menuitem_definitions_local = NULL;
-size_t file_menuitem_definitions_local_array_size = 0;
-
+GHashTable* addon_and_local_resources; // RFM_LOCAL_C_HASH as key, RFM_ADDON_RESOUCES* as value
 void remove_toolbar_buttons(FREE GtkWidget ***buttons, const size_t size);
 void remove_file_menuitems(FREE GtkWidget ***menuitems, const size_t size);
 #endif
@@ -2860,7 +2854,12 @@ static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx)
 
    show_hide_file_menu_item(&menuItem, run_actions, G_N_ELEMENTS(run_actions), match_mimeRoot, match_mimeSub, fileAttributes_of_the_first_selected_file, selectionList);
 #ifdef RFM_LOCAL
-   if (file_menuitem_definitions_local_array_size>0) show_hide_file_menu_item(&menuItems_local, file_menuitem_definitions_local, file_menuitem_definitions_local_array_size, match_mimeRoot, match_mimeSub, fileAttributes_of_the_first_selected_file, selectionList);
+   GHashTableIter ht_iter;
+   gchar *key;
+   RFM_ADDON_RESOURCE *value;
+   g_hash_table_iter_init(&ht_iter, addon_and_local_resources);
+   while (g_hash_table_iter_next(&ht_iter, &key, &value))
+     if (value->file_menuitem_definitions_local_array_size>0) show_hide_file_menu_item(&(value->menuItems_local), value->file_menuitem_definitions_local, value->file_menuitem_definitions_local_array_size, match_mimeRoot, match_mimeSub, fileAttributes_of_the_first_selected_file, selectionList);
 #endif
    gtk_menu_popup_at_pointer(GTK_MENU(menu), event);
    g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
@@ -2979,9 +2978,17 @@ static void refresh_toolbar()
      else gtk_widget_hide(tool_bar_buttons[i]);
    }
 #ifdef RFM_LOCAL
-   for (guint i = 0; i < toolbar_button_definitions_local_array_size; i++) {
-     if (SHOW_TOOLBAR_BUTTON(toolbar_button_definitions_local ,i)) gtk_widget_show(tool_bar_buttons_local[i]);
-     else gtk_widget_hide(tool_bar_buttons_local[i]);
+   GHashTableIter iter;
+   gchar *key;
+   RFM_ADDON_RESOURCE *value;
+   g_hash_table_iter_init(&iter, addon_and_local_resources);
+   while (g_hash_table_iter_next(&iter, &key, &value)) {
+     for (guint i = 0; i < value->toolbar_button_definitions_local_array_size; i++) {
+       if (SHOW_TOOLBAR_BUTTON(value->toolbar_button_definitions_local, i))
+         gtk_widget_show(value->tool_bar_buttons_local[i]);
+       else
+         gtk_widget_hide(value->tool_bar_buttons_local[i]);
+     }
    }
 #endif
 }
@@ -4686,7 +4693,8 @@ int main(int argc, char *argv[])
    struct stat statbuf;
    gchar *thumbnailsize;
    g_log_set_handler (G_LOG_DOMAIN, G_LOG_LEVEL_MASK | G_LOG_FLAG_FATAL| G_LOG_FLAG_RECURSION, g_log_default_handler, NULL);
-   
+
+   addon_and_local_resources = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, NULL);// rfm_local_c_file_hash 作为key都是常量定义在代码文件里，作为value里RFM_ADDON_RESOURCE 也是作为全局结构变量定义在动态链接库，都不用 free function
    rfmCtx=calloc(1,sizeof(RFM_ctx));
    if (rfmCtx==NULL) return 1;
    //rfmCtx->rfm_sortColumn=GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID;

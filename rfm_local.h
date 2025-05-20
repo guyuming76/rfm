@@ -62,3 +62,12 @@ typedef struct {
    const gchar **runCmd;
    gboolean (*showCondition)(RFM_FileAttributes*);
 } RFM_MenuItem;
+
+typedef struct {
+  GtkWidget **tool_bar_buttons_local;
+  RFM_ToolButton *toolbar_button_definitions_local;//静态数组在rfm_local.c中定义，但是通过本指针访问
+  size_t toolbar_button_definitions_local_array_size;
+  GtkWidget **menuItems_local;
+  RFM_MenuItem *file_menuitem_definitions_local;
+  size_t file_menuitem_definitions_local_array_size;
+} RFM_ADDON_RESOURCE;
