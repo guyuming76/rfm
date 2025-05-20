@@ -1950,6 +1950,10 @@ static void GitStatusForDirectory(gchar * filename, const char* status) {
             if (existingStatus[i] != status_[i]) { // 相同就不用调整了
               if (existingStatus[i] == ' ') continue; // 任何字符都覆盖空格，也就是说status这一位不用调整
               if (status_[i] == ' ') { status_[i] = existingStatus[i];continue;} // 如果新的status为空格，则保留existing status, 这一种情况应该不会发生，因为我们是先读取git tracked file,也就是先读取空格status,后续读取的status应该都不会是空格
+	      if (i==0){  // git命令输出的??状态实际上应该理解为" ?"更合理，所以"??"+"M " 应该得出"M?" 而不是 "*?" 更合理
+		  if (existingStatus[i]=='?') continue; // 任何字符覆盖第一位?
+		  if (status_[i]=='?') { status_[i] = existingStatus[i]; continue; } //第一位?不改变任何现有字符
+	      }
               status_[i] = '*'; // 不同且不为空，就设为"*"
             }
           }
