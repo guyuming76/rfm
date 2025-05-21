@@ -606,12 +606,6 @@ static GtkWidget **tool_bar_buttons = NULL;
 static GtkWidget *menu = NULL;
 static GtkWidget **menuItem = NULL;
 
-#ifdef RFM_LOCAL
-GHashTable* addon_and_local_resources; // RFM_LOCAL_C_HASH as key, RFM_ADDON_RESOUCES* as value
-void remove_toolbar_buttons(FREE GtkWidget ***buttons, const size_t size);
-void remove_file_menuitems(FREE GtkWidget ***menuitems, const size_t size);
-#endif
-
 static void up_clicked(gpointer user_data);
 static void home_clicked(gpointer user_data);
 static void PreviousPage(RFM_ctx *rfmCtx);
@@ -665,15 +659,25 @@ static RFM_treeviewColumn ViewColumnsLayouts[2][G_N_ELEMENTS(treeviewColumns)];
 #define SHOW_TOOLBAR_BUTTON(x,i) (((SearchResultViewInsteadOfDirectoryView && x[i].showInSearchResultView) || (!SearchResultViewInsteadOfDirectoryView && x[i].showInDirectoryView)) && (x[i].showCondition == NULL || x[i].showCondition()))
 
 #ifdef RFM_LOCAL
+typedef struct {
+  RFM_ADDON_RESOURCE_TYPE * resource_managed_by_addon;
+  enum RFM_ADDON_TYPE addon_type;
+  void *rfm_local_so_handle;
+  void (*local_enter_func)(void);
+  void (*local_leave_func)(void);
+  gchar *local_c_path;
+  gchar *local_so_path;
+} RFM_ADDON;
+
+void remove_toolbar_buttons(FREE GtkWidget ***buttons, const size_t size);
+void remove_file_menuitems(FREE GtkWidget ***menuitems, const size_t size);
+
+static GHashTable* addons; // RFM_ADDON as value
 static void load_local_extension();
-static void unload_local_extension();
-static gboolean compile_local_extension();
+static void unload_local_extension(RFM_ADDON *addon);
+static gboolean compile_local_extension(RFM_ADDON *addon);
 static gchar* calculate_file_hash(const gchar *filepath);
-static void *rfm_local_so_handle = NULL;
-static void (*local_enter_func)(void) = NULL;
-static void (*local_leave_func)(void) = NULL;
-static gchar *local_c_path = NULL;
-static gchar *local_so_path = NULL;
+static void find_and_unload_addons_before_leaving_current_directory();
 #endif
 
 /**************gtk UI, filemenu, toolbar end**************************/
@@ -2380,7 +2384,7 @@ static gboolean show_gitColumns(RFM_FileAttributes * fileAttributes) {
 
 static void set_rfm_curPath_internal(CALLER_OWN const gchar* path){
 #ifdef RFM_LOCAL
-      unload_local_extension(); // Unload previous extension if any, before path changes
+  find_and_unload_addons_before_leaving_current_directory();
 #endif
   //https://blog.csdn.net/CaspianSea/article/details/78817778
        if (rfm_curPath != path) {
@@ -2856,10 +2860,12 @@ static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx)
 #ifdef RFM_LOCAL
    GHashTableIter ht_iter;
    gchar *key;
-   RFM_ADDON_RESOURCE *value;
-   g_hash_table_iter_init(&ht_iter, addon_and_local_resources);
-   while (g_hash_table_iter_next(&ht_iter, &key, &value))
-     if (value->file_menuitem_definitions_local_array_size>0) show_hide_file_menu_item(&(value->menuItems_local), value->file_menuitem_definitions_local, value->file_menuitem_definitions_local_array_size, match_mimeRoot, match_mimeSub, fileAttributes_of_the_first_selected_file, selectionList);
+   RFM_ADDON *value;
+   g_hash_table_iter_init(&ht_iter, addons);
+   while (g_hash_table_iter_next(&ht_iter, &key, &value)){
+     RFM_ADDON_RESOURCE_TYPE* addon_resource = value->resource_managed_by_addon;
+     if (addon_resource->file_menuitem_definitions_local_array_size>0) show_hide_file_menu_item(&(addon_resource->menuItems_local), addon_resource->file_menuitem_definitions_local, addon_resource->file_menuitem_definitions_local_array_size, match_mimeRoot, match_mimeSub, fileAttributes_of_the_first_selected_file, selectionList);
+   }
 #endif
    gtk_menu_popup_at_pointer(GTK_MENU(menu), event);
    g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
@@ -2980,14 +2986,15 @@ static void refresh_toolbar()
 #ifdef RFM_LOCAL
    GHashTableIter iter;
    gchar *key;
-   RFM_ADDON_RESOURCE *value;
-   g_hash_table_iter_init(&iter, addon_and_local_resources);
+   RFM_ADDON *value;
+   g_hash_table_iter_init(&iter, addons);
    while (g_hash_table_iter_next(&iter, &key, &value)) {
-     for (guint i = 0; i < value->toolbar_button_definitions_local_array_size; i++) {
-       if (SHOW_TOOLBAR_BUTTON(value->toolbar_button_definitions_local, i))
-         gtk_widget_show(value->tool_bar_buttons_local[i]);
+     RFM_ADDON_RESOURCE_TYPE* addon_resource = value->resource_managed_by_addon;
+     for (guint i = 0; i < addon_resource->toolbar_button_definitions_local_array_size; i++) {
+       if (SHOW_TOOLBAR_BUTTON(addon_resource->toolbar_button_definitions_local, i))
+         gtk_widget_show(addon_resource->tool_bar_buttons_local[i]);
        else
-         gtk_widget_hide(value->tool_bar_buttons_local[i]);
+         gtk_widget_hide(addon_resource->tool_bar_buttons_local[i]);
      }
    }
 #endif
@@ -4694,7 +4701,7 @@ int main(int argc, char *argv[])
    gchar *thumbnailsize;
    g_log_set_handler (G_LOG_DOMAIN, G_LOG_LEVEL_MASK | G_LOG_FLAG_FATAL| G_LOG_FLAG_RECURSION, g_log_default_handler, NULL);
 
-   addon_and_local_resources = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, NULL);// rfm_local_c_file_hash 作为key都是常量定义在代码文件里，作为value里RFM_ADDON_RESOURCE 也是作为全局结构变量定义在动态链接库，都不用 free function
+   addons = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
    rfmCtx=calloc(1,sizeof(RFM_ctx));
    if (rfmCtx==NULL) return 1;
    //rfmCtx->rfm_sortColumn=GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID;
@@ -5419,7 +5426,7 @@ static gchar* calculate_file_hash(const gchar *filepath) {
 }
 
 // Compile rfm_local.c into rfm_local.so in the current directory
-static gboolean compile_local_extension() {
+static gboolean compile_local_extension(RFM_ADDON* addon) {
     gboolean success = FALSE;
     GError *err = NULL;
     gint status;
@@ -5427,79 +5434,80 @@ static gboolean compile_local_extension() {
     gchar *c_file_hash = NULL; // To store the hash of the .c file
 
     // Calculate hash of the .c file
-    c_file_hash = calculate_file_hash(local_c_path);
+    c_file_hash = calculate_file_hash(addon->local_c_path);
     if (!c_file_hash) {
-        g_warning("Failed to calculate hash for %s", local_c_path);
+        g_warning("Failed to calculate hash for %s", addon->local_c_path);
         // No goto cleanup here, just return FALSE after freeing potential resources
         // Note: local_c_path and local_so_path are freed in the caller (load_local_extension)
         return FALSE;
     }
-    g_debug("Hash of %s: %s", local_c_path, c_file_hash);
+    g_debug("Hash of %s: %s", addon->local_c_path, c_file_hash);
 
     // Prepare the hash definition for the compiler command
     gchar *hash_define = g_strdup_printf("-DRFM_LOCAL_C_HASH=\\\"%s\\\"", c_file_hash);
     g_free(c_file_hash); // Free the calculated hash string
 
-    gchar* rfm_local_c_compile_cmd = g_strdup_printf(rfm_local_c_compile_cmd_template, RFM_SearchResultTypeNamePrefix, RFM_NEW_TERM_SUFFIX, RFM_selected_filename_placeholder, RFM_SEARCH_RESULT_AS_INPUT_PREFIX, local_so_path, hash_define, local_c_path);
+    gchar* rfm_local_c_compile_cmd = g_strdup_printf(rfm_local_c_compile_cmd_template, RFM_SearchResultTypeNamePrefix, RFM_NEW_TERM_SUFFIX, RFM_selected_filename_placeholder, RFM_SEARCH_RESULT_AS_INPUT_PREFIX, addon->local_so_path, hash_define, addon->local_c_path);
     return parse_and_exec_command_in_gtk_thread(rfm_local_c_compile_cmd, FALSE, 0);
 }
 
 // Load rfm_local.so if it exists and is up-to-date or successfully compiled
 static void load_local_extension() {
-    local_c_path = g_build_filename(rfm_curPath, RFM_LOCAL_C_FILE, NULL);
-    local_so_path = g_build_filename(rfm_curPath, RFM_LOCAL_SO_FILE, NULL);
+    char *dlsym_error = NULL; //The message returned by dlerror() may reside in a statically allocated buffer that is overwritten by subsequent dlerror()calls. https://www.man7.org/linux/man-pages/man3/dlerror.3.html
+    RFM_ADDON * addon = calloc(1, sizeof(RFM_ADDON));
+    addon->local_c_path = g_build_filename(rfm_curPath, RFM_LOCAL_C_FILE, NULL);
+    addon->local_so_path = g_build_filename(rfm_curPath, RFM_LOCAL_SO_FILE, NULL);
     gboolean compile_needed = FALSE;
    // struct stat c_stat, so_stat; // No longer needed for timestamp
 
-   if (g_file_test(local_c_path, G_FILE_TEST_EXISTS)) {
+   if (g_file_test(addon->local_c_path, G_FILE_TEST_EXISTS)) {
        // No need to stat .c file anymore
 
-       if (!g_file_test(local_so_path, G_FILE_TEST_EXISTS)) {
-           g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "%s not found, compilation needed.", local_so_path);
+       if (!g_file_test(addon->local_so_path, G_FILE_TEST_EXISTS)) {
+           g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "%s not found, compilation needed.", addon->local_so_path);
            compile_needed = TRUE;
        } else {
            // Compare hashes instead of timestamps
-           gchar *current_c_hash = calculate_file_hash(local_c_path);
+           gchar *current_c_hash = calculate_file_hash(addon->local_c_path);
            gchar *so_hash = NULL;
-           void *temp_handle = dlopen(local_so_path, RTLD_LAZY | RTLD_LOCAL);
-           const char *dlsym_err_str = NULL; // To store dlerror result
+           void *temp_handle = dlopen(addon->local_so_path, RTLD_LAZY | RTLD_LOCAL);
 
            if (temp_handle) {
                // Clear any previous error before dlsym
                dlerror();
                // Use void* for dlsym, then cast if needed
                void *symbol_ptr = dlsym(temp_handle, "rfm_local_c_file_hash");
-               dlsym_err_str = dlerror(); // Check error *after* calling dlsym
+               dlsym_error = dlerror(); // Check error *after* calling dlsym
 
-               if (!dlsym_err_str && symbol_ptr) {
+               if (!dlsym_error && symbol_ptr) {
                    // Cast to the correct type ONLY if symbol was found
                    const char * const * hash_ptr = (const char * const *)symbol_ptr;
                    if (hash_ptr && *hash_ptr) { // Check if the pointer itself and the string it points to are valid
-                       so_hash = g_strdup(*hash_ptr);
+                        so_hash = g_strdup(*hash_ptr);
                         g_log(G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, "Found hash in SO: %s", so_hash);
                    } else {
-                        g_warning("Symbol 'rfm_local_c_file_hash' found in %s but points to NULL. Recompiling.", local_so_path);
+                        g_warning("Symbol 'rfm_local_c_file_hash' found in %s but points to NULL. Recompiling.", addon->local_so_path);
                         compile_needed = TRUE; // Force recompile if symbol is NULL
                    }
                } else {
-                    g_warning("Could not find symbol 'rfm_local_c_file_hash' in %s: %s. Recompiling.", local_so_path, dlsym_err_str ? dlsym_err_str : "(symbol not found)");
+                    g_warning("Could not find symbol 'rfm_local_c_file_hash' in %s: %s. Recompiling.", addon->local_so_path, dlsym_error ? dlsym_error : "(symbol not found)");
                     compile_needed = TRUE; // Force recompile if symbol not found
                }
                dlclose(temp_handle);
            } else {
-               g_warning("Could not dlopen %s to check hash: %s. Recompiling.", local_so_path, dlerror());
+               g_warning("Could not dlopen %s to check hash: %s. Recompiling.", addon->local_so_path, dlerror());
                compile_needed = TRUE; // Force recompile if .so can't be opened
            }
 
            if (!compile_needed && current_c_hash && so_hash) {
                if (g_strcmp0(current_c_hash, so_hash) != 0) {
-                   g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Hash mismatch for %s. Recompilation needed. (C: %s, SO: %s)", local_c_path, current_c_hash, so_hash);
+                   g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Hash mismatch for %s. Recompilation needed. (C: %s, SO: %s)", addon->local_c_path, current_c_hash, so_hash);
                    compile_needed = TRUE;
                } else {
-                    g_log(G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, "Hashes match for %s. No recompilation needed.", local_c_path);
+                    g_log(G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, "Hashes match for %s. No recompilation needed.", addon->local_c_path);
                }
            } else if (!compile_needed && !current_c_hash) {
-                g_warning("Failed to calculate hash for current %s. Recompiling.", local_c_path);
+                g_warning("Failed to calculate hash for current %s. Recompiling.", addon->local_c_path);
                 compile_needed = TRUE; // Force recompile if current hash fails
            }
            // compile_needed might have been set true inside the dlopen/dlsym block
@@ -5509,71 +5517,101 @@ static void load_local_extension() {
        }
 
         if (compile_needed) {
-            if (!compile_local_extension()) {
+            if (!compile_local_extension(addon)) {
                 g_warning("Compilation failed, cannot load local extension.");
                 goto cleanup;
             }
         }
 
         // Load the .so file
-        rfm_local_so_handle = dlopen(local_so_path, RTLD_LAZY | RTLD_LOCAL);
-        if (!rfm_local_so_handle) {
-            g_warning("dlopen failed for %s: %s", local_so_path, dlerror());
+        addon->rfm_local_so_handle = dlopen(addon->local_so_path, RTLD_LAZY | RTLD_LOCAL);
+        if (!addon->rfm_local_so_handle) {
+            g_warning("dlopen failed for %s: %s", addon->local_so_path, dlerror());
             goto cleanup;
         }
 
-        // Find enter function
-        local_enter_func = dlsym(rfm_local_so_handle, RFM_LOCAL_ENTER_FUNC);
-        const char *dlsym_error = dlerror(); // Check error *after* calling dlsym
+        //查找 addon 资源
+        addon->resource_managed_by_addon = dlsym(addon->rfm_local_so_handle, RFM_ADDON_RESOURCE_STRUCT);
+        dlsym_error = dlerror();
         if (dlsym_error) {
-            g_warning("dlsym failed for %s in %s: %s", RFM_LOCAL_ENTER_FUNC, local_so_path, dlsym_error);
+            g_warning("dlsym failed for %s in %s: %s", RFM_ADDON_RESOURCE_STRUCT, addon->local_so_path, dlsym_error);
             goto cleanup;
         }
 
-        //call enter function
-        if (local_enter_func) {
-            g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Calling %s from %s", RFM_LOCAL_ENTER_FUNC, local_so_path);
-            (*local_enter_func)();
+        //查找 addon 类型
+        enum RFM_ADDON_TYPE *addon_type_variable = dlsym(addon->rfm_local_so_handle, RFM_ADDON_TYPE_VAR_NAME);
+        dlsym_error = dlerror();
+        if (dlsym_error) {
+            g_warning("dlsym failed for %s in %s: %s", RFM_ADDON_TYPE_VAR_NAME, addon->local_so_path, dlsym_error);
+            goto cleanup;
+        }else addon->addon_type = *addon_type_variable;
+
+	addon->local_leave_func = dlsym(addon->rfm_local_so_handle, RFM_LOCAL_LEAVE_FUNC);
+        dlsym_error = dlerror();
+        if (dlsym_error) {
+	    g_warning("dlsym failed for %s in %s: %s", RFM_LOCAL_LEAVE_FUNC, addon->local_so_path, dlsym_error);
+	    goto cleanup;
+	}
+
+        // Find and call enter function
+        addon->local_enter_func = dlsym(addon->rfm_local_so_handle, RFM_LOCAL_ENTER_FUNC);
+        dlsym_error = dlerror();
+        if (dlsym_error) {
+            g_warning("dlsym failed for %s in %s: %s", RFM_LOCAL_ENTER_FUNC, addon->local_so_path, dlsym_error);
+            goto cleanup;
+        } else if (addon->local_enter_func){
+            g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Calling %s from %s", RFM_LOCAL_ENTER_FUNC, addon->local_so_path);
+            (*(addon->local_enter_func))(); //call enter function
+	    g_hash_table_insert(addons, strdup(addon->local_so_path), addon);
 	    return; // 成功call enter funtion 就不要cleanup, unload 完再cleanup
         } else {
-             g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Function %s not found in %s (optional).", RFM_LOCAL_ENTER_FUNC, local_so_path);
+             g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Function %s not found in %s (optional).", RFM_LOCAL_ENTER_FUNC, addon->local_so_path);
         }
 
     } else {
-         g_log(G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, "No local extension file %s found.", local_c_path);
+         g_log(G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, "No local extension file %s found.", addon->local_c_path);
     }
 
  cleanup:
-    if (rfm_local_so_handle) {
-        if (dlclose(rfm_local_so_handle) != 0) g_warning("dlclose failed: %s", dlerror());
-        rfm_local_so_handle = NULL;
+    if (addon->rfm_local_so_handle) {
+        if (dlclose(addon->rfm_local_so_handle) != 0) g_warning("dlclose failed: %s", dlerror());
+        addon->rfm_local_so_handle = NULL;
     }
-    g_free(local_c_path);
-    g_free(local_so_path);
+    g_free(addon->local_c_path);
+    g_free(addon->local_so_path);
+    free(addon);
+}
+
+static void find_and_unload_addons_before_leaving_current_directory() {
+    GHashTableIter ht_iter;
+    gchar *key;
+    RFM_ADDON *value;
+    g_hash_table_iter_init(&ht_iter, addons);
+    while (g_hash_table_iter_next(&ht_iter, &key, &value)){
+      if (value->addon_type==Directory) unload_local_extension(value);
+      //TODO: 处理其他addon类型
+    }
 }
 
 // Unload the currently loaded local extension
-static void unload_local_extension() {
-    if (rfm_local_so_handle) {
-        g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Unloading local extension.");
-
-	local_leave_func = dlsym(rfm_local_so_handle, RFM_LOCAL_LEAVE_FUNC);
-        const char *dlsym_error = dlerror(); // Check error *after* calling dlsym
-        if (dlsym_error) g_warning("dlsym failed for %s in %s: %s", RFM_LOCAL_LEAVE_FUNC, local_so_path, dlsym_error);
+static void unload_local_extension(RFM_ADDON *addon) {
+    if (addon->rfm_local_so_handle) {
+        g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Unloading local extension. %s", addon->local_so_path);
 
         //call leave function
-        if (local_leave_func) {
-            g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Calling %s from %s", RFM_LOCAL_LEAVE_FUNC, local_so_path);
-            (*local_leave_func)();
+        if (addon->local_leave_func) {
+            g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Calling %s from %s", RFM_LOCAL_LEAVE_FUNC, addon->local_so_path);
+            (*(addon->local_leave_func))();
         } else {
-             g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Function %s not found in %s (optional).", RFM_LOCAL_LEAVE_FUNC, local_so_path);
+             g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Function %s not found in %s (optional).", RFM_LOCAL_LEAVE_FUNC, addon->local_so_path);
         }
-        if (dlclose(rfm_local_so_handle) != 0) {
+        if (dlclose(addon->rfm_local_so_handle) != 0) {
              g_warning("dlclose failed: %s", dlerror());
         }
-        rfm_local_so_handle = NULL;
-	g_free(local_c_path);
-	g_free(local_so_path);
+	g_free(addon->local_c_path);
+	g_free(addon->local_so_path);
+        g_hash_table_remove(addons, addon->local_so_path);
+        free(addon);
     }
 }
 #endif

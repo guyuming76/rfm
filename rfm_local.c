@@ -21,13 +21,13 @@ extern char rfm_historyFile_ParentDirectory[PATH_MAX];
 extern void load_history_for_prompt();
 extern void save_current_history();
 extern const stdin_cmd_interpretor stdin_cmd_interpretors[];
-extern GHashTable* addon_and_local_resources;
 extern void add_toolbar_buttons(GtkWidget ***buttons, const RFM_ToolButton button_definitions[], const size_t size);
 extern void add_file_menuitems(GtkWidget ***menuitems, const RFM_MenuItem menuitem_definitions[], const size_t size);
 extern void remove_toolbar_buttons(GtkWidget ***buttons, const size_t size);
 extern void remove_file_menuitems(GtkWidget ***menuitems, const size_t size);
 
-RFM_ADDON_RESOURCE this_local_addon;
+RFM_ADDON_RESOURCE_TYPE addon_resource;
+const enum RFM_ADDON_TYPE addon_type = Directory;
 
 static const char *rfmTODO[] = { NULL, "find . -name '*.rfmTODO.*'" RFM_SearchResultTypeNamePrefix "multitype", NULL };
 static const char *testcmd[] = { "echo","test local file menu command",NULL };
@@ -51,14 +51,13 @@ void rfm_local_enter() {
      if (getcwd(rfm_historyFile_ParentDirectory,sizeof(rfm_historyFile_ParentDirectory))==NULL) fprintf(stderr,"getcwd return NULL");
      load_history_for_prompt();
 
-     this_local_addon.toolbar_button_definitions_local = tool_buttons_local;
-     this_local_addon.toolbar_button_definitions_local_array_size = G_N_ELEMENTS(tool_buttons_local);
-     this_local_addon.file_menuitem_definitions_local = file_menus_local;
-     this_local_addon.file_menuitem_definitions_local_array_size = G_N_ELEMENTS(file_menus_local);
+     addon_resource.toolbar_button_definitions_local = tool_buttons_local;
+     addon_resource.toolbar_button_definitions_local_array_size = G_N_ELEMENTS(tool_buttons_local);
+     addon_resource.file_menuitem_definitions_local = file_menus_local;
+     addon_resource.file_menuitem_definitions_local_array_size = G_N_ELEMENTS(file_menus_local);
      rfmTODO[0] = stdin_cmd_interpretors[0].name;
-     add_toolbar_buttons(&(this_local_addon.tool_bar_buttons_local),tool_buttons_local, this_local_addon.toolbar_button_definitions_local_array_size);
-     add_file_menuitems(&(this_local_addon.menuItems_local), file_menus_local, this_local_addon.file_menuitem_definitions_local_array_size);
-     g_hash_table_insert(addon_and_local_resources, rfm_local_c_file_hash, &this_local_addon);
+     add_toolbar_buttons(&(addon_resource.tool_bar_buttons_local),tool_buttons_local, addon_resource.toolbar_button_definitions_local_array_size);
+     add_file_menuitems(&(addon_resource.menuItems_local), file_menus_local, addon_resource.file_menuitem_definitions_local_array_size);
 }
 
 void rfm_local_leave() {
@@ -70,7 +69,6 @@ void rfm_local_leave() {
          load_history_for_prompt();
      }
 
-     remove_toolbar_buttons(&(this_local_addon.tool_bar_buttons_local),this_local_addon.toolbar_button_definitions_local_array_size);
-     remove_file_menuitems(&(this_local_addon.menuItems_local), this_local_addon.file_menuitem_definitions_local_array_size);
-     g_hash_table_remove(addon_and_local_resources, rfm_local_c_file_hash);
+     remove_toolbar_buttons(&(addon_resource.tool_bar_buttons_local),addon_resource.toolbar_button_definitions_local_array_size);
+     remove_file_menuitems(&(addon_resource.menuItems_local), addon_resource.file_menuitem_definitions_local_array_size);
 }

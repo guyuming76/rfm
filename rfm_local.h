@@ -3,7 +3,6 @@
 //rfm_local.h的加入是为了满足 rfm_local.c 的动态编译。rfm_local.h 要在 rfm.c 和 rfm_local.c 之间共享
 //事实上，config.h里面的定义也是依赖rfm_local.h内数据类型定义的，但config.h内无需#include rfm_local.h,这时因为在rfm.c里面对于config.h的引用出现在对rfm_local.h的应用的后面，c语言编译器似乎可以处理这种情况
 
-
 typedef struct {  /* Update free_fileAttributes() and malloc_fileAttributes() if new items are added */
    guint id; // usually, path can be unique id for fileAttributelist, however, for searchresult from grep, same file can appear more than once, so we need a id as key for grepMatch_hash and others.
    gchar *path; // absolute path
@@ -70,4 +69,10 @@ typedef struct {
   GtkWidget **menuItems_local;
   RFM_MenuItem *file_menuitem_definitions_local;
   size_t file_menuitem_definitions_local_array_size;
-} RFM_ADDON_RESOURCE;
+} RFM_ADDON_RESOURCE_TYPE;
+
+enum RFM_ADDON_TYPE {
+  Directory,
+  DirectoryTree,
+  Global,
+};

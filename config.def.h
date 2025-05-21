@@ -432,6 +432,12 @@ static RFM_cmd_regex_rule regex_rules[] = {
 #define RFM_LOCAL_SO_FILE "rfm_local.so"
 #define RFM_LOCAL_ENTER_FUNC "rfm_local_enter"
 #define RFM_LOCAL_LEAVE_FUNC "rfm_local_leave"
+#define RFM_ADDON_RESOURCE_STRUCT "addon_resource"
+#define RFM_ADDON_TYPE_VAR_NAME "addon_type"
+// 上面这组定义对应的是rfm_local.c里面的变量和方法名，如果把这些定义放在rfm_local.h里面得话，可以实现
+// rfm.c 和 rfm_local.c
+// 的命名同步。但我觉得命名同步意义不大，写死不变代码其实更简练易读
+// 留在这里 rfm.c 可以访问但rfm_local.c 编译时不能访问，我觉得也许可以通过单方面改变这里的定义值实现一些比如本地的版本升级控制，安全控制等，区分不同的 rfm_local.c, 名称和这个不同的就不能顺利加载。我并不是推荐这种容易造成混乱的方法，我觉得只是在不得已的情况下提供一种可能性。
 
 static const gchar *rfm_local_c_compile_cmd_template = "gcc -O0 -g -shared -fPIC $(pkg-config --cflags gtk+-3.0) -D'RFM_SearchResultTypeNamePrefix=\"%s\"' -D'RFM_NEW_TERM_SUFFIX=\"%s\"' -D'RFM_selected_filename_placeholder=\"%s\"' -D'RFM_SEARCH_RESULT_AS_INPUT_PREFIX=\"%s\"' -o %s %s %s";
 #endif
