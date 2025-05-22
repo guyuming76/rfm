@@ -5563,6 +5563,7 @@ static void load_local_extension() {
             g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Calling %s from %s", RFM_LOCAL_ENTER_FUNC, addon->local_so_path);
             (*(addon->local_enter_func))(); //call enter function
 	    g_hash_table_insert(addons, strdup(addon->local_so_path), addon);
+	    g_debug("addons size after loading:%d",g_hash_table_size(addons));
 	    return; // 成功call enter funtion 就不要cleanup, unload 完再cleanup
         } else {
              g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Function %s not found in %s (optional).", RFM_LOCAL_ENTER_FUNC, addon->local_so_path);
@@ -5611,6 +5612,7 @@ static void unload_local_extension(RFM_ADDON *addon) {
 	g_free(addon->local_c_path);
 	g_free(addon->local_so_path);
         g_hash_table_remove(addons, addon->local_so_path);
+        g_debug("addons size after unloading:%d",g_hash_table_size(addons));
         free(addon);
     }
 }
