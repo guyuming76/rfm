@@ -5588,28 +5588,28 @@ static void find_and_unload_addons_before_leaving_current_directory() {
     RFM_ADDON *value;
     g_hash_table_iter_init(&ht_iter, addons);
     while (g_hash_table_iter_next(&ht_iter, &key, &value)){
-      if (value->addon_type==Directory) unload_local_extension(value);
+      if (value->addon_type==Directory) {
+	unload_local_extension(value);
+	g_hash_table_iter_remove(&ht_iter);
+        g_debug("addons size after unloading:%d",g_hash_table_size(addons));
+      }
       //TODO: 处理其他addon类型
     }
 }
 
-// Unload the currently loaded local extension
-static void unload_local_extension(RFM_ADDON *addon) {
-    if (addon->rfm_local_so_handle) {
-        g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Unloading local extension. %s", addon->local_so_path);
 
-        //call leave function
+static void unload_local_extension(RFM_ADDON *addon) {
+  if (addon->rfm_local_so_handle) {
+        g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Unloading local extension. %s", addon->local_so_path);
         if (addon->local_leave_func) {
             g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Calling %s from %s", RFM_LOCAL_LEAVE_FUNC, addon->local_so_path);
-            (*(addon->local_leave_func))();
+            (*(addon->local_leave_func))(); //call leave function
         } else {
              g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Function %s not found in %s (optional).", RFM_LOCAL_LEAVE_FUNC, addon->local_so_path);
         }
         if (dlclose(addon->rfm_local_so_handle) != 0) {
              g_warning("dlclose failed: %s", dlerror());
         }
-        g_hash_table_remove(addons, addon->local_so_path);
-        g_debug("addons size after unloading:%d",g_hash_table_size(addons));
     }
 }
 
