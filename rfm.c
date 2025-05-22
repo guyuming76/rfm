@@ -672,6 +672,7 @@ typedef struct {
 void remove_toolbar_buttons(FREE GtkWidget ***buttons, const size_t size);
 void remove_file_menuitems(FREE GtkWidget ***menuitems, const size_t size);
 
+static void free_addon(RFM_ADDON *addon);
 static GHashTable* addons; // RFM_ADDON as value
 static void load_local_extension();
 static void unload_local_extension(RFM_ADDON *addon);
@@ -4701,7 +4702,7 @@ int main(int argc, char *argv[])
    gchar *thumbnailsize;
    g_log_set_handler (G_LOG_DOMAIN, G_LOG_LEVEL_MASK | G_LOG_FLAG_FATAL| G_LOG_FLAG_RECURSION, g_log_default_handler, NULL);
 
-   addons = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
+   addons = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, free_addon);
    rfmCtx=calloc(1,sizeof(RFM_ctx));
    if (rfmCtx==NULL) return 1;
    //rfmCtx->rfm_sortColumn=GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID;
@@ -5578,9 +5579,7 @@ static void load_local_extension() {
         if (dlclose(addon->rfm_local_so_handle) != 0) g_warning("dlclose failed: %s", dlerror());
         addon->rfm_local_so_handle = NULL;
     }
-    g_free(addon->local_c_path);
-    g_free(addon->local_so_path);
-    free(addon);
+    free_addon(addon);
 }
 
 static void find_and_unload_addons_before_leaving_current_directory() {
@@ -5609,11 +5608,14 @@ static void unload_local_extension(RFM_ADDON *addon) {
         if (dlclose(addon->rfm_local_so_handle) != 0) {
              g_warning("dlclose failed: %s", dlerror());
         }
-	g_free(addon->local_c_path);
-	g_free(addon->local_so_path);
         g_hash_table_remove(addons, addon->local_so_path);
         g_debug("addons size after unloading:%d",g_hash_table_size(addons));
-        free(addon);
     }
+}
+
+static void free_addon(RFM_ADDON *addon){
+	g_free(addon->local_c_path);
+	g_free(addon->local_so_path);
+        free(addon);
 }
 #endif
