@@ -70,9 +70,6 @@ static const AI_model_parameter AI_models[] = {
   {"rfmAskOpenRouter.sh","https://api.deepseek.com/chat/completions","deepseek-reasoner","deepseek-r1",    "d>",           TRUE,        "0",          "别把key存config.def.h,存config.h" },
 };
 
-static const char *findDirectlyRelatedMessages[] = { stdin_cmd_interpretors[0].name, "rfmAiFindRelatedMessages_Direct.sh %s "RFM_SearchResultTypeNamePrefix"multitype", NULL };
-static const char *findRelatedMessages[] = { stdin_cmd_interpretors[0].name, "rfmAiFindRelatedMessages.sh %s "RFM_SearchResultTypeNamePrefix"multitype", NULL };
-
 #endif
 
 static const char *find_same_name[] = { stdin_cmd_interpretors[0].name, rfmBinPath "rfmFindFilesWithTheSameName.sh "RFM_SearchResultTypeNamePrefix"multitype ", NULL };
@@ -205,10 +202,6 @@ static RFM_MenuItem run_actions[] = {
    { "Open with...", "*",              "*",                    NULL,			NULL,			NULL,		open_with,        		NULL },
    { RunActionChangeOwner,"*",         "*",                    NULL,			NULL,			NULL,		change_owner,                   NULL },
    { RunActionMkdirMoveFiles,"*",      "*",                    NULL,                    NULL,                   NULL,           mkdir_and_move_files_into_it,   NULL },
-#ifdef AiIntegration
-   { RunActionFindDRelated,"*",        "*",                    ".rfmAI.md",             NULL,                   NULL,           findDirectlyRelatedMessages,    NULL },
-   { RunActionFindRelated, "*",        "*",                    ".rfmAI.md",             NULL,                   NULL,           findRelatedMessages,            NULL },
-#endif
    { "Open",         "message",        "rfc822",               NULL,			"muview",               NULL,		muview,                         NULL },
    { "Open",         "image",          "*",                    NULL,			NULL,			NULL,		show_image,       		NULL },
    { "Open",         "application",    "x-desktop",            NULL,                    NULL,                   NULL,           launch_desktop,                 NULL },

@@ -17,8 +17,6 @@
 #define RunActionFindSameFile "查找同名文件并解析"
 #define RunActionCD "进入选中文件所在目录"
 #define RunActionMkdirMoveFiles "新建目录并把选中文件移入其中"
-#define RunActionFindDRelated "查找直接关联AI对话(根据ID,历史ID)"
-#define RunActionFindRelated "查找关联AI对话(根据ID,历史ID)"
 #define SwitchPipeDir  "管道/目录"
 #define cpPath "复制目录路径至剪贴板"
 #define START_MENU "开始菜单"
