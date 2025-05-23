@@ -23,8 +23,6 @@
 #define START_MENU "Start menu"
 #define SAVESEARCHRESULT "save (selected) search result into file"
 #define FIND_FILES "find ."
-#define ALL_AI_DIALOG "locate AI dialog"
-#define TREE_AI_DIALOG "find . AI dialog"
 #define LS_AI_DIALOG "ls AI dialog"
 #define PipeTitle "Current:%d/Total:%d, PageSize:%d"
 
