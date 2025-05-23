@@ -2882,11 +2882,11 @@ static void sort_on_column_header(RFM_treeviewColumn* rfmCol){
   if (current_sort_column_id==sort_column_id_for_clicked_column_id){
     gint new_sorttype=current_sorttype==GTK_SORT_ASCENDING? GTK_SORT_DESCENDING : GTK_SORT_ASCENDING;
     gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(treemodel), sort_column_id_for_clicked_column_id, new_sorttype);
-    g_log(G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG,"clicked column %d, sort column for clicked %d == current sort column %d, current order %d, new order %d",rfmCol->enumCol,rfmCol->enumSortCol,current_sort_column_id,current_sorttype,new_sorttype);
+    g_log(RFM_LOG_DATA_SORT, G_LOG_LEVEL_DEBUG,"clicked column %d, sort column for clicked %d == current sort column %d, current order %d, new order %d",rfmCol->enumCol,rfmCol->enumSortCol,current_sort_column_id,current_sorttype,new_sorttype);
     current_sorttype = new_sorttype;
   }else{
     gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(treemodel), sort_column_id_for_clicked_column_id, GTK_SORT_ASCENDING);
-    g_log(G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG,"clicked column %d, sort column for clicked %d <> current sort column %d, new sort column %d, current order %d, order %d",rfmCol->enumCol,rfmCol->enumSortCol,current_sort_column_id,sort_column_id_for_clicked_column_id, current_sorttype,GTK_SORT_ASCENDING);
+    g_log(RFM_LOG_DATA_SORT, G_LOG_LEVEL_DEBUG,"clicked column %d, sort column for clicked %d <> current sort column %d, new sort column %d, current order %d, order %d",rfmCol->enumCol,rfmCol->enumSortCol,current_sort_column_id,sort_column_id_for_clicked_column_id, current_sorttype,GTK_SORT_ASCENDING);
     current_sorttype = GTK_SORT_ASCENDING;
   }
   current_sort_column_id = sort_column_id_for_clicked_column_id;
@@ -5465,7 +5465,7 @@ static void load_local_extension() {
        // No need to stat .c file anymore
 
        if (!g_file_test(addon->local_so_path, G_FILE_TEST_EXISTS)) {
-           g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "%s not found, compilation needed.", addon->local_so_path);
+           g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "%s not found, compilation needed.", addon->local_so_path);
            compile_needed = TRUE;
        } else {
            // Compare hashes instead of timestamps
@@ -5485,7 +5485,7 @@ static void load_local_extension() {
                    const char * const * hash_ptr = (const char * const *)symbol_ptr;
                    if (hash_ptr && *hash_ptr) { // Check if the pointer itself and the string it points to are valid
                         so_hash = g_strdup(*hash_ptr);
-                        g_log(G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, "Found hash in SO: %s", so_hash);
+                        g_log(RFM_LOG_ADDON, G_LOG_LEVEL_DEBUG, "Found hash in SO: %s", so_hash);
                    } else {
                         g_warning("Symbol 'rfm_local_c_file_hash' found in %s but points to NULL. Recompiling.", addon->local_so_path);
                         compile_needed = TRUE; // Force recompile if symbol is NULL
@@ -5502,10 +5502,10 @@ static void load_local_extension() {
 
            if (!compile_needed && current_c_hash && so_hash) {
                if (g_strcmp0(current_c_hash, so_hash) != 0) {
-                   g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Hash mismatch for %s. Recompilation needed. (C: %s, SO: %s)", addon->local_c_path, current_c_hash, so_hash);
+                   g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Hash mismatch for %s. Recompilation needed. (C: %s, SO: %s)", addon->local_c_path, current_c_hash, so_hash);
                    compile_needed = TRUE;
                } else {
-                    g_log(G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, "Hashes match for %s. No recompilation needed.", addon->local_c_path);
+                    g_log(RFM_LOG_ADDON, G_LOG_LEVEL_DEBUG, "Hashes match for %s. No recompilation needed.", addon->local_c_path);
                }
            } else if (!compile_needed && !current_c_hash) {
                 g_warning("Failed to calculate hash for current %s. Recompiling.", addon->local_c_path);
@@ -5561,17 +5561,17 @@ static void load_local_extension() {
             g_warning("dlsym failed for %s in %s: %s", RFM_LOCAL_ENTER_FUNC, addon->local_so_path, dlsym_error);
             goto cleanup;
         } else if (addon->local_enter_func){
-            g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Calling %s from %s", RFM_LOCAL_ENTER_FUNC, addon->local_so_path);
+            g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Calling %s from %s", RFM_LOCAL_ENTER_FUNC, addon->local_so_path);
             (*(addon->local_enter_func))(); //call enter function
 	    g_hash_table_insert(addons, strdup(addon->local_so_path), addon);
 	    g_debug("addons size after loading:%d",g_hash_table_size(addons));
 	    return; // 成功call enter funtion 就不要cleanup, unload 完再cleanup
         } else {
-             g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Function %s not found in %s (optional).", RFM_LOCAL_ENTER_FUNC, addon->local_so_path);
+             g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Function %s not found in %s (optional).", RFM_LOCAL_ENTER_FUNC, addon->local_so_path);
         }
 
     } else {
-         g_log(G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, "No local extension file %s found.", addon->local_c_path);
+         g_log(RFM_LOG_ADDON, G_LOG_LEVEL_DEBUG, "No local extension file %s found.", addon->local_c_path);
     }
 
  cleanup:
@@ -5600,12 +5600,12 @@ static void find_and_unload_addons_before_leaving_current_directory() {
 
 static void unload_local_extension(RFM_ADDON *addon) {
   if (addon->rfm_local_so_handle) {
-        g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Unloading local extension. %s", addon->local_so_path);
+        g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Unloading local extension. %s", addon->local_so_path);
         if (addon->local_leave_func) {
-            g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Calling %s from %s", RFM_LOCAL_LEAVE_FUNC, addon->local_so_path);
+            g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Calling %s from %s", RFM_LOCAL_LEAVE_FUNC, addon->local_so_path);
             (*(addon->local_leave_func))(); //call leave function
         } else {
-             g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "Function %s not found in %s (optional).", RFM_LOCAL_LEAVE_FUNC, addon->local_so_path);
+             g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Function %s not found in %s (optional).", RFM_LOCAL_LEAVE_FUNC, addon->local_so_path);
         }
         if (dlclose(addon->rfm_local_so_handle) != 0) {
              g_warning("dlclose failed: %s", dlerror());

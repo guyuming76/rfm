@@ -76,3 +76,5 @@ enum RFM_ADDON_TYPE {
   DirectoryTree,
   Global,
 };
+
+#define RFM_LOG_ADDON "rfm_addon"
