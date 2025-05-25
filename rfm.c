@@ -674,6 +674,7 @@ void remove_file_menuitems(FREE GtkWidget ***menuitems, const size_t size);
 
 static void free_addon(RFM_ADDON *addon);
 static GHashTable* addons; // RFM_ADDON as value
+static void load_addon(CALLER_OWN char* filepath);
 static void load_local_extension();
 static void unload_local_extension(RFM_ADDON *addon);
 static gboolean compile_local_extension(RFM_ADDON *addon);
@@ -5452,18 +5453,13 @@ static gboolean compile_local_extension(RFM_ADDON* addon) {
     return parse_and_exec_command_in_gtk_thread(rfm_local_c_compile_cmd, FALSE, 0);
 }
 
-// Load rfm_local.so if it exists and is up-to-date or successfully compiled
-static void load_local_extension() {
+static void load_addon(CALLER_OWN char* addon_directory){
     char *dlsym_error = NULL; //The message returned by dlerror() may reside in a statically allocated buffer that is overwritten by subsequent dlerror()calls. https://www.man7.org/linux/man-pages/man3/dlerror.3.html
     RFM_ADDON * addon = calloc(1, sizeof(RFM_ADDON));
-    addon->local_c_path = g_build_filename(rfm_curPath, RFM_LOCAL_C_FILE, NULL);
-    addon->local_so_path = g_build_filename(rfm_curPath, RFM_LOCAL_SO_FILE, NULL);
+    addon->local_c_path = g_build_filename(addon_directory, RFM_LOCAL_C_FILE, NULL);
+    addon->local_so_path = g_build_filename(addon_directory, RFM_LOCAL_SO_FILE, NULL);
     gboolean compile_needed = FALSE;
-   // struct stat c_stat, so_stat; // No longer needed for timestamp
-
-   if (g_file_test(addon->local_c_path, G_FILE_TEST_EXISTS)) {
-       // No need to stat .c file anymore
-
+    if (g_file_test(addon->local_c_path, G_FILE_TEST_EXISTS)) {
        if (!g_file_test(addon->local_so_path, G_FILE_TEST_EXISTS)) {
            g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "%s not found, compilation needed.", addon->local_so_path);
            compile_needed = TRUE;
@@ -5569,17 +5565,21 @@ static void load_local_extension() {
         } else {
              g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Function %s not found in %s (optional).", RFM_LOCAL_ENTER_FUNC, addon->local_so_path);
         }
-
     } else {
          g_log(RFM_LOG_ADDON, G_LOG_LEVEL_DEBUG, "No local extension file %s found.", addon->local_c_path);
     }
-
  cleanup:
     if (addon->rfm_local_so_handle) {
         if (dlclose(addon->rfm_local_so_handle) != 0) g_warning("dlclose failed: %s", dlerror());
         addon->rfm_local_so_handle = NULL;
     }
     free_addon(addon);
+}
+
+
+// Load rfm_local.so if it exists and is up-to-date or successfully compiled
+static void load_local_extension() {
+    load_addon(rfm_curPath);
 }
 
 static void find_and_unload_addons_before_leaving_current_directory() {
