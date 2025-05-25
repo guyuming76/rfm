@@ -674,6 +674,8 @@ void remove_file_menuitems(FREE GtkWidget ***menuitems, const size_t size);
 
 static void free_addon(RFM_ADDON *addon);
 static GHashTable* addons; // RFM_ADDON as value
+static void load_global_addons_callback(RFM_ChildAttribs* child_attribs);
+static void load_global_addons();
 static void load_addon(CALLER_OWN char* filepath);
 static void load_local_extension();
 static void unload_local_extension(RFM_ADDON *addon);
@@ -4588,6 +4590,9 @@ static int setup(RFM_ctx *rfmCtx)
    menu=gtk_menu_new();
    add_file_menuitems(&menuItem,run_actions,G_N_ELEMENTS(run_actions));
 
+#ifdef RFM_LOCAL
+   load_global_addons();
+#endif
    if (initDir == NULL) initDir = cwd;
    set_rfm_curPath(initDir);
  
@@ -5574,6 +5579,22 @@ static void load_addon(CALLER_OWN char* addon_directory){
         addon->rfm_local_so_handle = NULL;
     }
     free_addon(addon);
+}
+
+static void load_global_addons_callback(RFM_ChildAttribs* child_attribs) {
+  char *child_stdout=(char*)(child_attribs->stdOut);
+  gchar * savedptr=NULL;
+  gchar * oneline=strtok_r(child_stdout,"\n",&savedptr);
+  while (oneline!=NULL){
+      gchar * fullpath = g_path_get_dirname(oneline);
+      load_addon(fullpath);
+      oneline=strtok_r(NULL, "\n",&savedptr);
+  }
+}
+
+static void load_global_addons(){
+  g_spawn_wrapper(global_adds_locating_cmd_template, NULL, G_SPAWN_DEFAULT, NULL, NULL, TRUE, load_global_addons_callback, NULL, TRUE); //TODO:这个是异步的,rfm刚打开的时候,global addon 的菜单看不到,手工刷新后才看到,不知是不是这个原因,同步又担心打开rfm会太慢.
+  //TODO: 考虑partse_and_exec_cmd_in_gtk_thread里支持 类似callback, readoutput by program 这种机制, 也许可以和SearchResult那一块有交集.这会儿作为workaround,就为命令做了一个单独的bash脚本,一边可以在命令里有管道
 }
 
 

@@ -164,6 +164,7 @@ endif
 	@cp -f scripts/rfm_Update_affected_SymbolicLinks_for_move_or_copy.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfm_mkdir_and_move_selected_files_into_it_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfm_mkdir_and_move_selected_files_into_it.sh
 	@cp -f scripts/rfmSaveSearchResultToFile_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmSaveSearchResultToFile.sh
+	@cp -f scripts/rfmLocateGlobalAddons.sh ${DESTDIR}${PREFIX}/bin
 ifneq ($(AiIntegration),)
 	@cp -f scripts/rfmAskOllama.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmAskModelScope.sh ${DESTDIR}${PREFIX}/bin
@@ -226,6 +227,7 @@ endif
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfm_Update_affected_SymbolicLinks_for_move_or_copy.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfm_mkdir_and_move_selected_files_into_it.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmSaveSearchResultToFile.sh
+	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmLocateGlobalAddons.sh
 ifneq ($(AiIntegration),)
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmAskOllama.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmAskModelScope.sh
@@ -283,6 +285,7 @@ endif
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfm_Update_affected_SymbolicLinks_for_move_or_copy.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfm_mkdir_and_move_selected_files_into_it.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmSaveSearchResultToFile.sh
+	@rm -f ${DESTDIR}${PREFIX}/bin/rfmLocateGlobalAddons.sh
 ifneq ($(AiIntegration),)
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmAskOllama.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmAskModelScope.sh
