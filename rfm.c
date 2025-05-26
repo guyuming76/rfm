@@ -5464,6 +5464,10 @@ static void load_addon(CALLER_OWN char* addon_directory){
     addon->local_so_path = g_build_filename(addon_directory, RFM_LOCAL_SO_FILE, NULL);
     gboolean compile_needed = FALSE;
     if (g_file_test(addon->local_c_path, G_FILE_TEST_EXISTS)) {
+       if (g_hash_table_lookup(addons, addon->local_so_path)){
+	   g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Addon %s already loaded, no need to load again", addon->local_so_path);
+	   goto cleanup;
+       }
        if (!g_file_test(addon->local_so_path, G_FILE_TEST_EXISTS)) {
            g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "%s not found, compilation needed.", addon->local_so_path);
            compile_needed = TRUE;
