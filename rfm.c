@@ -41,7 +41,7 @@
 #ifdef RFM_AddOn
 #include <dlfcn.h>
 #include <glib/gchecksum.h> // For file hashing
-#include <rfm_local.h>
+#include <rfm_addon.h>
 #endif
 
 #define FREE //indicate that it is freed here

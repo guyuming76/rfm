@@ -15,7 +15,7 @@ const char * const rfm_local_c_file_hash = NULL;
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
-#include <rfm_local.h>
+#include <rfm_addon.h>
 
 extern char rfm_historyFile_ParentDirectory[PATH_MAX];
 extern void load_history_for_prompt();
