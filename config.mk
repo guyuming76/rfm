@@ -26,7 +26,7 @@ CmarkTools = -DCmarkTools
 MU_VIEW = -DMU_VIEW
 #MU_VIEW =
 
-RFM_LOCAL = -DRFM_LOCAL
+RFM_AddOn = -DRFM_AddOn
 #RFM_LOCAL =
 
 #CFLAGS = -fsanitize=address

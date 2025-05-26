@@ -414,7 +414,7 @@ static RFM_cmd_regex_rule regex_rules[] = {
 //locate .ebuild|xargs grep -il "inherit cmake" |xargs grep CMAKE_CXX_FLAGS>0
 
 
-#ifdef RFM_LOCAL
+#ifdef RFM_AddOn
 #define RFM_LOCAL_C_FILE "rfm_local.c"
 #define RFM_LOCAL_SO_FILE "rfm_local.so"
 #define RFM_LOCAL_ENTER_FUNC "rfm_local_enter"
@@ -428,4 +428,3 @@ static RFM_cmd_regex_rule regex_rules[] = {
 static const gchar *global_adds_locating_cmd_template[] = { "rfmLocateGlobalAddons.sh",RFM_LOCAL_C_FILE,NULL };
 static const gchar *rfm_local_c_compile_cmd_template = "gcc -O0 -g -shared -fPIC $(pkg-config --cflags gtk+-3.0) -D'RFM_SearchResultTypeNamePrefix=\"%s\"' -D'RFM_NEW_TERM_SUFFIX=\"%s\"' -D'RFM_selected_filename_placeholder=\"%s\"' -D'RFM_SEARCH_RESULT_AS_INPUT_PREFIX=\"%s\"' -o %s %s %s";
 #endif
-

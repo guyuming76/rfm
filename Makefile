@@ -17,7 +17,7 @@ endif
 GTK_VERSION = gtk+-3.0
 # what shall be minimun gtk+ version for glib 2.80?
 
-CPPFLAGS = -DrfmBinPath=${rfmBinPath} --include ${languageInclude} -DG_LOG_DOMAIN=\"rfm\" ${GitIntegration} ${PythonEmbedded} ${RFM_FILE_CHOOSER} ${MU_VIEW} ${READLINE_LIB} ${AiIntegration} ${RFM_LOCAL} ${CmarkTools}
+CPPFLAGS = -DrfmBinPath=${rfmBinPath} --include ${languageInclude} -DG_LOG_DOMAIN=\"rfm\" ${GitIntegration} ${PythonEmbedded} ${RFM_FILE_CHOOSER} ${MU_VIEW} ${READLINE_LIB} ${AiIntegration} ${RFM_AddOn} ${CmarkTools}
 # 检查glib版本是否≥2.80
 ifeq ($(shell pkg-config --atleast-version=2.80 glib-2.0 && echo yes),yes)
 CPPFLAGS += -DGLIB280PLUS
@@ -32,7 +32,7 @@ ifeq (${READLINE_LIB},-DGNU_readline)
 LIBS += `pkg-config --libs readline`
 endif
 ifeq (${READLINE_LIB},-DLINENOISE)
-LIBS += -I/usr/local/include -L/usr/local/lib -llinenoise 
+LIBS += -I/usr/local/include -L/usr/local/lib -llinenoise
 endif
 ifneq (${CmarkTools},)
 LIBS += `pkg-config --libs libcmark`
@@ -47,7 +47,7 @@ CFLAGS += `python3.11-config --cflags`
 LDFLAGS += `python3.11-config --ldflags --embed`
 endif
 
-ifneq (${RFM_LOCAL},)
+ifneq (${RFM_AddOn},)
 LDFLAGS += -rdynamic
 endif
 

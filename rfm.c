@@ -38,9 +38,10 @@
 #include <stdarg.h>
 #include <regex.h>
 #include <gio/gdesktopappinfo.h>
-#ifdef RFM_LOCAL
+#ifdef RFM_AddOn
 #include <dlfcn.h>
 #include <glib/gchecksum.h> // For file hashing
+#include <rfm_local.h>
 #endif
 
 #define FREE //indicate that it is freed here
@@ -49,8 +50,6 @@
 #define MEM_ALLOC_FULL //indicate that returned value is allocated full memory here
 #define CALLER_OWN //indicate that caller owns the pointer and should take care of freeing
 #define NO_FREE  //indicate that no need to free, for example, a static array compiled in code
-
-#include <rfm_local.h>
 
 #define INOTIFY_MASK IN_MOVE|IN_CREATE|IN_CLOSE_WRITE|IN_DELETE|IN_DELETE_SELF|IN_MOVE_SELF
 #define PIPE_SZ 65535      /* Kernel pipe size */
@@ -658,7 +657,7 @@ static RFM_treeviewColumn ViewColumnsLayouts[2][G_N_ELEMENTS(treeviewColumns)];
 
 #define SHOW_TOOLBAR_BUTTON(x,i) (((SearchResultViewInsteadOfDirectoryView && x[i].showInSearchResultView) || (!SearchResultViewInsteadOfDirectoryView && x[i].showInDirectoryView)) && (x[i].showCondition == NULL || x[i].showCondition()))
 
-#ifdef RFM_LOCAL
+#ifdef RFM_AddOn
 typedef struct {
   RFM_ADDON_RESOURCE_TYPE * resource_managed_by_addon;
   enum RFM_ADDON_TYPE addon_type;
@@ -2387,7 +2386,7 @@ static gboolean show_gitColumns(RFM_FileAttributes * fileAttributes) {
 
 
 static void set_rfm_curPath_internal(CALLER_OWN const gchar* path){
-#ifdef RFM_LOCAL
+#ifdef RFM_AddOn
   find_and_unload_addons_before_leaving_current_directory();
 #endif
   //https://blog.csdn.net/CaspianSea/article/details/78817778
@@ -2405,7 +2404,7 @@ static void set_rfm_curPath_internal(CALLER_OWN const gchar* path){
    //when we run commands such as echo $PWD, we spawn child process with working directory rfm_curPath, so, even we do not set $PWD, we get result as expected with this kind of commands.
    //so, we should first know the relationship between working directory parameter in g_spawn and PWD env value inheritence before we do anything furthur here.
    //anyway, setting OLDPWD is necessary for us here.
-#ifdef RFM_LOCAL
+#ifdef RFM_AddOn
       load_local_extension();   // Load new extension if available, after path has changed
 #endif
       }  
@@ -2780,7 +2779,7 @@ void add_file_menuitems(GtkWidget ***menuitems, const RFM_MenuItem menuitem_defi
      }
 }
 
-#ifdef RFM_LOCAL
+#ifdef RFM_AddOn
 void remove_file_menuitems(FREE GtkWidget ***menuitems, const size_t size) {
   for (int i=0; i<size; i++) if ((*menuitems)[i]) gtk_widget_destroy((*menuitems)[i]);
   free(*menuitems); *menuitems=NULL;
@@ -2861,7 +2860,7 @@ static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx)
    }
 
    show_hide_file_menu_item(&menuItem, run_actions, G_N_ELEMENTS(run_actions), match_mimeRoot, match_mimeSub, fileAttributes_of_the_first_selected_file, selectionList);
-#ifdef RFM_LOCAL
+#ifdef RFM_AddOn
    GHashTableIter ht_iter;
    gchar *key;
    RFM_ADDON *value;
@@ -2987,7 +2986,7 @@ static void refresh_toolbar()
      if (SHOW_TOOLBAR_BUTTON(tool_buttons,i)) gtk_widget_show(tool_bar_buttons[i]);
      else gtk_widget_hide(tool_bar_buttons[i]);
    }
-#ifdef RFM_LOCAL
+#ifdef RFM_AddOn
    GHashTableIter iter;
    gchar *key;
    RFM_ADDON *value;
@@ -3004,7 +3003,7 @@ static void refresh_toolbar()
 #endif
 }
 
-#ifdef RFM_LOCAL
+#ifdef RFM_AddOn
 void remove_toolbar_buttons(FREE GtkWidget ***buttons, const size_t size) {
   for (int i=0; i<size; i++) if ((*buttons)[i]) gtk_widget_destroy((*buttons)[i]);
   free(*buttons); *buttons=NULL;
@@ -4590,7 +4589,7 @@ static int setup(RFM_ctx *rfmCtx)
    menu=gtk_menu_new();
    add_file_menuitems(&menuItem,run_actions,G_N_ELEMENTS(run_actions));
 
-#ifdef RFM_LOCAL
+#ifdef RFM_AddOn
    load_global_addons();
 #endif
    if (initDir == NULL) initDir = cwd;
@@ -5415,7 +5414,7 @@ gboolean str_regex_replace(char **str, const regex_t * restrict pattern_compiled
 }
 
 
-#ifdef RFM_LOCAL
+#ifdef RFM_AddOn
 
 // Helper function to calculate MD5 hash of a file
 static gchar* calculate_file_hash(const gchar *filepath) {
