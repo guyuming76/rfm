@@ -3670,7 +3670,7 @@ static void stdin_command_help(wordexp_t * parsed_msg, GString* readline_result_
       if (!for_specific_command){
           printf("\n\033[32m %s\033[0m\n", "AI Models:"); // 绿色打印段落标题
           // 遍历在 config.h 中定义的 AI_models 数组
-          for(guint i=0; i<G_N_ELEMENTS(AI_models); i++){
+          for(guint i=0; i<AI_models_array_size; i++){
               // 打印 AI 模型的激活键（黄色高亮）和详细信息
               printf("    \033[33m%s\033[0m    %s, Host: %s, Model: %s, Temp: %s, Script: %s\n",
                      AI_models[i].activationKey,
@@ -4245,7 +4245,7 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 #ifdef AiIntegration
             // Check for AI model activation keys (only if an interpreter prefix wasn't found)
             if (!prefix_found) {
-              for(guint i=0;i<G_N_ELEMENTS(AI_models);i++){
+              for(guint i=0;i<AI_models_array_size;i++){
 		  prefix_len = strlen(AI_models[i].activationKey);
 		  g_assert(stdin_cmd_interpretor_index_for_AI>=0);//能运行到这一步，上面一个for循环肯定跑完了，这个值肯定被设置过了
                   if (g_strcmp0(readlineResult, AI_models[i].activationKey)==0){

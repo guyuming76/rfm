@@ -62,7 +62,7 @@ const stdin_cmd_interpretor stdin_cmd_interpretors[] = {
 
 #ifdef AiIntegration
 //the first one is the default one
-static const AI_model_parameter AI_models[] = {
+static const AI_model_parameter AI_models_static[] = {
   //calling_script        host_url                         model_name                  term_prompt         activationKey  InNewTerm  Temperature   API_Key
   {"rfmAskOllama.sh",  "http://localhost:11434/api/generate","codegeex4:9B",           "codegeex4:9B",     "c>",           TRUE,        "0",          "别把key存config.def.h,存config.h" },
   {"rfmAskOllama.sh",  "http://localhost:11434/api/generate","qwq:latest",             "qwq",              "q>",           TRUE,        "0",          "别把key存config.def.h,存config.h" },
@@ -70,6 +70,8 @@ static const AI_model_parameter AI_models[] = {
   {"rfmAskOpenRouter.sh","https://api.deepseek.com/chat/completions","deepseek-reasoner","deepseek-r1",    "d>",           TRUE,        "0",          "别把key存config.def.h,存config.h" },
 };
 
+AI_model_parameter *AI_models = AI_models_static;
+size_t AI_models_array_size = G_N_ELEMENTS(AI_models_static);
 #endif
 
 static const char *find_same_name[] = { stdin_cmd_interpretors[0].name, rfmBinPath "rfmFindFilesWithTheSameName.sh "RFM_SearchResultTypeNamePrefix"multitype ", NULL };
