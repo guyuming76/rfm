@@ -3,6 +3,14 @@
 //rfm_local.h的加入是为了满足 rfm_local.c 的动态编译。rfm_local.h 要在 rfm.c 和 rfm_local.c 之间共享
 //事实上，config.h里面的定义也是依赖rfm_local.h内数据类型定义的，但config.h内无需#include rfm_local.h,这时因为在rfm.c里面对于config.h的引用出现在对rfm_local.h的应用的后面，c语言编译器似乎可以处理这种情况
 
+#define FREE //indicate that it is freed here
+#define FREE_FULL //indicate that it is freed full here
+#define MEM_ALLOC  //indicate that returned value is allocated memory here
+#define MEM_ALLOC_FULL //indicate that returned value is allocated full memory here
+#define CALLER_OWN //indicate that caller owns the pointer and should take care of freeing
+#define NO_FREE  //indicate that no need to free, for example, a static array compiled in code
+
+
 typedef struct {  /* Update free_fileAttributes() and malloc_fileAttributes() if new items are added */
    guint id; // usually, path can be unique id for fileAttributelist, however, for searchresult from grep, same file can appear more than once, so we need a id as key for grepMatch_hash and others.
    gchar *path; // absolute path

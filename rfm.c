@@ -41,15 +41,8 @@
 #ifdef RFM_AddOn
 #include <dlfcn.h>
 #include <glib/gchecksum.h> // For file hashing
-#include <rfm_addon.h>
 #endif
-
-#define FREE //indicate that it is freed here
-#define FREE_FULL //indicate that it is freed full here
-#define MEM_ALLOC  //indicate that returned value is allocated memory here
-#define MEM_ALLOC_FULL //indicate that returned value is allocated full memory here
-#define CALLER_OWN //indicate that caller owns the pointer and should take care of freeing
-#define NO_FREE  //indicate that no need to free, for example, a static array compiled in code
+#include <rfm_addon.h>
 
 #define INOTIFY_MASK IN_MOVE|IN_CREATE|IN_CLOSE_WRITE|IN_DELETE|IN_DELETE_SELF|IN_MOVE_SELF
 #define PIPE_SZ 65535      /* Kernel pipe size */
