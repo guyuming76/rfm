@@ -407,7 +407,7 @@ static RFM_cmd_regex_rule regex_rules[] = {
   { "^[S|s]how[C|c]olumns* ",       "showcolumn ",                       NULL,NULL },
   { "^[S|s]how[C|c]olumns*$",       "showcolumn",                        NULL,NULL },
   { "^[E|e]build[S|s]amples*$",     "locate .ebuild|xargs grep inherit|grep cmake|cut -d: -f1 |xargs grep CMAKE_CXX_FLAGS", NULL,NULL},
-  { "fzfall",                       "fzf --multi --bind ctrl-a:select-all,ctrl-d:deselect-all",NULL,NULL },
+  { "fzf",                          "fzf --multi --bind ctrl-a:select-all,ctrl-d:deselect-all",NULL,NULL },
 };
 
 //TODO: 增加一个类似前面定义 alias 的功能，或直接在 alias 功能里扩展， 看能不能结合 readline 库，输入一个alias, 直接替换成一个常用命令，可以编辑再执行，而不是向前面直接就给执行了但不显示真实命令
