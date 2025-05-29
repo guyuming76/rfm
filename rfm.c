@@ -72,16 +72,6 @@ gboolean str_regex_replace(char **str, const regex_t * restrict pattern_compiled
 /****************************************************/
 /******AI related definitions **********************/
 #ifdef AiIntegration
-typedef struct {
-  gchar *calling_script;
-  gchar *host_url;
-  gchar *model_name;
-  gchar *term_prompt; // This is the prompt such b> shown in term, not the prompt for LLM
-  gchar *activationKey;
-  gboolean InNewTerm;
-  gchar *model_temporature;
-  gchar *API_key;
-} AI_model_parameter;
     
 static int current_AI_model_index = 0;
 static int stdin_cmd_interpretor_index_for_AI = -1;
@@ -216,25 +206,6 @@ static void null_log_handler(const gchar *log_domain,GLogLevelFlags log_level,co
 #define   RFM_EXEC_STDOUT   G_SPAWN_CHILD_INHERITS_STDIN | G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR
 #define   RFM_EXEC_MOUNT   G_SPAWN_CHILD_INHERITS_STDIN | G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR  //TODO: i don't know what this mean yet.
 
-typedef struct RFM_ChildAttributes{
-   gchar *name;
-   const gchar **RunCmd;
-   GSpawnFlags  runOpts;
-   gchar** env;
-   GPid  pid;
-   gint  stdIn_fd;
-   gint  stdOut_fd;
-   gint  stdErr_fd;
-   char *stdOut;
-   char *stdErr;
-   int   status;
-   void (*customCallBackFunc)(struct RFM_ChildAttributes*); //In Searchresultviewinsteadofdirectoryview situation, after runAction such as Move, i need to fill_store to reflect remove of files, so, i need a callback function. Rodney's original code only deals with working directory, and use INotify to reflect the change.
-   gpointer customCallbackUserData; //this is not freed in free_child_attribs, user should free it.
-   gboolean spawn_async;
-   gint exitcode;
-   gboolean output_read_by_program;
-} RFM_ChildAttribs;
-
 static GList *rfm_childList = NULL;
 static int rfm_childListLength = 0;
 static void free_child_attribs(FREE_FULL RFM_ChildAttribs *child_attribs);
@@ -242,7 +213,7 @@ static void g_spawn_wrapper_for_selected_fileList_(FREE_FULL RFM_ChildAttribs *c
 /* instantiate childAttribs and call g_spawn_wrapper_ */
 /* caller should g_list_free(file_list), but usually not g_list_free_full, since the file char* is usually owned by rfm_fileattributes */
 /* callbackfuncUserData can be pointer of any type, but callbackfunc should take RFM_ChildAttribs* as input parameter, and retrieve callbackfuncUserData with (RFM_ChildAttribs *)->customCallbackUserData; */
-static gboolean g_spawn_wrapper(CALLER_OWN const char **action, CALLER_OWN const GList *file_list, const int run_opts, FREE const gchar** env, const char *dest_path, const gboolean async,const void(*callbackfunc)(gpointer),CALLER_OWN const gpointer callbackfuncUserData,const gboolean output_read_by_program);
+gboolean g_spawn_wrapper(CALLER_OWN const char **action, CALLER_OWN const GList *file_list, const int run_opts, FREE const gchar** env, const char *dest_path, const gboolean async,const void(*callbackfunc)(gpointer),CALLER_OWN const gpointer callbackfuncUserData,const gboolean output_read_by_program);
 /* call build_cmd_vector to create the argv parameter for g_spawn_* */
 /* call different g_spawn_* functions based on child_attribs->spawn_async and child_attribs->runOpts */
 static gboolean g_spawn_wrapper_(CALLER_OWN const GList *file_list, CALLER_OWN const char *dest_path, FREE_FULL RFM_ChildAttribs * childAttribs);
@@ -1206,7 +1177,7 @@ static gboolean g_spawn_wrapper_(CALLER_OWN const GList *file_list, CALLER_OWN c
 }
 
 
-static gboolean g_spawn_wrapper(CALLER_OWN const char **action, CALLER_OWN const GList *file_list, const int run_opts, FREE const gchar** env, const char *dest_path, const gboolean async,const void(*callbackfunc)(gpointer),CALLER_OWN const gpointer callbackfuncUserData, const gboolean output_read_by_program){
+gboolean g_spawn_wrapper(CALLER_OWN const char **action, CALLER_OWN const GList *file_list, const int run_opts, FREE const gchar** env, const char *dest_path, const gboolean async,const void(*callbackfunc)(gpointer),CALLER_OWN const gpointer callbackfuncUserData, const gboolean output_read_by_program){
   RFM_ChildAttribs *child_attribs=calloc(1,sizeof(RFM_ChildAttribs));
   child_attribs->customCallBackFunc=callbackfunc;
   child_attribs->customCallbackUserData=callbackfuncUserData;

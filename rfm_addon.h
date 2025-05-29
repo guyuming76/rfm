@@ -79,6 +79,37 @@ typedef struct {
   size_t file_menuitem_definitions_local_array_size;
 } RFM_ADDON_RESOURCE_TYPE;
 
+typedef struct {
+  gchar *calling_script;
+  gchar *host_url;
+  gchar *model_name;
+  gchar *term_prompt; // This is the prompt such b> shown in term, not the prompt for LLM
+  gchar *activationKey;
+  gboolean InNewTerm;
+  gchar *model_temporature;
+  gchar *API_key;
+} AI_model_parameter;
+
+typedef struct RFM_ChildAttributes{
+   gchar *name;
+   const gchar **RunCmd;
+   GSpawnFlags  runOpts;
+   gchar** env;
+   GPid  pid;
+   gint  stdIn_fd;
+   gint  stdOut_fd;
+   gint  stdErr_fd;
+   char *stdOut;
+   char *stdErr;
+   int   status;
+   void (*customCallBackFunc)(struct RFM_ChildAttributes*); //In Searchresultviewinsteadofdirectoryview situation, after runAction such as Move, i need to fill_store to reflect remove of files, so, i need a callback function. Rodney's original code only deals with working directory, and use INotify to reflect the change.
+   gpointer customCallbackUserData; //this is not freed in free_child_attribs, user should free it.
+   gboolean spawn_async;
+   gint exitcode;
+   gboolean output_read_by_program;
+} RFM_ChildAttribs;
+
+
 enum RFM_ADDON_TYPE {
   Directory,
   DirectoryTree,
