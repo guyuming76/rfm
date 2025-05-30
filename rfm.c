@@ -5097,40 +5097,11 @@ static int ProcessKeyValuePairInData(GKeyFile *keyfile, char* groupname){
    snprintf(currentColumnOriginalTitle,10,"C%d", currentPageStartingColumnTitleIndex);
 
    for(gsize i=0; i<size; i++){
-       RFM_treeviewColumn * col;
-       enum RFM_treeviewCol current_Ext_Column;
-       if ((col=get_treeviewColumnByTitle(keys[i]))){ //已经有同名列了
-	   current_Ext_Column=col->enumCol;
-       }else{//新列名
-	   col = get_treeviewColumnByTitle(currentColumnOriginalTitle); //找到当前(空余,未被使用的)列名,如C1, C2, C3 ... 等等
-           current_Ext_Column=get_available_ExtColumn(COL_Ext1);//既然是空余列名,一定未绑定 emuncol, 找一个空的enum,就是COL_ExtX
-	   //简单地看,列名C1,C2和COL_Ext1, COL_Ext2 应该是一一对应的,似乎不存在找到空余的列名,却没有空余的COL_ExtX 的情况
-	   //但是万一有比如预定名称的列如MailFrom占据了某个COL_ExtX,会早成列名C1,C2虽够,但COL_ExtX不够了.
-	   //也就是说COL_ExtX总是比C1,C2..CX先用完
-	   if (current_Ext_Column==NUM_COLS) {
-	     g_warning("Not enough COL_Exts for %s",keys[i]);
-	     continue;;
-	   }
-	   col->enumCol=current_Ext_Column;
-	   snprintf(col->title,256,"%s",keys[i]);
-	   col->ValueFunc=getExtColumnValueFromHashTable;
-
-           currentPageStartingColumnTitleIndex++;
-	   snprintf(currentColumnOriginalTitle,10,"C%d", currentPageStartingColumnTitleIndex);
-       }
-
-       uint currentExtColumnHashTableIndex = current_Ext_Column - COL_Ext1;
-       if (ExtColumnHashTable[currentExtColumnHashTableIndex]==NULL) ExtColumnHashTable[currentExtColumnHashTableIndex] = g_hash_table_new_full(g_str_hash, g_str_equal,g_free, g_free);
        gchar* currentExtColumnValue = g_key_file_get_string(keyfile, groupname, keys[i], &error);
        if (currentExtColumnValue==NULL){
 	 g_warning("ProcessKeyValuePairInData. groupname %s, keyvalue %s, not found, error:%s",groupname,keys[i],error? error->message:"");
-	 g_error_free(error); error=NULL;
-	 continue;
-       }
-       char* strFileAttributeID=calloc(10, sizeof(char));
-       snprintf(strFileAttributeID,10, "%d", fileAttributeID);
-       g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"Insert column %s into ExtColumnHashTable[%d]: fileAttributeID as key %s,value %s", col->title, currentExtColumnHashTableIndex,strFileAttributeID,currentExtColumnValue);
-       g_hash_table_insert(ExtColumnHashTable[currentExtColumnHashTableIndex], strFileAttributeID, currentExtColumnValue);
+	 g_error_free(error); error=NULL;continue;
+       }else ProcessKeyValuePair(keys[i], currentExtColumnValue, currentColumnOriginalTitle);
    }
    g_strfreev(keys);
 }
