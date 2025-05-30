@@ -474,7 +474,7 @@ static void CallDefaultSearchResultFunctionForNewSearch(CALLER_OWN char *one_lin
 static int ProcessKeyValuePairInFilesFromSearchResult(CALLER_OWN char *oneline, gboolean new_search);
 static int ProcessKeyValuePairInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char **cmdtemplate);
 static int ProcessKeyValuePairInData(GKeyFile* keyfile, char *groupname);
-static void ProcessKeyValuePair(gchar *key, gchar* currentExtColumnValue, char* currentColumnOriginalTitle);
+static void ProcessKeyValuePair(CALLER_OWN gchar *key, OWNER_CHANGE gchar* currentExtColumnValue, CALLER_OWN char* currentColumnOriginalTitle);
 static int ProcessJsonStr(CALLER_OWN gchar* json_data);
 static int ProcessJsonFileFromSearchResult(CALLER_OWN char *oneline, gboolean new_search);
 static int CallMatchingProcessorForSearchResultLine(char *oneline, gboolean new_search, char *cmdtemplate, RFM_FileAttributes* fileAttributes);
@@ -4934,7 +4934,7 @@ static int ProcessKeyValuePairInFilesFromSearchResult(CALLER_OWN char *oneline, 
    g_free(absolute_address);
 }
 
-static void ProcessKeyValuePair(gchar *key, gchar* currentExtColumnValue, char* currentColumnOriginalTitle){
+static void ProcessKeyValuePair(CALLER_OWN gchar *key, OWNER_CHANGE gchar* currentExtColumnValue, CALLER_OWN char* currentColumnOriginalTitle){
 	  RFM_treeviewColumn * col;
 	  enum RFM_treeviewCol current_Ext_Column;
 	  if ((col=get_treeviewColumnByTitle(key))){ //已经有同名列了

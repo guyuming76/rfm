@@ -9,7 +9,7 @@
 #define MEM_ALLOC_FULL //indicate that returned value is allocated full memory here
 #define CALLER_OWN //indicate that caller owns the pointer and should take care of freeing
 #define NO_FREE  //indicate that no need to free, for example, a static array compiled in code
-
+#define OWNER_CHANGE //indicate that ownership changed after function calll, need to pay attention.
 
 typedef struct {  /* Update free_fileAttributes() and malloc_fileAttributes() if new items are added */
    guint id; // usually, path can be unique id for fileAttributelist, however, for searchresult from grep, same file can appear more than once, so we need a id as key for grepMatch_hash and others.
