@@ -473,6 +473,7 @@ static int ProcessOnelineForSearchResult_with_title(CALLER_OWN char* oneline, gb
 static void CallDefaultSearchResultFunctionForNewSearch(CALLER_OWN char *one_line_in_search_result);
 static int ProcessKeyValuePairInFilesFromSearchResult(CALLER_OWN char *oneline, gboolean new_search);
 static int ProcessKeyValuePairInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char **cmdtemplate);
+static int ProcessCmdOutputFromSearchResultWithFunction(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate, int (*func)(CALLER_OWN gchar*));
 static int ProcessKeyValuePairInData(GKeyFile* keyfile, char *groupname);
 static void ProcessKeyValuePair(CALLER_OWN gchar *key, OWNER_CHANGE gchar* currentExtColumnValue, CALLER_OWN char* currentColumnOriginalTitle);
 static int ProcessGKeyfileStr(CALLER_OWN gchar *cmdOutput);
@@ -5048,6 +5049,10 @@ static int ProcessJsonFileFromSearchResult(CALLER_OWN char *oneline, gboolean ne
 // 而parse_and_exec_cmd_in_gtk_thread 里的readlineResult是返回这个查询结果多行记录的，每行一个文件。
 // 所以这两个函数看上去都是执行命令模板的，有类似之处，却不好合并
 static int ProcessKeyValuePairInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate){
+  ProcessCmdOutputFromSearchResultWithFunction(oneline,new_search,cmdtemplate,ProcessGKeyfileStr);
+}
+
+static int ProcessCmdOutputFromSearchResultWithFunction(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate, int (*func)(CALLER_OWN gchar*)){
    if (new_search){
      CallDefaultSearchResultFunctionForNewSearch(oneline);
      return 0;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
@@ -5073,13 +5078,11 @@ static int ProcessKeyValuePairInCmdOutputFromSearchResult(CALLER_OWN char *oneli
      g_warning("ProcessKeyValuePairInCmdOutputFromSearchResult. error executing cmd %s, error:%s",SearchResultOnelineDocProcessingCmd, error==NULL?"":error->message);
      if (error) g_error_free(error);
    }else{
-     ProcessGKeyfileStr(cmdOutput);
+     func(cmdOutput);
    }
    g_free(cmdOutput);
    g_free(cmdError);
 }
-
-
 
 static int ProcessGKeyfileStr(CALLER_OWN gchar *cmdOutput){
      GError *error=NULL;
