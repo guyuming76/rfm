@@ -5052,7 +5052,6 @@ static int ProcessKeyValuePairInCmdOutputFromSearchResult(CALLER_OWN char *oneli
      return 0;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
    }
 
-   GKeyFile *keyfile=g_key_file_new();
    GError *error=NULL;
    gchar* cmdOutput=NULL;
    gchar* cmdError=NULL;
@@ -5073,7 +5072,7 @@ static int ProcessKeyValuePairInCmdOutputFromSearchResult(CALLER_OWN char *oneli
      g_warning("ProcessKeyValuePairInCmdOutputFromSearchResult. error executing cmd %s, error:%s",SearchResultOnelineDocProcessingCmd, error==NULL?"":error->message);
      if (error) g_error_free(error);
    }else{
-   
+     GKeyFile *keyfile=g_key_file_new();
      if (!g_key_file_load_from_data(keyfile, cmdOutput, strlen(cmdOutput), G_KEY_FILE_NONE, &error)){
        g_warning("ProcessKeyValuePairInCmdOutputFromSearchResult. error loading key value pair in cmdOutput from file %s, error code: %d, message:%s",oneline, error==NULL?0:error->code, error==NULL?"":error->message);
        if (error) g_error_free(error);
