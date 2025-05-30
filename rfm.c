@@ -38,6 +38,7 @@
 #include <stdarg.h>
 #include <regex.h>
 #include <gio/gdesktopappinfo.h>
+#include <json-glib/json-glib.h>
 #ifdef RFM_AddOn
 #include <dlfcn.h>
 #include <glib/gchecksum.h> // For file hashing
@@ -473,6 +474,9 @@ static void CallDefaultSearchResultFunctionForNewSearch(CALLER_OWN char *one_lin
 static int ProcessKeyValuePairInFilesFromSearchResult(CALLER_OWN char *oneline, gboolean new_search);
 static int ProcessKeyValuePairInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char **cmdtemplate);
 static int ProcessKeyValuePairInData(GKeyFile* keyfile, char *groupname);
+static void ProcessKeyValuePair(gchar *key, gchar* currentExtColumnValue, char* currentColumnOriginalTitle);
+static int ProcessJsonStr(CALLER_OWN gchar* json_data);
+static int ProcessJsonFileFromSearchResult(CALLER_OWN char *oneline, gboolean new_search);
 static int CallMatchingProcessorForSearchResultLine(char *oneline, gboolean new_search, char *cmdtemplate, RFM_FileAttributes* fileAttributes);
 static void cmdSearchResultColumnSeperator(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
 //matched search result type suffix will be removed from readlineResults
@@ -4929,6 +4933,111 @@ static int ProcessKeyValuePairInFilesFromSearchResult(CALLER_OWN char *oneline, 
    }
    g_free(absolute_address);
 }
+
+static void ProcessKeyValuePair(gchar *key, gchar* currentExtColumnValue, char* currentColumnOriginalTitle){
+	  RFM_treeviewColumn * col;
+	  enum RFM_treeviewCol current_Ext_Column;
+	  if ((col=get_treeviewColumnByTitle(key))){ //已经有同名列了
+	    current_Ext_Column=col->enumCol;
+	  }else{//新列名
+	    col = get_treeviewColumnByTitle(currentColumnOriginalTitle); //找到当前(空余,未被使用的)列名,如C1, C2, C3 ... 等等
+            current_Ext_Column=get_available_ExtColumn(COL_Ext1);//既然是空余列名,一定未绑定 emuncol, 找一个空的enum,就是COL_ExtX
+	    //简单地看,列名C1,C2和COL_Ext1, COL_Ext2 应该是一一对应的,似乎不存在找到空余的列名,却没有空余的COL_ExtX 的情况
+	    //但是万一有比如预定名称的列如MailFrom占据了某个COL_ExtX,会早成列名C1,C2虽够,但COL_ExtX不够了.
+	    //也就是说COL_ExtX总是比C1,C2..CX先用完
+	    if (current_Ext_Column==NUM_COLS) {
+	      g_warning("Not enough COL_Exts for %s",key);
+	      return;
+	    }
+	    col->enumCol=current_Ext_Column;
+	    snprintf(col->title,256,"%s",key);
+	    col->ValueFunc=getExtColumnValueFromHashTable;
+
+            currentPageStartingColumnTitleIndex++;
+	    snprintf(currentColumnOriginalTitle,10,"C%d", currentPageStartingColumnTitleIndex);
+	  }
+
+	  uint currentExtColumnHashTableIndex = current_Ext_Column - COL_Ext1;
+	  if (ExtColumnHashTable[currentExtColumnHashTableIndex]==NULL) ExtColumnHashTable[currentExtColumnHashTableIndex] = g_hash_table_new_full(g_str_hash, g_str_equal,g_free, g_free);
+
+	  char* strFileAttributeID=calloc(10, sizeof(char));
+	  snprintf(strFileAttributeID,10, "%d", fileAttributeID);
+	  g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"Insert column %s into ExtColumnHashTable[%d]: fileAttributeID as key %s,value %s", col->title, currentExtColumnHashTableIndex,strFileAttributeID,currentExtColumnValue);
+	  g_hash_table_insert(ExtColumnHashTable[currentExtColumnHashTableIndex], strFileAttributeID, currentExtColumnValue);
+}
+
+
+static char* get_json_str_value(JsonObject *obj, const gchar *key) {
+    JsonNode *node = json_object_get_member(obj, key);
+    if (!node) {
+        g_warning("Key '%s' not found\n", key);
+        return NULL;
+    }
+
+    switch (json_node_get_value_type(node)) {
+        case G_TYPE_STRING:
+            return g_strdup_printf("%s", json_node_get_string(node));
+        case G_TYPE_INT64:
+            return g_strdup_printf("%ld", json_node_get_int(node));
+        case G_TYPE_DOUBLE:
+            return g_strdup_printf("%f", json_node_get_double(node));
+        case G_TYPE_BOOLEAN:
+            return g_strdup_printf("%s", json_node_get_boolean(node) ? "true" : "false");
+        default:
+            return g_strdup_printf("Unhandled type");
+    }
+}
+
+static int ProcessJsonStr(CALLER_OWN gchar* json_data){
+    // 解析JSON字符串
+    GError *error = NULL;
+    JsonParser *parser = json_parser_new();
+    if (!json_parser_load_from_data(parser, json_data, -1, &error)) {
+        g_warning("Error parsing JSON: %s", error->message);
+        g_error_free(error);
+    }else{
+         // 获取根节点（假设根为JsonObject）
+        JsonNode *root = json_parser_get_root(parser);
+        JsonObject *root_obj = json_node_get_object(root);
+        GList * keys = json_object_get_members(root_obj);
+        g_log(RFM_LOG_DATA, G_LOG_LEVEL_DEBUG, "number of keys:%ld", g_list_length(keys));
+
+        GList *key = g_list_first(keys);
+	char currentColumnOriginalTitle[10];
+	snprintf(currentColumnOriginalTitle,10,"C%d", currentPageStartingColumnTitleIndex);
+
+	while (key){
+	  gchar* value = get_json_str_value(root_obj,key->data);
+	  if (value) ProcessKeyValuePair(key->data, value, currentColumnOriginalTitle);
+	  else g_warning("ProcessJsonStr. value for key %s not found:", key->data);
+	  key = g_list_next(key);
+	}
+	g_list_free(keys);
+    }
+    g_object_unref(parser);
+}
+
+static int ProcessJsonFileFromSearchResult(CALLER_OWN char *oneline, gboolean new_search){
+   if (new_search){
+     CallDefaultSearchResultFunctionForNewSearch(oneline);
+     return 0;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
+   }
+   gchar * absolute_address = g_canonicalize_filename(oneline, rfm_SearchResultPath);
+
+    // 读取JSON文件内容
+    gchar *json_data = NULL;
+    GError *error = NULL;
+    if (!g_file_get_contents(absolute_address, &json_data, NULL, &error)) {
+        g_warning("Error reading file: %s", error->message);
+        g_error_free(error);
+    }else{
+        ProcessJsonStr(json_data);
+        g_free(json_data);
+    }
+
+    g_free(absolute_address);
+}
+
 
 // 查看 SearchResultLineProcessingFunc 函数指针了解此函数调用
 // 这个函数的 cmdtemplate 有点类似 parse_and_exec_cmd_in_gtk_thread 的readlineResult, （还是等同？）

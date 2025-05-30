@@ -371,6 +371,7 @@ static RFM_SearchResultType searchresultTypes[] = {
 #endif
   {"multitype",CallMatchingProcessorForSearchResultLine,       EmptyShowColumn, NULL, NULL,                            SearchResultType_multitype },
   {"withTitle",ProcessOnelineForSearchResult_with_title,       EmptyShowColumn, NULL, NULL,                            SearchResultType_default_with_title },
+  {".json",    ProcessJsonFileFromSearchResult,                EmptyShowColumn, NULL, NULL,                            "json key value"},
 };
 
 /* Thumbnailers

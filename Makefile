@@ -27,7 +27,7 @@ endif
 CPPFLAGS += -D_FILE_OFFSET_BITS=64
 
 INCS = -I. -I/usr/include
-LIBS += -L/usr/lib `pkg-config --libs ${GTK_VERSION} gio-unix-2.0`
+LIBS += -L/usr/lib `pkg-config --libs ${GTK_VERSION} gio-unix-2.0 json-glib-1.0`
 ifeq (${READLINE_LIB},-DGNU_readline)
 LIBS += `pkg-config --libs readline`
 endif
@@ -38,7 +38,7 @@ ifneq (${CmarkTools},)
 LIBS += `pkg-config --libs libcmark`
 endif
 CPPFLAGS += -DVERSION=\"${VERSION}\"
-GTK_CFLAGS = `pkg-config --cflags ${GTK_VERSION}`
+GTK_CFLAGS = `pkg-config --cflags ${GTK_VERSION} json-glib-1.0`
 CFLAGS += -g -Wall -std=c11 -O0 -fPIC -pie -Wno-error=incompatible-pointer-types ${GTK_CFLAGS} ${INCS} ${CPPFLAGS}
 LDFLAGS += -g ${LIBS}
 
