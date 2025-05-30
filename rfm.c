@@ -475,6 +475,7 @@ static int ProcessKeyValuePairInFilesFromSearchResult(CALLER_OWN char *oneline, 
 static int ProcessKeyValuePairInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char **cmdtemplate);
 static int ProcessKeyValuePairInData(GKeyFile* keyfile, char *groupname);
 static void ProcessKeyValuePair(CALLER_OWN gchar *key, OWNER_CHANGE gchar* currentExtColumnValue, CALLER_OWN char* currentColumnOriginalTitle);
+static int ProcessGKeyfileStr(CALLER_OWN gchar *cmdOutput);
 static int ProcessJsonStr(CALLER_OWN gchar* json_data);
 static int ProcessJsonFileFromSearchResult(CALLER_OWN char *oneline, gboolean new_search);
 static int CallMatchingProcessorForSearchResultLine(char *oneline, gboolean new_search, char *cmdtemplate, RFM_FileAttributes* fileAttributes);
@@ -5067,22 +5068,29 @@ static int ProcessKeyValuePairInCmdOutputFromSearchResult(CALLER_OWN char *oneli
    g_free(absolute_address);
    char** cmd = stdin_cmd_interpretors[cmd_interpretor_index>=0 ? cmd_interpretor_index : current_stdin_cmd_interpretor].cmdTransformer(SearchResultOnelineDocProcessingCmd, FALSE);
 
-   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"ProcessKeyValuePairInCmdOutputFromSearchResult cmd:%s, MatchedCmdInterpretor:%d, current_stdin_cmd_interpretor %d",SearchResultOnelineDocProcessingCmd, cmd_interpretor_index, current_stdin_cmd_interpretor);
+   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"ProcessKeyValuePairInCmdOutputFromSearchResult file:%s, cmd:%s, MatchedCmdInterpretor:%d, current_stdin_cmd_interpretor %d", oneline, SearchResultOnelineDocProcessingCmd, cmd_interpretor_index, current_stdin_cmd_interpretor);
    if (!g_spawn_sync(rfm_curPath, cmd, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, &cmdOutput, &cmdError, NULL, &error)){
      g_warning("ProcessKeyValuePairInCmdOutputFromSearchResult. error executing cmd %s, error:%s",SearchResultOnelineDocProcessingCmd, error==NULL?"":error->message);
      if (error) g_error_free(error);
    }else{
+     ProcessGKeyfileStr(cmdOutput);
+   }
+   g_free(cmdOutput);
+   g_free(cmdError);
+}
+
+
+
+static int ProcessGKeyfileStr(CALLER_OWN gchar *cmdOutput){
+     GError *error=NULL;
      GKeyFile *keyfile=g_key_file_new();
      if (!g_key_file_load_from_data(keyfile, cmdOutput, strlen(cmdOutput), G_KEY_FILE_NONE, &error)){
-       g_warning("ProcessKeyValuePairInCmdOutputFromSearchResult. error loading key value pair in cmdOutput from file %s, error code: %d, message:%s",oneline, error==NULL?0:error->code, error==NULL?"":error->message);
+       g_warning("ProcessGKeyfileStr. error loading key value pair in cmdOutput, error code: %d, message:%s", error==NULL?0:error->code, error==NULL?"":error->message);
        if (error) g_error_free(error);
      }else{
        ProcessKeyValuePairInData(keyfile, dumb_keyfile_groupname);
        g_key_file_free(keyfile);
      }
-   }
-   g_free(cmdOutput);
-   g_free(cmdError);
 }
 
 static int ProcessKeyValuePairInData(GKeyFile *keyfile, char* groupname){
