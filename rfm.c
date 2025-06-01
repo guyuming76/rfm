@@ -742,6 +742,7 @@ static void free_child_attribs(FREE_FULL RFM_ChildAttribs *child_attribs)
    g_strfreev(child_attribs->env);
    //how can we memcpy the content of customCallbackUserData and free it here?
    //g_free(child_attribs->customCallbackUserData);
+   g_free(child_attribs->workingDir);
    g_free(child_attribs);
 }
 
@@ -1031,7 +1032,7 @@ static gboolean g_spawn_async_with_pipes_wrapper(CALLER_OWN gchar **v, RFM_Child
       GError* err = NULL;
 /* https://docs.gtk.org/glib/func.spawn_async_with_pipes_and_fds.html */
 /*       If non-NULL, the stdin_pipe_out, stdout_pipe_out, stderr_pipe_out locations will be filled with file descriptors for writing to the child's standard input or reading from its standard output or standard error. The caller of g_spawn_async_with_pipes() must close these file descriptors when they are no longer in use. If these parameters are NULL, the corresponding pipe won't be created. */
-      rv=g_spawn_async_with_pipes(rfm_curPath, v, child_attribs->env, G_SPAWN_DO_NOT_REAP_CHILD | G_SPAWN_SEARCH_PATH | child_attribs->runOpts,
+      rv=g_spawn_async_with_pipes(child_attribs->workingDir? child_attribs->workingDir:rfm_curPath, v, child_attribs->env, G_SPAWN_DO_NOT_REAP_CHILD | G_SPAWN_SEARCH_PATH | child_attribs->runOpts,
 				  //本commit 是revert 3d53359fdb97498a895a0cec97e3076558908a02 消除冲突后的结果，注意上一行|child_attribs->runOpts 是保留3d53359fdb97498a895a0cec97e3076558908a02改动的
 
 				  GSpawnChildSetupFunc_setenv,child_attribs,
@@ -1156,7 +1157,7 @@ static gboolean g_spawn_wrapper_(CALLER_OWN const GList *file_list, CALLER_OWN c
 	       GError *spawn_err = NULL;
 
 	       g_log(RFM_LOG_GSPAWN,G_LOG_LEVEL_DEBUG,"g_spawn_sync, workingdir:%s, argv:%s",rfm_curPath, argv);
-	       if (!g_spawn_sync(rfm_curPath, v, child_attribs->env, G_SPAWN_SEARCH_PATH|child_attribs->runOpts, GSpawnChildSetupFunc_setenv,child_attribs,(child_attribs->runOpts & G_SPAWN_STDOUT_TO_DEV_NULL)? NULL : &child_attribs->stdOut, &child_attribs->stdErr,&child_attribs->status,&spawn_err)){
+	       if (!g_spawn_sync(child_attribs->workingDir? child_attribs->workingDir:rfm_curPath, v, child_attribs->env, G_SPAWN_SEARCH_PATH|child_attribs->runOpts, GSpawnChildSetupFunc_setenv,child_attribs,(child_attribs->runOpts & G_SPAWN_STDOUT_TO_DEV_NULL)? NULL : &child_attribs->stdOut, &child_attribs->stdErr,&child_attribs->status,&spawn_err)){
 	            g_warning("g_spawn_sync %s failed to execute: %s. Check command in config.h!", argv, spawn_err ? spawn_err->message : "Unknown error");
 	            if (spawn_err) g_error_free(spawn_err);
 	            free_child_attribs(child_attribs);
@@ -5289,7 +5290,7 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
   SearchResultFileNameListLength=0;
   fileAttributeID=1;
   g_free(rfm_SearchResultPath);
-  rfm_SearchResultPath=strdup(rfm_curPath);
+  rfm_SearchResultPath=strdup(rfm_curPath);//TODO:随着ADDON架构的引入，将来可能很多search就不是从 rfm_curPath 里面执行的，而是在g_spawn的时候就传入一个ADDON的目录，到时这里也要作相应修改
 
   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"update_SearchResultFileNameList, length: %ld charactor(s)",filenamelist?strlen((gchar*)filenamelist):0);
   gchar * oneline=strtok((gchar*)filenamelist,"\n");

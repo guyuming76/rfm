@@ -107,6 +107,7 @@ typedef struct RFM_ChildAttributes{
    gboolean spawn_async;
    gint exitcode;
    gboolean output_read_by_program;
+   gchar *workingDir;//use rfm_curPath if this is NULL
 } RFM_ChildAttribs;
 
 
