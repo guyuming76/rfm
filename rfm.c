@@ -651,6 +651,7 @@ static gboolean compile_local_extension(RFM_ADDON *addon);
 static gchar* calculate_file_hash(const gchar *filepath);
 static void find_and_unload_addons_before_leaving_current_directory();
 #endif
+static gchar *addon_dir_for_current_cmd = NULL; //this should be inside define RFM_AddOn, but the code that reference this should be in define RFM_AddOn too. to simplify the code, keep this outside RFM_AddOn
 
 /**************gtk UI, filemenu, toolbar end**************************/
 
@@ -2714,6 +2715,7 @@ static void toolbar_button_exec(GtkToolItem *item, RFM_ToolButton *button_defini
        if ((button_definition >= value->resource_managed_by_addon->toolbar_button_definitions_local)
 	   && button_definition < value->resource_managed_by_addon->toolbar_button_definitions_local + (value->resource_managed_by_addon->toolbar_button_definitions_local_array_size)*sizeof(RFM_ToolButton)){ //根据地址判断button_definition 指向某个静态数组
          child_attribs->workingDir = g_strdup(value->resource_managed_by_addon->addon_dir);
+	 g_debug("Addon working directory:%s", child_attribs->workingDir);
 	 break;
        }
      }
@@ -2722,7 +2724,12 @@ static void toolbar_button_exec(GtkToolItem *item, RFM_ToolButton *button_defini
      if (cmd_interpretor_index>=0){
        gchar* cmd = strdup(child_attribs->RunCmd[1]);
        printf("\n%s\033[32m%s%s]\033[0m%s\n",InheritedPrompt, stdin_cmd_interpretors[cmd_interpretor_index].prompt,(ItemSelected==0)?"":"*",cmd);
+#ifdef RFM_AddOn
+       if (addon_dir_for_current_cmd) g_warning("addon_dir_for_current_cmd not NULL:%s", addon_dir_for_current_cmd);
+       else addon_dir_for_current_cmd = g_strdup(child_attribs->workingDir);
+#endif
        parse_and_exec_command_in_gtk_thread(cmd, FALSE, cmd_interpretor_index);
+       free_child_attribs(child_attribs);
      }else g_spawn_wrapper_(NULL, NULL, child_attribs);
    }
 }
@@ -3447,23 +3454,25 @@ static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousRea
 #endif
 	  GError *err = NULL;
           gint exit_status;
-	  if (SearchResultTypeIndex>=0 && (ret = g_spawn_sync(rfm_curPath,
+	  if (SearchResultTypeIndex>=0 && (ret = g_spawn_sync(addon_dir_for_current_cmd? addon_dir_for_current_cmd : rfm_curPath,
 						       stdin_cmd_interpretors[cmd_interpretor_index].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE),
 					      env_for_g_spawn_used_by_exec_stdin_command,
 					      G_SPAWN_SEARCH_PATH|G_SPAWN_CHILD_INHERITS_STDIN|G_SPAWN_CHILD_INHERITS_STDERR,
 							      NULL,NULL,&stdout_read_by_search_result,NULL,&exit_status,&err))){
 	      g_idle_add_once(update_SearchResultFileNameList_and_refresh_store, (gpointer)stdout_read_by_search_result);
 
-	  } else if (SearchResultTypeIndex<0 && (ret = g_spawn_sync(rfm_curPath,
+	  } else if (SearchResultTypeIndex<0 && (ret = g_spawn_sync(addon_dir_for_current_cmd? addon_dir_for_current_cmd : rfm_curPath,
 							     stdin_cmd_interpretors[cmd_interpretor_index].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE), env_for_g_spawn_used_by_exec_stdin_command,
                            G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN |
                                G_SPAWN_CHILD_INHERITS_STDOUT |
                                G_SPAWN_CHILD_INHERITS_STDERR,
 								    NULL, NULL, NULL, NULL, &exit_status, &err))) {
+	    if (addon_dir_for_current_cmd) { g_free(addon_dir_for_current_cmd); addon_dir_for_current_cmd=NULL; }
 
 	  } else {
               g_warning("%d;%s", err->code, err->message);
 	      g_error_free(err);
+	      if (addon_dir_for_current_cmd) { g_free(addon_dir_for_current_cmd); addon_dir_for_current_cmd=NULL; }
 	  }
 
 	  if (WIFEXITED(exit_status)) {
@@ -5302,7 +5311,10 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
   SearchResultFileNameListLength=0;
   fileAttributeID=1;
   g_free(rfm_SearchResultPath);
-  rfm_SearchResultPath=strdup(rfm_curPath);//TODO:随着ADDON架构的引入，将来可能很多search就不是从 rfm_curPath 里面执行的，而是在g_spawn的时候就传入一个ADDON的目录，到时这里也要作相应修改
+  if (addon_dir_for_current_cmd){
+    rfm_SearchResultPath = addon_dir_for_current_cmd;
+    addon_dir_for_current_cmd = NULL;//取完值后就置空，只有新查询会执行到这里，刷新不会
+  }else rfm_SearchResultPath=strdup(rfm_curPath);
 
   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"update_SearchResultFileNameList, length: %ld charactor(s)",filenamelist?strlen((gchar*)filenamelist):0);
   gchar * oneline=strtok((gchar*)filenamelist,"\n");
