@@ -77,7 +77,7 @@ typedef struct {
   GtkWidget **menuItems_local;
   RFM_MenuItem *file_menuitem_definitions_local;
   size_t file_menuitem_definitions_local_array_size;
-  char * addon_dir;
+  char * addon_dir; //TODO:有必要加这个字段吗？通过获取RFM_ADDON指针，然后使用local_c_path的目录不行吗？不安全？
 } RFM_ADDON_RESOURCE_TYPE;
 
 typedef struct {

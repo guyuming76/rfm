@@ -2705,7 +2705,19 @@ static void toolbar_button_exec(GtkToolItem *item, RFM_ToolButton *button_defini
      child_attribs->name = g_strdup(button_definition->buttonName);
      child_attribs->customCallBackFunc = button_definition->func;
      child_attribs->customCallbackUserData = rfmCtx;
-
+#ifdef RFM_AddOn
+     GHashTableIter ht_iter;
+     gchar *key;
+     RFM_ADDON *value;
+     g_hash_table_iter_init(&ht_iter, addons);
+     while (g_hash_table_iter_next(&ht_iter, &key, &value)){
+       if ((button_definition >= value->resource_managed_by_addon->toolbar_button_definitions_local)
+	   && button_definition < value->resource_managed_by_addon->toolbar_button_definitions_local + (value->resource_managed_by_addon->toolbar_button_definitions_local_array_size)*sizeof(RFM_ToolButton)){ //根据地址判断button_definition 指向某个静态数组
+         child_attribs->workingDir = g_strdup(value->resource_managed_by_addon->addon_dir);
+	 break;
+       }
+     }
+#endif
      int cmd_interpretor_index = match_cmd_str_array_with_interpretors(child_attribs->RunCmd);
      if (cmd_interpretor_index>=0){
        gchar* cmd = strdup(child_attribs->RunCmd[1]);
