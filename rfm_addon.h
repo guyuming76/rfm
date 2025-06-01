@@ -77,6 +77,7 @@ typedef struct {
   GtkWidget **menuItems_local;
   RFM_MenuItem *file_menuitem_definitions_local;
   size_t file_menuitem_definitions_local_array_size;
+  char * addon_dir;
 } RFM_ADDON_RESOURCE_TYPE;
 
 typedef struct {

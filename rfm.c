@@ -217,7 +217,7 @@ static void g_spawn_wrapper_for_selected_fileList_(FREE_FULL RFM_ChildAttribs *c
 gboolean g_spawn_wrapper(CALLER_OWN const char **action, CALLER_OWN const GList *file_list, const int run_opts, FREE const gchar** env, const char *dest_path, const gboolean async,const void(*callbackfunc)(gpointer),CALLER_OWN const gpointer callbackfuncUserData,const gboolean output_read_by_program);
 /* call build_cmd_vector to create the argv parameter for g_spawn_* */
 /* call different g_spawn_* functions based on child_attribs->spawn_async and child_attribs->runOpts */
-static gboolean g_spawn_wrapper_(CALLER_OWN const GList *file_list, CALLER_OWN const char *dest_path, FREE_FULL RFM_ChildAttribs * childAttribs);
+gboolean g_spawn_wrapper_(CALLER_OWN const GList *file_list, CALLER_OWN const char *dest_path, FREE_FULL RFM_ChildAttribs * childAttribs);
 /* create argv parameter for g_spawn functions  */
 /* The char* in file_list will be used (WITHOUT strdup) in returned gchar** v and owned by rfm_FileAttributelist before */
 static MEM_ALLOC gchar **build_cmd_vector(CALLER_OWN const char **cmd, CALLER_OWN const GList *file_list, CALLER_OWN const char *dest_path);
@@ -633,7 +633,7 @@ typedef struct {
   RFM_ADDON_RESOURCE_TYPE * resource_managed_by_addon;
   enum RFM_ADDON_TYPE addon_type;
   void *rfm_local_so_handle;
-  void (*local_enter_func)(void);
+  void (*local_enter_func)(gchar*);
   void (*local_leave_func)(void);
   gchar *local_c_path;
   gchar *local_so_path;
@@ -1137,7 +1137,7 @@ static void check_wait_status_and_set_exit_code(CALLER_OWN RFM_ChildAttribs *chi
 }
 
 //caller should g_list_free(file_list), but usually not g_list_free_full, since the file char* is usually owned by rfm_fileattributes
-static gboolean g_spawn_wrapper_(CALLER_OWN const GList *file_list, CALLER_OWN const char *dest_path, FREE_FULL RFM_ChildAttribs * child_attribs)
+gboolean g_spawn_wrapper_(CALLER_OWN const GList *file_list, CALLER_OWN const char *dest_path, FREE_FULL RFM_ChildAttribs * child_attribs)
 {
    gchar **v=NULL;
    gboolean ret=TRUE;
@@ -5625,7 +5625,7 @@ static void load_addon(CALLER_OWN char* addon_directory){
             goto cleanup;
         } else if (addon->local_enter_func){
             g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Calling %s from %s", RFM_LOCAL_ENTER_FUNC, addon->local_so_path);
-            (*(addon->local_enter_func))(); //call enter function
+            (*(addon->local_enter_func))(addon_directory); //call enter function
 	    g_hash_table_insert(addons, strdup(addon->local_so_path), addon);
 	    g_debug("addons size after loading:%d",g_hash_table_size(addons));
 	    return; // 成功call enter funtion 就不要cleanup, unload 完再cleanup
