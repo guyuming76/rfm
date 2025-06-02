@@ -77,7 +77,7 @@ typedef struct {
   const char* SearchResultColumnSeperator;
   const char** cmdTemplate;//used by ProcessKeyValuePairInCmdOutputFromSearchResult
   const char* Description;
-}RFM_SearchResultType;
+} RFM_SearchResultType;
 
 typedef struct {
   GtkWidget **tool_bar_buttons_local;

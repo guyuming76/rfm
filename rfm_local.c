@@ -26,7 +26,7 @@ extern void add_file_menuitems(GtkWidget ***menuitems, const RFM_MenuItem menuit
 extern void remove_toolbar_buttons(GtkWidget ***buttons, const size_t size);
 extern void remove_file_menuitems(GtkWidget ***menuitems, const size_t size);
 
-RFM_ADDON_RESOURCE_TYPE addon_resource;
+RFM_ADDON_RESOURCE_TYPE addon_resource = {0};
 const enum RFM_ADDON_TYPE addon_type = Directory;
 
 static const char *rfmTODO[] = { NULL, "find . -name '*.rfmTODO.*'" RFM_SearchResultTypeNamePrefix "multitype", NULL };

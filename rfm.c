@@ -464,7 +464,7 @@ static int ProcessOnelineForSearchResult_with_title(CALLER_OWN char* oneline, gb
 static void CallDefaultSearchResultFunctionForNewSearch(CALLER_OWN char *one_line_in_search_result);
 static int ProcessKeyValuePairInFilesFromSearchResult(CALLER_OWN char *oneline, gboolean new_search);
 static int ProcessKeyValuePairInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char **cmdtemplate);
-static int ProcessJsonInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate);
+int ProcessJsonInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate);
 static int ProcessCmdOutputFromSearchResultWithFunction(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate, int (*func)(CALLER_OWN gchar*));
 static int ProcessKeyValuePairInData(GKeyFile* keyfile, char *groupname);
 static void ProcessKeyValuePair(CALLER_OWN gchar *key, OWNER_CHANGE gchar* currentExtColumnValue, CALLER_OWN char* currentColumnOriginalTitle);
@@ -5086,7 +5086,7 @@ static int ProcessKeyValuePairInCmdOutputFromSearchResult(CALLER_OWN char *oneli
   ProcessCmdOutputFromSearchResultWithFunction(oneline,new_search,cmdtemplate,ProcessGKeyfileStr);
 }
 
-static int ProcessJsonInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate){
+int ProcessJsonInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate){
   ProcessCmdOutputFromSearchResultWithFunction(oneline,new_search,cmdtemplate,ProcessJsonStr);
 }
 
