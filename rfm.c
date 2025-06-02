@@ -456,9 +456,8 @@ static gint SearchResultFileNameListLength=0;
 static gint currentFileNum=0;
 static GList *CurrentPage_SearchResultView=NULL;
 static gint PageSize_SearchResultView=100;
-
-static int SearchResultTypeIndex=-1; // we need to pass this status from exec_stdin_command to readlineInSeperatedThread, however, we can only pass one parameter in g_thread_new, so, i use a global variable here.
-static int SearchResultTypeIndexForCurrentExistingSearchResult=-1;//The value above will be override by next command, which can be a non-search command, we need this variable to preserve the current displaying searchresulttype
+static RFM_SearchResultType* SearchResultTypePointer = NULL; // we need to pass this status from exec_stdin_command to readlineInSeperatedThread, however, we can only pass one parameter in g_thread_new, so, i use a global variable here.
+static RFM_SearchResultType* SearchResultTypePointerForCurrentExistingSearchResult = NULL; //The value above will be override by next command, which can be a non-search command, we need this variable to preserve the current displaying searchresulttype
 //如要分配新的自定义列,此变量记录分配的列名,按C1,C2..顺序,分配后,用键值替换原始的Cx列名
 static int currentSearchResultTypeStartingColumnTitleIndex;
 static int currentPageStartingColumnTitleIndex;
@@ -483,7 +482,7 @@ static int ProcessJsonFileFromSearchResult(CALLER_OWN char *oneline, gboolean ne
 static int CallMatchingProcessorForSearchResultLine(char *oneline, gboolean new_search, char *cmdtemplate, RFM_FileAttributes* fileAttributes);
 static void cmdSearchResultColumnSeperator(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
 //matched search result type suffix will be removed from readlineResults
-static int MatchSearchResultType(gchar *readlineResult);
+static RFM_SearchResultType* MatchSearchResultType(gchar *readlineResult);
 static void set_pagesize_for_searchresultview(const char *pagesize);
 static void cmdPagesize(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
 static void writeSearchResultIntoFD_in_gtk_thread(gint *fd);
@@ -2147,8 +2146,8 @@ static gboolean fill_fileAttributeList_with_filenames_from_search_result_and_the
     if (fileAttributes != NULL) {
       rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
       g_log(RFM_LOG_DATA,G_LOG_LEVEL_DEBUG,"appended into rfm_fileAttributeList:%s", (char*)name->data);
-      if (SearchResultViewInsteadOfDirectoryView && SearchResultTypeIndexForCurrentExistingSearchResult>=0)
-	searchresultTypes[SearchResultTypeIndexForCurrentExistingSearchResult].SearchResultLineProcessingFunc((gchar*)(name->data), FALSE, searchresultTypes[SearchResultTypeIndexForCurrentExistingSearchResult].cmdTemplate, fileAttributes);
+      if (SearchResultViewInsteadOfDirectoryView && SearchResultTypePointerForCurrentExistingSearchResult)
+	SearchResultTypePointerForCurrentExistingSearchResult->SearchResultLineProcessingFunc((gchar*)(name->data), FALSE, SearchResultTypePointerForCurrentExistingSearchResult->cmdTemplate, fileAttributes);
     }
     fileAttributeID++;//上面SearchResultLineProcessingFunc里面会使用fileAttributeID作为hashtable的key, commit ab8f8c2f832bc32b431ced50bda21de36b9314d5 之前是分两次从fileAttributeID=1开始遍历文件名列表的,但commit ab8f8c2f832bc32b431ced50bda21de36b9314d5 和并成了现在的一次遍历, 造成了一个bug: 之前在 get_fileAttributes_for_a_file 调用fileAttributeID++, 后面的SearchResultLineProcessingFunc里fileAttributeID值就错了,所以现在改在这里调用 fileAttributeID++
     name=g_list_next(name);
@@ -2156,7 +2155,7 @@ static gboolean fill_fileAttributeList_with_filenames_from_search_result_and_the
   }
   rfm_fileAttributeList=g_list_reverse(rfm_fileAttributeList);
 
-  if (SearchResultTypeIndexForCurrentExistingSearchResult>=0 && !showSearchResultExtColumnsBasedOnHashTableValues_has_already_been_called_for_searchresult) showSearchResultExtColumnsBasedOnHashTableValues();
+  if (SearchResultTypePointerForCurrentExistingSearchResult && !showSearchResultExtColumnsBasedOnHashTableValues_has_already_been_called_for_searchresult) showSearchResultExtColumnsBasedOnHashTableValues();
 
   icon_or_tree_view = add_view(rfmCtx);//add view have to be called after showSearchResultExtColumnsBasedOnHashTableValues()
   //commit ab8f8c2f832bc32b431ced50bda21de36b9314d5 里, 我发现 add_view 需要在showSearchResultExtColumnsBasedOnHashTableValues()后面调用,就在那个commit 里面移动了add_view 的位置,否则会出现一个问题:运行 locate .rfmTODO.md>TODO.md 后,只有filename列显示,需要连续回车刷新下才会显示ext列. 究其原因,可能和第 3334 行代码有关, 也就是说,在调用 show_hide_treeview_column 时,需要 icon_or_tree_view值有效,否则gtkcolumn不会被设置成显示
@@ -2245,7 +2244,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
 
    gchar * title;
    if (SearchResultViewInsteadOfDirectoryView) {
-     if (SearchResultTypeIndexForCurrentExistingSearchResult>=0){
+     if (SearchResultTypePointerForCurrentExistingSearchResult){
          for(int i=0;i<=NUM_Ext_Columns;i++) {
 	   if (!ExtColumnHashTable_keep_during_refresh[i] && ExtColumnHashTable[i]!=NULL){
 	     g_hash_table_destroy(ExtColumnHashTable[i]);
@@ -2508,7 +2507,7 @@ static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointe
    if (!fileAttributes->is_dir) {
 
       for(i=0; i<G_N_ELEMENTS(run_actions); i++) {
-	 if (SearchResultViewInsteadOfDirectoryView && g_strcmp0(run_actions[i].OrSearchResultType, searchresultTypes[SearchResultTypeIndexForCurrentExistingSearchResult].name)==0){
+	 if (SearchResultViewInsteadOfDirectoryView && g_strcmp0(run_actions[i].OrSearchResultType, SearchResultTypePointerForCurrentExistingSearchResult->name)==0){
 	    index_of_default_file_activation_action_based_on_mime_or_searchresultType = i;
 	    break;
 	 }
@@ -2791,7 +2790,7 @@ static void show_hide_file_menu_item(GtkWidget ***menuitems, RFM_MenuItem menuit
       }
       if (strncmp("*", menuitem_definitions[i].runRoot, 1)==0)
          showMenuItem[i]++;   /* Run actions to show for all files */
-      if (SearchResultViewInsteadOfDirectoryView && g_strcmp0(menuitem_definitions[i].OrSearchResultType, searchresultTypes[SearchResultTypeIndexForCurrentExistingSearchResult].name)==0) showMenuItem[i]++;
+      if (SearchResultViewInsteadOfDirectoryView && g_strcmp0(menuitem_definitions[i].OrSearchResultType, SearchResultTypePointerForCurrentExistingSearchResult->name)==0) showMenuItem[i]++;
       if (menuitem_definitions[i].filenameSuffix){
 	 GList *listElement=g_list_first(selectionList);
 	 while (listElement) {
@@ -3454,14 +3453,14 @@ static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousRea
 #endif
 	  GError *err = NULL;
           gint exit_status;
-	  if (SearchResultTypeIndex>=0 && (ret = g_spawn_sync(addon_dir_for_current_cmd? addon_dir_for_current_cmd : rfm_curPath,
+	  if (SearchResultTypePointer && (ret = g_spawn_sync(addon_dir_for_current_cmd? addon_dir_for_current_cmd : rfm_curPath,
 						       stdin_cmd_interpretors[cmd_interpretor_index].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE),
 					      env_for_g_spawn_used_by_exec_stdin_command,
 					      G_SPAWN_SEARCH_PATH|G_SPAWN_CHILD_INHERITS_STDIN|G_SPAWN_CHILD_INHERITS_STDERR,
 							      NULL,NULL,&stdout_read_by_search_result,NULL,&exit_status,&err))){
 	      g_idle_add_once(update_SearchResultFileNameList_and_refresh_store, (gpointer)stdout_read_by_search_result);
 
-	  } else if (SearchResultTypeIndex<0 && (ret = g_spawn_sync(addon_dir_for_current_cmd? addon_dir_for_current_cmd : rfm_curPath,
+	  } else if (SearchResultTypePointer==NULL && (ret = g_spawn_sync(addon_dir_for_current_cmd? addon_dir_for_current_cmd : rfm_curPath,
 							     stdin_cmd_interpretors[cmd_interpretor_index].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE), env_for_g_spawn_used_by_exec_stdin_command,
                            G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN |
                                G_SPAWN_CHILD_INHERITS_STDOUT |
@@ -3491,7 +3490,7 @@ static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResult
 	    childAttribs->RunCmd = stdin_cmd_interpretors[cmd_interpretor_index].cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE);
 	    childAttribs->stdIn_fd = -1; //set to non-zero, and will be set to a valid fd by g_spawn_async_with_pipes
 	    childAttribs->customCallBackFunc = from_stdin_readline ? g_spawn_async_callback_to_new_readline_thread : NULL; //TODO：如果不是从readline获取的命令，就把callback设成NULL,因为callback里面会创建新的readline线程，导致超过一个readline线程在运行, 但是如果不是from_stdin_readline, 就不用update_SearchResultFileNameList_and_refresh_store 了吗？
-	    if (SearchResultTypeIndex>=0) {
+	    if (SearchResultTypePointer) {
 	      childAttribs->output_read_by_program = TRUE;
 	      childAttribs->customCallbackUserData = update_SearchResultFileNameList_and_refresh_store;
 	      //}else childAttribs->runOpts = G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR;
@@ -4135,9 +4134,9 @@ static void toggle_exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread(){
 // searchresulttype can be matched with index number or name
 // you can use >0  or >default or >your_custom_searchresulttype_name_or_index as suffix of your command
 // i use the ">" as RFM_SearchResultTypeNamePrefix since the beginning of development, but it can be confused with redirect to file in Bash. So, you mean define it to "}" or anything else you like in config.h
-static int MatchSearchResultType(gchar* readlineResult){
+static RFM_SearchResultType* MatchSearchResultType(gchar* readlineResult){
             gint len = strlen(readlineResult);
-	    if (len<=2) return -1; // the shortest suffix is >0 or >1 ...
+	    if (len<=2) return NULL; // the shortest suffix is >0 or >1 ...
 
 	    for(guint i=0; i<G_N_ELEMENTS(searchresultTypes); i++){
 
@@ -4148,7 +4147,7 @@ static int MatchSearchResultType(gchar* readlineResult){
 		g_debug("SearchResultTypeIndex:%d; searchResultTypeName:%s",i,searchresultTypes[i].name);
 		readlineResult[len-strlen(searchTypeNumberSuffix)]='\0';//remove suffix from readlineResult
 		g_free(searchTypeNumberSuffix);
-		return i;
+		return &(searchresultTypes[i]);
 	      }
 	      g_free(searchTypeNumberSuffix);
 	      
@@ -4157,13 +4156,13 @@ static int MatchSearchResultType(gchar* readlineResult){
 		g_debug("SearchResultTypeIndex:%d; searchResultTypeName:%s",i,searchresultTypes[i].name);
 		readlineResult[len-strlen(searchTypeNameSuffix)]='\0';//remove suffix from readlineResult
 		g_free(searchTypeNameSuffix);
-		return i;
+		return &(searchresultTypes[i]);
 	      }
 	      g_free(searchTypeNameSuffix);
 	    }
 	    if (strstr(readlineResult, RFM_SearchResultTypeNamePrefix)!=NULL)
 	      printf("SearchResultTypePrefix %s in input, and no SearchResultType matched, but this can be just fine. TODO: add a builtin command to list available SearchResultTypes\n",RFM_SearchResultTypeNamePrefix);
-	    return -1;
+	    return NULL;
 }
 
 static void set_stdin_cmd_leading_space_true(){
@@ -4298,9 +4297,9 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 	    while (len>=1 && readlineResult[len-1]==' ') { readlineResult[len-1]='\0'; len--; } //remove ending space
 
 	    if (!execStdinCmdInNewVT && !(!from_stdin_readline && execCmdInNewVT)){
-	      SearchResultTypeIndex = MatchSearchResultType(readlineResult);
+	      SearchResultTypePointer = MatchSearchResultType(readlineResult);
 	      len = strlen(readlineResult);
-	      if (SearchResultTypeIndex>=0) SearchResultTypeIndexForCurrentExistingSearchResult=SearchResultTypeIndex;
+	      if (SearchResultTypePointer) SearchResultTypePointerForCurrentExistingSearchResult=SearchResultTypePointer;
 	    }
 
 	    stdin_cmd_ending_space = (stdin_cmd_ending_space || (len>=1 && readlineResult[len-1]==' '));
@@ -5155,17 +5154,17 @@ static int CallMatchingProcessorForSearchResultLine(char *oneline, gboolean new_
    }
 
    char* longest_matched_searchresulttype_name = "";
-   int matched_searchresulttype_index = 0;
+   RFM_SearchResultType * matched_searchresulttype_pointer = NULL;
    for(guint i=0; i<G_N_ELEMENTS(searchresultTypes); i++){
      if (g_str_has_suffix(oneline, searchresultTypes[i].name)){
        if (strlen(searchresultTypes[i].name)>strlen(longest_matched_searchresulttype_name)){
 	 longest_matched_searchresulttype_name = searchresultTypes[i].name;
-	 matched_searchresulttype_index = i;
+	 matched_searchresulttype_pointer = &(searchresultTypes[i]);
        }
      }
    }
-   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"SearchResultTypeId %d,name %s matched for file:%s",matched_searchresulttype_index,longest_matched_searchresulttype_name,oneline);
-   return searchresultTypes[matched_searchresulttype_index].SearchResultLineProcessingFunc(oneline,new_search,searchresultTypes[matched_searchresulttype_index].cmdTemplate, fileAttributes);
+   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"SearchResultType name %s matched for file:%s",longest_matched_searchresulttype_name,oneline);
+   return matched_searchresulttype_pointer->SearchResultLineProcessingFunc(oneline,new_search,matched_searchresulttype_pointer->cmdTemplate, fileAttributes);
 }
 
 static gchar* getExtColumnValueFromHashTable(guint fileAttributeId, guint ExtColumnHashTableIndex){
@@ -5182,8 +5181,9 @@ static void ReadFromPipeStdinIfAny(char * fd)
    if (readlink_proc_self_fd_pipefd_and_confirm_pipefd_is_used_by_pipeline()){
          if (initDir!=NULL && (SearchResultViewInsteadOfDirectoryView^1)) die("if you have -d specified, and read file name list from pipeline, -p parameter must goes BEFORE -d\n");
 	 SearchResultViewInsteadOfDirectoryView=1;
-	 SearchResultTypeIndex=1;
-	 SearchResultTypeIndexForCurrentExistingSearchResult=0;
+	 //SearchResultTypeIndex=1; 这里之前怎么会是1而不是0啊，是不是bug？
+         SearchResultTypePointer = &(searchresultTypes[0]);
+	 SearchResultTypePointerForCurrentExistingSearchResult=SearchResultTypePointer;
 	 fileAttributeID=1;
 	 gchar *oneline_stdin=calloc(1,PATH_MAX);
 	 FILE *pipeStream = stdin;
@@ -5264,7 +5264,7 @@ static void showSearchResultExtColumnsBasedOnHashTableValues(){
 
   int i=0;
   gchar* column_sequence;
-  while ((column_sequence = searchresultTypes[SearchResultTypeIndexForCurrentExistingSearchResult].showcolumn[i])){
+  while ((column_sequence = SearchResultTypePointerForCurrentExistingSearchResult->showcolumn[i])){
     show_hide_treeview_columns_in_order(column_sequence);
     i++;
   }
@@ -5287,7 +5287,7 @@ static void showSearchResultExtColumnsBasedOnHashTableValues(){
 // 本函数是newsearch 为True, 对应新的查询结果集
 // fill_fileAttributeList_with_filenames_from_search_result_and_then_insert_into_store 里的调用 newsearch 为false,对应页面刷新以及翻页
 static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamelist){
-  g_assert(SearchResultTypeIndex>=0 && SearchResultTypeIndex<G_N_ELEMENTS(searchresultTypes));
+  g_assert(SearchResultTypePointer);
   
   GList * old_filenamelist = SearchResultFileNameList;
   static GHashTable* old_ExtColumnHashTable[NUM_Ext_Columns + 1]; //静态存储期（static storage duration）的变量（包括全局变量和用static 关键字声明的局部变量）如果没有显式初始化，会被自动初始化为零。
@@ -5304,9 +5304,9 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
   showSearchResultExtColumnsBasedOnHashTableValues_has_already_been_called_for_searchresult = FALSE;
   char old_searchresultcolumnSeperator[32];
   //apply searchresulttype specific column seperator
-  if (searchresultTypes[SearchResultTypeIndex].SearchResultColumnSeperator) {
+  if (SearchResultTypePointer->SearchResultColumnSeperator) {
     strcpy(old_searchresultcolumnSeperator, SearchResultColumnSeperator);
-    strcpy(SearchResultColumnSeperator, searchresultTypes[SearchResultTypeIndex].SearchResultColumnSeperator);
+    strcpy(SearchResultColumnSeperator, SearchResultTypePointer->SearchResultColumnSeperator);
   }
   SearchResultFileNameListLength=0;
   fileAttributeID=1;
@@ -5319,14 +5319,14 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"update_SearchResultFileNameList, length: %ld charactor(s)",filenamelist?strlen((gchar*)filenamelist):0);
   gchar * oneline=strtok((gchar*)filenamelist,"\n");
   while (oneline!=NULL){
-    searchresultTypes[SearchResultTypeIndex].SearchResultLineProcessingFunc(oneline, TRUE, searchresultTypes[SearchResultTypeIndex].cmdTemplate,NULL);
+    SearchResultTypePointer->SearchResultLineProcessingFunc(oneline, TRUE, SearchResultTypePointer->cmdTemplate,NULL);
     fileAttributeID++;
     oneline=strtok(NULL, "\n");
   }
 
   if (SearchResultFileNameList != NULL) SearchResultFileNameList=g_list_first(g_list_reverse(SearchResultFileNameList));
 
-  if (searchresultTypes[SearchResultTypeIndex].SearchResultColumnSeperator) {
+  if (SearchResultTypePointer->SearchResultColumnSeperator) {
     strcpy(SearchResultColumnSeperator, old_searchresultcolumnSeperator);
   }
 
