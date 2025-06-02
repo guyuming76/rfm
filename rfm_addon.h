@@ -71,12 +71,23 @@ typedef struct {
 } RFM_MenuItem;
 
 typedef struct {
+  gchar* name;
+  int (*SearchResultLineProcessingFunc)(gchar* oneline, gboolean new_search, char** cmdTemplate, RFM_FileAttributes* fileAttributes); //when new_search is TRUE, fileattributes will be NULL. Note that not all ProcessingFunc has these four parameters defined, mostly not.
+  const char** showcolumn; //the same type of string used in showcolumn builtin command
+  const char* SearchResultColumnSeperator;
+  const char** cmdTemplate;//used by ProcessKeyValuePairInCmdOutputFromSearchResult
+  const char* Description;
+}RFM_SearchResultType;
+
+typedef struct {
   GtkWidget **tool_bar_buttons_local;
   RFM_ToolButton *toolbar_button_definitions_local;//静态数组在rfm_local.c中定义，但是通过本指针访问
   size_t toolbar_button_definitions_local_array_size;
   GtkWidget **menuItems_local;
   RFM_MenuItem *file_menuitem_definitions_local;
   size_t file_menuitem_definitions_local_array_size;
+  RFM_SearchResultType *searchresulttypes;
+  size_t searchresulttypes_array_size;
   char * addon_dir; //TODO:有必要加这个字段吗？通过获取RFM_ADDON指针，然后使用local_c_path的目录不行吗？不安全？
 } RFM_ADDON_RESOURCE_TYPE;
 

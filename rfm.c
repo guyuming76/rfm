@@ -435,14 +435,6 @@ static void cmdToggleInotifyHandler(wordexp_t *parsed_msg,GString *readline_resu
 /******GtkListStore and refresh definitions end******/
 /****************************************************/
 /******Search Result related definitions*************/
-typedef struct {
-  gchar* name;
-  int (*SearchResultLineProcessingFunc)(gchar* oneline, gboolean new_search, char** cmdTemplate, RFM_FileAttributes* fileAttributes); //when new_search is TRUE, fileattributes will be NULL. Note that not all ProcessingFunc has these four parameters defined, mostly not.
-  const char** showcolumn; //the same type of string used in showcolumn builtin command
-  const char* SearchResultColumnSeperator;
-  const char** cmdTemplate;//used by ProcessKeyValuePairInCmdOutputFromSearchResult
-  const char* Description;
-}RFM_SearchResultType;
 
 static gchar *rfm_SearchResultPath=NULL; /*keep the rfm_curPath value when SearchResult was created */
 static GList *SearchResultFileNameList = NULL;
