@@ -4152,6 +4152,26 @@ static RFM_SearchResultType* MatchSearchResultType(gchar* readlineResult){
 	      }
 	      g_free(searchTypeNameSuffix);
 	    }
+#ifdef RFM_AddOn
+	    GHashTableIter ht_iter;
+	    gchar *key;
+	    RFM_ADDON *value;
+	    g_hash_table_iter_init(&ht_iter, addons);
+	    while (g_hash_table_iter_next(&ht_iter, &key, &value)){
+	           RFM_ADDON_RESOURCE_TYPE* addon_resource = value->resource_managed_by_addon;
+		   for (guint i = 0; i < addon_resource->searchresulttypes_array_size; i++) {
+		         char* searchTypeNameSuffix=g_strconcat(RFM_SearchResultTypeNamePrefix,addon_resource->searchresulttypes[i].name,NULL);
+			 if (g_str_has_suffix(readlineResult, searchTypeNameSuffix)){
+			   g_debug("Addon:%s; searchResultTypeName:%s",value->local_c_path,addon_resource->searchresulttypes[i].name);
+			   readlineResult[len-strlen(searchTypeNameSuffix)]='\0';//remove suffix from readlineResult
+			   g_free(searchTypeNameSuffix);
+			   //TODO: 这里是否要设置 addon_dir_for_searchresult_cmd ?
+			   return &(addon_resource->searchresulttypes[i]);
+			 }
+			 g_free(searchTypeNameSuffix);
+		   }
+	    }
+#endif
 	    if (strstr(readlineResult, RFM_SearchResultTypeNamePrefix)!=NULL)
 	      printf("SearchResultTypePrefix %s in input, and no SearchResultType matched, but this can be just fine. TODO: add a builtin command to list available SearchResultTypes\n",RFM_SearchResultTypeNamePrefix);
 	    return NULL;
@@ -5134,6 +5154,7 @@ static int ProcessKeyValuePairInData(GKeyFile *keyfile, char* groupname){
    g_strfreev(keys);
 }
 
+
 // 根据文件属性,例如文件名后缀,调用适当的处理函数
 // new_search为FALSE时,oneline仅包含文件路径
 // 用SearchResultType[i].name 去匹配文件名后缀,以匹配到的最长后缀为准
@@ -5155,6 +5176,25 @@ static int CallMatchingProcessorForSearchResultLine(char *oneline, gboolean new_
        }
      }
    }
+
+#ifdef RFM_AddOn
+	    GHashTableIter ht_iter;
+	    gchar *key;
+	    RFM_ADDON *value;
+	    g_hash_table_iter_init(&ht_iter, addons);
+	    while (g_hash_table_iter_next(&ht_iter, &key, &value)){
+	           RFM_ADDON_RESOURCE_TYPE* addon_resource = value->resource_managed_by_addon;
+		   for (guint i = 0; i < addon_resource->searchresulttypes_array_size; i++) {
+			 if (g_str_has_suffix(oneline, addon_resource->searchresulttypes[i].name)){
+			   if (strlen(addon_resource->searchresulttypes[i].name)>strlen(longest_matched_searchresulttype_name)){
+			     longest_matched_searchresulttype_name = addon_resource->searchresulttypes[i].name;
+			     matched_searchresulttype_pointer = &(addon_resource->searchresulttypes[i]);
+    			     //TODO: 这里是否要设置 addon_dir_for_searchresult_cmd ?
+			   }
+			 }
+		   }
+	    }
+#endif
    g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"SearchResultType name %s matched for file:%s",longest_matched_searchresulttype_name,oneline);
    return matched_searchresulttype_pointer->SearchResultLineProcessingFunc(oneline,new_search,matched_searchresulttype_pointer->cmdTemplate, fileAttributes);
 }
