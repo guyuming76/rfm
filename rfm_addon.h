@@ -88,19 +88,12 @@ typedef struct {
   size_t file_menuitem_definitions_local_array_size;
   RFM_SearchResultType *searchresulttypes;
   size_t searchresulttypes_array_size;
+  stdin_cmd_interpretor **stdin_cmd_interpretors;
+  size_t stdin_cmd_interpretors_array_size;
+  stdin_cmd_interpretor*(*check_cmd_interpretor_switch_or_effective_cmd_interpretor)(gchar**, stdin_cmd_interpretor** , gboolean*, gboolean* , gchar**);
   char * addon_dir; //TODO:有必要加这个字段吗？通过获取RFM_ADDON指针，然后使用local_c_path的目录不行吗？不安全？
 } RFM_ADDON_RESOURCE_TYPE;
 
-typedef struct {
-  gchar *calling_script;
-  gchar *host_url;
-  gchar *model_name;
-  gchar *term_prompt; // This is the prompt such b> shown in term, not the prompt for LLM
-  gchar *activationKey;
-  gboolean InNewTerm;
-  gchar *model_temporature;
-  gchar *API_key;
-} AI_model_parameter;
 
 typedef struct RFM_ChildAttributes{
    gchar *name;

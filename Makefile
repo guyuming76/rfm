@@ -17,7 +17,7 @@ endif
 GTK_VERSION = gtk+-3.0
 # what shall be minimun gtk+ version for glib 2.80?
 
-CPPFLAGS = -DrfmBinPath=${rfmBinPath} --include ${languageInclude} -DG_LOG_DOMAIN=\"rfm\" ${GitIntegration} ${PythonEmbedded} ${RFM_FILE_CHOOSER} ${MU_VIEW} ${READLINE_LIB} ${AiIntegration} ${RFM_AddOn} ${CmarkTools}
+CPPFLAGS = -DrfmBinPath=${rfmBinPath} --include ${languageInclude} -DG_LOG_DOMAIN=\"rfm\" ${GitIntegration} ${PythonEmbedded} ${RFM_FILE_CHOOSER} ${MU_VIEW} ${READLINE_LIB} ${RFM_AddOn} ${CmarkTools}
 # 检查glib版本是否≥2.80
 ifeq ($(shell pkg-config --atleast-version=2.80 glib-2.0 && echo yes),yes)
 CPPFLAGS += -DGLIB280PLUS
@@ -165,20 +165,7 @@ endif
 	@cp -f scripts/rfm_mkdir_and_move_selected_files_into_it_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfm_mkdir_and_move_selected_files_into_it.sh
 	@cp -f scripts/rfmSaveSearchResultToFile_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmSaveSearchResultToFile.sh
 	@cp -f scripts/rfmLocateGlobalAddons.sh ${DESTDIR}${PREFIX}/bin
-ifneq ($(AiIntegration),)
-	@cp -f scripts/rfmAskOllama.sh ${DESTDIR}${PREFIX}/bin
-	@cp -f scripts/rfmAskModelScope.sh ${DESTDIR}${PREFIX}/bin
-	@cp -f scripts/rfmAskOpenRouter.sh ${DESTDIR}${PREFIX}/bin
-	@cp -f scripts/rfmAskOpenRouter_FileArray.sh ${DESTDIR}${PREFIX}/bin
-	@cp -f scripts/rfmAiAppendFileContentIntoPrompt.sh ${DESTDIR}${PREFIX}/bin
-	@cp -f scripts/rfmAiGetParameterPromptAndFile.sh ${DESTDIR}${PREFIX}/bin
-	@cp -f scripts/rfmAiDisplayResult.sh ${DESTDIR}${PREFIX}/bin
-	@cp -f scripts/rfmAiSaveHistory.sh ${DESTDIR}${PREFIX}/bin
-	@cp -f scripts/rfmAiSaveHistory_WithDirectory.sh ${DESTDIR}${PREFIX}/bin
-	@cp -f scripts/rfmAiJsonMessagesArray.sh ${DESTDIR}${PREFIX}/bin
-	@cp -f scripts/rfmAiFindRelatedMessages_Direct.sh ${DESTDIR}${PREFIX}/bin
-	@cp -f scripts/rfmAiFindRelatedMessages.sh ${DESTDIR}${PREFIX}/bin
-endif
+
 ifneq ($(CalledByEbuild),YES)
 # the CalledByEbuild variable is exported in rfm ebuild
 # there will be sandbox error in gentoo ebuild run
@@ -228,20 +215,7 @@ endif
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfm_mkdir_and_move_selected_files_into_it.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmSaveSearchResultToFile.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmLocateGlobalAddons.sh
-ifneq ($(AiIntegration),)
-	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmAskOllama.sh
-	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmAskModelScope.sh
-	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmAskOpenRouter.sh
-	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmAskOpenRouter_FileArray.sh
-	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmAiAppendFileContentIntoPrompt.sh
-	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmAiGetParameterPromptAndFile.sh
-	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmAiDisplayResult.sh
-	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmAiSaveHistory.sh
-	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmAiSaveHistory_WithDirectory.sh
-	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmAiJsonMessagesArray.sh
-	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmAiFindRelatedMessages_Direct.sh
-	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmAiFindRelatedMessages.sh
-endif
+
 	@echo
 	@echo "***please copy the .inputrc file into your home directory (~) manually."
 
@@ -286,20 +260,7 @@ endif
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfm_mkdir_and_move_selected_files_into_it.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmSaveSearchResultToFile.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmLocateGlobalAddons.sh
-ifneq ($(AiIntegration),)
-	@rm -f ${DESTDIR}${PREFIX}/bin/rfmAskOllama.sh
-	@rm -f ${DESTDIR}${PREFIX}/bin/rfmAskModelScope.sh
-	@rm -f ${DESTDIR}${PREFIX}/bin/rfmAskOpenRouter.sh
-	@rm -f ${DESTDIR}${PREFIX}/bin/rfmAskOpenRouter_FileArray.sh
-	@rm -f ${DESTDIR}${PREFIX}/bin/rfmAiAppendFileContentIntoPrompt.sh
-	@rm -f ${DESTDIR}${PREFIX}/bin/rfmAiGetParameterPromptAndFile.sh
-	@rm -f ${DESTDIR}${PREFIX}/bin/rfmAiDisplayResult.sh
-	@rm -f ${DESTDIR}${PREFIX}/bin/rfmAiSaveHistory.sh
-	@rm -f ${DESTDIR}${PREFIX}/bin/rfmAiSaveHistory_WithDirectory.sh
-	@rm -f ${DESTDIR}${PREFIX}/bin/rfmAiJsonMessagesArray.sh
-	@rm -f ${DESTDIR}${PREFIX}/bin/rfmAiFindRelatedMessages_Direct.sh
-	@rm -f ${DESTDIR}${PREFIX}/bin/rfmAiFindRelatedMessages.sh
-endif
+
 ifneq ($(CalledByEbuild),YES)
 	-xdg-desktop-menu uninstall rfm.desktop
 	-rm -f /usr/share/applications/rfm.desktop

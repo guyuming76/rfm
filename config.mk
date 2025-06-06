@@ -33,5 +33,3 @@ RFM_AddOn = -DRFM_AddOn
 
 #LDFLAGS = -lasan
 
-AiIntegration = -DAiIntegration
-#AiIntegration = 

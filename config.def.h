@@ -52,27 +52,11 @@ const stdin_cmd_interpretor stdin_cmd_interpretors[] = {
         //Name             activationKey          prompt            cmdTransformer       HistoryFilename
 	{"Bash",           "b>",                  "b",              stdin_command_bash,  ".rfm_history" },
 	{"NuShell",        "n>",                  "n",              stdin_command_nu,    ".rfm_history" },
-#ifdef AiIntegration
-	{AI_MODEL_AS_CMD_INTERPRETER,"a>",        "a",              stdin_LLM_prompt,    ".rfm_history_AI" }, //The prompt of AI will not show. The term_prompt of default AI_models will show instead. The acitivationKey of AI and that of the default AI_models have the same effect. DO NOT change the name AI here, it is hardcoded in code.
-#endif
 #ifdef PythonEmbedded
 	{"PythonEmbedded", "p>",                  "p",              NULL,                ".rfm_history_python" },
 #endif
 };
 
-#ifdef AiIntegration
-//the first one is the default one
-static const AI_model_parameter AI_models_static[] = {
-  //calling_script        host_url                         model_name                  term_prompt         activationKey  InNewTerm  Temperature   API_Key
-  {"rfmAskOllama.sh",  "http://localhost:11434/api/generate","codegeex4:9B",           "codegeex4:9B",     "c>",           TRUE,        "0",          "别把key存config.def.h,存config.h" },
-  {"rfmAskOllama.sh",  "http://localhost:11434/api/generate","qwq:latest",             "qwq",              "q>",           TRUE,        "0",          "别把key存config.def.h,存config.h" },
-  {"rfmAskOpenRouter.sh","https://openrouter.ai/api/v1/chat/completions","deepseek/deepseek-r1-zero:free","deepseek-r1:free","r>",TRUE, "0",          "别把key存config.def.h,存config.h" },
-  {"rfmAskOpenRouter.sh","https://api.deepseek.com/chat/completions","deepseek-reasoner","deepseek-r1",    "d>",           TRUE,        "0",          "别把key存config.def.h,存config.h" },
-};
-
-AI_model_parameter *AI_models = AI_models_static;
-size_t AI_models_array_size = G_N_ELEMENTS(AI_models_static);
-#endif
 
 static const char *find_same_name[] = { stdin_cmd_interpretors[0].name, rfmBinPath "rfmFindFilesWithTheSameName.sh "RFM_SearchResultTypeNamePrefix"multitype ", NULL };
 static const char *cd_in_searchresult[] = { stdin_cmd_interpretors[0].name, "cd ", NULL };

@@ -71,14 +71,6 @@ gpointer transferPointerOwnership(gpointer *newOwner, gpointer *oldOwner);
 gboolean str_regex_replace(char **str, const regex_t * restrict pattern_compiled, const char *replacement);
 
 /****************************************************/
-/******AI related definitions **********************/
-#ifdef AiIntegration
-    
-static int current_AI_model_index = 0;
-static stdin_cmd_interpretor *stdin_cmd_interpretor_pointer_for_AI = NULL;
-static NO_FREE gchar** stdin_LLM_prompt(CALLER_OWN gchar* user_input_prompt, gboolean inNewVT);
-#endif
-/********AI related definitions end******************/
 /******Terminal Emulator related definitions*********/
 #ifdef PythonEmbedded
 #define PY_SSIZE_T_CLEAN
@@ -155,6 +147,9 @@ static char *rfm_historyFileLocation;
 static char *rfm_historyDirectory_FileLocation;//used by script rfmReadlineWithSpecificHistoryFile.sh 
 static gboolean showHelpOnStart = TRUE;
 static char* InheritedPrompt = "";
+#ifdef RFM_AddOn
+static gchar* Addon_Prompt = NULL;
+#endif
 static char **rfm_filename_completion(const char *text);
 #ifdef GNU_readline
 static char** gnu_readline_completion(const char *text, int start, int end);
@@ -186,11 +181,11 @@ void save_current_history();
 static void stdin_command_help(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
 static void cmd_glog(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
 static void cmd_setenv(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
-static gchar shell_cmd_buffer[PATH_MAX]; //TODO: notice that this is shared single instance. But we only run shell command in sync mode now. so, no more than one thread will use this
-static gchar* stdin_cmd_template_bash[]={"/bin/bash","-i","-c", shell_cmd_buffer, NULL};
+gchar shell_cmd_buffer[PATH_MAX]; //TODO: notice that this is shared single instance. But we only run shell command in sync mode now. so, no more than one thread will use this
+gchar* stdin_cmd_template_bash[]={"/bin/bash","-i","-c", shell_cmd_buffer, NULL};
 static gchar* stdin_cmd_template_nu[]={"nu","-c", shell_cmd_buffer, NULL};
-static gchar* stdin_cmd_template_bash_newVT_nonHold[] = { "$RFM_TERM", "/bin/bash", "-i", "-c", shell_cmd_buffer, NULL };
-static gchar* stdin_cmd_template_bash_newVT_nonHold_with_e[] = { "$RFM_TERM", "$RFM_TERM_E" ,"/bin/bash", "-i", "-c", shell_cmd_buffer, NULL };
+gchar* stdin_cmd_template_bash_newVT_nonHold[] = { "$RFM_TERM", "/bin/bash", "-i", "-c", shell_cmd_buffer, NULL };
+gchar* stdin_cmd_template_bash_newVT_nonHold_with_e[] = { "$RFM_TERM", "$RFM_TERM_E" ,"/bin/bash", "-i", "-c", shell_cmd_buffer, NULL };
 static gchar* stdin_cmd_template_nu_newVT_nonHold[] = { "$RFM_TERM", "nu", "-i", "-c", shell_cmd_buffer, NULL };
 static gchar* stdin_cmd_template_nu_newVT_nonHold_with_e[] = { "$RFM_TERM", "$RFM_TERM_E" ,"nu", "-i", "-c", shell_cmd_buffer, NULL };
 static NO_FREE gchar** stdin_command_bash(CALLER_OWN gchar* user_input_cmd, gboolean inNewVT);
@@ -643,7 +638,8 @@ static gboolean compile_local_extension(RFM_ADDON *addon);
 static gchar* calculate_file_hash(const gchar *filepath);
 static void find_and_unload_addons_before_leaving_current_directory();
 #endif
-static gchar *addon_dir_for_current_cmd = NULL; //this should be inside define RFM_AddOn, but the code that reference this should be in define RFM_AddOn too. to simplify the code, keep this outside RFM_AddOn
+//TODO：把全局变量变成 parse_and_exec_command_in_gtk_thread, exec_stdin_command 等函数的参数，一路传递下去，去掉全局变量
+gchar *addon_dir_for_current_cmd = NULL; //this should be inside define RFM_AddOn, but the code that reference this should be in define RFM_AddOn too. to simplify the code, keep this outside RFM_AddOn
 
 /**************gtk UI, filemenu, toolbar end**************************/
 
@@ -1139,7 +1135,7 @@ gboolean g_spawn_wrapper_(CALLER_OWN const GList *file_list, CALLER_OWN const ch
    if (v != NULL) {
       gchar * argv=g_strjoinv(" ", v);
       if (child_attribs->spawn_async){
-	       g_log(RFM_LOG_GSPAWN,G_LOG_LEVEL_DEBUG,"g_spawn_async_with_pipes_wrapper, workingdir:%s, argv:%s",rfm_curPath, argv);
+	       g_log(RFM_LOG_GSPAWN,G_LOG_LEVEL_DEBUG,"g_spawn_async_with_pipes_wrapper, workingdir:%s, argv:%s",child_attribs->workingDir? child_attribs->workingDir:rfm_curPath, argv);
 	       if (!g_spawn_async_with_pipes_wrapper(v, child_attribs)) {
                    g_warning("g_spawn_async_with_pipes_wrapper: %s failed to execute. Check command in config.h!", argv);
                    free_child_attribs(child_attribs); //这里是失败的异步，成功的异步会在  child_supervisor_to_ReadStdout_ShowOutput_ExecCallback 里面 free
@@ -1149,7 +1145,7 @@ gboolean g_spawn_wrapper_(CALLER_OWN const GList *file_list, CALLER_OWN const ch
 	       child_attribs->status=-1; // Initialize status
 	       GError *spawn_err = NULL;
 
-	       g_log(RFM_LOG_GSPAWN,G_LOG_LEVEL_DEBUG,"g_spawn_sync, workingdir:%s, argv:%s",rfm_curPath, argv);
+	       g_log(RFM_LOG_GSPAWN,G_LOG_LEVEL_DEBUG,"g_spawn_sync, workingdir:%s, argv:%s",child_attribs->workingDir? child_attribs->workingDir:rfm_curPath, argv);
 	       if (!g_spawn_sync(child_attribs->workingDir? child_attribs->workingDir:rfm_curPath, v, child_attribs->env, G_SPAWN_SEARCH_PATH|child_attribs->runOpts, GSpawnChildSetupFunc_setenv,child_attribs,(child_attribs->runOpts & G_SPAWN_STDOUT_TO_DEV_NULL)? NULL : &child_attribs->stdOut, &child_attribs->stdErr,&child_attribs->status,&spawn_err)){
 	            g_warning("g_spawn_sync %s failed to execute: %s. Check command in config.h!", argv, spawn_err ? spawn_err->message : "Unknown error");
 	            if (spawn_err) g_error_free(spawn_err);
@@ -2361,6 +2357,7 @@ static void set_rfm_curPath_internal(CALLER_OWN const gchar* path){
 	 }
          rfm_curPath = g_strdup(path);
 	 chdir(rfm_curPath);//TODO: i don't know whether we really need this
+	 g_setenv("rfm_curPath", rfm_curPath, 1);
 
          //g_setenv("PWD", rfm_curPath, 1);
 	 //TODO: i am not sure wether i shold set PWD env value here too, and remove the builtin command setpwd
@@ -3423,6 +3420,8 @@ static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPrevi
 	      //child_attribs->runOpts = RFM_EXEC_NONE;
 	      child_attribs->spawn_async = TRUE;
               child_attribs->env = env;
+	      child_attribs->workingDir = addon_dir_for_current_cmd;
+              addon_dir_for_current_cmd = NULL;
 	      g_spawn_wrapper_(NULL, NULL, child_attribs);
               g_debug("exec_stdin_command_in_new_VT(%s,cmd_interpretor name:%s)",readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,cmd_interpretor_pointer->name);
 	      add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
@@ -3580,17 +3579,13 @@ static void readlineInSeperateThread(GString * readlineResultStringFromPreviousR
     // Allocate more space for potentially longer AI prompts
     gchar *prompt = calloc(strlen(InheritedPrompt)+256, sizeof(gchar));
     sprintf(prompt,"%s",InheritedPrompt);
-#ifdef AiIntegration
-    // Check if the current interpreter is the AI interpreter
-    if (current_stdin_cmd_interpretor_pointer == stdin_cmd_interpretor_pointer_for_AI) {
-        // Use the specific AI model's term_prompt
-        strcat(prompt, AI_models[current_AI_model_index].term_prompt);
+#ifdef RFM_AddOn
+    if (Addon_Prompt) {
+        strcat(prompt, Addon_Prompt);
     } else {
-        // Use the general interpreter prompt
         strcat(prompt,current_stdin_cmd_interpretor_pointer->prompt);
     }
 #else
-    // Original behavior if AiIntegration is not defined
     strcat(prompt, current_stdin_cmd_interpretor_pointer->prompt);
 #endif
     //SearchResultTypeIndex=-1; //这个branch之前,一直在这里设成FALSE,没注意到有啥问题,但它改成数组索引后测试发现有race condition
@@ -3656,24 +3651,6 @@ static void stdin_command_help(wordexp_t * parsed_msg, GString* readline_result_
         }
       }
 
-#ifdef AiIntegration
-      // --- 打印 AI 模型 (AI_models) 的信息 ---
-      // 仅在通用帮助请求时打印此部分信息
-      if (!for_specific_command){
-          printf("\n\033[32m %s\033[0m\n", "AI Models:"); // 绿色打印段落标题
-          // 遍历在 config.h 中定义的 AI_models 数组
-          for(guint i=0; i<AI_models_array_size; i++){
-              // 打印 AI 模型的激活键（黄色高亮）和详细信息
-              printf("    \033[33m%s\033[0m    %s, Host: %s, Model: %s, Temp: %s, Script: %s\n",
-                     AI_models[i].activationKey,
-                     AI_models[i].term_prompt,
-		     AI_models[i].host_url,
-                     AI_models[i].model_name ? AI_models[i].model_name : "Default",
-                     AI_models[i].model_temporature,
-                     AI_models[i].calling_script ? AI_models[i].calling_script : "Default");
-          }
-      }
-#endif
 
       // --- 打印搜索结果类型 (searchresultTypes) 的帮助信息 ---
       // 如果是通用帮助请求
@@ -4182,24 +4159,6 @@ static void set_stdin_cmd_leading_space_true(){
   stdin_cmd_leading_space=TRUE;
 }
 
-#ifdef AiIntegration
-static NO_FREE gchar** stdin_LLM_prompt(CALLER_OWN gchar* user_input_prompt, gboolean inNewVT) {
-  if (AI_models[current_AI_model_index].InNewTerm){
-    snprintf(shell_cmd_buffer,PATH_MAX,"set -o history; %s %s %s %s %s; read -p '\033[33m%s\033[0m'; exit \$? 2>/dev/null", AI_models[current_AI_model_index].calling_script, AI_models[current_AI_model_index].host_url,AI_models[current_AI_model_index].model_name, AI_models[current_AI_model_index].model_temporature, AI_models[current_AI_model_index].API_key, PRESS_ENTER_TO_CLOSE_WINDOW);
-    gchar * term_e = getenv("RFM_TERM_E"); // 获取环境变量
-    // 根据环境变量的值选择正确的模板
-    if (term_e!=NULL && strcmp(term_e,"")!=0) {
-        return stdin_cmd_template_bash_newVT_nonHold_with_e; // 返回带 -e 的模板
-    } else {
-        return stdin_cmd_template_bash_newVT_nonHold; // 返回不带 -e 的模板
-    }
-  }else {
-    snprintf(shell_cmd_buffer,PATH_MAX,"set -o history; %s %s %s %s %s; exit \$? 2>/dev/null",AI_models[current_AI_model_index].calling_script, AI_models[current_AI_model_index].host_url, AI_models[current_AI_model_index].model_name, AI_models[current_AI_model_index].model_temporature, AI_models[current_AI_model_index].API_key);
-    return stdin_cmd_template_bash;
-  }
-}
-#endif
-
 // this runs in gtk thread
 // from_stdin_readline 为 TRUE 时，表示用户从命令窗口输入的字符串，这时忽略 cmd_interpretor_index 参数为调用时的 current_stdin_cmd_interpretor
 // from_stdin_readline 为假时，readlineResults 通常是 config.h 里面配置好的命令字符串。此时命令字符串数组头部会配置 cmd_interpretor_index 对应的name
@@ -4224,17 +4183,25 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
             }else
                 lastEnter=now_time;
 	}else{
+            //在AI提示符状态下，期望builtin命令能够执行，而一条重要的buildin命令cd(带空格)执行cmd_cd,跳转到查询结果窗口当前选中文件的parent目录，就依赖stdin_cmd_ending_space, 所以把第一次的stdin_cmd_ending_space 判断提前否则如果cmd_interpretor_index ！= stdin_cmd_interpretor_index_for_AI，就直接被跳过了
+            stdin_cmd_ending_space = (len>=1 && readlineResult[len-1]==' ');
+            while (len >= 1 && readlineResult[len - 1] == ' ') {
+              readlineResult[len - 1] = '\0';
+              len--;
+            } // remove ending space
+              //  
             // Check if the command starts with an interpreter prefix to override execution
             gboolean prefix_found = FALSE;
             int prefix_len;
             for (guint i = 0; i < G_N_ELEMENTS(stdin_cmd_interpretors); i++) {
-#ifdef AiIntegration
-	            if (strcmp(stdin_cmd_interpretors[i].name, AI_MODEL_AS_CMD_INTERPRETER)==0) stdin_cmd_interpretor_pointer_for_AI = &(stdin_cmd_interpretors[i]); //我们需要一个方法获取AI_models静态定义里面的对应AI的index,0表示默认cmd_interpretor比较合适，最大的数未来也不一定表示AI,用户也可能随意调整位置，不如就在这里动态设置，省得要用的时候查表
-#endif
+
                     prefix_len = strlen(stdin_cmd_interpretors[i].activationKey);
 	            if (g_strcmp0(readlineResult, stdin_cmd_interpretors[i].activationKey)==0){
 		       save_current_history();
 		       current_stdin_cmd_interpretor_pointer = &(stdin_cmd_interpretors[i]);
+#ifdef RFM_AddOn
+		       g_free(Addon_Prompt);Addon_Prompt = NULL;
+#endif
 		       load_history_for_prompt();
 		       goto switchToReadlineThread;//如果当前输入命令是选择命令解释器,选择完后就直接进入一轮命令读取,无需再对当前输入命令进一步处理
 		    
@@ -4244,38 +4211,31 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
                         len = strlen(readlineResult); // Update length
                         effective_cmd_interpretor_pointer = &(stdin_cmd_interpretors[i]); // Set effective interpreter for this command
                         prefix_found = TRUE;
-                        g_debug("Detected '%s' prefix. Will run as %s command: %s",
-                                stdin_cmd_interpretors[i].activationKey, stdin_cmd_interpretors[i].name, readlineResult);
+                        g_debug("Detected '%s' prefix. Will run as %s command: %s",stdin_cmd_interpretors[i].activationKey, stdin_cmd_interpretors[i].name, readlineResult);
                         break; // Found the prefix, stop checking
                     }
             }
 
-            //在AI提示符状态下，期望builtin命令能够执行，而一条重要的buildin命令cd(带空格)执行cmd_cd,跳转到查询结果窗口当前选中文件的parent目录，就依赖stdin_cmd_ending_space, 所以把第一次的stdin_cmd_ending_space 判断提前否则如果cmd_interpretor_index ！= stdin_cmd_interpretor_index_for_AI，就直接被跳过了
-            stdin_cmd_ending_space = (len>=1 && readlineResult[len-1]==' ');
-	    while (len>=1 && readlineResult[len-1]==' ') { readlineResult[len-1]='\0'; len--; } //remove ending space
-
-#ifdef AiIntegration
-            // Check for AI model activation keys (only if an interpreter prefix wasn't found)
-            if (!prefix_found) {
-              for(guint i=0;i<AI_models_array_size;i++){
-		  prefix_len = strlen(AI_models[i].activationKey);
-		  g_assert(stdin_cmd_interpretor_pointer_for_AI);//能运行到这一步，上面一个for循环肯定跑完了，这个值肯定被设置过了
-                  if (g_strcmp0(readlineResult, AI_models[i].activationKey)==0){
-		    save_current_history();
-                    current_stdin_cmd_interpretor_pointer = stdin_cmd_interpretor_pointer_for_AI;
-                    current_AI_model_index = i;
-		    load_history_for_prompt();
-                    goto switchToReadlineThread;
-                  }else if (g_str_has_prefix(readlineResult, AI_models[i].activationKey)){
-                        memmove(readlineResult, readlineResult + prefix_len, len - prefix_len + 1); // Shift string left
-                        len = strlen(readlineResult); // Update length
-                        effective_cmd_interpretor_pointer = stdin_cmd_interpretor_pointer_for_AI; // Set effective interpreter for this command
-                        prefix_found = TRUE;
-                        g_debug("Detected '%s' prefix. Will run as %s , AI_model %s, command: %s",
-                                AI_models[i].activationKey, effective_cmd_interpretor_pointer->name, AI_models[i].model_name, readlineResult);
-                        break; // Found the prefix, stop checking
-		  }
-                }
+#ifdef RFM_AddOn
+            gboolean Addon_prefix = FALSE;
+            if (!(prefix_found)){
+	      GHashTableIter ht_iter;
+	      gchar *key;
+	      RFM_ADDON *value;
+	      g_hash_table_iter_init(&ht_iter, addons);
+	      while (g_hash_table_iter_next(&ht_iter, &key, &value)){
+	           RFM_ADDON_RESOURCE_TYPE* addon_resource = value->resource_managed_by_addon;
+	           if (addon_resource->check_cmd_interpretor_switch_or_effective_cmd_interpretor){
+		       stdin_cmd_interpretor * new_cmd_interpretor = addon_resource->check_cmd_interpretor_switch_or_effective_cmd_interpretor(&readlineResult, &effective_cmd_interpretor_pointer,&Addon_prefix, from_stdin_readline? &execStdinCmdInNewVT:&execCmdInNewVT, &Addon_Prompt);
+		       if (new_cmd_interpretor){
+			   current_stdin_cmd_interpretor_pointer = new_cmd_interpretor;
+			   goto switchToReadlineThread;
+		       }else if(prefix_found){
+			   len = strlen(readlineResult); // Update length
+			   break;
+		       }
+		   }
+	      }
             }
 #endif
 
@@ -4285,12 +4245,8 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 	    }
 	    len = strlen(readlineResult);
 
-#ifdef AiIntegration
-	    // Use effective_cmd_interpretor_index here
-	    if (effective_cmd_interpretor_pointer == stdin_cmd_interpretor_pointer_for_AI){
-	      if (from_stdin_readline) execStdinCmdInNewVT = AI_models[current_AI_model_index].InNewTerm;
-	      else execCmdInNewVT = AI_models[current_AI_model_index].InNewTerm;
-	      setenv("rfm_AI_MODEL_prompt",readlineResult,1);
+#ifdef RFM_AddOn
+            if (Addon_Prompt || Addon_prefix){ //TODO：如何表示某个cmd_interpretor 无需后续的命令行解析呢？ 在 stdin_cmd_interpretor上加属性会显得复杂，让人迷惑。像现在这样写死不利于扩展，如果在config.h里面扩展 stdin_cmd_interpretor 如何？通过AddOn扩展又如何？
 	    }else{
 #endif
 	    //stdin_cmd_ending_space, execStdinCmdInNewVT, SearchResultAsInput 应该也可以通过正则表达式匹配实现.
@@ -4327,7 +4283,7 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 		  for (int i=0;i<len;i++) readlineResult[i]=readlineResult[i + strlen(RFM_SEARCH_RESULT_AS_INPUT_PREFIX)]; //remove the prefix SearchResult|, which has 13 char
 		}
 	    }
-#ifdef AiIntegration	      
+#ifdef RFM_AddOn
 	    }//end else (cmd_interpretor_index == stdin_cmd_interpretor_index_for_AI){ 对于输入的 AI 提示词，就不要尝试解析了，
 	    //但是下面处理当前选中文件的部分还是需要的，当前选中文件可作为上下文传给AI
 #endif
@@ -4380,8 +4336,9 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
             } else { // end if (stdin_cmd_selection_list!=NULL)
 	      unsetenv("RFM_SELECTED_FILES");
 	    }
-#ifdef AiIntegration
-	    if (!execStdinCmdInNewVT && !(!from_stdin_readline && execCmdInNewVT) || cmd_interpretor_pointer == stdin_cmd_interpretor_pointer_for_AI){
+#ifdef RFM_AddOn
+	    if (!execStdinCmdInNewVT && !(!from_stdin_readline && execCmdInNewVT) || Addon_Prompt){ //Addon_Prompt不为空实际上就相当于 current_stdin_cmd_interpretor_pointer == AI_Model
+	      //TODO：在NewTerm里执行命令就意味着无法运行下面的builtin_commnd,但是AI模式除外，AI模式下可能会在NewTerm里执行命令，但仍然可以执行builtin_command. 用Addon_Prompt 区分状态可能不是很好，现在只有AI模式一个Addon包含 stdin_cmd_interpretor, 所以能用，以后增加类似 Addon 还要重新定义
 #else
 	    if (!execStdinCmdInNewVT && !(!from_stdin_readline && execCmdInNewVT)){
 #endif
@@ -4389,7 +4346,7 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 	      int wordexp_retval = wordexp(readlineResult,&parsed_msg,0);
 	      if (wordexp_retval==0 && parse_and_exec_stdin_builtin_command_in_gtk_thread(&parsed_msg, readlineResultString)){ //wordexp_retval 0 means success
 		readlineResultString=NULL; //since readlineInseperatethread function will check this, we must clear it here after cmd already been executed.
-#ifdef AiIntegration
+#ifdef RFM_AddOn
 		g_strfreev(env_for_g_spawn_used_by_exec_stdin_command);env_for_g_spawn_used_by_exec_stdin_command=NULL;//读取一个用户输入readlineInSeperateThread 并执行，包括执行builtin cmd 我们就认为完成一个命令周期，变量就都清空，不管此命令周期是否实际用这个变量，反正g_strfreev(NULL)不报错
 #endif
 	      }
