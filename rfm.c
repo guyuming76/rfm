@@ -5570,7 +5570,7 @@ static gboolean compile_local_extension(RFM_ADDON* addon) {
     g_free(c_file_hash); // Free the calculated hash string
 
     gchar* rfm_local_c_compile_cmd = g_strdup_printf(rfm_local_c_compile_cmd_template, RFM_SearchResultTypeNamePrefix, RFM_NEW_TERM_SUFFIX, RFM_selected_filename_placeholder, RFM_SEARCH_RESULT_AS_INPUT_PREFIX, addon->local_so_path, hash_define, addon->local_c_path);
-    return parse_and_exec_command_in_gtk_thread(rfm_local_c_compile_cmd, FALSE, 0);
+    return parse_and_exec_command_in_gtk_thread(rfm_local_c_compile_cmd, FALSE, &(stdin_cmd_interpretors[0]));
 }
 
 static void load_addon(CALLER_OWN char* addon_directory){
