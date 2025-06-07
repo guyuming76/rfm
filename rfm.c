@@ -1512,6 +1512,18 @@ static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guin
    //g_free(attibuteList);
    g_object_unref(file); file=NULL;
    if (err) {
+#ifdef GitIntegration
+     if ((err->code == 1) && git_root){
+       gchar* gitstatus = g_hash_table_lookup(gitTrackedFiles, fileAttributes->path);
+       if (gitstatus && strchr(gitstatus,'D')) {
+	 fileAttributes->file_name=g_strdup(name);
+	 fileAttributes->pixbuf=g_object_ref(defaultPixbufs->broken);
+	 fileAttributes->mime_root=g_strdup("na");
+	 fileAttributes->mime_sub_type=g_strdup("na");
+	 return fileAttributes;
+       }
+     }
+#endif
      g_warning("g_file_query_info error %d, %s",err->code,err->message);
      g_error_free(err);
    }
