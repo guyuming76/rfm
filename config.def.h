@@ -121,7 +121,7 @@ static const char *launch_desktop[] = { "dex", "--term", "$RFM_TERM", NULL };
 #ifdef GitIntegration
 static const char *git_ls_files_cmd[] = {"git", "ls-files", NULL};
 static const char *git_ls_files_untracked_cmd[] = { "git", "ls-files", "-o",NULL};
-static const char *git_ls_files[] = { stdin_cmd_interpretors[0].name, "git ls-files;git ls-files -o"RFM_SearchResultTypeNamePrefix"0", NULL };
+static const char *git_ls_files[] = { stdin_cmd_interpretors[0].name, "git ls-files;git ls-files -o;git status --porcelain --no-rename|grep '^D'|awk '{print substr($0,4)}'"RFM_SearchResultTypeNamePrefix"0", NULL };
 static const char *git_modified_staged_info_cmd[] = {"git","status","--porcelain","--no-rename",NULL};
 static const char *git_stage_cmd[] = {"/usr/bin/git","stage",NULL};
 static const char *git_root_cmd[] = { "bash","-c", "git rev-parse --is-inside-work-tree --show-toplevel --abbrev-ref HEAD --show-prefix; exit 0",NULL};
