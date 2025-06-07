@@ -111,7 +111,8 @@ BuiltInCmd_SearchResultColumnSeperator \
 " '&'\"\n" \
 "--" \
 BuiltInCmd_SearchResultColumnSeperator \
-"         show default search result column seperator and quit rfm. program that provide search result for rfm can use this command to get search result column seperator first.\n\n" \
+"         show default search result column seperator and quit rfm. program that provide search result for rfm can use this command to get search result column seperator first.\n" \
+"--disable-addon   do not auto load addons\n\n" \
 "Show debug message by setting environmental variable: G_MESSAGES_DEBUG=rfm,rfm-data,rfm-gspawn,rfm-column, etc.,please refer to config.h for log subdomain definition\n"
 
 #define CURRENT_COLUMN_STATUS "current column status(negative means invisible), {v}or{^} means sort ascending or descending (same as the little icon in column header)\n"

@@ -626,6 +626,7 @@ typedef struct {
   gchar *local_so_path;
 } RFM_ADDON;
 
+static gboolean disable_addon = FALSE;
 void remove_toolbar_buttons(FREE GtkWidget ***buttons, const size_t size);
 void remove_file_menuitems(FREE GtkWidget ***menuitems, const size_t size);
 
@@ -2377,9 +2378,9 @@ static void set_rfm_curPath_internal(CALLER_OWN const gchar* path){
    //so, we should first know the relationship between working directory parameter in g_spawn and PWD env value inheritence before we do anything furthur here.
    //anyway, setting OLDPWD is necessary for us here.
 #ifdef RFM_AddOn
-      load_addon(rfm_curPath);
+       if (!disable_addon) load_addon(rfm_curPath);
 #endif
-      }  
+      }
 }
 
 /* caller owns path, free(rfm_prePath), rfm_curPath assigned to rfm_prePath; strdup(path) will be assigned to rfm_curPath,*/
@@ -4563,7 +4564,7 @@ static int setup(RFM_ctx *rfmCtx)
    add_file_menuitems(&menuItem,run_actions,G_N_ELEMENTS(run_actions));
 
 #ifdef RFM_AddOn
-   g_spawn_wrapper(global_addons_locating_cmd_template, NULL, G_SPAWN_DEFAULT, NULL, NULL, FALSE, load_global_addons_callback, NULL, TRUE); //同步打开rfm会太慢吗?
+   if (!disable_addon) g_spawn_wrapper(global_addons_locating_cmd_template, NULL, G_SPAWN_DEFAULT, NULL, NULL, FALSE, load_global_addons_callback, NULL, TRUE); //同步打开rfm会太慢吗?
   //TODO: 考虑partse_and_exec_cmd_in_gtk_thread里支持 类似callback, readoutput by program 这种机制, 也许可以和SearchResult那一块有交集.这会儿作为workaround,就为命令做了一个单独的bash脚本,一边可以在命令里有管道
 #endif
    if (initDir == NULL) initDir = cwd;
@@ -4800,7 +4801,11 @@ int main(int argc, char *argv[])
 	  }
 	  InheritedPrompt = argv[c+1];
 	  c++;
-	}
+#ifdef RFM_AddOn
+        }else if (g_strcmp0(longArgument, "disable-addon")==0){
+	  disable_addon = TRUE;
+#endif
+        }
 	break;
       default:
 	 die("invalid parameter, %s -h for help\n",PROG_NAME);
