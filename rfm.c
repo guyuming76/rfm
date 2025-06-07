@@ -4348,6 +4348,7 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 		readlineResultString=NULL; //since readlineInseperatethread function will check this, we must clear it here after cmd already been executed.
 #ifdef RFM_AddOn
 		g_strfreev(env_for_g_spawn_used_by_exec_stdin_command);env_for_g_spawn_used_by_exec_stdin_command=NULL;//读取一个用户输入readlineInSeperateThread 并执行，包括执行builtin cmd 我们就认为完成一个命令周期，变量就都清空，不管此命令周期是否实际用这个变量，反正g_strfreev(NULL)不报错
+		if (addon_dir_for_current_cmd) { g_free(addon_dir_for_current_cmd); addon_dir_for_current_cmd=NULL; }
 #endif
 	      }
 	      if (wordexp_retval == 0) wordfree(&parsed_msg);
