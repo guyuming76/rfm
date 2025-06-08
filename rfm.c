@@ -445,8 +445,9 @@ static RFM_treeviewColumn* get_treeviewcolumnByGtkTreeviewcolumn(GtkTreeViewColu
 static RFM_treeviewColumn* get_treeviewColumnByEnum(enum RFM_treeviewCol col);
 static RFM_treeviewColumn* get_treeviewColumnByTitle(char* title);
 static enum RFM_treeviewCol get_available_ExtColumn(enum RFM_treeviewCol col);
-static gchar* get_showcolumn_cmd_from_currently_displaying_columns();
-static void show_hide_treeview_columns_in_order(gchar *order_sequence);
+static void get_current_column_layout(CALLER_OWN gchar *column_layout);
+static CALLER_OWN gchar* get_showcolumn_cmd_from_currently_displaying_columns();
+static void show_hide_treeview_columns_in_order(CALLER_OWN gchar *order_sequence);
 static void show_hide_treeview_columns_enum(int count, ...);
 static void cmd_showcolumn(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
 static void init_ext_columns_in_treeviewColumns();
@@ -581,6 +582,7 @@ static GHashTable* addons; // RFM_ADDON as value
 static void load_global_addons_callback(RFM_ChildAttribs* child_attribs);
 static void load_addon(CALLER_OWN char* filepath);
 static void append_addon_treeviewColumns(RFM_ADDON *addon);
+static void remove_addon_treeviewColumns(RFM_ADDON *addon);
 static void unload_local_extension(RFM_ADDON *addon);
 static gboolean compile_local_extension(RFM_ADDON *addon);
 static gchar* calculate_file_hash(const gchar *filepath);
@@ -3712,7 +3714,7 @@ void move_array_item_a_after_b(void * array, int index_b, int index_a, uint32_t 
 
 }
 
-static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
+static void show_hide_treeview_columns_in_order(CALLER_OWN gchar* order_sequence) {
   	      g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"        order_seq  %s",order_sequence);
               g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"in log subdomain %s, number in [] is the index for treeviewColumns array, otherwise, is column enum value.",RFM_LOG_COLUMN_VERBOSE);
 
@@ -3720,7 +3722,7 @@ static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
 	      guint j=0; //用来索引 order_seq_array,下面的do while循环,j从零开始循环一遍到order_seq_array最后一项
 	      int target_treeviewColumn_index_for_order_sequence_item_j_to_move_after=-1; //用来索引 treeviewColumns,在下面的do while循环,第一轮,也就是j=0时,会赋值为treeviewColumn_index_for_order_sequence_item_j, 其他情况都通过 ++ 递增
 	      do {
-		gchar * cmd=get_showcolumn_cmd_from_currently_displaying_columns(); //TODO: cmd is only used in debug level log entry, is it possible to run this only when debug?
+		gchar * cmd=get_showcolumn_cmd_from_currently_displaying_columns(); //TODO: cmd is only used in debug level log entry, is it possible to run this only when debug? 这里的意思时说能不能只有当前满足G_LOG_LEVEL_DEBUG 的时候才运行这个函数,省得浪费性能
 		g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"        %s",cmd);//TODO: replace leading showcolumn in cmd with string such as "treeviewColumns". 
 		g_free(cmd);
 		g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"order_seq  %s",order_sequence);//把目标行紧接当前状态行显示方便在log里观察		
@@ -3815,19 +3817,22 @@ static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
 	      g_strfreev(order_seq_array);
 }
 
-static gchar* get_showcolumn_cmd_from_currently_displaying_columns(){
-            gchar* showColumnHistory=calloc(TREEVIEW_COLUMNS_array_size*5+13, sizeof(char)); // we suppose no more than 999 treeview_columns, and ",-999" takes 5 chars ; leading "showcolumn ," take 13 char
-	    showColumnHistory = strcat(showColumnHistory, "showcolumn ,");
-	    for(size_t i=0;i<TREEVIEW_COLUMNS_array_size;i++){
-	      //gchar* onecolumn=calloc(6, sizeof(char)); //5 chars for onecolumn + ending null
+static void get_current_column_layout(CALLER_OWN gchar *column_layout){
+            if (column_layout==NULL) column_layout = calloc(TREEVIEW_COLUMNS_array_size*5+1, sizeof(char));
+            for(size_t i=0;i<TREEVIEW_COLUMNS_array_size;i++){
 	      if (TREEVIEW_COLUMNS[i].enumCol==NUM_COLS) continue;
-	      char onecolumn[6];
+	      char onecolumn[6];//5 chars for onecolumn + ending null
 	      snprintf(onecolumn,6,"%4d,", TREEVIEW_COLUMNS[i].enumCol * (TREEVIEW_COLUMNS[i].Show?1:-1));
-	      showColumnHistory = strcat(showColumnHistory, onecolumn);
+	      strcat(column_layout, onecolumn);
 	    }
-	    return showColumnHistory;
 }
 
+static CALLER_OWN gchar* get_showcolumn_cmd_from_currently_displaying_columns(){
+            gchar* showColumnHistory=calloc(TREEVIEW_COLUMNS_array_size*5+13, sizeof(char)); // we suppose no more than 999 treeview_columns, and ",-999" takes 5 chars ; leading "showcolumn ," take 13 char
+	    showColumnHistory = strcat(showColumnHistory, "showcolumn ,");
+	    get_current_column_layout(showColumnHistory);
+	    return showColumnHistory;
+}
 
 static void sort_on_column(wordexp_t * parsed_msg){
   RFM_treeviewColumn* col;
@@ -5515,6 +5520,37 @@ static gboolean compile_local_extension(RFM_ADDON* addon) {
     return parse_and_exec_command_in_gtk_thread(rfm_local_c_compile_cmd, FALSE, &(stdin_cmd_interpretors[0]));
 }
 
+static void remove_addon_treeviewColumns(RFM_ADDON *addon){
+  if (addon->resource_managed_by_addon->treeviewColumns_array_size>0){
+    for(size_t i=0; i<addon->resource_managed_by_addon->treeviewColumns_array_size; i++){
+      RFM_treeviewColumn *col = get_treeviewColumnByTitle(addon->resource_managed_by_addon->treeviewColumns[i].title);
+      if (col) col->enumCol = NUM_COLS;//先置空所有 enumCol TODO: 如果控件不为空,要释放控件吗?还是refresh_store的时候会自动处理?
+      else g_warning("treeview column title %s in addon %s not found",addon->resource_managed_by_addon->treeviewColumns[i].title, addon->local_c_path);
+    }
+    gchar *column_layout_without_addon = NULL;
+    get_current_column_layout(column_layout_without_addon);//获取除了此addon外的列layout
+
+    free(DirectoryViewColumnsLayout); free(SearchResultViewColumnsLayout);
+    //重新初始化 search 和dir viewcolumnslayouts,TODO:gtk控件要处理吗?
+    SearchResultViewColumnsLayout = malloc(sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
+    memcpy(SearchResultViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
+    DirectoryViewColumnsLayout = malloc(sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
+    memcpy(DirectoryViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
+
+    GHashTableIter ht_iter;
+    gchar *key;
+    RFM_ADDON *value;
+    g_hash_table_iter_init(&ht_iter, addons);
+    while (g_hash_table_iter_next(&ht_iter, &key, &value)){
+      if (value!=addon) append_addon_treeviewColumns(value);
+    }
+
+    show_hide_treeview_columns_in_order(column_layout_without_addon);//重新应用前面保存的layout
+    g_free(column_layout_without_addon);
+  }
+}
+
+//不同于addon中filemen,toolbarbutton等,addon中的treeviewColumns定义在使用前需要append到全局的treeviewColumns数组里,这主要是因为显示隐藏列,调整顺序等操作都是基于一个数组定义的
 static void append_addon_treeviewColumns(RFM_ADDON *addon) {
   if (addon->resource_managed_by_addon->treeviewColumns_array_size>0){
     RFM_treeviewColumn *old_DirectoryViewColumnLayout = DirectoryViewColumnsLayout;
@@ -5698,6 +5734,7 @@ static void unload_local_extension(RFM_ADDON *addon) {
         if (dlclose(addon->rfm_local_so_handle) != 0) {
              g_warning("dlclose failed: %s", dlerror());
         }
+	remove_addon_treeviewColumns(addon);
     }
 }
 
