@@ -10,6 +10,7 @@
 
 #include "gdk/gdkkeysyms.h"
 #include <linux/limits.h>
+#include <stddef.h>
 #define _GNU_SOURCE
 
 #include <stdlib.h>
@@ -608,7 +609,8 @@ static void row_activated(GtkTreeView *tree_view, GtkTreePath *tree_path,GtkTree
 // 对于在下面几行代码运行git blame 显示commit msg
 // 里面提到的是否准备支持多搜索结果问题,我想我是有答案的:不准备支持
 // rfm在平铺窗口下运行比较好,用多个rfm实例来支持多搜索结果优于在一个实例里面支持多结果
-static RFM_treeviewColumn ViewColumnsLayouts[2][G_N_ELEMENTS(treeviewColumns)];
+static RFM_treeviewColumn *ViewColumnsLayouts[2];
+static size_t TREEVIEW_COLUMNS_array_size = G_N_ELEMENTS(treeviewColumns);
 #define DirectoryViewColumnsLayout ViewColumnsLayouts[0]
 #define SearchResultViewColumnsLayout ViewColumnsLayouts[1]
 #define TREEVIEW_COLUMNS ViewColumnsLayouts[SearchResultViewInsteadOfDirectoryView]
@@ -1739,7 +1741,7 @@ static void Update_Store_ExtColumns(RFM_ChildAttribs *childAttribs) {
 
 static void load_ExtColumns_and_iconview_markup_tooltip(RFM_FileAttributes* fileAttributes, GtkTreeIter *iter){
       g_log(RFM_LOG_DATA_EXT,G_LOG_LEVEL_DEBUG,"load_ExtColumns for %s",fileAttributes->path);
-      for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++){
+      for(size_t i=0;i<TREEVIEW_COLUMNS_array_size;i++){
 	if ((TREEVIEW_COLUMNS[i].Show || TREEVIEW_COLUMNS[i].iconview_markup || TREEVIEW_COLUMNS[i].iconview_tooltip)
 	    && (g_strcmp0(TREEVIEW_COLUMNS[i].MIME_root, "*")==0 || g_strcmp0(fileAttributes->mime_root, TREEVIEW_COLUMNS[i].MIME_root)==0) //treeviewColumns[i].MIME_root 为*, 或者和当前文件相同
 	    && (TREEVIEW_COLUMNS[i].showCondition==NULL || TREEVIEW_COLUMNS[i].showCondition(fileAttributes))
@@ -3054,7 +3056,7 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
      gtk_tree_selection_set_mode(gtk_tree_view_get_selection(GTK_TREE_VIEW(_view)),GTK_SELECTION_MULTIPLE);
      gtk_tree_view_set_headers_clickable(_view, TRUE);
      
-     for(guint i=0; i<G_N_ELEMENTS(treeviewColumns); i++){
+     for(size_t i=0; i<TREEVIEW_COLUMNS_array_size;i++){
        if (!TREEVIEW_COLUMNS[i].Show){
 	 TREEVIEW_COLUMNS[i].gtkCol=NULL;
 	 continue;
@@ -3532,7 +3534,7 @@ static void writeSearchResultIntoFD_in_gtk_thread(gint *fd){
   if (SearchResultViewInsteadOfDirectoryView){
     gboolean firstColumn=TRUE;
     GList* columns=NULL;
-    for (guint i=0; i<G_N_ELEMENTS(treeviewColumns);i++){
+    for (size_t i=0; i<TREEVIEW_COLUMNS_array_size;i++){
       if (TREEVIEW_COLUMNS[i].Show && TREEVIEW_COLUMNS[i].enumCol!=NUM_COLS && TREEVIEW_COLUMNS[i].gtkCol){
 	if (firstColumn){
 	  dprintf(*fd, "%s", TREEVIEW_COLUMNS[i].title); //首列输出列标题
@@ -3689,14 +3691,14 @@ static void stdin_command_help(wordexp_t * parsed_msg, GString* readline_result_
 
 
 static int get_treeviewColumnsIndexByEnum(enum RFM_treeviewCol col){
-  for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++){
+  for(size_t i=0;i<TREEVIEW_COLUMNS_array_size;i++){
     if (TREEVIEW_COLUMNS[i].enumCol==col) return i;
   }
   return -1;
 }
 
 static RFM_treeviewColumn* get_treeviewcolumnByGtkTreeviewcolumn(GtkTreeViewColumn *gtkCol){
-  for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++){
+  for(size_t i=0;i<TREEVIEW_COLUMNS_array_size;i++){
     if (TREEVIEW_COLUMNS[i].gtkCol==gtkCol) return &TREEVIEW_COLUMNS[i];
   }
   return NULL;
@@ -3716,7 +3718,7 @@ static RFM_treeviewColumn* get_treeviewColumnByEnum(enum RFM_treeviewCol col){
 }
 
 static RFM_treeviewColumn* get_treeviewColumnByTitle(char* title){
-  for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++){
+  for(size_t i=0;i<TREEVIEW_COLUMNS_array_size;i++){
     if (g_strcmp0(TREEVIEW_COLUMNS[i].title, title)==0) return &(TREEVIEW_COLUMNS[i]);
   }
   return NULL;
@@ -3769,7 +3771,7 @@ static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
   	      g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"        order_seq  %s",order_sequence);
               g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"in log subdomain %s, number in [] is the index for treeviewColumns array, otherwise, is column enum value.",RFM_LOG_COLUMN_VERBOSE);
 
-              gchar** order_seq_array = g_strsplit_set(order_sequence, ",;", G_N_ELEMENTS(treeviewColumns) + 2);
+              gchar** order_seq_array = g_strsplit_set(order_sequence, ",;", TREEVIEW_COLUMNS_array_size + 2);
 	      guint j=0; //用来索引 order_seq_array,下面的do while循环,j从零开始循环一遍到order_seq_array最后一项
 	      int target_treeviewColumn_index_for_order_sequence_item_j_to_move_after=-1; //用来索引 treeviewColumns,在下面的do while循环,第一轮,也就是j=0时,会赋值为treeviewColumn_index_for_order_sequence_item_j, 其他情况都通过 ++ 递增
 	      do {
@@ -3842,7 +3844,7 @@ static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
 		    if (j>=1 && (target_treeviewColumn_index_for_order_sequence_item_j_to_move_after+1!=treeviewColumn_index_for_order_sequence_item_j)){
 		      g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"target_index_for_order_sequence_item_j_to_move_after+1 <- treeviewColumn_index_for_order_sequence_item_j: [%d] <- [%d]",target_treeviewColumn_index_for_order_sequence_item_j_to_move_after+1,treeviewColumn_index_for_order_sequence_item_j);
 		      //把目前处于treeviewColumn_index_for_order_sequence_item_j位置的列移动到target_treeviewColumn_index_for_order_sequence_item_j_to_move_after后面,也就是target_treeviewColumn_index_for_order_sequence_item_j_to_move_after+1的位置
-		      move_array_item_a_after_b(TREEVIEW_COLUMNS, target_treeviewColumn_index_for_order_sequence_item_j_to_move_after, treeviewColumn_index_for_order_sequence_item_j, sizeof(RFM_treeviewColumn), G_N_ELEMENTS(treeviewColumns));
+		      move_array_item_a_after_b(TREEVIEW_COLUMNS, target_treeviewColumn_index_for_order_sequence_item_j_to_move_after, treeviewColumn_index_for_order_sequence_item_j, sizeof(RFM_treeviewColumn), TREEVIEW_COLUMNS_array_size);
 		    }
 		  
 		    if (j>=1) target_treeviewColumn_index_for_order_sequence_item_j_to_move_after++;
@@ -3853,8 +3855,8 @@ static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
                 } else if (order_seq_array[j+1]==NULL) { // (g_strcmp0(order_seq_array[j],"")==0) and the last elements in case 2,
 		//根据匹配if条件推断当前 order_seq_array 项为"",且后一项为NULL,说明是数组最后一项,跟在分隔副逗号后面且没内容
 		    g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"j:%d; order_seq_array[j+1]==NULL",j);
-                    for (guint i = target_treeviewColumn_index_for_order_sequence_item_j_to_move_after + 1;
-                         i < G_N_ELEMENTS(treeviewColumns); i++) {
+                    for (size_t i = target_treeviewColumn_index_for_order_sequence_item_j_to_move_after + 1;
+                         i < TREEVIEW_COLUMNS_array_size; i++) {
 		      TREEVIEW_COLUMNS[i].Show = FALSE;
 		      if (TREEVIEW_COLUMNS[i].gtkCol!=NULL && icon_or_tree_view!=NULL && treeview) gtk_tree_view_column_set_visible(TREEVIEW_COLUMNS[i].gtkCol, FALSE);
 		      g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"%d invisible after ending ','",TREEVIEW_COLUMNS[i].enumCol);
@@ -3869,9 +3871,9 @@ static void show_hide_treeview_columns_in_order(gchar* order_sequence) {
 }
 
 static gchar* get_showcolumn_cmd_from_currently_displaying_columns(){
-            gchar* showColumnHistory=calloc(G_N_ELEMENTS(treeviewColumns)*5+13, sizeof(char)); // we suppose no more than 999 treeview_columns, and ",-999" takes 5 chars ; leading "showcolumn ," take 13 char
+            gchar* showColumnHistory=calloc(TREEVIEW_COLUMNS_array_size*5+13, sizeof(char)); // we suppose no more than 999 treeview_columns, and ",-999" takes 5 chars ; leading "showcolumn ," take 13 char
 	    showColumnHistory = strcat(showColumnHistory, "showcolumn ,");
-	    for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++){
+	    for(size_t i=0;i<TREEVIEW_COLUMNS_array_size;i++){
 	      //gchar* onecolumn=calloc(6, sizeof(char)); //5 chars for onecolumn + ending null
 	      if (TREEVIEW_COLUMNS[i].enumCol==NUM_COLS) continue;
 	      char onecolumn[6];
@@ -3901,7 +3903,7 @@ static void sort_on_column(wordexp_t * parsed_msg){
 
 static void print_columns_status(wordexp_t * parsed_msg){
 	    printf(CURRENT_COLUMN_STATUS);
-	    for(guint i=0;i<G_N_ELEMENTS(treeviewColumns);i++)
+	    for(size_t i=0;i<TREEVIEW_COLUMNS_array_size;i++)
 	      if (TREEVIEW_COLUMNS[i].enumCol<NUM_COLS)
 		printf("%4d: %s%s\n", TREEVIEW_COLUMNS[i].Show? TREEVIEW_COLUMNS[i].enumCol : (-1)*TREEVIEW_COLUMNS[i].enumCol,TREEVIEW_COLUMNS[i].title, (current_sort_column_id==TREEVIEW_COLUMNS[i].enumCol?(current_sorttype==GTK_SORT_ASCENDING?"{v}":"{^}"):""));
 	      else if (TREEVIEW_COLUMNS[i].ValueFunc!=getExtColumnValueFromHashTable){//如果是C1,C2,...C60这样的列且还没映射到store, 就不要显示了，否则显示太长，用户需要往上翻看实际关心的列标题。除了用这种方式判断，有没有更好的方法判断这种扩展列？
@@ -3933,7 +3935,7 @@ static void print_columns_status(wordexp_t * parsed_msg){
 // 来调用本函数比较合理,但是,show_hide_treeview_columns_in_order能工作蛮久了,又比较复杂,不想动;
 // 更重要的是,它可以不依赖stdarg.h,而本函数需要用到变长参数列表,所以把本函数放到外层也合理
 static void show_hide_treeview_columns_enum(int count, ...){
-    gchar* restrict order_seq=calloc(G_N_ELEMENTS(treeviewColumns)*5+13, sizeof(char));
+    gchar* restrict order_seq=calloc(TREEVIEW_COLUMNS_array_size*5+13, sizeof(char));
     va_list valist;
     va_start(valist, count);
     for (int i = 0; i < count; i++) {
@@ -4701,7 +4703,9 @@ int main(int argc, char *argv[])
    init_ext_columns_in_treeviewColumns();
    //上面 根据 treeviewColumns_init 初始化 treeviewColumns 也可以和下面两个memcpy 合并，也就是 根据treeviewColumns_init 直接初始化 SearchResultViewColumnsLayout 和 DirectoryViewColumnsLayout. 可以省掉treeviewColumns 数组。
    //但 treeviewColumns_init 到 treeviewColumns 的复制，主要是为了config.def.h 看起来更清爽，也减少了 AI 编程时传给大模型prompt量，减少珍贵的context window 的占用。主要是我不知道C语言里还能有啥好办法初始化时扩展静态数组，才这么做的，也许将来会改。而下面的memcpy是除了初始化外，程序运行时还多次要用到的。这两步数组复制的目的和功能不同，treeviewColumns 这点本身运行内存的占用在现代计算机上算不得啥，所以就不合并了。
+   SearchResultViewColumnsLayout = malloc(sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
    memcpy(SearchResultViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
+   DirectoryViewColumnsLayout = malloc(sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
    memcpy(DirectoryViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
    sprintf(selected_filename_placeholder_in_space," %s ",RFM_selected_filename_placeholder);
    sprintf(selected_filename_placeholder_in_quotation, "'%s'",RFM_selected_filename_placeholder);
