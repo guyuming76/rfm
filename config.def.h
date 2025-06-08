@@ -288,10 +288,6 @@ static RFM_ToolButton tool_buttons[] = {
 #define getComment  "exiftool %s |grep '^Comment'|awk -F : '{print $2}'"
 //#define getComment  "exiv2 %s |grep \"^Exif comment\"|awk -F : '{print $2}'"
 
-#ifdef AiIntegration && CmarkTools
-	#define getAiPrompt "extractKeyValuePairFromMarkdown 0 %s 用户提示词 | grep '^用户提示词'| sed 's/^[^=]*=//'"
-        //返回 用户提示词=blablabal 字符串，匹配以任意字符开头直到第一个等号的部分（包括等号），然后将其替换为空。
-#endif
 
 static RFM_treeviewColumn treeviewColumns_init[] = {
 #ifdef GitIntegration
@@ -323,9 +319,6 @@ static RFM_treeviewColumn treeviewColumns_init[] = {
   {"CTime",                   COL_CTIME_STR,              FALSE,  NULL, NULL,                 COL_CTIME_STR,            NULL,            NULL,     "*",         "*",    FALSE,FALSE,NULL},
   {"ImageSize",               NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 getImageSize,    NULL,     "image",     "*",    FALSE,FALSE,NULL},
   {"Comment",                 NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 getComment,      NULL,     "image",     "*",    FALSE,FALSE,NULL},
-#ifdef AiIntegration && CmarkTools
-  {"AiPrompt",                NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 getAiPrompt,     NULL,     "text",      "markdown",FALSE,FALSE,".rfmAI.md"},
-#endif
   {"C1",                      NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 NULL,getExtColumnValueFromHashTable,"*","*",    FALSE,FALSE,NULL},
   //后面C2,C3,....在初始化时添加，注意C1 一定要是最后一个项, 虽然C1这一行放在这里有些奇怪，但如果放代码里初始化值，没有放这里静态数组里直观
 };
@@ -413,5 +406,5 @@ static RFM_cmd_regex_rule regex_rules[] = {
 // 的命名同步。但我觉得命名同步意义不大，写死不变代码其实更简练易读
 // 留在这里 rfm.c 可以访问但rfm_local.c 编译时不能访问，我觉得也许可以通过单方面改变这里的定义值实现一些比如本地的版本升级控制，安全控制等，区分不同的 rfm_local.c, 名称和这个不同的就不能顺利加载。我并不是推荐这种容易造成混乱的方法，我觉得只是在不得已的情况下提供一种可能性。
 static const gchar *global_addons_locating_cmd_template[] = { "rfmLocateGlobalAddons.sh",RFM_LOCAL_C_FILE,NULL };
-static const gchar *rfm_local_c_compile_cmd_template = "gcc -O0 -g -shared -fPIC $(pkg-config --cflags --libs gtk+-3.0 json-glib-1.0) -D'RFM_SearchResultTypeNamePrefix=\"%s\"' -D'RFM_NEW_TERM_SUFFIX=\"%s\"' -D'RFM_selected_filename_placeholder=\"%s\"' -D'RFM_SEARCH_RESULT_AS_INPUT_PREFIX=\"%s\"' -o %s %s %s";
+static const gchar *rfm_local_c_compile_cmd_template = "gcc -O0 -g -shared -fPIC $(pkg-config --cflags --libs gtk+-3.0 json-glib-1.0) %s %s -D'RFM_SearchResultTypeNamePrefix=\"%s\"' -D'RFM_NEW_TERM_SUFFIX=\"%s\"' -D'RFM_selected_filename_placeholder=\"%s\"' -D'RFM_SEARCH_RESULT_AS_INPUT_PREFIX=\"%s\"' -o %s %s %s";
 #endif

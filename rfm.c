@@ -291,45 +291,6 @@ static void cmdThumbnailsize(wordexp_t * parsed_msg, GString* readline_result_st
 /******Thumbnail related definitions end*************/
 /****************************************************/
 /******GtkListStore and refresh definitions**********/
-enum RFM_treeviewCol{
-   COL_ICONVIEW_MARKUP,
-   COL_ICONVIEW_TOOLTIP,
-   COL_PIXBUF,
-   COL_MODE_STR,
-   //COL_DISPLAY_NAME,
-   COL_FILENAME,
-   COL_LINK_TARGET,
-   COL_FULL_PATH,
-   COL_MTIME,
-   COL_MTIME_STR,
-   COL_SIZE,
-   COL_SIZE_DISPLAY,
-   COL_ATTR,
-   COL_OWNER,
-   COL_GROUP,
-   COL_MIME_ROOT,
-   COL_MIME_SUB,
-   COL_MIME_SORT, //mime root + sub for listview sort
-   COL_ATIME_STR,
-   COL_CTIME_STR,
-#ifdef GitIntegration
-   COL_GIT_STATUS_STR,
-   COL_GIT_COMMIT_MSG,
-   COL_GIT_AUTHOR,
-   COL_GIT_COMMIT_DATE,
-   COL_GIT_COMMIT_ID,
-#endif
-   COL_Ext1,COL_Ext2,COL_Ext3,COL_Ext4,COL_Ext5,COL_Ext6,COL_Ext7,COL_Ext8,COL_Ext9,
-   COL_Ext10,COL_Ext11,COL_Ext12,COL_Ext13,COL_Ext14,COL_Ext15,COL_Ext16,COL_Ext17,COL_Ext18,COL_Ext19,
-   COL_Ext20,COL_Ext21,COL_Ext22,COL_Ext23,COL_Ext24,COL_Ext25,COL_Ext26,COL_Ext27,COL_Ext28,COL_Ext29,
-   COL_Ext30,COL_Ext31,COL_Ext32,COL_Ext33,COL_Ext34,COL_Ext35,COL_Ext36,COL_Ext37,COL_Ext38,COL_Ext39,
-   COL_Ext40,COL_Ext41,COL_Ext42,COL_Ext43,COL_Ext44,COL_Ext45,COL_Ext46,COL_Ext47,COL_Ext48,COL_Ext49,
-   COL_Ext50,COL_Ext51,COL_Ext52,COL_Ext53,COL_Ext54,COL_Ext55,COL_Ext56,COL_Ext57,COL_Ext58,COL_Ext59,
-   COL_Ext60,
-   NUM_COLS,
-};
-#define NUM_Ext_Columns (NUM_COLS - COL_Ext1)
-
 
 //TODO: keep GtkTreeIter somewhere such as in fileAttribute, so that we can try load gitmsg and extcolumns with spawn async instead of sync. However, that can be complicated, what if we have spawned so many processes and user clicked refresh? we have to build Stop mechanism into it. Simple strategy is not to load this slow columns unless user configures to show them.
 typedef struct {
@@ -476,23 +437,6 @@ static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResult
 /******Search Result related definitions end*********/
 /****************************************************/
 /******TreeView column related definitions***********/
-
-typedef struct {
-  gchar title[256];
-  enum RFM_treeviewCol enumCol;
-  gboolean Show;
-  GtkTreeViewColumn* gtkCol;
-  gboolean (*showCondition)(RFM_FileAttributes * fileAttributes);
-  enum RFM_treeviewCol enumSortCol;
-  gchar* ValueCmd;
-  gchar* (*ValueFunc)(guint,...);
-  gchar* MIME_root;
-  gchar* MIME_sub;
-  gboolean iconview_markup;
-  gboolean iconview_tooltip;
-  gchar *filenameSuffix;
-} RFM_treeviewColumn;
-
 static gchar* treeviewcolumn_init_order_sequence = NULL;
 static gboolean do_not_show_VALUE_MAY_NOT_LOADED_message_because_we_will_add_GtkTreeViewColumn_later = FALSE;
 void move_array_item_a_after_b(void * array, int index_b, int index_a, uint32_t array_item_size, uint32_t array_length);
@@ -636,6 +580,7 @@ static void free_addon(RFM_ADDON *addon);
 static GHashTable* addons; // RFM_ADDON as value
 static void load_global_addons_callback(RFM_ChildAttribs* child_attribs);
 static void load_addon(CALLER_OWN char* filepath);
+static void append_addon_treeviewColumns(RFM_ADDON *addon);
 static void unload_local_extension(RFM_ADDON *addon);
 static gboolean compile_local_extension(RFM_ADDON *addon);
 static gchar* calculate_file_hash(const gchar *filepath);
@@ -5313,6 +5258,15 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
 
   SearchResultViewInsteadOfDirectoryView = 1;
   memcpy(SearchResultViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
+#ifdef RFM_AddOn
+  GHashTableIter ht_iter;
+  gchar *key;
+  RFM_ADDON *value;
+  g_hash_table_iter_init(&ht_iter, addons);
+  while (g_hash_table_iter_next(&ht_iter, &key, &value)){
+    append_addon_treeviewColumns(value);
+  }
+#endif
   showSearchResultExtColumnsBasedOnHashTableValues_has_already_been_called_for_searchresult = FALSE;
   char old_searchresultcolumnSeperator[32];
   //apply searchresulttype specific column seperator
@@ -5548,8 +5502,33 @@ static gboolean compile_local_extension(RFM_ADDON* addon) {
     gchar *hash_define = g_strdup_printf("-DRFM_LOCAL_C_HASH=\\\"%s\\\"", c_file_hash);
     g_free(c_file_hash); // Free the calculated hash string
 
-    gchar* rfm_local_c_compile_cmd = g_strdup_printf(rfm_local_c_compile_cmd_template, RFM_SearchResultTypeNamePrefix, RFM_NEW_TERM_SUFFIX, RFM_selected_filename_placeholder, RFM_SEARCH_RESULT_AS_INPUT_PREFIX, addon->local_so_path, hash_define, addon->local_c_path);
+    gchar* DGitIntegration = "";
+#ifdef GitIntegration
+    DGitIntegration = "-DGitIntegration";
+#endif
+    gchar* DCmarkTools = "";
+#ifdef CmarkTools
+    DCmarkTools = "-DCmarkTools";
+#endif
+
+    gchar* rfm_local_c_compile_cmd = g_strdup_printf(rfm_local_c_compile_cmd_template, DCmarkTools, DGitIntegration, RFM_SearchResultTypeNamePrefix, RFM_NEW_TERM_SUFFIX, RFM_selected_filename_placeholder, RFM_SEARCH_RESULT_AS_INPUT_PREFIX, addon->local_so_path, hash_define, addon->local_c_path);
     return parse_and_exec_command_in_gtk_thread(rfm_local_c_compile_cmd, FALSE, &(stdin_cmd_interpretors[0]));
+}
+
+static void append_addon_treeviewColumns(RFM_ADDON *addon) {
+  if (addon->resource_managed_by_addon->treeviewColumns_array_size>0){
+    RFM_treeviewColumn *old_DirectoryViewColumnLayout = DirectoryViewColumnsLayout;
+    RFM_treeviewColumn *old_SearchResultViewColumnsLayout = SearchResultViewColumnsLayout;
+    size_t old_TREEVIEW_COLUMNS_array_size = TREEVIEW_COLUMNS_array_size;
+    TREEVIEW_COLUMNS_array_size += addon->resource_managed_by_addon->treeviewColumns_array_size;
+    DirectoryViewColumnsLayout = malloc(TREEVIEW_COLUMNS_array_size*sizeof(RFM_treeviewColumn));
+    memcpy((void*)DirectoryViewColumnsLayout, old_DirectoryViewColumnLayout, sizeof(RFM_treeviewColumn)*old_TREEVIEW_COLUMNS_array_size);
+    memcpy((void*)DirectoryViewColumnsLayout + sizeof(RFM_treeviewColumn)*old_TREEVIEW_COLUMNS_array_size, addon->resource_managed_by_addon->treeviewColumns, sizeof(RFM_treeviewColumn)*addon->resource_managed_by_addon->treeviewColumns_array_size);
+    SearchResultViewColumnsLayout = malloc(TREEVIEW_COLUMNS_array_size*sizeof(RFM_treeviewColumn));
+    memcpy((void*)SearchResultViewColumnsLayout, old_SearchResultViewColumnsLayout, sizeof(RFM_treeviewColumn)*old_TREEVIEW_COLUMNS_array_size);
+    memcpy((void*)SearchResultViewColumnsLayout + sizeof(RFM_treeviewColumn)*old_TREEVIEW_COLUMNS_array_size, addon->resource_managed_by_addon->treeviewColumns, sizeof(RFM_treeviewColumn)*addon->resource_managed_by_addon->treeviewColumns_array_size);
+    free(old_DirectoryViewColumnLayout); free(old_SearchResultViewColumnsLayout);
+  }
 }
 
 static void load_addon(CALLER_OWN char* addon_directory){
@@ -5663,6 +5642,7 @@ static void load_addon(CALLER_OWN char* addon_directory){
             g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Calling %s from %s", RFM_LOCAL_ENTER_FUNC, addon->local_so_path);
             (*(addon->local_enter_func))(addon_directory); //call enter function
 	    g_hash_table_insert(addons, strdup(addon->local_so_path), addon);
+	    append_addon_treeviewColumns(addon);
 	    g_debug("addons size after loading:%d",g_hash_table_size(addons));
 	    return; // 成功call enter funtion 就不要cleanup, unload 完再cleanup
         } else {

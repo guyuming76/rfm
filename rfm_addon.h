@@ -47,6 +47,61 @@ typedef struct {
   gchar* HistoryFilename;
 } stdin_cmd_interpretor;
 
+enum RFM_treeviewCol{
+   COL_ICONVIEW_MARKUP,
+   COL_ICONVIEW_TOOLTIP,
+   COL_PIXBUF,
+   COL_MODE_STR,
+   //COL_DISPLAY_NAME,
+   COL_FILENAME,
+   COL_LINK_TARGET,
+   COL_FULL_PATH,
+   COL_MTIME,
+   COL_MTIME_STR,
+   COL_SIZE,
+   COL_SIZE_DISPLAY,
+   COL_ATTR,
+   COL_OWNER,
+   COL_GROUP,
+   COL_MIME_ROOT,
+   COL_MIME_SUB,
+   COL_MIME_SORT, //mime root + sub for listview sort
+   COL_ATIME_STR,
+   COL_CTIME_STR,
+#ifdef GitIntegration
+   COL_GIT_STATUS_STR,
+   COL_GIT_COMMIT_MSG,
+   COL_GIT_AUTHOR,
+   COL_GIT_COMMIT_DATE,
+   COL_GIT_COMMIT_ID,
+#endif
+   COL_Ext1,COL_Ext2,COL_Ext3,COL_Ext4,COL_Ext5,COL_Ext6,COL_Ext7,COL_Ext8,COL_Ext9,
+   COL_Ext10,COL_Ext11,COL_Ext12,COL_Ext13,COL_Ext14,COL_Ext15,COL_Ext16,COL_Ext17,COL_Ext18,COL_Ext19,
+   COL_Ext20,COL_Ext21,COL_Ext22,COL_Ext23,COL_Ext24,COL_Ext25,COL_Ext26,COL_Ext27,COL_Ext28,COL_Ext29,
+   COL_Ext30,COL_Ext31,COL_Ext32,COL_Ext33,COL_Ext34,COL_Ext35,COL_Ext36,COL_Ext37,COL_Ext38,COL_Ext39,
+   COL_Ext40,COL_Ext41,COL_Ext42,COL_Ext43,COL_Ext44,COL_Ext45,COL_Ext46,COL_Ext47,COL_Ext48,COL_Ext49,
+   COL_Ext50,COL_Ext51,COL_Ext52,COL_Ext53,COL_Ext54,COL_Ext55,COL_Ext56,COL_Ext57,COL_Ext58,COL_Ext59,
+   COL_Ext60,
+   NUM_COLS,
+};
+#define NUM_Ext_Columns (NUM_COLS - COL_Ext1)
+
+typedef struct {
+  gchar title[256];
+  enum RFM_treeviewCol enumCol;
+  gboolean Show;
+  GtkTreeViewColumn* gtkCol;
+  gboolean (*showCondition)(RFM_FileAttributes * fileAttributes);
+  enum RFM_treeviewCol enumSortCol;
+  gchar* ValueCmd;
+  gchar* (*ValueFunc)(guint,...);
+  gchar* MIME_root;
+  gchar* MIME_sub;
+  gboolean iconview_markup;
+  gboolean iconview_tooltip;
+  gchar *filenameSuffix;
+} RFM_treeviewColumn;
+
 typedef struct {
    gchar *buttonName;
    gchar *buttonIcon;
@@ -80,6 +135,8 @@ typedef struct {
 } RFM_SearchResultType;
 
 typedef struct {
+  RFM_treeviewColumn *treeviewColumns;
+  size_t treeviewColumns_array_size;
   GtkWidget **tool_bar_buttons_local;
   RFM_ToolButton *toolbar_button_definitions_local;//静态数组在rfm_local.c中定义，但是通过本指针访问
   size_t toolbar_button_definitions_local_array_size;
