@@ -422,10 +422,12 @@ static void CallDefaultSearchResultFunctionForNewSearch(CALLER_OWN char *one_lin
 static int ProcessKeyValuePairInFilesFromSearchResult(CALLER_OWN char *oneline, gboolean new_search);
 static int ProcessKeyValuePairInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char **cmdtemplate);
 int ProcessJsonInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate);
-static int ProcessCmdOutputFromSearchResultWithFunction(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate, int (*func)(CALLER_OWN gchar*));
+static int ProcessCmdOutputFromSearchResultWithFunction(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate, int (*func)(RFM_ChildAttribs*));
 static int ProcessKeyValuePairInData(GKeyFile* keyfile, char *groupname);
 static void ProcessKeyValuePair(CALLER_OWN gchar *key, OWNER_CHANGE gchar* currentExtColumnValue, CALLER_OWN char* currentColumnOriginalTitle);
+static int ProcessGKeyfileStrWrapper(RFM_ChildAttribs *child_attribs);
 static int ProcessGKeyfileStr(CALLER_OWN gchar *cmdOutput);
+static int ProcessJsonStrWrapper(RFM_ChildAttribs *child_attribs);
 static int ProcessJsonStr(CALLER_OWN gchar* json_data);
 static int ProcessJsonFileFromSearchResult(CALLER_OWN char *oneline, gboolean new_search);
 static int CallMatchingProcessorForSearchResultLine(char *oneline, gboolean new_search, char *cmdtemplate, RFM_FileAttributes* fileAttributes);
@@ -1019,7 +1021,7 @@ static MEM_ALLOC gchar **build_cmd_vector(CALLER_OWN const char **cmd, CALLER_OW
       return NULL;
 
    while (cmd[j]!=NULL && j<RFM_MX_ARGS) {
-     if (strcmp(cmd[j],RFM_selected_filename_placeholder)==0 && listElement!=NULL){
+     if (strcmp(cmd[j],RFM_selected_filename_placeholder)==0 && listElement!=NULL){//TODO,如果file_list为NULL,而cmd里面有 RFM_selected_filename_picker, 如%s,并且dest_path 不为空，应该可以用dest_path来替换%s
        // before this commit, file_list and dest_path are all appended after cmd, but commands like ffmpeg to create thumbnail need to have file name in the middle of the argv, appended at the end won't work. So i modify the rule here so that if we have placeholder in cmd, we replace it with item in file_list. So, file_list can work as generic argument list later, not necessarily the filename. And replacing empty string place holders in cmd with items in file_list can be something like printf.
        v[j]=listElement->data; //this data is owned by rfm_FileAttributes and was not freed before, but now, v and file_list share the reference.  g_list_free_full never called on file_list, and filename char* is not freed when free(v),  but freed with rfm_FileAttributes.
        listElement=g_list_next(listElement);
@@ -1043,6 +1045,7 @@ static MEM_ALLOC gchar **build_cmd_vector(CALLER_OWN const char **cmd, CALLER_OW
       free(v);
       return NULL;
    }
+   //把没用完的file_list成员append到命令结尾
    while (listElement!=NULL) {
       v[j]=listElement->data;
       j++;
@@ -1078,6 +1081,7 @@ static void check_wait_status_and_set_exit_code(CALLER_OWN RFM_ChildAttribs *chi
 }
 
 //caller should g_list_free(file_list), but usually not g_list_free_full, since the file char* is usually owned by rfm_fileattributes
+//TODO：file_list 和 dest_path 这两个参数我都是从Rodney那里继承过来的，我猜最初可能是为了匹配cp,mv这一类的文件命令。我改动了 build_cmd_vector 这个方法。我原先一直觉得dest_path这个变量有些多余，但现在突然发觉，file_list是个list,如果只有一个文件名，造个list比较麻烦，用dest_path参数反倒比较好，这里我们还要处理一下 build_cmd_vector 的TODO,来应对dest_path 不是追加到命令结尾，而是替换命令中间%s的情况
 gboolean g_spawn_wrapper_(CALLER_OWN const GList *file_list, CALLER_OWN const char *dest_path, FREE_FULL RFM_ChildAttribs * child_attribs)
 {
    gchar **v=NULL;
@@ -4956,6 +4960,10 @@ static char* get_json_str_value(JsonObject *obj, const gchar *key) {
     }
 }
 
+static int ProcessJsonStrWrapper(RFM_ChildAttribs *child_attribs) {
+  ProcessJsonStr(child_attribs->stdOut);
+}
+
 static int ProcessJsonStr(CALLER_OWN gchar* json_data){
     // 解析JSON字符串
     GError *error = NULL;
@@ -5015,43 +5023,45 @@ static int ProcessJsonFileFromSearchResult(CALLER_OWN char *oneline, gboolean ne
 // 而parse_and_exec_cmd_in_gtk_thread 里的readlineResult是返回这个查询结果多行记录的，每行一个文件。
 // 所以这两个函数看上去都是执行命令模板的，有类似之处，却不好合并
 static int ProcessKeyValuePairInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate){
-  ProcessCmdOutputFromSearchResultWithFunction(oneline,new_search,cmdtemplate,ProcessGKeyfileStr);
+  ProcessCmdOutputFromSearchResultWithFunction(oneline,new_search,cmdtemplate,ProcessGKeyfileStrWrapper);
 }
 
 int ProcessJsonInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate){
-  ProcessCmdOutputFromSearchResultWithFunction(oneline,new_search,cmdtemplate,ProcessJsonStr);
+  ProcessCmdOutputFromSearchResultWithFunction(oneline,new_search,cmdtemplate,ProcessJsonStrWrapper);
 }
 
-static int ProcessCmdOutputFromSearchResultWithFunction(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate, int (*func)(CALLER_OWN gchar*)){
+//TODO: SearchResultType 里面定义的cmdTemplate格式是独特的：一方面，可以指明cmd_interpretor, 使用match_cmd_str_array_with_interpretors, 另一方面，却又不是通过parse_and_exec_command_in_gtk_thread来执行，通过调用cmd_interpretor的cmdTransformer来转换成 g_spawn_wrapper接受的形式。同时做了一个简单的把cmdTemplate中%s替换成查询结果文件名oneline的操作，这个替换既没使用build_cmd_vector中的文件名替换，又没使用parse_and_exec_command_in_gtk_thread中的选中文件名替换。本来g_spawn_wrapper接受的命令形式和parse_and_exec_command_in_gtk_thread接受的就比较难区别了，这里又多了一个易混淆的。考虑把这三者重构下，大致的思路是让parse_and_exec_command_in_gtk_thread 能接受 RFM_ChildAttribs*, 把之前在其中使用的全局变量放到 RFM_ChildAttribs 中，这样，parse_and_exec_command_in_gtk_thread就可以变成一个可重入的函数。要求可重入是因为search命令会使用parse_and_exec_command_in_gtk_thread, 而update_searchresult_and_refresh_store又会调用 SearchResultTypeProcessingFunc并执行这里的cmdTemplate。
+static int ProcessCmdOutputFromSearchResultWithFunction(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate, int (*func)(RFM_ChildAttribs*)){
    if (new_search){
      CallDefaultSearchResultFunctionForNewSearch(oneline);
      return 0;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
    }
 
-   GError *error=NULL;
-   gchar* cmdOutput=NULL;
-   gchar* cmdError=NULL;
    char SearchResultOnelineDocProcessingCmd[PATH_MAX];
    
    stdin_cmd_interpretor *cmd_interpretor_pointer = match_cmd_str_array_with_interpretors(cmdtemplate);
-   gchar * absolute_address = g_canonicalize_filename(oneline, rfm_SearchResultPath);
+   char** cmd;
    if (cmd_interpretor_pointer){//用户在config.h里定义的命令模板字符串数组，如果第0个字符串指定命令解释器，则第1个字符串指定命令模板; 否则，第0个字符串即是命令模板
-     snprintf(SearchResultOnelineDocProcessingCmd,PATH_MAX,cmdtemplate[1],absolute_address);
+     snprintf(SearchResultOnelineDocProcessingCmd,PATH_MAX,cmdtemplate[1],oneline);
+     cmd = cmd_interpretor_pointer->cmdTransformer(SearchResultOnelineDocProcessingCmd, FALSE);
    }else{
-     snprintf(SearchResultOnelineDocProcessingCmd,PATH_MAX,cmdtemplate[0],absolute_address);
+     snprintf(SearchResultOnelineDocProcessingCmd,PATH_MAX,cmdtemplate[0],oneline);
+     cmd = current_stdin_cmd_interpretor_pointer->cmdTransformer(SearchResultOnelineDocProcessingCmd, FALSE);
    }
-   g_free(absolute_address);
-   char** cmd = cmd_interpretor_pointer ? cmd_interpretor_pointer : current_stdin_cmd_interpretor_pointer->cmdTransformer(SearchResultOnelineDocProcessingCmd, FALSE);
 
-   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"ProcessKeyValuePairInCmdOutputFromSearchResult file:%s, cmd:%s, MatchedCmdInterpretor:%s, current_stdin_cmd_interpretor %s", oneline, SearchResultOnelineDocProcessingCmd, cmd_interpretor_pointer?cmd_interpretor_pointer->name:"null", current_stdin_cmd_interpretor_pointer?current_stdin_cmd_interpretor_pointer->name:"null");
-   if (!g_spawn_sync(rfm_curPath, cmd, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, &cmdOutput, &cmdError, NULL, &error)){
-     g_warning("ProcessKeyValuePairInCmdOutputFromSearchResult. error executing cmd %s, error:%s",SearchResultOnelineDocProcessingCmd, error==NULL?"":error->message);
-     if (error) g_error_free(error);
-   }else{
-     func(cmdOutput);
-   }
-   g_free(cmdOutput);
-   g_free(cmdError);
+   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"ProcessCmdOutputFromSearchResultWithFunction file:%s, cmd:%s, MatchedCmdInterpretor:%s, current_stdin_cmd_interpretor %s", oneline, SearchResultOnelineDocProcessingCmd, cmd_interpretor_pointer?cmd_interpretor_pointer->name:"null", current_stdin_cmd_interpretor_pointer?current_stdin_cmd_interpretor_pointer->name:"null");
+
+   RFM_ChildAttribs *child_attribs=calloc(1,sizeof(RFM_ChildAttribs));
+   child_attribs->customCallBackFunc = func;
+   child_attribs->RunCmd = cmd;
+   child_attribs->spawn_async = FALSE;
+   child_attribs->output_read_by_program=TRUE;
+   child_attribs->workingDir = g_strdup(rfm_SearchResultPath);
+   g_spawn_wrapper_(NULL,NULL,child_attribs);
+}
+
+static int ProcessGKeyfileStrWrapper(RFM_ChildAttribs *child_attribs) {
+  ProcessGKeyfileStr(child_attribs->stdOut);
 }
 
 static int ProcessGKeyfileStr(CALLER_OWN gchar *cmdOutput){
