@@ -150,6 +150,7 @@ static gboolean showHelpOnStart = TRUE;
 static char* InheritedPrompt = "";
 #ifdef RFM_AddOn
 static gchar* Addon_Prompt = NULL;
+static NO_FREE char *AddOnStatus(guint fileAttributeId);
 #endif
 static char **rfm_filename_completion(const char *text);
 #ifdef GNU_readline
@@ -356,6 +357,7 @@ static void inotify_insert_item(gchar *name, gboolean is_dir);
 static gboolean delayed_refreshAll(gpointer user_data);
 static void Update_Store_ExtColumns(RFM_ChildAttribs *childAttribs);
 static gchar* getExtColumnValueFromHashTable(guint fileAttributeId, guint ExtColumnHashTableIndex);
+static NO_FREE RFM_FileAttributes *get_fileAttributes_byId(guint fileAttributeId);
 static void set_rfm_curPath(CALLER_OWN const gchar *path);
 static void set_rfm_curPath_internal(CALLER_OWN const gchar* path);
 static void cmd_cd(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
@@ -5127,6 +5129,7 @@ static int CallMatchingProcessorForSearchResultLine(char *oneline, gboolean new_
 #endif
    g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"SearchResultType name %s matched for file:%s",longest_matched_searchresulttype_name,oneline);
    return matched_searchresulttype_pointer->SearchResultLineProcessingFunc(oneline,new_search,matched_searchresulttype_pointer->cmdTemplate, fileAttributes);
+   //TODO: 对于multitype来说，每一行的showcolumn应该是匹配到的具体searchresulttype的showcolumn, 所以最后应该给每种匹配到的showcolumn做个并集
 }
 
 static gchar* getExtColumnValueFromHashTable(guint fileAttributeId, guint ExtColumnHashTableIndex){
@@ -5136,6 +5139,18 @@ static gchar* getExtColumnValueFromHashTable(guint fileAttributeId, guint ExtCol
    gchar *ret=g_hash_table_lookup(ExtColumnHashTable[ExtColumnHashTableIndex], key);
    g_log(RFM_LOG_DATA_EXT, G_LOG_LEVEL_DEBUG, "getExtColumnValueFromHashTable(fileAttributeId %d, ExtColumnHashTableIndex %d) return %s",fileAttributeId,ExtColumnHashTableIndex,ret);
    return ret;
+}
+
+static NO_FREE RFM_FileAttributes *get_fileAttributes_byId(guint fileAttributeId) {
+   GList *listElement;
+   RFM_FileAttributes *fileAttributes;
+   if (rfm_fileAttributeList==NULL) return NULL;
+   listElement=g_list_first(rfm_fileAttributeList);
+   while (listElement != NULL) {
+     fileAttributes=(RFM_FileAttributes*)listElement->data;
+     if (fileAttributes->id == fileAttributeId) return fileAttributes;
+     listElement=g_list_next(listElement);
+   }
 }
 
 static void ReadFromPipeStdinIfAny(char * fd)
@@ -5226,6 +5241,7 @@ static void showSearchResultExtColumnsBasedOnHashTableValues(){
 
   int i=0;
   gchar* column_sequence;
+  //TODO: 对于multitype来说，每一行的showcolumn应该是匹配到的具体searchresulttype的showcolumn, 所以最后应该给每种匹配到的showcolumn做个并集
   while ((column_sequence = SearchResultTypePointerForCurrentExistingSearchResult->showcolumn[i])){
     show_hide_treeview_columns_in_order(column_sequence);
     i++;
@@ -5743,4 +5759,19 @@ static void free_addon(RFM_ADDON *addon){
 	g_free(addon->local_so_path);
         free(addon);
 }
+
+static NO_FREE char *AddOnStatus(guint fileAttributeId) {
+  RFM_FileAttributes *fileAttributes = get_fileAttributes_byId(fileAttributeId);
+  if (fileAttributes) {
+    GHashTableIter iter;
+    gchar *key;
+    RFM_ADDON *value;
+    g_hash_table_iter_init(&iter, addons);
+    while (g_hash_table_iter_next(&iter, &key, &value)) {
+      if (g_strcmp0(value->local_c_path, fileAttributes->path)==0) return "loaded";
+    }
+    return "not loaded";
+  }else return "unknown";
+}
+
 #endif

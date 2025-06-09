@@ -57,6 +57,23 @@ const stdin_cmd_interpretor stdin_cmd_interpretors[] = {
 #endif
 };
 
+#ifdef RFM_AddOn
+#define RFM_LOCAL_C_FILE "rfm_local.c"
+#define RFM_LOCAL_SO_FILE "rfm_local.so"
+#define RFM_LOCAL_ENTER_FUNC "rfm_local_enter"
+#define RFM_LOCAL_LEAVE_FUNC "rfm_local_leave"
+#define RFM_ADDON_RESOURCE_STRUCT "addon_resource"
+#define RFM_ADDON_TYPE_VAR_NAME "addon_type"
+// 上面这组定义对应的是rfm_local.c里面的变量和方法名，如果把这些定义放在rfm_local.h里面得话，可以实现
+// rfm.c 和 rfm_local.c
+// 的命名同步。但我觉得命名同步意义不大，写死不变代码其实更简练易读
+// 留在这里 rfm.c 可以访问但rfm_local.c 编译时不能访问，我觉得也许可以通过单方面改变这里的定义值实现一些比如本地的版本升级控制，安全控制等，区分不同的 rfm_local.c, 名称和这个不同的就不能顺利加载。我并不是推荐这种容易造成混乱的方法，我觉得只是在不得已的情况下提供一种可能性。
+static const gchar *global_addons_locating_cmd_template[] = { "rfmLocateGlobalAddons.sh",RFM_LOCAL_C_FILE,NULL };
+static const gchar *rfm_local_c_compile_cmd_template = "gcc -O0 -g -shared -fPIC $(pkg-config --cflags --libs gtk+-3.0 json-glib-1.0) %s %s -D'RFM_SearchResultTypeNamePrefix=\"%s\"' -D'RFM_NEW_TERM_SUFFIX=\"%s\"' -D'RFM_selected_filename_placeholder=\"%s\"' -D'RFM_SEARCH_RESULT_AS_INPUT_PREFIX=\"%s\"' -o %s %s %s";
+static const gchar *locate_addons[] = { stdin_cmd_interpretors[0].name, "locate " RFM_LOCAL_C_FILE "|xargs grep 'const enum RFM_ADDON_TYPE addon_type ='" RFM_SearchResultTypeNamePrefix RFM_LOCAL_C_FILE };
+#endif
+
+
 
 static const char *find_same_name[] = { stdin_cmd_interpretors[0].name, rfmBinPath "rfmFindFilesWithTheSameName.sh "RFM_SearchResultTypeNamePrefix"multitype ", NULL };
 static const char *cd_in_searchresult[] = { stdin_cmd_interpretors[0].name, "cd ", NULL };
@@ -277,6 +294,9 @@ static RFM_ToolButton tool_buttons[] = {
    { cpPath,         NULL,                      copy_curPath_to_clipboard, NULL,           TRUE,           TRUE,      0,                      "copy current path to clipboard", NULL},
    { SAVESEARCHRESULT,NULL,                     NULL,                   save_searchresult_to_file,TRUE,    FALSE,     0,                      NULL,                   startWithVT },
    { START_MENU,     NULL,                      NULL,                   start_menu,        FALSE,          TRUE,      0,                      NULL,                  NULL},
+#ifdef RFM_AddOn
+   { "addons",       NULL,                      NULL,                   locate_addons,     TRUE,           TRUE,      0,                      NULL,                  NULL},
+#endif
 // { "mounts",       "drive-harddisk",          show_disk_devices,      dev_disk_path },
 };
 
@@ -290,6 +310,7 @@ static RFM_ToolButton tool_buttons[] = {
 
 
 static RFM_treeviewColumn treeviewColumns_init[] = {
+// title                      enumCol                    show     gtkCol showCondition       enumSortCol                ValueCmd        ValueFunc  MIME_root  MIME_sub  markup tooltip filenamesuffix 
 #ifdef GitIntegration
   {"Git",                     COL_GIT_STATUS_STR,         TRUE,   NULL, show_gitColumns,      COL_GIT_STATUS_STR ,      NULL,            NULL,     "*",         "*",     FALSE,FALSE,NULL},
 #endif
@@ -317,6 +338,9 @@ static RFM_treeviewColumn treeviewColumns_init[] = {
   // COL_MIME_SORT, //mime root + sub for listview sort
   {"ATime",                   COL_ATIME_STR,              FALSE,  NULL, NULL,                 COL_ATIME_STR,            NULL,            NULL,     "*",         "*",    FALSE,FALSE,NULL},
   {"CTime",                   COL_CTIME_STR,              FALSE,  NULL, NULL,                 COL_CTIME_STR,            NULL,            NULL,     "*",         "*",    FALSE,FALSE,NULL},
+#ifdef RFM_AddOn
+  {"AddOnStatus",             NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 NULL,            AddOnStatus,"text",   "x-csrc",FALSE,FALSE,RFM_LOCAL_C_FILE},
+#endif
   {"ImageSize",               NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 getImageSize,    NULL,     "image",     "*",    FALSE,FALSE,NULL},
   {"Comment",                 NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 getComment,      NULL,     "image",     "*",    FALSE,FALSE,NULL},
   {"C1",                      NUM_COLS,                   FALSE,  NULL, NULL,                 NUM_COLS,                 NULL,getExtColumnValueFromHashTable,"*","*",    FALSE,FALSE,NULL},
@@ -335,6 +359,9 @@ static gchar* MU_VIEW_cmdTemplate[] = { stdin_cmd_interpretors[0].name, "mu view
 static gchar* MD_parsing_cmdTemplate[] = { stdin_cmd_interpretors[0].name, "extractKeyValuePairFromMarkdown 0 %s", NULL };
 static gchar* TODO_MD_parsing_cmdTemplate[] = { stdin_cmd_interpretors[0].name, "extractKeyValuePairFromMarkdown 0 %s 简述 问题状态", NULL };
 #endif
+#ifdef RFM_AddOn
+static gchar* AddOnStatusColumns[] = { "FileName","AddOnStatus","C1",NULL };
+#endif
 static RFM_SearchResultType searchresultTypes[] = {
 //name	       SearchResultLineProcessingFunc                  showcolumn     SearchResultColumnSeperator  cmdTemplate Description
   {"default",  ProcessOnelineForSearchResult,                  EmptyShowColumn, NULL, NULL,                            SearchResultType_default }, //default searchresult, contain only filename list such as returned by locate, or filename followed by additional info such as returned by grep
@@ -349,6 +376,9 @@ static RFM_SearchResultType searchresultTypes[] = {
   {"multitype",CallMatchingProcessorForSearchResultLine,       EmptyShowColumn, NULL, NULL,                            SearchResultType_multitype },
   {"withTitle",ProcessOnelineForSearchResult_with_title,       EmptyShowColumn, NULL, NULL,                            SearchResultType_default_with_title },
   {".json",    ProcessJsonFileFromSearchResult,                EmptyShowColumn, NULL, NULL,                            "json key value"},
+#ifdef RFM_AddOn
+  {RFM_LOCAL_C_FILE,ProcessOnelineForSearchResult,           AddOnStatusColumns,NULL, NULL,                            "rfm addon status"},
+#endif
 };
 
 /* Thumbnailers
@@ -392,19 +422,3 @@ static RFM_cmd_regex_rule regex_rules[] = {
 
 //TODO: 增加一个类似前面定义 alias 的功能，或直接在 alias 功能里扩展， 看能不能结合 readline 库，输入一个alias, 直接替换成一个常用命令，可以编辑再执行，而不是向前面直接就给执行了但不显示真实命令
 //locate .ebuild|xargs grep -il "inherit cmake" |xargs grep CMAKE_CXX_FLAGS>0
-
-
-#ifdef RFM_AddOn
-#define RFM_LOCAL_C_FILE "rfm_local.c"
-#define RFM_LOCAL_SO_FILE "rfm_local.so"
-#define RFM_LOCAL_ENTER_FUNC "rfm_local_enter"
-#define RFM_LOCAL_LEAVE_FUNC "rfm_local_leave"
-#define RFM_ADDON_RESOURCE_STRUCT "addon_resource"
-#define RFM_ADDON_TYPE_VAR_NAME "addon_type"
-// 上面这组定义对应的是rfm_local.c里面的变量和方法名，如果把这些定义放在rfm_local.h里面得话，可以实现
-// rfm.c 和 rfm_local.c
-// 的命名同步。但我觉得命名同步意义不大，写死不变代码其实更简练易读
-// 留在这里 rfm.c 可以访问但rfm_local.c 编译时不能访问，我觉得也许可以通过单方面改变这里的定义值实现一些比如本地的版本升级控制，安全控制等，区分不同的 rfm_local.c, 名称和这个不同的就不能顺利加载。我并不是推荐这种容易造成混乱的方法，我觉得只是在不得已的情况下提供一种可能性。
-static const gchar *global_addons_locating_cmd_template[] = { "rfmLocateGlobalAddons.sh",RFM_LOCAL_C_FILE,NULL };
-static const gchar *rfm_local_c_compile_cmd_template = "gcc -O0 -g -shared -fPIC $(pkg-config --cflags --libs gtk+-3.0 json-glib-1.0) %s %s -D'RFM_SearchResultTypeNamePrefix=\"%s\"' -D'RFM_NEW_TERM_SUFFIX=\"%s\"' -D'RFM_selected_filename_placeholder=\"%s\"' -D'RFM_SEARCH_RESULT_AS_INPUT_PREFIX=\"%s\"' -o %s %s %s";
-#endif

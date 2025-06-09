@@ -94,7 +94,7 @@ typedef struct {
   gboolean (*showCondition)(RFM_FileAttributes * fileAttributes);
   enum RFM_treeviewCol enumSortCol;
   gchar* ValueCmd;
-  gchar* (*ValueFunc)(guint,...);
+  gchar* (*ValueFunc)(guint,...); //参见 static gchar* getExtColumnValueFromHashTable(guint fileAttributeId, guint ExtColumnHashTableIndex)
   gchar* MIME_root;
   gchar* MIME_sub;
   gboolean iconview_markup;
