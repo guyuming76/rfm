@@ -151,6 +151,7 @@ static char* InheritedPrompt = "";
 #ifdef RFM_AddOn
 static gchar* Addon_Prompt = NULL;
 static NO_FREE char *AddOnStatus(guint fileAttributeId);
+static void unload_addon_filemenu_func();
 #endif
 static char **rfm_filename_completion(const char *text);
 #ifdef GNU_readline
@@ -449,7 +450,7 @@ static RFM_treeviewColumn* get_treeviewcolumnByGtkTreeviewcolumn(GtkTreeViewColu
 static RFM_treeviewColumn* get_treeviewColumnByEnum(enum RFM_treeviewCol col);
 static RFM_treeviewColumn* get_treeviewColumnByTitle(char* title);
 static enum RFM_treeviewCol get_available_ExtColumn(enum RFM_treeviewCol col);
-static void get_current_column_layout(CALLER_OWN gchar *column_layout);
+static gchar* get_current_column_layout(CALLER_OWN gchar *column_layout,gboolean title);
 static CALLER_OWN gchar* get_showcolumn_cmd_from_currently_displaying_columns();
 static void show_hide_treeview_columns_in_order(CALLER_OWN gchar *order_sequence);
 static void show_hide_treeview_columns_enum(int count, ...);
@@ -2670,7 +2671,7 @@ static void toolbar_button_exec(GtkToolItem *item, RFM_ToolButton *button_defini
      g_hash_table_iter_init(&ht_iter, addons);
      while (g_hash_table_iter_next(&ht_iter, &key, &value)){
        if ((button_definition >= value->resource_managed_by_addon->toolbar_button_definitions_local)
-	   && button_definition < value->resource_managed_by_addon->toolbar_button_definitions_local + (value->resource_managed_by_addon->toolbar_button_definitions_local_array_size)*sizeof(RFM_ToolButton)){ //根据地址判断button_definition 指向某个静态数组
+	   && button_definition < value->resource_managed_by_addon->toolbar_button_definitions_local + (value->resource_managed_by_addon->toolbar_button_definitions_local_array_size)*sizeof(RFM_ToolButton)){ //根据地址判断button_definition 指向某个静态数组.TODO:建立一个反向索引hashtable,以resource_managed_by_addon成员地址为key,addon为value,这样就不用循环了，直接lookup。问题是建一个hashtable呢还是每种成员建一个hashtable，如果是每种成员建一个hashtable，需要iterate时，每次只需要在特定hashtable上iterate就可以了
          child_attribs->workingDir = g_strdup(value->resource_managed_by_addon->addon_dir);
 	 g_debug("Addon working directory:%s", child_attribs->workingDir);
 	 break;
@@ -3823,21 +3824,29 @@ static void show_hide_treeview_columns_in_order(CALLER_OWN gchar* order_sequence
 	      g_strfreev(order_seq_array);
 }
 
-static void get_current_column_layout(CALLER_OWN gchar *column_layout){
-            if (column_layout==NULL) column_layout = calloc(TREEVIEW_COLUMNS_array_size*5+1, sizeof(char));
+static gchar* get_current_column_layout(CALLER_OWN gchar *column_layout, gboolean title){
+            if (column_layout==NULL) column_layout = calloc(TREEVIEW_COLUMNS_array_size * (title?ColumnTitleMaxLen:5) +1, sizeof(char));
             for(size_t i=0;i<TREEVIEW_COLUMNS_array_size;i++){
 	      if (TREEVIEW_COLUMNS[i].enumCol==NUM_COLS) continue;
-	      char onecolumn[6];//5 chars for onecolumn + ending null
-	      snprintf(onecolumn,6,"%4d,", TREEVIEW_COLUMNS[i].enumCol * (TREEVIEW_COLUMNS[i].Show?1:-1));
-	      strcat(column_layout, onecolumn);
+	      if (title){
+		char onecolumn[ColumnTitleMaxLen];//5 chars for onecolumn + ending null
+		snprintf(onecolumn,ColumnTitleMaxLen,",%s%s",(TREEVIEW_COLUMNS[i].Show?"":"-"),TREEVIEW_COLUMNS[i].title);
+		strcat(column_layout, onecolumn);
+	      }else{
+		char onecolumn[6];//5 chars for onecolumn + ending null
+		snprintf(onecolumn,6,",%4d", TREEVIEW_COLUMNS[i].enumCol * (TREEVIEW_COLUMNS[i].Show?1:-1));
+		strcat(column_layout, onecolumn);
+	      }
+	      if (!g_str_has_suffix(column_layout, ",")) strcat(column_layout,",");
 	    }
+            return column_layout;
 }
 
 static CALLER_OWN gchar* get_showcolumn_cmd_from_currently_displaying_columns(){
-            gchar* showColumnHistory=calloc(TREEVIEW_COLUMNS_array_size*5+13, sizeof(char)); // we suppose no more than 999 treeview_columns, and ",-999" takes 5 chars ; leading "showcolumn ," take 13 char
-	    showColumnHistory = strcat(showColumnHistory, "showcolumn ,");
-	    get_current_column_layout(showColumnHistory);
-	    return showColumnHistory;
+            //gchar* showColumnHistory=calloc(TREEVIEW_COLUMNS_array_size*5+13, sizeof(char)); // we suppose no more than 999 treeview_columns, and ",-999" takes 5 chars ; leading "showcolumn ," take 13 char
+            gchar* showColumnHistory=calloc(TREEVIEW_COLUMNS_array_size*ColumnTitleMaxLen+13, sizeof(char));
+	    showColumnHistory = strcat(showColumnHistory, "showcolumn ");
+	    return get_current_column_layout(showColumnHistory,TRUE);
 }
 
 static void sort_on_column(wordexp_t * parsed_msg){
@@ -4640,7 +4649,7 @@ int main(int argc, char *argv[])
    gchar *thumbnailsize;
    g_log_set_handler (G_LOG_DOMAIN, G_LOG_LEVEL_MASK | G_LOG_FLAG_FATAL| G_LOG_FLAG_RECURSION, g_log_default_handler, NULL);
 
-   addons = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, free_addon);
+   addons = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
    rfmCtx=calloc(1,sizeof(RFM_ctx));
    if (rfmCtx==NULL) return 1;
    //rfmCtx->rfm_sortColumn=GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID;
@@ -4922,7 +4931,7 @@ static void ProcessKeyValuePair(CALLER_OWN gchar *key, OWNER_CHANGE gchar* curre
 	      return;
 	    }
 	    col->enumCol=current_Ext_Column;
-	    snprintf(col->title,256,"%s",key);
+	    snprintf(col->title,ColumnTitleMaxLen,"%s",key);
 	    col->ValueFunc=getExtColumnValueFromHashTable;
 
             currentPageStartingColumnTitleIndex++;
@@ -5127,7 +5136,7 @@ static int CallMatchingProcessorForSearchResultLine(char *oneline, gboolean new_
 	    while (g_hash_table_iter_next(&ht_iter, &key, &value)){
 	           RFM_ADDON_RESOURCE_TYPE* addon_resource = value->resource_managed_by_addon;
 		   for (guint i = 0; i < addon_resource->searchresulttypes_array_size; i++) {
-			 if (g_str_has_suffix(oneline, addon_resource->searchresulttypes[i].name)){
+		         if (g_str_has_suffix(oneline, addon_resource->searchresulttypes[i].name)){//注意这里和MatchSearchResultType函数的区别，那里匹配的是加上 RFM_SearchResultTypeNamePrefix 的searchresulttype。TODO:不能扩展下MatchSearchResultType函数，在这里也调用吗？代码会短些
 			   if (strlen(addon_resource->searchresulttypes[i].name)>strlen(longest_matched_searchresulttype_name)){
 			     longest_matched_searchresulttype_name = addon_resource->searchresulttypes[i].name;
 			     matched_searchresulttype_pointer = &(addon_resource->searchresulttypes[i]);
@@ -5242,7 +5251,7 @@ static void showSearchResultExtColumnsBasedOnHashTableValues(){
 	     show_hide_treeview_columns_enum(3, previousColumn,i,INT_MAX);
 	     if (first_line_column_title){
 	       RFM_treeviewColumn *col = get_treeviewColumnByEnum(i);
-	       snprintf(col->title,256,"%s",(char*)g_hash_table_lookup(ExtColumnHashTable[i-COL_Ext1], "1"));
+	       snprintf(col->title,ColumnTitleMaxLen,"%s",(char*)g_hash_table_lookup(ExtColumnHashTable[i-COL_Ext1], "1"));
 	     }
 	     previousColumn = i;
 	   }
@@ -5550,19 +5559,20 @@ static void remove_addon_treeviewColumns(RFM_ADDON *addon){
   if (addon->resource_managed_by_addon->treeviewColumns_array_size>0){
     for(size_t i=0; i<addon->resource_managed_by_addon->treeviewColumns_array_size; i++){
       RFM_treeviewColumn *col = get_treeviewColumnByTitle(addon->resource_managed_by_addon->treeviewColumns[i].title);
+      //TODO:在load_addon的时候检查title重复冲突
       if (col) col->enumCol = NUM_COLS;//先置空所有 enumCol TODO: 如果控件不为空,要释放控件吗?还是refresh_store的时候会自动处理?
       else g_warning("treeview column title %s in addon %s not found",addon->resource_managed_by_addon->treeviewColumns[i].title, addon->local_c_path);
     }
-    gchar *column_layout_without_addon = NULL;
-    get_current_column_layout(column_layout_without_addon);//获取除了此addon外的列layout
+    gchar *column_layout_without_addon = get_current_column_layout(NULL,TRUE);//获取除了此addon外的列layout
 
     free(DirectoryViewColumnsLayout); free(SearchResultViewColumnsLayout);
     //重新初始化 search 和dir viewcolumnslayouts,TODO:gtk控件要处理吗?
-    SearchResultViewColumnsLayout = malloc(sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
-    memcpy(SearchResultViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
-    DirectoryViewColumnsLayout = malloc(sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
-    memcpy(DirectoryViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
-
+    TREEVIEW_COLUMNS_array_size = G_N_ELEMENTS(treeviewColumns);
+    SearchResultViewColumnsLayout = malloc(sizeof(RFM_treeviewColumn)*TREEVIEW_COLUMNS_array_size);
+    memcpy(SearchResultViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*TREEVIEW_COLUMNS_array_size);
+    DirectoryViewColumnsLayout = malloc(sizeof(RFM_treeviewColumn)*TREEVIEW_COLUMNS_array_size);
+    memcpy(DirectoryViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*TREEVIEW_COLUMNS_array_size);
+    
     GHashTableIter ht_iter;
     gchar *key;
     RFM_ADDON *value;
@@ -5594,14 +5604,15 @@ static void append_addon_treeviewColumns(RFM_ADDON *addon) {
 }
 
 static void load_addon(CALLER_OWN char* addon_directory){
+    assert(addon_directory[0]=='/');//检查是绝对路径
     char *dlsym_error = NULL; //The message returned by dlerror() may reside in a statically allocated buffer that is overwritten by subsequent dlerror()calls. https://www.man7.org/linux/man-pages/man3/dlerror.3.html
     RFM_ADDON * addon = calloc(1, sizeof(RFM_ADDON));
     addon->local_c_path = g_build_filename(addon_directory, RFM_LOCAL_C_FILE, NULL);
     addon->local_so_path = g_build_filename(addon_directory, RFM_LOCAL_SO_FILE, NULL);
     gboolean compile_needed = FALSE;
     if (g_file_test(addon->local_c_path, G_FILE_TEST_EXISTS)) {
-       if (g_hash_table_lookup(addons, addon->local_so_path)){
-	   g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Addon %s already loaded, no need to load again", addon->local_so_path);
+       if (g_hash_table_lookup(addons, addon->local_c_path)){
+	   g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Addon %s already loaded, no need to load again", addon->local_c_path);
 	   goto cleanup;
        }
        if (!g_file_test(addon->local_so_path, G_FILE_TEST_EXISTS)) {
@@ -5703,7 +5714,7 @@ static void load_addon(CALLER_OWN char* addon_directory){
         } else if (addon->local_enter_func){
             g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Calling %s from %s", RFM_LOCAL_ENTER_FUNC, addon->local_so_path);
             (*(addon->local_enter_func))(addon_directory); //call enter function
-	    g_hash_table_insert(addons, strdup(addon->local_so_path), addon);
+	    g_hash_table_insert(addons, strdup(addon->local_c_path), addon);
 	    append_addon_treeviewColumns(addon);
 	    g_debug("addons size after loading:%d",g_hash_table_size(addons));
 	    return; // 成功call enter funtion 就不要cleanup, unload 完再cleanup
@@ -5739,8 +5750,9 @@ static void find_and_unload_addons_before_leaving_current_directory() {
     g_hash_table_iter_init(&ht_iter, addons);
     while (g_hash_table_iter_next(&ht_iter, &key, &value)){
       if (value->addon_type==Directory) {
-	unload_local_extension(value);
 	g_hash_table_iter_remove(&ht_iter);
+	unload_local_extension(value);
+	free_addon(value);
         g_debug("addons size after unloading:%d",g_hash_table_size(addons));
       }
       //TODO: 处理其他addon类型
@@ -5757,10 +5769,10 @@ static void unload_local_extension(RFM_ADDON *addon) {
         } else {
              g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Function %s not found in %s (optional).", RFM_LOCAL_LEAVE_FUNC, addon->local_so_path);
         }
+        remove_addon_treeviewColumns(addon);
         if (dlclose(addon->rfm_local_so_handle) != 0) {
              g_warning("dlclose failed: %s", dlerror());
         }
-	remove_addon_treeviewColumns(addon);
     }
 }
 
@@ -5772,16 +5784,26 @@ static void free_addon(RFM_ADDON *addon){
 
 static NO_FREE char *AddOnStatus(guint fileAttributeId) {
   RFM_FileAttributes *fileAttributes = get_fileAttributes_byId(fileAttributeId);
-  if (fileAttributes) {
-    GHashTableIter iter;
-    gchar *key;
-    RFM_ADDON *value;
-    g_hash_table_iter_init(&iter, addons);
-    while (g_hash_table_iter_next(&iter, &key, &value)) {
-      if (g_strcmp0(value->local_c_path, fileAttributes->path)==0) return "loaded";
-    }
-    return "not loaded";
-  }else return "unknown";
+  if (g_hash_table_lookup(addons, fileAttributes->path)) return "loaded";
+  else return "not loaded";
 }
 
+static void unload_addon_filemenu_func() {
+  GList* selection_GtkTreePath_list = get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
+  GtkTreeIter iter;
+  GList *listElement = g_list_first(selection_GtkTreePath_list);
+  while(listElement!=NULL) {
+	 gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, listElement->data); //GtkTreePath to GtkTreeIter
+         RFM_FileAttributes *fileAttributes=NULL;
+	 gtk_tree_model_get (GTK_TREE_MODEL(store), &iter, COL_ATTR, &fileAttributes, -1);
+	 RFM_ADDON *addon = g_hash_table_lookup(addons, fileAttributes->path);
+         if (addon) {
+	   g_hash_table_remove(addons, fileAttributes->path);
+	   unload_local_extension(addon);
+	   free_addon(addon);
+	 }
+         listElement=g_list_next(listElement);
+  }
+  g_list_free_full(selection_GtkTreePath_list, (GDestroyNotify)gtk_tree_path_free);
+};
 #endif

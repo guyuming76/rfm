@@ -251,6 +251,9 @@ static RFM_MenuItem run_actions[] = {
    {RunActionRefreshThumb,"application","zip",                 ".ggb",			NULL,			refreshThumbnail,NULL,		                NULL },
    {RunActionRefreshThumb,"video",     "mp4",                  NULL,			NULL,			refreshThumbnail,NULL,		                NULL },
    {RunActionRefreshThumb,"image",     "*",                    NULL,			NULL,			refreshThumbnail,NULL,		                NULL },
+#ifdef RFM_AddOn
+   { "unload addon", "text",           "x-csrc",               RFM_LOCAL_C_FILE,        NULL,         unload_addon_filemenu_func,NULL,                          NULL },
+#endif
 };
 
 /* Toolbar button definitions

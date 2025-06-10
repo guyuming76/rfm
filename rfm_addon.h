@@ -86,8 +86,9 @@ enum RFM_treeviewCol{
 };
 #define NUM_Ext_Columns (NUM_COLS - COL_Ext1)
 
+#define ColumnTitleMaxLen 256
 typedef struct {
-  gchar title[256];
+  gchar title[ColumnTitleMaxLen];
   enum RFM_treeviewCol enumCol;
   gboolean Show;
   GtkTreeViewColumn* gtkCol;
@@ -120,14 +121,14 @@ typedef struct {
    gchar *runSub;
    gchar *filenameSuffix;
    gchar *OrSearchResultType;
-   void (*func)(gpointer);
+   void (*func)(gpointer); //参数指针传入的是没用的rfmCtx，也可以使用不带参数的函数，执行时根据当前selection获得文件
    const gchar **runCmd;
    gboolean (*showCondition)(RFM_FileAttributes*);
 } RFM_MenuItem;
 
 typedef struct {
   gchar* name;
-  int (*SearchResultLineProcessingFunc)(gchar* oneline, gboolean new_search, char** cmdTemplate, RFM_FileAttributes* fileAttributes); //when new_search is TRUE, fileattributes will be NULL. Note that not all ProcessingFunc has these four parameters defined, mostly not.
+  int (*SearchResultLineProcessingFunc)(gchar* oneline, gboolean new_search, char** cmdTemplate, RFM_FileAttributes* fileAttributes); //when new_search is TRUE, fileattributes will be NULL. Note that not all ProcessingFunc has these four parameters defined, mostly not. 参见 ProcessCmdOutputFromSearchResultWithFunction
   const char** showcolumn; //the same type of string used in showcolumn builtin command
   const char* SearchResultColumnSeperator;
   const char** cmdTemplate;//used by ProcessKeyValuePairInCmdOutputFromSearchResult
