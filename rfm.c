@@ -4123,7 +4123,8 @@ static RFM_SearchResultType* MatchSearchResultType(gchar* readlineResult){
 			   g_debug("Addon:%s; searchResultTypeName:%s",value->local_c_path,addon_resource->searchresulttypes[i].name);
 			   readlineResult[len-strlen(searchTypeNameSuffix)]='\0';//remove suffix from readlineResult
 			   g_free(searchTypeNameSuffix);
-			   //TODO: 这里是否要设置 addon_dir_for_searchresult_cmd ?
+			   //TODO：这里 addon_dir_for_current_cmd可能不为null, 可能在toolbar_exec里面就设置了,但如果是 readfromstdin 的,就应该为null, 这里应该是设置的第一个节点，但我们目前就不把readfromstdin等相关参数传进当前函数了，等后面重构parse_and_exec_command_in_gtk_thread的时候再考虑
+			   addon_dir_for_current_cmd = g_dirname(value->local_c_path);
 			   return &(addon_resource->searchresulttypes[i]);
 			 }
 			 g_free(searchTypeNameSuffix);
@@ -5113,13 +5114,14 @@ static int ProcessKeyValuePairInData(GKeyFile *keyfile, char* groupname){
 // 一个没匹配到,默认用 searchresultype[0]
 static int CallMatchingProcessorForSearchResultLine(char *oneline, gboolean new_search, char *cmdtemplate, RFM_FileAttributes* fileAttributes){
    assert(g_strcmp0(SearchResultTypePointerForCurrentExistingSearchResult->name,SrchRsltType_multitype)==0);
+   gchar *rfm_SearchResultPath_for_multitype = rfm_SearchResultPath; //保存最外层multitype search 执行时的目录
    if (new_search){
      CallDefaultSearchResultFunctionForNewSearch(oneline);
      return 0;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
    }
 
    char* longest_matched_searchresulttype_name = "";
-   RFM_SearchResultType * matched_searchresulttype_pointer = NULL;
+   RFM_SearchResultType * matched_searchresulttype_pointer = &(searchresultTypes[0]);//没有匹配到得话就直接调用 default, 0号
    for(guint i=0; i<G_N_ELEMENTS(searchresultTypes); i++){
      if (g_str_has_suffix(oneline, searchresultTypes[i].name)){
        if (strlen(searchresultTypes[i].name)>strlen(longest_matched_searchresulttype_name)){
@@ -5141,14 +5143,19 @@ static int CallMatchingProcessorForSearchResultLine(char *oneline, gboolean new_
 			   if (strlen(addon_resource->searchresulttypes[i].name)>strlen(longest_matched_searchresulttype_name)){
 			     longest_matched_searchresulttype_name = addon_resource->searchresulttypes[i].name;
 			     matched_searchresulttype_pointer = &(addon_resource->searchresulttypes[i]);
-    			     //TODO: 这里是否要设置 addon_dir_for_searchresult_cmd ?
+    			     //在update_searchresultfilenamelist_and_refresh_store 方法里面会根据 addon_dir_for_current_cmd设置 rfm_searchresultpath, 然后再调用searchresultprocessingfunc。所以这里在searchresultprocessingfunc里面，就不用管addon_dir_for_current_cmd, 直接设 rfm_searchresultpath 就可以了
+			     rfm_SearchResultPath = g_dirname(value->local_c_path);
 			   }
 			 }
 		   }
 	    }
 #endif
    g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"SearchResultType name %s matched for file:%s",longest_matched_searchresulttype_name,oneline);
-   return matched_searchresulttype_pointer->SearchResultLineProcessingFunc(oneline,new_search,matched_searchresulttype_pointer->cmdTemplate, fileAttributes);
+   int ret = matched_searchresulttype_pointer->SearchResultLineProcessingFunc(oneline,new_search,matched_searchresulttype_pointer->cmdTemplate, fileAttributes);
+   g_free(rfm_SearchResultPath);
+   //TODO:这里我们可以看到 rfm_searchresultpath 只有在 matched search result processing func 执行的期间才等于 addon 的目录，前后都通过备份恢复来保持"最外层"processingfunc执行时的值，也许重构 parse_and_exec_command_in_gtk_thread 的时候，可以考虑把 SearchResultLineProcessingFunc 也带上 ChildAttribs 参数，这样就可避免全局的 rfm_searchresultpath
+   rfm_SearchResultPath = rfm_SearchResultPath_for_multitype; //恢复前面保存的值，作为处理下一个oneline,即下个查询结果文件时的默认值
+   return ret;
    //TODO: 对于multitype来说，每一行的showcolumn应该是匹配到的具体searchresulttype的showcolumn, 所以最后应该给每种匹配到的showcolumn做个并集
 }
 

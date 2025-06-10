@@ -129,6 +129,7 @@ typedef struct {
 typedef struct {
   gchar* name;
   int (*SearchResultLineProcessingFunc)(gchar* oneline, gboolean new_search, char** cmdTemplate, RFM_FileAttributes* fileAttributes); //when new_search is TRUE, fileattributes will be NULL. Note that not all ProcessingFunc has these four parameters defined, mostly not. 参见 ProcessCmdOutputFromSearchResultWithFunction
+  //TODO: 重构 parse_and_exec_command_in_gtk_thread 的时候，看能否让 SearchResultLineProcessingFunc 也带上上游传下来的ChildAttribs参数
   const char** showcolumn; //the same type of string used in showcolumn builtin command
   const char* SearchResultColumnSeperator;
   const char** cmdTemplate;//used by ProcessKeyValuePairInCmdOutputFromSearchResult
