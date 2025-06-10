@@ -5150,7 +5150,7 @@ static int CallMatchingProcessorForSearchResultLine(char *oneline, gboolean new_
 		   }
 	    }
 #endif
-   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"SearchResultType name %s matched for file:%s",longest_matched_searchresulttype_name,oneline);
+	    g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"%s: SearchResultType name %s matched for file:%s. rfm_SearchResultPath changed from %s to %s for matched SearchResultTypeProcessing and will restore after processing",SrchRsltType_multitype,longest_matched_searchresulttype_name,oneline, rfm_SearchResultPath_for_multitype, rfm_SearchResultPath);
    int ret = matched_searchresulttype_pointer->SearchResultLineProcessingFunc(oneline,new_search,matched_searchresulttype_pointer->cmdTemplate, fileAttributes);
    g_free(rfm_SearchResultPath);
    //TODO:这里我们可以看到 rfm_searchresultpath 只有在 matched search result processing func 执行的期间才等于 addon 的目录，前后都通过备份恢复来保持"最外层"processingfunc执行时的值，也许重构 parse_and_exec_command_in_gtk_thread 的时候，可以考虑把 SearchResultLineProcessingFunc 也带上 ChildAttribs 参数，这样就可避免全局的 rfm_searchresultpath
@@ -5327,11 +5327,16 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
   }
   SearchResultFileNameListLength=0;
   fileAttributeID=1;
+  g_debug("update_SearchResultFileNameList_and_refresh_store, rfm_SearchResultPath %s", rfm_SearchResultPath);
   g_free(rfm_SearchResultPath);
   if (addon_dir_for_current_cmd){
     rfm_SearchResultPath = addon_dir_for_current_cmd;
+    g_debug("update_SearchResultFileNameList_and_refresh_store, rfm_SearchResultPath set to addon_dir_for_current_cmd:%s", rfm_SearchResultPath);
     addon_dir_for_current_cmd = NULL;//取完值后就置空，只有新查询会执行到这里，刷新不会
-  }else rfm_SearchResultPath=strdup(rfm_curPath);
+  }else{
+    rfm_SearchResultPath=strdup(rfm_curPath);
+    g_debug("update_SearchResultFileNameList_and_refresh_store, rfm_SearchResultPath set to rfm_curPath:%s", rfm_SearchResultPath);
+  }
 
   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"update_SearchResultFileNameList, length: %ld charactor(s)",filenamelist?strlen((gchar*)filenamelist):0);
   gchar * oneline=strtok((gchar*)filenamelist,"\n");
