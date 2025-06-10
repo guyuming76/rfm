@@ -5252,12 +5252,12 @@ static void showSearchResultExtColumnsBasedOnHashTableValues(){
   //for those contain more than filepath, the additionl column usually will be filled in the ExtColumnHashTable, we use following layout.
   gboolean old_value=do_not_show_VALUE_MAY_NOT_LOADED_message_because_we_will_add_GtkTreeViewColumn_later;
   do_not_show_VALUE_MAY_NOT_LOADED_message_because_we_will_add_GtkTreeViewColumn_later=TRUE;
-  if(ExtColumnHashTablesHaveData){
+  if(ExtColumnHashTablesHaveData){//只要有使用getExtColumnValueFromHashTable取值函数的列,就只显示文件名和这些列,而不显示那些常规的如文件大小日期列,如要显示这些列,可在 showcolumn 里面指定.
 	 show_hide_treeview_columns_enum(3, INT_MAX,COL_FILENAME,INT_MAX);
 	 enum RFM_treeviewCol previousColumn = COL_FILENAME;
 	 for(int i=COL_Ext1; i<NUM_COLS;i++){
 	   if (ExtColumnHashTable[i-COL_Ext1]!=NULL){
-	     show_hide_treeview_columns_enum(3, previousColumn,i,INT_MAX);
+	     show_hide_treeview_columns_enum(3, previousColumn,i,INT_MAX);//INT_MAX 结尾表示只显示指明的列,不显示其他默认显示常规列如文件大小日期.这样设计的出发点是:当我们在查询结果里只包含文件名时,我们希望显示文件名,大小,日期等如同目录视图一样的列. 而当查询结果包含除文件名之外的扩展列时,我们希望只显示文件名和这些扩展列,而不包括文件大小日期等常规列,以便让用户注意力能集中在这些扩展列上
 	     if (first_line_column_title){
 	       RFM_treeviewColumn *col = get_treeviewColumnByEnum(i);
 	       snprintf(col->title,ColumnTitleMaxLen,"%s",(char*)g_hash_table_lookup(ExtColumnHashTable[i-COL_Ext1], "1"));
@@ -5272,7 +5272,7 @@ static void showSearchResultExtColumnsBasedOnHashTableValues(){
   //TODO: 对于multitype来说，每一行的showcolumn应该是匹配到的具体searchresulttype的showcolumn, 所以最后应该给每种匹配到的showcolumn做个并集
   if (SearchResultTypePointerForCurrentExistingSearchResult->showcolumn){
     while ((column_sequence = SearchResultTypePointerForCurrentExistingSearchResult->showcolumn[i])){
-      show_hide_treeview_columns_in_order(column_sequence);
+      show_hide_treeview_columns_in_order(column_sequence);//如果查询结果不包含getExtColumnValueFromHashTable列,只包含文件名,默认会显示文件日期大小等常规列,如果不想显示这些列,可以指定 { ",FileName,", NULL } 这样一个包含 ",FileName," 逗号开头结尾的showcolumn字符串数组
       i++;
     }
   }

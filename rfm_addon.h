@@ -130,7 +130,7 @@ typedef struct {
   gchar* name;
   int (*SearchResultLineProcessingFunc)(gchar* oneline, gboolean new_search, char** cmdTemplate, RFM_FileAttributes* fileAttributes); //when new_search is TRUE, fileattributes will be NULL. Note that not all ProcessingFunc has these four parameters defined, mostly not. 参见 ProcessCmdOutputFromSearchResultWithFunction
   //TODO: 重构 parse_and_exec_command_in_gtk_thread 的时候，看能否让 SearchResultLineProcessingFunc 也带上上游传下来的ChildAttribs参数
-  const char** showcolumn; //the same type of string used in showcolumn builtin command. 参见 showSearchResultExtColumnsBasedOnHashTableValues 函数。事实上，查询结果标准输出里面出现的列(default SearchResultLineProcessingFunc 读取解析，保存在hashtable里的列)，以及其他非默认 SearchResultLineProcessingFunc 从查询结果里解析出来，保存在hashtable里的列，都不用在这里指明，都会自动显示。这里指明的其实是那种“单独定义”的列。那些自动显示的扩展列会统一使 getExtColumnValueFromHashTable 取值函数，而这里需要单独指定的列使用自定义的函数或命令取值TODO：也许该改个名字
+  const char** showcolumn; //the same type of string used in showcolumn builtin command. 参见 showSearchResultExtColumnsBasedOnHashTableValues 函数。事实上，查询结果标准输出里面出现的列(default SearchResultLineProcessingFunc 读取解析，保存在hashtable里的列)，以及其他非默认 SearchResultLineProcessingFunc 从查询结果里解析出来，保存在hashtable里的列，都不用在这里指明，都会自动显示。需要在这里指明的一种是那种“单独定义”的列。那些自动显示的扩展列会统一使 getExtColumnValueFromHashTable 取值函数，而这里需要单独指定的列使用自定义的函数或命令取值. 另一种需要在这里指明的是诸如文件大小日期等常规列(当自动显示包含至少一个使用getExtColumnValueFromHashTable的扩展列的时候),如果查询结果不包含使用getExtColumnValueFromHashTable的扩展列,则会自动显示那些文件大小日期等常规列,如同目录视图一样. TODO：也许该改个名字
   const char* SearchResultColumnSeperator;
   const char** cmdTemplate;//used by ProcessKeyValuePairInCmdOutputFromSearchResult
   const char* Description;
