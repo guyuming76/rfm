@@ -162,8 +162,9 @@ BuiltInCmd_SearchResultColumnSeperator \
 #define SearchResultType_TODO_md "work in the same way as .md search result type except that only level one title '简述' and '问题状态' will be queried. For example:\n" \
 "      locate .rfmTODO.md>TODO.md"
 
+#define SrchRsltType_multitype "multitype"
 #define SearchResultType_multitype "default search result type will be called first to get command output, MIME type and filename suffix will be used to match search result type, and matched search result type will be called to process this row of search result. With this type, we can display content of different file formats in same view. For example:\n" \
-"      locate .rfmTODO.>multitype\n" \
+"      locate .rfmTODO.>"SrchRsltType_multitype"\n" \
 "      by the way, select one file in search result view and run rfm builtin cd command ending with space, we can go into the directory containning this selected file."
 
 #define SearchResultType_default_with_title "The same as the default search result type, except that the first row in command output contains column title"

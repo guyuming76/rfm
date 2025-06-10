@@ -5112,6 +5112,7 @@ static int ProcessKeyValuePairInData(GKeyFile *keyfile, char* groupname){
 // 比如 searchresulttype name 有 ".md", 还有 "TODO.md"
 // 一个没匹配到,默认用 searchresultype[0]
 static int CallMatchingProcessorForSearchResultLine(char *oneline, gboolean new_search, char *cmdtemplate, RFM_FileAttributes* fileAttributes){
+   assert(g_strcmp0(SearchResultTypePointerForCurrentExistingSearchResult->name,SrchRsltType_multitype)==0);
    if (new_search){
      CallDefaultSearchResultFunctionForNewSearch(oneline);
      return 0;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
