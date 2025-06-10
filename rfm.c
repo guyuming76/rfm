@@ -5555,6 +5555,12 @@ static gboolean compile_local_extension(RFM_ADDON* addon) {
     return parse_and_exec_command_in_gtk_thread(rfm_local_c_compile_cmd, FALSE, &(stdin_cmd_interpretors[0]));
 }
 
+// treeviewColumns相关初始化流程：
+// 1. treeviewColumns_init 到 treeviewColumns 主要是展开 C1,C2,...列，节省config.h空间，config.h里面只包含C1列作为模板，不包括C2,C3,... 。这一步只在应用初始化时做,后续操作就不再访问 treeviewColumns_init, 只用treeviewColumns作为模板
+// 2. treeviewColumns 复制到 SearchResultViewColumnsLayout，每个新查询开始运行时做
+// 3. treeviewColumns 复制到 DirectoryViewColumnsLayout，和Search不同，进入新目录时无需重新复制模板
+// 4. 每次AddOn激活时，使用 append_treeviewColumns 把addon上定义的列复制到 Search和DirectoryViewColumnsLayout里面，需要重新计算array_size
+// 5. unload AddOn 的时候就要通过本方法去除上一步添加的Column,实际是通过重做2,3,4步实现
 static void remove_addon_treeviewColumns(RFM_ADDON *addon){
   if (addon->resource_managed_by_addon->treeviewColumns_array_size>0){
     for(size_t i=0; i<addon->resource_managed_by_addon->treeviewColumns_array_size; i++){
