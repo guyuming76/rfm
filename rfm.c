@@ -5262,9 +5262,11 @@ static void showSearchResultExtColumnsBasedOnHashTableValues(){
   int i=0;
   gchar* column_sequence;
   //TODO: 对于multitype来说，每一行的showcolumn应该是匹配到的具体searchresulttype的showcolumn, 所以最后应该给每种匹配到的showcolumn做个并集
-  while ((column_sequence = SearchResultTypePointerForCurrentExistingSearchResult->showcolumn[i])){
-    show_hide_treeview_columns_in_order(column_sequence);
-    i++;
+  if (SearchResultTypePointerForCurrentExistingSearchResult->showcolumn){
+    while ((column_sequence = SearchResultTypePointerForCurrentExistingSearchResult->showcolumn[i])){
+      show_hide_treeview_columns_in_order(column_sequence);
+      i++;
+    }
   }
   do_not_show_VALUE_MAY_NOT_LOADED_message_because_we_will_add_GtkTreeViewColumn_later=old_value;
   showSearchResultExtColumnsBasedOnHashTableValues_has_already_been_called_for_searchresult = TRUE;
