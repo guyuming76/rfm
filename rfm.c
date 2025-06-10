@@ -5240,6 +5240,7 @@ void ensure_fd0_is_opened_for_stdin_inherited_from_parent_process_instead_of_use
          }else fclose(pipeStream);
 }
 
+//参见 RFM_SearchResultType.showcolumn 属性注释。
 static void showSearchResultExtColumnsBasedOnHashTableValues(){
   gboolean ExtColumnHashTablesHaveData=FALSE;
   for(int i=0;i<NUM_Ext_Columns;i++) if (ExtColumnHashTable[i]!=NULL) {

@@ -362,7 +362,7 @@ static gchar* MD_parsing_cmdTemplate[] = { stdin_cmd_interpretors[0].name, "extr
 static gchar* TODO_MD_parsing_cmdTemplate[] = { stdin_cmd_interpretors[0].name, "extractKeyValuePairFromMarkdown 0 %s 简述 问题状态", NULL };
 #endif
 #ifdef RFM_AddOn
-static gchar* AddOnStatusColumns[] = { "FileName","AddOnStatus","C1",NULL };//TODO:这里指明C1只有在SearchType是RFM_LOCAL_C_FILE的时候有效，如果是multitype,无法保证那个列在C1, 也许别的先匹配到的列占据了C1
+static gchar* AddOnStatusColumns[] = { "AddOnStatus",NULL };
 #endif
 static RFM_SearchResultType searchresultTypes[] = {
 //name	       SearchResultLineProcessingFunc                  showcolumn     SearchResultColumnSeperator  cmdTemplate Description
@@ -379,7 +379,7 @@ static RFM_SearchResultType searchresultTypes[] = {
   {"withTitle",ProcessOnelineForSearchResult_with_title,       NULL,          NULL, NULL,                            SearchResultType_default_with_title },
   {".json",    ProcessJsonFileFromSearchResult,                NULL,          NULL, NULL,                            "json key value"},
 #ifdef RFM_AddOn
-  {RFM_LOCAL_C_FILE,ProcessOnelineForSearchResult,           AddOnStatusColumns,NULL, NULL,                            "rfm addon status"},
+  {RFM_LOCAL_C_FILE,ProcessOnelineForSearchResult,        AddOnStatusColumns, NULL, NULL,                            "rfm addon status"},
 #endif
 };
 
