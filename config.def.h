@@ -353,7 +353,6 @@ static RFM_treeviewColumn treeviewColumns_init[] = {
 static RFM_treeviewColumn treeviewColumns[G_N_ELEMENTS(treeviewColumns_init) + NUM_Ext_Columns - 1]; // 因为C1已经包含在treeviewColumns_init 里了，所以要-1
 
 static char SearchResultColumnSeperator[32]={':', 0}; //this is the default value and can be override by specific searchresulttype and can also be set manually with builtin cmd
-static gchar* EmptyShowColumn[] = { NULL };
 static gchar* MailColumns[] = { "-FileName",",From,Subject,Date,Attachments",NULL };
 #ifdef MU_VIEW
 static gchar* MU_VIEW_cmdTemplate[] = { stdin_cmd_interpretors[0].name, "mu view %s | rfmGetMailHeaderWithMuView.sh", NULL };
@@ -367,18 +366,18 @@ static gchar* AddOnStatusColumns[] = { "FileName","AddOnStatus","C1",NULL };//TO
 #endif
 static RFM_SearchResultType searchresultTypes[] = {
 //name	       SearchResultLineProcessingFunc                  showcolumn     SearchResultColumnSeperator  cmdTemplate Description
-  {"default",  ProcessOnelineForSearchResult,                  EmptyShowColumn, NULL, NULL,                            SearchResultType_default }, //default searchresult, contain only filename list such as returned by locate, or filename followed by additional info such as returned by grep
-  {"gkeyfile", ProcessKeyValuePairInFilesFromSearchResult,     EmptyShowColumn, NULL, NULL,                            SearchResultType_gkeyfile},
+  {"default",  ProcessOnelineForSearchResult,                  NULL,          NULL, NULL,                            SearchResultType_default }, //default searchresult, contain only filename list such as returned by locate, or filename followed by additional info such as returned by grep
+  {"gkeyfile", ProcessKeyValuePairInFilesFromSearchResult,     NULL,          NULL, NULL,                            SearchResultType_gkeyfile},
 #ifdef MU_VIEW
-  {"muview",   ProcessKeyValuePairInCmdOutputFromSearchResult, MailColumns    , "&" , MU_VIEW_cmdTemplate ,SearchResultType_muview }, //%s in cmdTemplate will be replaced by filename in searchresult
+  {"muview",   ProcessKeyValuePairInCmdOutputFromSearchResult, MailColumns    , "&" , MU_VIEW_cmdTemplate ,          SearchResultType_muview }, //%s in cmdTemplate will be replaced by filename in searchresult
 #endif
 #ifdef CmarkTools
-  {".md",      ProcessKeyValuePairInCmdOutputFromSearchResult, EmptyShowColumn, NULL, MD_parsing_cmdTemplate, SearchResultType_markdown1 },
-  {"TODO.md",  ProcessKeyValuePairInCmdOutputFromSearchResult, EmptyShowColumn, NULL, TODO_MD_parsing_cmdTemplate, SearchResultType_TODO_md },
+  {".md",      ProcessKeyValuePairInCmdOutputFromSearchResult, NULL,          NULL, MD_parsing_cmdTemplate,          SearchResultType_markdown1 },
+  {"TODO.md",  ProcessKeyValuePairInCmdOutputFromSearchResult, NULL,          NULL, TODO_MD_parsing_cmdTemplate,     SearchResultType_TODO_md },
 #endif
-  {SrchRsltType_multitype,CallMatchingProcessorForSearchResultLine,EmptyShowColumn, NULL, NULL,                        SearchResultType_multitype },
-  {"withTitle",ProcessOnelineForSearchResult_with_title,       EmptyShowColumn, NULL, NULL,                            SearchResultType_default_with_title },
-  {".json",    ProcessJsonFileFromSearchResult,                EmptyShowColumn, NULL, NULL,                            "json key value"},
+  {SrchRsltType_multitype,CallMatchingProcessorForSearchResultLine,NULL,      NULL, NULL,                            SearchResultType_multitype },
+  {"withTitle",ProcessOnelineForSearchResult_with_title,       NULL,          NULL, NULL,                            SearchResultType_default_with_title },
+  {".json",    ProcessJsonFileFromSearchResult,                NULL,          NULL, NULL,                            "json key value"},
 #ifdef RFM_AddOn
   {RFM_LOCAL_C_FILE,ProcessOnelineForSearchResult,           AddOnStatusColumns,NULL, NULL,                            "rfm addon status"},
 #endif
