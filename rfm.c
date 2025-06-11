@@ -2672,7 +2672,8 @@ static void toolbar_button_exec(GtkToolItem *item, RFM_ToolButton *button_defini
      while (g_hash_table_iter_next(&ht_iter, &key, &value)){
        if ((button_definition >= value->resource_managed_by_addon->toolbar_button_definitions_local)
 	   && button_definition < value->resource_managed_by_addon->toolbar_button_definitions_local + (value->resource_managed_by_addon->toolbar_button_definitions_local_array_size)*sizeof(RFM_ToolButton)){ //根据地址判断button_definition 指向某个静态数组.TODO:建立一个反向索引hashtable,以resource_managed_by_addon成员地址为key,addon为value,这样就不用循环了，直接lookup。问题是建一个hashtable呢还是每种成员建一个hashtable，如果是每种成员建一个hashtable，需要iterate时，每次只需要在特定hashtable上iterate就可以了
-         child_attribs->workingDir = g_strdup(value->resource_managed_by_addon->addon_dir);
+         //child_attribs->workingDir = g_strdup(value->resource_managed_by_addon->addon_dir);
+	 child_attribs->workingDir = g_path_get_dirname(value->local_c_path);
 	 g_debug("Addon working directory:%s", child_attribs->workingDir);
 	 break;
        }
@@ -2706,11 +2707,29 @@ static void file_menu_exec(GtkMenuItem *menuitem, RFM_MenuItem *file_menu_item_d
      child_attribs->name = g_strdup(file_menu_item_definition->runName);
      child_attribs->customCallBackFunc = file_menu_item_definition->func;
      child_attribs->customCallbackUserData = rfmCtx;
-
+#ifdef RFM_AddOn
+     GHashTableIter ht_iter;
+     gchar *key;
+     RFM_ADDON *value;
+     g_hash_table_iter_init(&ht_iter, addons);
+     while (g_hash_table_iter_next(&ht_iter, &key, &value)){
+       if ((file_menu_item_definition >= value->resource_managed_by_addon->file_menuitem_definitions_local)
+	   && file_menu_item_definition < value->resource_managed_by_addon->file_menuitem_definitions_local + (value->resource_managed_by_addon->file_menuitem_definitions_local_array_size)*sizeof(RFM_MenuItem)){ //根据地址判断button_definition 指向某个静态数组.TODO:建立一个反向索引hashtable,以resource_managed_by_addon成员地址为key,addon为value,这样就不用循环了，直接lookup。问题是建一个hashtable呢还是每种成员建一个hashtable，如果是每种成员建一个hashtable，需要iterate时，每次只需要在特定hashtable上iterate就可以了
+         //child_attribs->workingDir = g_strdup(value->resource_managed_by_addon->addon_dir);
+	 child_attribs->workingDir = g_path_get_dirname(value->local_c_path);
+	 g_debug("Addon working directory:%s", child_attribs->workingDir);
+	 break;
+       }
+     }
+#endif
      stdin_cmd_interpretor *cmd_interpretor_pointer = match_cmd_str_array_with_interpretors(child_attribs->RunCmd);
      if (cmd_interpretor_pointer){
        gchar* cmd = strdup(child_attribs->RunCmd[1]);
        printf("\n%s\033[32m%s%s]\033[0m%s\n",InheritedPrompt, cmd_interpretor_pointer->prompt,(ItemSelected==0)?"":"*",cmd);
+#ifdef RFM_AddOn
+       if (addon_dir_for_current_cmd) g_warning("addon_dir_for_current_cmd not NULL:%s", addon_dir_for_current_cmd);
+       else addon_dir_for_current_cmd = g_strdup(child_attribs->workingDir);
+#endif
        parse_and_exec_command_in_gtk_thread(cmd, FALSE, cmd_interpretor_pointer);
      }else g_spawn_wrapper_for_selected_fileList_(child_attribs);
   }
