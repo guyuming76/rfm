@@ -5154,8 +5154,20 @@ static int CallMatchingProcessorForSearchResultLine(char *oneline, gboolean new_
    int ret = matched_searchresulttype_pointer->SearchResultLineProcessingFunc(oneline,new_search,matched_searchresulttype_pointer->cmdTemplate, fileAttributes);
    //TODO:这里我们可以看到 rfm_searchresultpath 只有在 matched search result processing func 执行的期间才等于 addon 的目录，前后都通过备份恢复来保持"最外层"processingfunc执行时的值，也许重构 parse_and_exec_command_in_gtk_thread 的时候，可以考虑把 SearchResultLineProcessingFunc 也带上 ChildAttribs 参数，这样就可避免全局的 rfm_searchresultpath
    g_free(rfm_SearchResultPath); rfm_SearchResultPath=rfm_SearchResultPath_for_multitype; //恢复前面保存的值，作为处理下一个oneline,即下个查询结果文件时的默认值
+
+   //对于multitype来说，每一行的showcolumn应该是匹配到的具体searchresulttype的showcolumn, 所以应该给每种匹配到的showcolumn做个并集
+   if (SearchResultTypePointerForCurrentExistingSearchResult->showcolumn==NULL) SearchResultTypePointerForCurrentExistingSearchResult->showcolumn = g_ptr_array_new();
+   if (matched_searchresulttype_pointer->showcolumn){
+       for(int i=0; matched_searchresulttype_pointer->showcolumn[i];i++){
+	 gboolean already_exists_in_multitype_showcolumn = FALSE; //用于避免重复加入字符串数组元素
+	 for(int j=0; SearchResultTypePointerForCurrentExistingSearchResult->showcolumn[j];j++) if (matched_searchresulttype_pointer->showcolumn[i]==SearchResultTypePointerForCurrentExistingSearchResult->showcolumn[j]) { already_exists_in_multitype_showcolumn = TRUE; break; }
+	 if (!already_exists_in_multitype_showcolumn) {
+	   g_ptr_array_add(SearchResultTypePointerForCurrentExistingSearchResult->showcolumn, matched_searchresulttype_pointer->showcolumn[i]);
+	   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"%s: SearchResultType name %s matched for file:%s. showcolumn element '%s' added",SrchRsltType_multitype,longest_matched_searchresulttype_name,oneline,matched_searchresulttype_pointer->showcolumn[i]);
+	 }
+       }
+   }
    return ret;
-   //TODO: 对于multitype来说，每一行的showcolumn应该是匹配到的具体searchresulttype的showcolumn, 所以最后应该给每种匹配到的showcolumn做个并集
 }
 
 static gchar* getExtColumnValueFromHashTable(guint fileAttributeId, guint ExtColumnHashTableIndex){
@@ -5268,15 +5280,18 @@ static void showSearchResultExtColumnsBasedOnHashTableValues(){
 
   int i=0;
   gchar* column_sequence;
-  //TODO: 对于multitype来说，每一行的showcolumn应该是匹配到的具体searchresulttype的showcolumn, 所以最后应该给每种匹配到的showcolumn做个并集
   if (SearchResultTypePointerForCurrentExistingSearchResult->showcolumn){
-    while ((column_sequence = SearchResultTypePointerForCurrentExistingSearchResult->showcolumn[i])){
+    while ((column_sequence = (g_strcmp0(SearchResultTypePointerForCurrentExistingSearchResult->name,SrchRsltType_multitype)==0 ? (i<(((GPtrArray*)(SearchResultTypePointerForCurrentExistingSearchResult->showcolumn))->len) ? g_ptr_array_index((GPtrArray*)(SearchResultTypePointerForCurrentExistingSearchResult->showcolumn), i):NULL) : SearchResultTypePointerForCurrentExistingSearchResult->showcolumn[i]))){
       show_hide_treeview_columns_in_order(column_sequence);//如果查询结果不包含getExtColumnValueFromHashTable列,只包含文件名,默认会显示文件日期大小等常规列,如果不想显示这些列,可以指定 { ",FileName,", NULL } 这样一个包含 ",FileName," 逗号开头结尾的showcolumn字符串数组
       i++;
     }
   }
   do_not_show_VALUE_MAY_NOT_LOADED_message_because_we_will_add_GtkTreeViewColumn_later=old_value;
   showSearchResultExtColumnsBasedOnHashTableValues_has_already_been_called_for_searchresult = TRUE;
+  if (g_strcmp0(SearchResultTypePointerForCurrentExistingSearchResult->name,SrchRsltType_multitype)==0 && SearchResultTypePointerForCurrentExistingSearchResult->showcolumn) {
+    g_ptr_array_free(SearchResultTypePointerForCurrentExistingSearchResult->showcolumn, FALSE); //multitype searcharesulttype 的showcolumn属性默认是NULL的，动态添加  MatchedSearchResultType 的showcolumn, 用完后释放字符串数组，字符串本身不用释放
+    SearchResultTypePointerForCurrentExistingSearchResult->showcolumn = NULL;
+  }
 }
 
 
