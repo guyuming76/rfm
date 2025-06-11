@@ -168,6 +168,7 @@ typedef struct RFM_ChildAttributes{
    int   status;
    void (*customCallBackFunc)(struct RFM_ChildAttributes*); //In Searchresultviewinsteadofdirectoryview situation, after runAction such as Move, i need to fill_store to reflect remove of files, so, i need a callback function. Rodney's original code only deals with working directory, and use INotify to reflect the change.
    gpointer customCallbackUserData; //this is not freed in free_child_attribs, user should free it.
+   gboolean g_idle_add_once_to_run_CallBackFunc;
    gboolean spawn_async;
    gint exitcode;
    gboolean output_read_by_program;

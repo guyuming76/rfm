@@ -393,6 +393,11 @@ static void cmdToggleInotifyHandler(wordexp_t *parsed_msg,GString *readline_resu
 /******GtkListStore and refresh definitions end******/
 /****************************************************/
 /******Search Result related definitions*************/
+typedef struct {
+  const RFM_ChildAttribs* SearchCommandContext;//运行查询的命令当时的childAttribs,比如包含WorkingDir,指的是查询命令执行时的WorkingDir
+  const RFM_SearchResultType *SearchResultTypePointer;
+  const gchar *WorkingDir;//这个是SearchResultTypeProcessingFunc工作的WorkingDir,不一定等同于SearchCommandContext->WorkingDir。这里的Dir取决于SearchResultTypePointer,如果SearchResultTypePointer指向某个AddOn里面的定义，WorkingDir就会被设成那个AddOn的Dir,因为 SearchResultLineProcessingFunc 通常会调用WorkingDir里面定义的一些脚本，而AddOn里面的脚本统一使用相对于AddOn的根路径比较方便。
+} SearchResultTypeProcessingContext;
 
 static gchar *rfm_SearchResultPath=NULL; /*keep the rfm_curPath value when SearchResult was created */
 static GList *SearchResultFileNameList = NULL;
