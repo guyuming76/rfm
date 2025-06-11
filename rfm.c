@@ -165,15 +165,15 @@ void handle_commandline_argument(char* arg);
 int readlink_proc_self_fd_pipefd_and_confirm_pipefd_is_used_by_pipeline();
 void ensure_fd0_is_opened_for_stdin_inherited_from_parent_process_instead_of_used_by_pipeline_any_more();
 static gboolean startWithVT();
-static void readlineInSeperateThread();
+static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs);
 static void ReadFromPipeStdinIfAny(char *fd);
-static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, gchar** env);
-static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer);
+static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, gchar** env, RFM_ChildAttribs *child_attribs);
+static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *childAttribs);
 static void g_spawn_async_callback_to_new_readline_thread(gpointer child_attribs);
 static void regcomp_for_regex_rules();
 static void set_stdin_cmd_leading_space_true();
 static NO_FREE stdin_cmd_interpretor* match_cmd_str_array_with_interpretors(gchar** RunCmd);
-static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboolean from_stdin_readline, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer);
+static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboolean from_stdin_readline, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs* childAttribs);
 static void parse_and_exec_stdin_command_in_gtk_thread(gchar *msg);
 static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * parsed_msg, GString* readline_result_string);
 static void toggle_exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread();
@@ -438,7 +438,7 @@ static RFM_SearchResultType* MatchSearchResultType(gchar *readlineResult);
 static void set_pagesize_for_searchresultview(const char *pagesize);
 static void cmdPagesize(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
 static void writeSearchResultIntoFD_in_gtk_thread(gint *fd);
-static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, gboolean from_stdin_readline, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer);
+static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, gboolean from_stdin_readline, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *childAttribs);
 /******Search Result related definitions end*********/
 /****************************************************/
 /******TreeView column related definitions***********/
@@ -688,6 +688,7 @@ static void free_child_attribs(FREE_FULL RFM_ChildAttribs *child_attribs)
    //g_free(child_attribs->customCallbackUserData);
    g_free(child_attribs->workingDir);
    g_free(child_attribs);
+   //child_attribs->readlineResultString 在 add_history_after_stdin_command_execution 函数内 free, 因为child_attribs 在g_spawn_wrapper执行玩命令后就要free,但命令执行玩还要 add_history 呢。
 }
 
 static void rfm_stop_all(RFM_ctx *rfmCtx) {
@@ -916,7 +917,6 @@ static RFM_defaultPixbufs *load_default_pixbufs(void)
    
    if(!(defaultPixbufs = calloc(1, sizeof(RFM_defaultPixbufs))))
       return NULL;
-
    defaultPixbufs->file=gtk_icon_theme_load_icon(icon_theme, "application-octet-stream", RFM_ICON_SIZE, 0, NULL);
    defaultPixbufs->dir=gtk_icon_theme_load_icon(icon_theme, "folder", RFM_ICON_SIZE, 0, NULL);
    defaultPixbufs->symlink=gtk_icon_theme_load_icon(icon_theme, "emblem-symbolic-link", RFM_ICON_SIZE/2, 0, NULL);
@@ -2687,7 +2687,7 @@ static void toolbar_button_exec(GtkToolItem *item, RFM_ToolButton *button_defini
        if (addon_dir_for_current_cmd) g_warning("addon_dir_for_current_cmd not NULL:%s", addon_dir_for_current_cmd);
        else addon_dir_for_current_cmd = g_strdup(child_attribs->workingDir);
 #endif
-       parse_and_exec_command_in_gtk_thread(cmd, FALSE, cmd_interpretor_pointer);
+       parse_and_exec_command_in_gtk_thread(cmd, FALSE, cmd_interpretor_pointer, child_attribs);
        free_child_attribs(child_attribs);
      }else g_spawn_wrapper_(NULL, NULL, child_attribs);
    }
@@ -2730,7 +2730,7 @@ static void file_menu_exec(GtkMenuItem *menuitem, RFM_MenuItem *file_menu_item_d
        if (addon_dir_for_current_cmd) g_warning("addon_dir_for_current_cmd not NULL:%s", addon_dir_for_current_cmd);
        else addon_dir_for_current_cmd = g_strdup(child_attribs->workingDir);
 #endif
-       parse_and_exec_command_in_gtk_thread(cmd, FALSE, cmd_interpretor_pointer);
+       parse_and_exec_command_in_gtk_thread(cmd, FALSE, cmd_interpretor_pointer, child_attribs);
      }else g_spawn_wrapper_for_selected_fileList_(child_attribs);
   }
 }
@@ -3401,8 +3401,7 @@ static void add_history_after_stdin_command_execution(GString * readlineResultSt
           g_string_free(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution,TRUE);
 }
 
-static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, gchar** env){
-    	      RFM_ChildAttribs *child_attribs = calloc(1,sizeof(RFM_ChildAttribs));
+static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, gchar** env, RFM_ChildAttribs *child_attribs){
 	      // this child_attribs will be freed by g_spawn_wrapper call tree
 	      child_attribs->RunCmd = cmd_interpretor_pointer->cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str, TRUE);
 	      //child_attribs->runOpts = RFM_EXEC_NONE;
@@ -3415,7 +3414,7 @@ static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPrevi
 	      add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
 }
 
-static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer){
+static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *childAttribs){
   gboolean ret = FALSE;
   if (auto_execution_command_after_rfm_start!=NULL){
     //auto_execution_command_after_rfm_start was freed in exec_stdin_command as readlineresult
@@ -3459,14 +3458,16 @@ static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousRea
 	    g_debug("exec_stdin_command(%s,%s): child process of g_spawn_sync WIFEXITED true with status:%d", readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str, cmd_interpretor_pointer->name, WEXITSTATUS(exit_status));
 	  }else g_debug("exec_stdin_command(%s,%s): child process of g_spawn_sync WIFEXITED false",readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str, cmd_interpretor_pointer->name);
 	  add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
-  }else g_debug("exec_stdin_command(NULL,%s)",cmd_interpretor_pointer->name);
+  }else {
+    g_debug("exec_stdin_command(NULL,%s)",cmd_interpretor_pointer->name);
+    free_child_attribs(childAttribs); //TODO: 在其他分支内childAttribs目前都没有被释放，也就是泄漏了，计划是等上面两个判断分支都从 g_spawn 调用换成 g_spawn_wrapper 调用后，g_spawn_wrapper内部释放childAttribs
+  }
   g_strfreev(env_for_g_spawn_used_by_exec_stdin_command);env_for_g_spawn_used_by_exec_stdin_command=NULL; //If str_array is NULL, this function simply returns.  https://docs.gtk.org/glib/func.strfreev.html
   return ret;
 }
 
 //this runs in gtk main thread
-static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, gboolean from_stdin_readline, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer){
-	    RFM_ChildAttribs *childAttribs = calloc(1, sizeof(RFM_ChildAttribs));
+static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, gboolean from_stdin_readline, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *childAttribs){
 	    childAttribs->RunCmd = cmd_interpretor_pointer->cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE);
 	    childAttribs->stdIn_fd = -1; //set to non-zero, and will be set to a valid fd by g_spawn_async_with_pipes
 	    childAttribs->customCallBackFunc = from_stdin_readline ? g_spawn_async_callback_to_new_readline_thread : NULL; //TODO：如果不是从readline获取的命令，就把callback设成NULL,因为callback里面会创建新的readline线程，导致超过一个readline线程在运行, 但是如果不是from_stdin_readline, 就不用update_SearchResultFileNameList_and_refresh_store 了吗？
@@ -3557,10 +3558,10 @@ static void writeSearchResultIntoFD_in_gtk_thread(gint *fd){
   close(*fd);
 }
 
-static void readlineInSeperateThread(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution) {
+static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs) {
   g_debug("readlineInSeperateThread");
-  if (!exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread && !execStdinCmdInNewVT) exec_stdin_command(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, effective_cmd_interpretor_pointer); //因为这里exec_stdin_command 要通过 readlineInseperatethread 调用,添加一个参数ghcar **env不容易，所以保留了全局变量 env_for_g_spawn_used_by_exec_stdin_command
-
+  if (childAttribs && !exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread && !execStdinCmdInNewVT) exec_stdin_command(childAttribs->readlineResultString, effective_cmd_interpretor_pointer, childAttribs); //因为这里exec_stdin_command 要通过 readlineInseperatethread 调用,添加一个参数ghcar **env不容易，所以保留了全局变量 env_for_g_spawn_used_by_exec_stdin_command
+  //这里不用 free childAttribs, 因为如果上一步if条件没满足，没有执行exec_stdin_command ，一定是在gtk_thread里面执行了 exec 的某个版本，但因为是异步的，这里我又不方便加assert判断 childAttribs
   execStdinCmdInNewVT = FALSE;
   
   if(startWithVT() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)){
@@ -3628,7 +3629,6 @@ static void stdin_command_help(wordexp_t * parsed_msg, GString* readline_result_
           printf("    \033[33m%s\033[0m   %s\n", builtinCMD[i].cmd, builtinCMD[i].help_msg); // \033[33m 是黄色, \033[0m 重置颜色
         }
       }
-
       // --- 打印标准输入命令解释器 (stdin_cmd_interpretors) 的信息 ---
       // 遍历在 config.h 中定义的 stdin_cmd_interpretors 数组
       for(guint i=0;i<G_N_ELEMENTS(stdin_cmd_interpretors);i++){
@@ -4163,7 +4163,7 @@ static void set_stdin_cmd_leading_space_true(){
 // from_stdin_readline 为 TRUE 时，表示用户从命令窗口输入的字符串，这时忽略 cmd_interpretor_index 参数为调用时的 current_stdin_cmd_interpretor
 // from_stdin_readline 为假时，readlineResults 通常是 config.h 里面配置好的命令字符串。此时命令字符串数组头部会配置 cmd_interpretor_index 对应的name
 // 目前布尔返回值只在!from_stdin_readline情况下返回 exec_stdin_command 的返回值，用于编译 rfm_local.c 后返回成败
-static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboolean from_stdin_readline, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer)
+static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboolean from_stdin_readline, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs* childAttribs)
 {
         gboolean ret = FALSE;
         gboolean SearchResultAsInput=FALSE;
@@ -4174,7 +4174,7 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 
         gint len = strlen(readlineResult);
 	g_debug ("readline return length %u: %s", len, readlineResult);
-        GString *readlineResultString = NULL;
+
 	if (len == 0){
 	    time_t now_time=time(NULL);
             if ((now_time - lastEnter)<=1){
@@ -4287,7 +4287,7 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 	    }//end else (cmd_interpretor_index == stdin_cmd_interpretor_index_for_AI){ 对于输入的 AI 提示词，就不要尝试解析了，
 	    //但是下面处理当前选中文件的部分还是需要的，当前选中文件可作为上下文传给AI
 #endif
-            readlineResultString=g_string_new(strdup(readlineResult));
+            childAttribs->readlineResultString=g_string_new(strdup(readlineResult));
 
 	      // combine runCmd with selected files to get gchar** v
 	      // TODO: the following code share the same pattern as g_spawn_wrapper_for_selected_fileList_ , anyway to remove the duplicate code?
@@ -4304,10 +4304,10 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 
 		  //if there is %s in msg, replace it with selected filename one by one, otherwise, append filenames to the end.
 		  if (stdin_cmd_ending_space){
-		    if (strstr(readlineResultString->str, RFM_selected_filename_placeholder) == NULL) g_string_append(readlineResultString, selected_filename_placeholder_in_space);
+		    if (strstr(childAttribs->readlineResultString->str, RFM_selected_filename_placeholder) == NULL) g_string_append(childAttribs->readlineResultString, selected_filename_placeholder_in_space);
 		    //if file path contains space, wrap path inside ''
-		    if (strstr(stdin_cmd_selection_fileAttributes->path," ") != NULL) g_string_replace(readlineResultString, RFM_selected_filename_placeholder, selected_filename_placeholder_in_quotation, 1);
-		    g_string_replace(readlineResultString, RFM_selected_filename_placeholder,stdin_cmd_selection_fileAttributes->path, 1);
+		    if (strstr(stdin_cmd_selection_fileAttributes->path," ") != NULL) g_string_replace(childAttribs->readlineResultString, RFM_selected_filename_placeholder, selected_filename_placeholder_in_quotation, 1);
+		    g_string_replace(childAttribs->readlineResultString, RFM_selected_filename_placeholder,stdin_cmd_selection_fileAttributes->path, 1);
 		  }
 
 		  if (env_rfm_selected_files != NULL) {
@@ -4344,8 +4344,8 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 #endif
               wordexp_t parsed_msg;
 	      int wordexp_retval = wordexp(readlineResult,&parsed_msg,0);
-	      if (wordexp_retval==0 && parse_and_exec_stdin_builtin_command_in_gtk_thread(&parsed_msg, readlineResultString)){ //wordexp_retval 0 means success
-		readlineResultString=NULL; //since readlineInseperatethread function will check this, we must clear it here after cmd already been executed.
+	      if (wordexp_retval==0 && parse_and_exec_stdin_builtin_command_in_gtk_thread(&parsed_msg, childAttribs->readlineResultString)){ //wordexp_retval 0 means success
+		childAttribs->readlineResultString=NULL; //since readlineInseperatethread function will check this, we must clear it here after cmd already been executed.
 #ifdef RFM_AddOn
 		g_strfreev(env_for_g_spawn_used_by_exec_stdin_command);env_for_g_spawn_used_by_exec_stdin_command=NULL;//读取一个用户输入readlineInSeperateThread 并执行，包括执行builtin cmd 我们就认为完成一个命令周期，变量就都清空，不管此命令周期是否实际用这个变量，反正g_strfreev(NULL)不报错
 		if (addon_dir_for_current_cmd) { g_free(addon_dir_for_current_cmd); addon_dir_for_current_cmd=NULL; }
@@ -4366,21 +4366,22 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 
 	if(startWithVT() || auto_execution_command_after_rfm_start!=NULL){
           // Use effective_cmd_interpretor_index for execution calls
-	  if (SearchResultAsInput) exec_stdin_command_with_SearchResultAsInput(readlineResultString, from_stdin_readline, effective_cmd_interpretor_pointer);
-	  else if ((exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread || !from_stdin_readline) && !(execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT))) ret = exec_stdin_command(readlineResultString, effective_cmd_interpretor_pointer);
+	  if (SearchResultAsInput) exec_stdin_command_with_SearchResultAsInput(childAttribs->readlineResultString, from_stdin_readline, effective_cmd_interpretor_pointer, childAttribs);
+	  else if ((exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread || !from_stdin_readline) && !(execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT))) ret = exec_stdin_command(childAttribs->readlineResultString, effective_cmd_interpretor_pointer, childAttribs);
 
 	  if (from_stdin_readline && auto_execution_command_after_rfm_start==NULL) g_thread_join(readlineThread);//we won't have more than one readlineThread running at the same time since we join before new thread here
-	  if ((execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT)) && readlineResultString) exec_stdin_command_in_new_VT(readlineResultString, effective_cmd_interpretor_pointer, env_for_g_spawn_local); // 在AI Mode下输入builtin cmd,如 help, 会因为是AI mode 一开始把 execStdinCmdInNewVT 设成true,所以这里加上 readlineResultString 非NULL判断
+	  if ((execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT)) && childAttribs->readlineResultString) exec_stdin_command_in_new_VT(childAttribs->readlineResultString, effective_cmd_interpretor_pointer, env_for_g_spawn_local, childAttribs); // 在AI Mode下输入builtin cmd,如 help, 会因为是AI mode 一开始把 execStdinCmdInNewVT 设成true,所以这里加上 readlineResultString 非NULL判断
 
           // Pass the original readlineResultString (potentially NULL if handled by builtin) to the next thread
           // The next thread will use the global current_stdin_cmd_interpretor for its prompt
-	  if (from_stdin_readline && !SearchResultAsInput) readlineThread=g_thread_new("readline", readlineInSeperateThread, readlineResultString); //要是能在这里再传入一个 gchar** env 参数，就可以把env_for_g_spawn_used_by_exec_stdin_command 全局变量消灭掉
+	  if (from_stdin_readline && !SearchResultAsInput) readlineThread=g_thread_new("readline", readlineInSeperateThread, childAttribs); //要是能在这里再传入一个 gchar** env 参数，就可以把env_for_g_spawn_used_by_exec_stdin_command 全局变量消灭掉
         }
         return ret;
 }
 
 static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult){
-  parse_and_exec_command_in_gtk_thread(readlineResult, TRUE, current_stdin_cmd_interpretor_pointer);
+  RFM_ChildAttribs *childAttribs = calloc(1, sizeof(RFM_ChildAttribs));
+  parse_and_exec_command_in_gtk_thread(readlineResult, TRUE, current_stdin_cmd_interpretor_pointer, childAttribs);
 }
 
 static char** rfm_filename_completion(const char *text){
@@ -5601,7 +5602,8 @@ static gboolean compile_local_extension(RFM_ADDON* addon) {
 #endif
 
     gchar* rfm_local_c_compile_cmd = g_strdup_printf(rfm_local_c_compile_cmd_template, DCmarkTools, DGitIntegration, RFM_SearchResultTypeNamePrefix, RFM_NEW_TERM_SUFFIX, RFM_selected_filename_placeholder, RFM_SEARCH_RESULT_AS_INPUT_PREFIX, addon->local_so_path, hash_define, addon->local_c_path);
-    return parse_and_exec_command_in_gtk_thread(rfm_local_c_compile_cmd, FALSE, &(stdin_cmd_interpretors[0]));
+    RFM_ChildAttribs *childAttribs = calloc(1, sizeof(RFM_ChildAttribs));
+    return parse_and_exec_command_in_gtk_thread(rfm_local_c_compile_cmd, FALSE, &(stdin_cmd_interpretors[0]), childAttribs);
 }
 
 // treeviewColumns相关初始化流程：

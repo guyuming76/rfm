@@ -172,6 +172,7 @@ typedef struct RFM_ChildAttributes{
    gint exitcode;
    gboolean output_read_by_program;
    gchar *workingDir;//use rfm_curPath if this is NULL
+   GString *readlineResultString;
 } RFM_ChildAttribs;
 
 
