@@ -2694,7 +2694,6 @@ static void toolbar_button_exec(GtkToolItem *item, RFM_ToolButton *button_defini
        else addon_dir_for_current_cmd = g_strdup(child_attribs->workingDir);
 #endif
        parse_and_exec_command_in_gtk_thread(cmd, FALSE, cmd_interpretor_pointer, child_attribs);
-       free_child_attribs(child_attribs);
      }else g_spawn_wrapper_(NULL, NULL, child_attribs);
    }
 }
