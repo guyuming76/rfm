@@ -3478,7 +3478,6 @@ static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResult
 	    childAttribs->customCallBackFunc = from_stdin_readline ? g_spawn_async_callback_to_new_readline_thread : NULL; //TODO：如果不是从readline获取的命令，就把callback设成NULL,因为callback里面会创建新的readline线程，导致超过一个readline线程在运行, 但是如果不是from_stdin_readline, 就不用update_SearchResultFileNameList_and_refresh_store 了吗？
 	    if (SearchResultTypePointer) {
 	      childAttribs->output_read_by_program = TRUE;
-	      childAttribs->customCallbackUserData = update_SearchResultFileNameList_and_refresh_store;
 	      //}else childAttribs->runOpts = G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR;
 	      //不能保证writeSearchResultIntoFD执行的时候不向命令窗口输出内容,不知道子进程输出和writeSearchResultIntoFD同时争抢命令窗口会发生什么. 所以不如让 child_supervisor 读取子进程输出 fd 后再显示,至少都是在 gtk main loop 里面输出
 	    }
@@ -3503,8 +3502,7 @@ gpointer transferPointerOwnership(gpointer *newOwner, gpointer *oldOwner)
 
 static void g_spawn_async_callback_to_new_readline_thread(gpointer child_attribs){
   RFM_ChildAttribs *childAttribs = (RFM_ChildAttribs*)child_attribs;
-  if (childAttribs->customCallbackUserData == update_SearchResultFileNameList_and_refresh_store)
-    update_SearchResultFileNameList_and_refresh_store(transferPointerOwnership(&stdout_read_by_search_result, &(childAttribs->stdOut))); //这里假定当前方法是在gtk main thread 上运行的,如不是,就得用g_idle_add_once
+  if (SearchResultTypePointer) update_SearchResultFileNameList_and_refresh_store(transferPointerOwnership(&stdout_read_by_search_result, &(childAttribs->stdOut))); //这里假定当前方法是在gtk main thread 上运行的,如不是,就得用g_idle_add_once
   readlineThread=g_thread_new("readline", readlineInSeperateThread, NULL);// SearchResultAsInput情况下，命令执行成功，从这里新建 readline;  这种情况下,新的readlineThread下不会再运行exec_stdin_command, 所以命令参数直接传NULL过去就可以了
 }
 
