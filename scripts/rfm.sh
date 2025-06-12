@@ -16,6 +16,9 @@ function find_ppid_for_pid_and_update_current_pid(){
 	done
 }
 
+#应用奔溃时生成coredump
+ulimit -c unlimited
+
 #获取行数组
 readarray pid_ppid_row_array < <(ps -o pid -o ppid --no-header)
 
