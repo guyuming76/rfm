@@ -685,13 +685,14 @@ static void free_thumbQueueData(RFM_ThumbQueueData *thumbData)
 
 static void free_child_attribs(FREE_FULL RFM_ChildAttribs *child_attribs)
 {
-   g_free(child_attribs->stdOut);
-   g_free(child_attribs->stdErr);
-   g_free(child_attribs->name);
-   g_strfreev(child_attribs->env);
+   g_log(RFM_LOG_GSPAWN,G_LOG_LEVEL_DEBUG,"RFM_childAttribs %p free",child_attribs);
+   free(child_attribs->stdOut); child_attribs->stdOut = NULL;
+   free(child_attribs->stdErr); child_attribs->stdErr = NULL;
+   g_free(child_attribs->name);   child_attribs->name = NULL;
+   g_strfreev(child_attribs->env);child_attribs->env = NULL;
    //how can we memcpy the content of customCallbackUserData and free it here?
    //g_free(child_attribs->customCallbackUserData);
-   g_free(child_attribs->workingDir);
+   g_free(child_attribs->workingDir); child_attribs->workingDir = NULL;
    g_free(child_attribs);
    //child_attribs->readlineResultString 在 add_history_after_stdin_command_execution 函数内 free, 因为child_attribs 在g_spawn_wrapper执行玩命令后就要free,但命令执行玩还要 add_history 呢。
 }
@@ -4178,7 +4179,7 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
         effective_cmd_interpretor_pointer = cmd_interpretor_pointer; // Use this for actual execution
 
         gint len = strlen(readlineResult);
-	g_debug ("readline return length %u: %s", len, readlineResult);
+	g_debug ("parse_and_exec_command_in_gtk_thread, RFM_ChildAttribs %p, readline length %u: %s", childAttribs, len, readlineResult);
 
 	if (len == 0){
 	    time_t now_time=time(NULL);
