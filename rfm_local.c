@@ -29,7 +29,7 @@ extern void remove_file_menuitems(GtkWidget ***menuitems, const size_t size);
 RFM_ADDON_RESOURCE_TYPE addon_resource = {0};
 const enum RFM_ADDON_TYPE addon_type = Directory;
 
-static const char *rfmTODO[] = { NULL, "find . -name '*.rfmTODO.*'" RFM_SearchResultTypeNamePrefix "multitype", NULL };
+static const char *rfmTODO[] = { NULL, "find . \\( -name \"rfmTODO.*\" -o -name \"*.rfmTODO.*\" -o -name \"*.rfmTODO\" -o -name \"rfmTODO\" \\)" RFM_SearchResultTypeNamePrefix "multitype", NULL };
 static const char *testcmd[] = { "echo","test local file menu command",NULL };
 static char *saved_history_dir = NULL;
 
