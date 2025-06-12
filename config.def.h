@@ -59,7 +59,6 @@ const stdin_cmd_interpretor stdin_cmd_interpretors[] = {
 
 #ifdef RFM_AddOn
 #define RFM_LOCAL_C_FILE "rfm_local.c"
-#define RFM_LOCAL_SO_FILE "rfm_local.so"
 #define RFM_LOCAL_ENTER_FUNC "rfm_local_enter"
 #define RFM_LOCAL_LEAVE_FUNC "rfm_local_leave"
 #define RFM_ADDON_RESOURCE_STRUCT "addon_resource"

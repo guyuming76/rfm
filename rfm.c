@@ -5670,7 +5670,7 @@ static void load_addon(CALLER_OWN char* addon_directory){
     char *dlsym_error = NULL; //The message returned by dlerror() may reside in a statically allocated buffer that is overwritten by subsequent dlerror()calls. https://www.man7.org/linux/man-pages/man3/dlerror.3.html
     RFM_ADDON * addon = calloc(1, sizeof(RFM_ADDON));
     addon->local_c_path = g_build_filename(addon_directory, RFM_LOCAL_C_FILE, NULL);
-    addon->local_so_path = g_build_filename(addon_directory, RFM_LOCAL_SO_FILE, NULL);
+    addon->local_so_path = g_build_filename(addon_directory, RFM_AddOn, NULL);
     gboolean compile_needed = FALSE;
     if (g_file_test(addon->local_c_path, G_FILE_TEST_EXISTS)) {
        if (g_hash_table_lookup(addons, addon->local_c_path)){

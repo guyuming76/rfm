@@ -12,6 +12,12 @@ LIBNAME = ${LINKERNAME}
 LIBNAME := ${LIBNAME}.${VERSION}
 endif
 
+ifneq ($(RFM_AddOn),)
+    RFM_ADDON_SO_FILE := $(subst \",,$(RFM_AddOn))       # 移除所有转义双引号
+    RFM_ADDON_SO_FILE := $(subst -DRFM_AddOn=,,$(RFM_ADDON_SO_FILE)) # 移除开头的编译选项
+endif
+
+
 # Edit below for extra libs (e.g. for thumbnailers etc.)
 #LIBS = -L./libdcmthumb -lm -ldcmthumb
 GTK_VERSION = gtk+-3.0
@@ -120,6 +126,7 @@ ifneq (${CmarkTools},)
 	@rm -f extractKeyValuePairFromMarkdown extractKeyValuePairFromMarkdown.o extractContentFromMarkdownRecursive extractContentFromMarkdownRecursive.o
 endif
 
+
 install: all
 	@echo installing files to ${DESTDIR}${PREFIX}/{bin,lib}
 	@mkdir -p ${DESTDIR}${PREFIX}/bin
@@ -215,6 +222,14 @@ endif
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfm_mkdir_and_move_selected_files_into_it.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmSaveSearchResultToFile.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmLocateGlobalAddons.sh
+
+ifneq ($(RFM_AddOn),)
+	@echo
+	-locate $(RFM_ADDON_SO_FILE)
+	@echo "***please remove the files above returned by locate if any."
+#-locate $(RFM_ADDON_SO_FILE) | xargs rm -i
+#删除RFM_ADDON_SO_FILE, ADDON机制只会在rfm_local.c文件hash变化时重新编译，如果rfm_addon.h变了，rfm.c重新编译了，而rfm_local.c不重新编译，会出错
+endif
 
 	@echo
 	@echo "***please copy the .inputrc file into your home directory (~) manually."
