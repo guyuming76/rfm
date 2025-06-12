@@ -740,7 +740,7 @@ static gboolean ExecCallback_freeChildAttribs(FREE_FULL RFM_ChildAttribs * child
 
    // Restart readline if this was a search command from readlineinput and it failed
    if (child_attribs->exitcode == -1 && child_attribs->customCallBackFunc == g_spawn_async_callback_to_new_readline_thread) {
-       readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);
+       readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL); //SearchResultAsInput 时，命令执行失败，从这里新建readline.
    }
 
    free_child_attribs(child_attribs);
@@ -3487,7 +3487,7 @@ static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResult
 		if (readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution) {
 		    add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
 		}
-		readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);
+		readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);//SearchResultAsInput情况下，g_spawn 失败,（命令根本就没执行，比如命令没找到），从这里新建readline
 	    } else {
 		writeSearchResultIntoFD_in_gtk_thread(&(childAttribs->stdIn_fd));
 		add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
@@ -3505,7 +3505,7 @@ static void g_spawn_async_callback_to_new_readline_thread(gpointer child_attribs
   RFM_ChildAttribs *childAttribs = (RFM_ChildAttribs*)child_attribs;
   if (childAttribs->customCallbackUserData == update_SearchResultFileNameList_and_refresh_store)
     update_SearchResultFileNameList_and_refresh_store(transferPointerOwnership(&stdout_read_by_search_result, &(childAttribs->stdOut))); //这里假定当前方法是在gtk main thread 上运行的,如不是,就得用g_idle_add_once
-  readlineThread=g_thread_new("readline", readlineInSeperateThread, NULL);//这种情况下,新的readlineThread下不会再运行exec_stdin_command, 所以命令参数直接传NULL过去就可以了
+  readlineThread=g_thread_new("readline", readlineInSeperateThread, NULL);// SearchResultAsInput情况下，命令执行成功，从这里新建 readline;  这种情况下,新的readlineThread下不会再运行exec_stdin_command, 所以命令参数直接传NULL过去就可以了
 }
 
 static void writeSearchResultIntoFD_in_gtk_thread(gint *fd){
