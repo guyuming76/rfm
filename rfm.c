@@ -2211,7 +2211,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
      if (SearchResultTypePointerForCurrentExistingSearchResult){
          for(int i=0;i<=NUM_Ext_Columns;i++) {
 	   if (!ExtColumnHashTable_keep_during_refresh[i] && ExtColumnHashTable[i]!=NULL){
-	     g_hash_table_destroy(ExtColumnHashTable[i]);
+	     g_hash_table_destroy(ExtColumnHashTable[i]);//TODO: 这里为啥要把hashtable里值全部销毁然后用newsearch false 参数重新调用SearchResultTypeProcessingFunc呢？这样文件里面的数据更新是刷新了，但查询命令本身并没有被重新执行，也就是文件结果集没有变化。这牵涉到究竟如何定义查询刷新，如果只是UI重建，保留所有的hashtable,也不用重新调用SearchResultTypeProcessingFunc就可以了，但这样数据没有变化的刷新意义何在？ 这个git branch的重构考虑到把Search命令的ChildAttribs,包括Search命令本身保存在SearchResultTypeProcessingContext 里面，如此，就可以在刷新的时候重新执行整个search命令了。但现有的代码，Update_searchresult里面调用了一次SearchProcessingFunc, newsearch 为true, refresh_store 的时候再调用一次， newsearch为false. 将来的完整刷新模式下似乎应该是showSearchResult负责用hasttable的值填充store，而现有的update_searchresult功能应该并入完整刷新。但问题的另一面是，完整的查询刷新意义又何在呢？作为命令重新执行的快捷方式？
 	     ExtColumnHashTable[i]=NULL;
 	   }
 	 }
@@ -4271,7 +4271,6 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 	    if (!execStdinCmdInNewVT && !(!from_stdin_readline && execCmdInNewVT)){
 	      SearchResultTypePointer = MatchSearchResultType(readlineResult);
 	      len = strlen(readlineResult);
-	      if (SearchResultTypePointer) SearchResultTypePointerForCurrentExistingSearchResult=SearchResultTypePointer;
 	    }
 
 	    stdin_cmd_ending_space = (stdin_cmd_ending_space || (len>=1 && readlineResult[len-1]==' '));
@@ -5384,12 +5383,13 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
   }
 
   if (SearchResultFileNameList != NULL) SearchResultFileNameList=g_list_first(g_list_reverse(SearchResultFileNameList));
-
+  current_sort_column_id = GTK_TREE_SORTABLE_UNSORTED_SORT_COLUMN_ID;
+  SearchResultTypePointerForCurrentExistingSearchResult=SearchResultTypePointer;//执行到这里一次查询才算是成功了，保留指针以便以后 refresh_store 操作
+  
   if (SearchResultTypePointer->SearchResultColumnSeperator) {
     strcpy(SearchResultColumnSeperator, old_searchresultcolumnSeperator);
   }
 
-  current_sort_column_id = GTK_TREE_SORTABLE_UNSORTED_SORT_COLUMN_ID;
   FirstPage(rfmCtx);
   if (old_filenamelist!=NULL) g_list_free(old_filenamelist);
   for(int i=0;i<=NUM_Ext_Columns;i++) if (old_ExtColumnHashTable[i]!=NULL) { g_hash_table_destroy(old_ExtColumnHashTable[i]); old_ExtColumnHashTable[i] = NULL; }
