@@ -127,7 +127,6 @@ static char *rfm_selection_completion = NULL;
 static GMutex rfm_selection_completion_lock;
 static char selected_filename_placeholder_in_space[34];       //" %s "  by default
 static char selected_filename_placeholder_in_quotation[34];   //"'%s'"  by default
-static gchar** env_for_g_spawn_used_by_exec_stdin_command=NULL;
 
 static gboolean exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread = FALSE;
 static gboolean execStdinCmdInNewVT = FALSE;
@@ -3431,14 +3430,11 @@ static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousRea
 #ifdef PythonEmbedded
 	  if (pyProgramName!=NULL && g_strcmp0(cmd_interpretor_pointer->name,"PythonEmbedded")==0){
 	        ret = (PyRun_SimpleString(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str)==0);
-		g_strfreev(env_for_g_spawn_used_by_exec_stdin_command);env_for_g_spawn_used_by_exec_stdin_command=NULL;
 		add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
 		return ret;
 	  }
 #endif
           childAttribs->RunCmd = cmd_interpretor_pointer->cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE);
-          childAttribs->env = env_for_g_spawn_used_by_exec_stdin_command; //TODO:直接这样赋值可能会导致env泄漏，但env_for_g_spawn_used_by_exec_stdin_command 也是要消灭掉的，这一行赋值本身应该就要被消灭掉，直接用 env 才对
-          env_for_g_spawn_used_by_exec_stdin_command = NULL;
           childAttribs->spawn_async = FALSE;
           if (SearchResultTypePointer) {
 	    childAttribs->g_idle_add_once_to_run_CallBackFunc = TRUE;
@@ -4317,14 +4313,8 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 		setenv("RFM_SELECTED_FILES",env_rfm_selected_files,1);
 	        g_free(env_rfm_selected_files);
 		if (ItemSelected==1){ //通过环境变量把当前选中的文件的数据(比如grepMatch列)传递给子进程,目前人为限制只有单选文件时起作用,因为多选文件时不同文件的同一列值可能不同
-		  if (execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT)){
 		    childAttribs->env = g_get_environ();
 		    set_env_to_pass_into_child_process(&iter, &(childAttribs->env)); //正是因为这里对于 &iter 的使用，我们只能使用 stdin_cmd_selection_list, 而不能简单地使用filepath_lists_for_selection_on_view 
-		  }else{
-		    if (exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread) g_assert_null(env_for_g_spawn_used_by_exec_stdin_command);
-		    env_for_g_spawn_used_by_exec_stdin_command = g_get_environ();
-		    set_env_to_pass_into_child_process(&iter, &env_for_g_spawn_used_by_exec_stdin_command);
-		  }
 		}
             } else { // end if (stdin_cmd_selection_list!=NULL)
 	      unsetenv("RFM_SELECTED_FILES");
@@ -4340,7 +4330,6 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 	      if (wordexp_retval==0 && parse_and_exec_stdin_builtin_command_in_gtk_thread(&parsed_msg, childAttribs->readlineResultString)){ //wordexp_retval 0 means success
 		childAttribs->readlineResultString=NULL; //since readlineInseperatethread function will check this, we must clear it here after cmd already been executed.
 #ifdef RFM_AddOn
-		g_strfreev(env_for_g_spawn_used_by_exec_stdin_command);env_for_g_spawn_used_by_exec_stdin_command=NULL;//读取一个用户输入readlineInSeperateThread 并执行，包括执行builtin cmd 我们就认为完成一个命令周期，变量就都清空，不管此命令周期是否实际用这个变量，反正g_strfreev(NULL)不报错
 		if (addon_dir_for_current_cmd) { g_free(addon_dir_for_current_cmd); addon_dir_for_current_cmd=NULL; }
 #endif
 	      }
@@ -4367,7 +4356,7 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 
           // Pass the original readlineResultString (potentially NULL if handled by builtin) to the next thread
           // The next thread will use the global current_stdin_cmd_interpretor for its prompt
-	  if (from_stdin_readline && !SearchResultAsInput) readlineThread=g_thread_new("readline", readlineInSeperateThread, childAttribs); //要是能在这里再传入一个 gchar** env 参数，就可以把env_for_g_spawn_used_by_exec_stdin_command 全局变量消灭掉
+	  if (from_stdin_readline && !SearchResultAsInput) readlineThread=g_thread_new("readline", readlineInSeperateThread, childAttribs);
         }
         return ret;
 }
