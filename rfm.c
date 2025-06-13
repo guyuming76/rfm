@@ -167,7 +167,7 @@ void ensure_fd0_is_opened_for_stdin_inherited_from_parent_process_instead_of_use
 static gboolean startWithVT();
 static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs);
 static void ReadFromPipeStdinIfAny(char *fd);
-static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, gchar** env, RFM_ChildAttribs *child_attribs);
+static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *child_attribs);
 static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *childAttribs);
 static void g_spawn_async_callback_to_new_readline_thread(RFM_ChildAttribs *child_attribs);
 static void regcomp_for_regex_rules();
@@ -3408,12 +3408,11 @@ static void add_history_after_stdin_command_execution(GString * readlineResultSt
           g_string_free(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution,TRUE);
 }
 
-static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, gchar** env, RFM_ChildAttribs *child_attribs){
+static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *child_attribs){
 	      // this child_attribs will be freed by g_spawn_wrapper call tree
 	      child_attribs->RunCmd = cmd_interpretor_pointer->cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str, TRUE);
 	      //child_attribs->runOpts = RFM_EXEC_NONE;
 	      child_attribs->spawn_async = TRUE;
-              child_attribs->env = env;
 	      child_attribs->workingDir = addon_dir_for_current_cmd;
               addon_dir_for_current_cmd = NULL;
 	      g_spawn_wrapper_(NULL, NULL, child_attribs);
@@ -4165,7 +4164,6 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
         gboolean SearchResultAsInput=FALSE;
 	stdin_cmd_leading_space=FALSE;
         gboolean execCmdInNewVT=FALSE;//used by file_menu_exec, i.e., not from readline
-        gchar **env_for_g_spawn_local = NULL;
         effective_cmd_interpretor_pointer = cmd_interpretor_pointer; // Use this for actual execution
 
         gint len = strlen(readlineResult);
@@ -4320,8 +4318,8 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 	        g_free(env_rfm_selected_files);
 		if (ItemSelected==1){ //通过环境变量把当前选中的文件的数据(比如grepMatch列)传递给子进程,目前人为限制只有单选文件时起作用,因为多选文件时不同文件的同一列值可能不同
 		  if (execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT)){
-		    env_for_g_spawn_local = g_get_environ();
-		    set_env_to_pass_into_child_process(&iter, &env_for_g_spawn_local); //正是因为这里对于 &iter 的使用，我们只能使用 stdin_cmd_selection_list, 而不能简单地使用filepath_lists_for_selection_on_view 
+		    childAttribs->env = g_get_environ();
+		    set_env_to_pass_into_child_process(&iter, &(childAttribs->env)); //正是因为这里对于 &iter 的使用，我们只能使用 stdin_cmd_selection_list, 而不能简单地使用filepath_lists_for_selection_on_view 
 		  }else{
 		    if (exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread) g_assert_null(env_for_g_spawn_used_by_exec_stdin_command);
 		    env_for_g_spawn_used_by_exec_stdin_command = g_get_environ();
@@ -4365,7 +4363,7 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 	  else if ((exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread || !from_stdin_readline) && !(execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT))) ret = exec_stdin_command(childAttribs->readlineResultString, effective_cmd_interpretor_pointer, childAttribs);
 
 	  if (from_stdin_readline && auto_execution_command_after_rfm_start==NULL) g_thread_join(readlineThread);//we won't have more than one readlineThread running at the same time since we join before new thread here
-	  if ((execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT)) && childAttribs->readlineResultString) exec_stdin_command_in_new_VT(childAttribs->readlineResultString, effective_cmd_interpretor_pointer, env_for_g_spawn_local, childAttribs); // 在AI Mode下输入builtin cmd,如 help, 会因为是AI mode 一开始把 execStdinCmdInNewVT 设成true,所以这里加上 readlineResultString 非NULL判断
+	  if ((execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT)) && childAttribs->readlineResultString) exec_stdin_command_in_new_VT(childAttribs->readlineResultString, effective_cmd_interpretor_pointer, childAttribs); // 在AI Mode下输入builtin cmd,如 help, 会因为是AI mode 一开始把 execStdinCmdInNewVT 设成true,所以这里加上 readlineResultString 非NULL判断
 
           // Pass the original readlineResultString (potentially NULL if handled by builtin) to the next thread
           // The next thread will use the global current_stdin_cmd_interpretor for its prompt
