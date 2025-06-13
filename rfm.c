@@ -169,7 +169,7 @@ static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs);
 static void ReadFromPipeStdinIfAny(char *fd);
 static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, gchar** env, RFM_ChildAttribs *child_attribs);
 static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *childAttribs);
-static void g_spawn_async_callback_to_new_readline_thread(gpointer child_attribs);
+static void g_spawn_async_callback_to_new_readline_thread(RFM_ChildAttribs *child_attribs);
 static void regcomp_for_regex_rules();
 static void set_stdin_cmd_leading_space_true();
 static NO_FREE stdin_cmd_interpretor* match_cmd_str_array_with_interpretors(gchar** RunCmd);
@@ -419,7 +419,7 @@ static int currentPageStartingColumnTitleIndex;
 static gboolean first_line_column_title=FALSE;
 static gchar* stdout_read_by_search_result=NULL;
 static gboolean showSearchResultExtColumnsBasedOnHashTableValues_has_already_been_called_for_searchresult = FALSE;//方便用showcolumn命令手工调整SearchResult的列布局
-static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamelist);
+static void update_SearchResultFileNameList_and_refresh_store(RFM_ChildAttribs *childAttribs);
 static void showSearchResultExtColumnsBasedOnHashTableValues();
 static int ProcessOnelineForSearchResult(CALLER_OWN gchar *oneline, gboolean new_search);
 static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboolean new_search, gboolean first_line_column_title);
@@ -828,7 +828,8 @@ static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_
    /*   }else g_warning("g_spawn_check_wait_status return FALSE but GError NULL"); */
    /* } */
    check_wait_status_and_set_exit_code(child_attribs);
-   ExecCallback_freeChildAttribs(child_attribs);
+   if (child_attribs->g_idle_add_once_to_run_CallBackFunc) g_idle_add_once(ExecCallback_freeChildAttribs, child_attribs);
+   else ExecCallback_freeChildAttribs(child_attribs);
    return G_SOURCE_REMOVE;
 }
 
@@ -1109,7 +1110,7 @@ gboolean g_spawn_wrapper_(CALLER_OWN const GList *file_list, CALLER_OWN const ch
 	       GError *spawn_err = NULL;
 
 	       g_log(RFM_LOG_GSPAWN,G_LOG_LEVEL_DEBUG,"g_spawn_sync, workingdir:%s, argv:%s",child_attribs->workingDir? child_attribs->workingDir:rfm_curPath, argv);
-	       if (!g_spawn_sync(child_attribs->workingDir? child_attribs->workingDir:rfm_curPath, v, child_attribs->env, G_SPAWN_SEARCH_PATH|child_attribs->runOpts, GSpawnChildSetupFunc_setenv,child_attribs,(child_attribs->runOpts & G_SPAWN_STDOUT_TO_DEV_NULL)? NULL : &child_attribs->stdOut, &child_attribs->stdErr,&child_attribs->status,&spawn_err)){
+	       if (!g_spawn_sync(child_attribs->workingDir? child_attribs->workingDir:rfm_curPath, v, child_attribs->env, G_SPAWN_SEARCH_PATH|child_attribs->runOpts, GSpawnChildSetupFunc_setenv,child_attribs,((child_attribs->runOpts & G_SPAWN_STDOUT_TO_DEV_NULL) || (child_attribs->runOpts & G_SPAWN_CHILD_INHERITS_STDOUT))? NULL : &child_attribs->stdOut, (child_attribs->runOpts & G_SPAWN_CHILD_INHERITS_STDERR)? NULL : &child_attribs->stdErr,&child_attribs->status,&spawn_err)){
 	            g_warning("g_spawn_sync %s failed to execute: %s. Check command in config.h!", argv, spawn_err ? spawn_err->message : "Unknown error");
 	            if (spawn_err) g_error_free(spawn_err);
 	            free_child_attribs(child_attribs);
@@ -1122,7 +1123,8 @@ gboolean g_spawn_wrapper_(CALLER_OWN const GList *file_list, CALLER_OWN const ch
 
 		    check_wait_status_and_set_exit_code(child_attribs);
 		    ret = (child_attribs->exitcode==0);
-	            ExecCallback_freeChildAttribs(child_attribs);
+		    if (child_attribs->g_idle_add_once_to_run_CallBackFunc) g_idle_add_once(ExecCallback_freeChildAttribs, child_attribs);
+	            else ExecCallback_freeChildAttribs(child_attribs);
 	       }
       }
       g_free(argv);
@@ -3435,39 +3437,30 @@ static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousRea
 		return ret;
 	  }
 #endif
-	  GError *err = NULL;
-          gint exit_status;
-	  if (SearchResultTypePointer && (ret = g_spawn_sync(addon_dir_for_current_cmd? addon_dir_for_current_cmd : rfm_curPath,
-						       cmd_interpretor_pointer->cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE),
-					      env_for_g_spawn_used_by_exec_stdin_command,
-					      G_SPAWN_SEARCH_PATH|G_SPAWN_CHILD_INHERITS_STDIN|G_SPAWN_CHILD_INHERITS_STDERR,
-							      NULL,NULL,&stdout_read_by_search_result,NULL,&exit_status,&err))){
-	      g_idle_add_once(update_SearchResultFileNameList_and_refresh_store, (gpointer)stdout_read_by_search_result);
-
-	  } else if (SearchResultTypePointer==NULL && (ret = g_spawn_sync(addon_dir_for_current_cmd? addon_dir_for_current_cmd : rfm_curPath,
-							     cmd_interpretor_pointer->cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE), env_for_g_spawn_used_by_exec_stdin_command,
-                           G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN |
-                               G_SPAWN_CHILD_INHERITS_STDOUT |
-                               G_SPAWN_CHILD_INHERITS_STDERR,
-								    NULL, NULL, NULL, NULL, &exit_status, &err))) {
-	    if (addon_dir_for_current_cmd) { g_free(addon_dir_for_current_cmd); addon_dir_for_current_cmd=NULL; }
-
-	  } else {
-              g_warning("%d;%s", err->code, err->message);
-	      g_error_free(err);
-	      if (addon_dir_for_current_cmd) { g_free(addon_dir_for_current_cmd); addon_dir_for_current_cmd=NULL; }
+          childAttribs->RunCmd = cmd_interpretor_pointer->cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE);
+          childAttribs->env = env_for_g_spawn_used_by_exec_stdin_command; //TODO:直接这样赋值可能会导致env泄漏，但env_for_g_spawn_used_by_exec_stdin_command 也是要消灭掉的，这一行赋值本身应该就要被消灭掉，直接用 env 才对
+          env_for_g_spawn_used_by_exec_stdin_command = NULL;
+          childAttribs->spawn_async = FALSE;
+          if (SearchResultTypePointer) {
+	    childAttribs->g_idle_add_once_to_run_CallBackFunc = TRUE;
+	    childAttribs->output_read_by_program = TRUE;
+	    childAttribs->customCallBackFunc = update_SearchResultFileNameList_and_refresh_store;
+	    childAttribs->runOpts = G_SPAWN_SEARCH_PATH|G_SPAWN_CHILD_INHERITS_STDIN|G_SPAWN_CHILD_INHERITS_STDERR;
+	  }else{
+	    childAttribs->runOpts = G_SPAWN_SEARCH_PATH|G_SPAWN_CHILD_INHERITS_STDIN|G_SPAWN_CHILD_INHERITS_STDOUT|G_SPAWN_CHILD_INHERITS_STDERR;
 	  }
 
-	  if (WIFEXITED(exit_status)) {
-	    ret = (WEXITSTATUS(exit_status)==0);
-	    g_debug("exec_stdin_command(%s,%s): child process of g_spawn_sync WIFEXITED true with status:%d", readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str, cmd_interpretor_pointer->name, WEXITSTATUS(exit_status));
-	  }else g_debug("exec_stdin_command(%s,%s): child process of g_spawn_sync WIFEXITED false",readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str, cmd_interpretor_pointer->name);
+	  if (SearchResultTypePointer && (ret = g_spawn_wrapper_(NULL, NULL, childAttribs))){
+	  } else if (SearchResultTypePointer==NULL && (ret = g_spawn_wrapper_(NULL, NULL, childAttribs))) {
+	      if (addon_dir_for_current_cmd) { g_free(addon_dir_for_current_cmd); addon_dir_for_current_cmd=NULL; }
+	  } else {
+	      if (addon_dir_for_current_cmd) { g_free(addon_dir_for_current_cmd); addon_dir_for_current_cmd=NULL; }
+	  }
 	  add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
   }else {
     g_debug("exec_stdin_command(NULL,%s)",cmd_interpretor_pointer->name);
-    free_child_attribs(childAttribs); //TODO: 在其他分支内childAttribs目前都没有被释放，也就是泄漏了，计划是等上面两个判断分支都从 g_spawn 调用换成 g_spawn_wrapper 调用后，g_spawn_wrapper内部释放childAttribs
+    free_child_attribs(childAttribs);
   }
-  g_strfreev(env_for_g_spawn_used_by_exec_stdin_command);env_for_g_spawn_used_by_exec_stdin_command=NULL; //If str_array is NULL, this function simply returns.  https://docs.gtk.org/glib/func.strfreev.html
   return ret;
 }
 
@@ -3475,8 +3468,9 @@ static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousRea
 static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, gboolean from_stdin_readline, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *childAttribs){
 	    childAttribs->RunCmd = cmd_interpretor_pointer->cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE);
 	    childAttribs->stdIn_fd = -1; //set to non-zero, and will be set to a valid fd by g_spawn_async_with_pipes
-	    childAttribs->customCallBackFunc = from_stdin_readline ? g_spawn_async_callback_to_new_readline_thread : NULL; //TODO：如果不是从readline获取的命令，就把callback设成NULL,因为callback里面会创建新的readline线程，导致超过一个readline线程在运行, 但是如果不是from_stdin_readline, 就不用update_SearchResultFileNameList_and_refresh_store 了吗？
+	    childAttribs->customCallBackFunc = from_stdin_readline ? g_spawn_async_callback_to_new_readline_thread : ( SearchResultTypePointer? update_SearchResultFileNameList_and_refresh_store : NULL); //如果不是从readline获取的命令，就把callback设成NULL,因为callback里面会创建新的readline线程，导致超过一个readline线程在运行.
 	    if (SearchResultTypePointer) {
+              childAttribs->g_idle_add_once_to_run_CallBackFunc = TRUE; //TODO：目前函数是在 gtk main thread 运行的，所以这一行应该可以不要，加一下避免以后改动当前函数运行环境导致出错
 	      childAttribs->output_read_by_program = TRUE;
 	      //}else childAttribs->runOpts = G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR;
 	      //不能保证writeSearchResultIntoFD执行的时候不向命令窗口输出内容,不知道子进程输出和writeSearchResultIntoFD同时争抢命令窗口会发生什么. 所以不如让 child_supervisor 读取子进程输出 fd 后再显示,至少都是在 gtk main loop 里面输出
@@ -3500,9 +3494,8 @@ gpointer transferPointerOwnership(gpointer *newOwner, gpointer *oldOwner)
   return *newOwner;
 }
 
-static void g_spawn_async_callback_to_new_readline_thread(gpointer child_attribs){
-  RFM_ChildAttribs *childAttribs = (RFM_ChildAttribs*)child_attribs;
-  if (SearchResultTypePointer) update_SearchResultFileNameList_and_refresh_store(transferPointerOwnership(&stdout_read_by_search_result, &(childAttribs->stdOut))); //这里假定当前方法是在gtk main thread 上运行的,如不是,就得用g_idle_add_once
+static void g_spawn_async_callback_to_new_readline_thread(RFM_ChildAttribs *child_attribs){
+  if (SearchResultTypePointer) update_SearchResultFileNameList_and_refresh_store(child_attribs); //这里假定当前方法是在gtk main thread 上运行的,如不是,就得用g_idle_add_once
   readlineThread=g_thread_new("readline", readlineInSeperateThread, NULL);// SearchResultAsInput情况下，命令执行成功，从这里新建 readline;  这种情况下,新的readlineThread下不会再运行exec_stdin_command, 所以命令参数直接传NULL过去就可以了
 }
 
@@ -5330,8 +5323,9 @@ static void showSearchResultExtColumnsBasedOnHashTableValues(){
 // 两次调用通过 newsearch 参数区别
 // 本函数是newsearch 为True, 对应新的查询结果集
 // fill_fileAttributeList_with_filenames_from_search_result_and_then_insert_into_store 里的调用 newsearch 为false,对应页面刷新以及翻页
-static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamelist){
+static void update_SearchResultFileNameList_and_refresh_store(RFM_ChildAttribs *childAttribs){
   g_assert(SearchResultTypePointer);
+  gchar *filenamelist = childAttribs->stdOut;
   
   GList * old_filenamelist = SearchResultFileNameList;
   static GHashTable* old_ExtColumnHashTable[NUM_Ext_Columns + 1]; //静态存储期（static storage duration）的变量（包括全局变量和用static 关键字声明的局部变量）如果没有显式初始化，会被自动初始化为零。
@@ -5393,10 +5387,7 @@ static void update_SearchResultFileNameList_and_refresh_store(gpointer filenamel
   FirstPage(rfmCtx);
   if (old_filenamelist!=NULL) g_list_free(old_filenamelist);
   for(int i=0;i<=NUM_Ext_Columns;i++) if (old_ExtColumnHashTable[i]!=NULL) { g_hash_table_destroy(old_ExtColumnHashTable[i]); old_ExtColumnHashTable[i] = NULL; }
-
-  g_free(filenamelist);
 }
-
 
 static gboolean startWithVT(){
   return rfmStartWithVirtualTerminal && isatty(0);
