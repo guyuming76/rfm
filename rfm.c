@@ -692,6 +692,9 @@ static void free_child_attribs(FREE_FULL RFM_ChildAttribs *child_attribs)
    //how can we memcpy the content of customCallbackUserData and free it here?
    //g_free(child_attribs->customCallbackUserData);
    g_free(child_attribs->workingDir); child_attribs->workingDir = NULL;
+   g_free(child_attribs->toolbar_button_or_filemenu_addon_dir); child_attribs->toolbar_button_or_filemenu_addon_dir = NULL;
+   g_free(child_attribs->cmd_interpretor_addon_dir); child_attribs->cmd_interpretor_addon_dir = NULL;
+   g_free(child_attribs->searchresulttype_addon_dir); child_attribs->searchresulttype_addon_dir = NULL;
    g_free(child_attribs);
    //child_attribs->readlineResultString 在 add_history_after_stdin_command_execution 函数内 free, 因为child_attribs 在g_spawn_wrapper执行玩命令后就要free,但命令执行玩还要 add_history 呢。
 }
@@ -4209,7 +4212,6 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 		       if (addon_dir_for_current_cmd){
 			 if (childAttribs->workingDir) g_warning("childAttribs already have addon_dir value.");
 			 else { childAttribs->workingDir = addon_dir_for_current_cmd; addon_dir_for_current_cmd = NULL;}
-
 		       }
 		       if (new_cmd_interpretor){
 			   current_stdin_cmd_interpretor_pointer = new_cmd_interpretor;
