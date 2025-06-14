@@ -2690,10 +2690,6 @@ static void toolbar_button_exec(GtkToolItem *item, RFM_ToolButton *button_defini
      if (cmd_interpretor_pointer){
        gchar* cmd = strdup(child_attribs->RunCmd[1]);
        printf("\n%s\033[32m%s%s]\033[0m%s\n",InheritedPrompt, cmd_interpretor_pointer->prompt,(ItemSelected==0)?"":"*",cmd);
-#ifdef RFM_AddOn
-       if (addon_dir_for_current_cmd) g_warning("addon_dir_for_current_cmd not NULL:%s", addon_dir_for_current_cmd);
-       else addon_dir_for_current_cmd = g_strdup(child_attribs->workingDir);
-#endif
        parse_and_exec_command_in_gtk_thread(cmd, FALSE, cmd_interpretor_pointer, child_attribs);
      }else g_spawn_wrapper_(NULL, NULL, child_attribs);
    }
@@ -2732,10 +2728,6 @@ static void file_menu_exec(GtkMenuItem *menuitem, RFM_MenuItem *file_menu_item_d
      if (cmd_interpretor_pointer){
        gchar* cmd = strdup(child_attribs->RunCmd[1]);
        printf("\n%s\033[32m%s%s]\033[0m%s\n",InheritedPrompt, cmd_interpretor_pointer->prompt,(ItemSelected==0)?"":"*",cmd);
-#ifdef RFM_AddOn
-       if (addon_dir_for_current_cmd) g_warning("addon_dir_for_current_cmd not NULL:%s", addon_dir_for_current_cmd);
-       else addon_dir_for_current_cmd = g_strdup(child_attribs->workingDir);
-#endif
        parse_and_exec_command_in_gtk_thread(cmd, FALSE, cmd_interpretor_pointer, child_attribs);
      }else g_spawn_wrapper_for_selected_fileList_(child_attribs);
   }
@@ -3412,8 +3404,6 @@ static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPrevi
 	      child_attribs->RunCmd = cmd_interpretor_pointer->cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str, TRUE);
 	      //child_attribs->runOpts = RFM_EXEC_NONE;
 	      child_attribs->spawn_async = TRUE;
-	      child_attribs->workingDir = addon_dir_for_current_cmd;
-              addon_dir_for_current_cmd = NULL;
 	      g_spawn_wrapper_(NULL, NULL, child_attribs);
               g_debug("exec_stdin_command_in_new_VT(%s,cmd_interpretor name:%s)",readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,cmd_interpretor_pointer->name);
 	      add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
@@ -3447,9 +3437,6 @@ static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousRea
 
 	  if (SearchResultTypePointer && (ret = g_spawn_wrapper_(NULL, NULL, childAttribs))){
 	  } else if (SearchResultTypePointer==NULL && (ret = g_spawn_wrapper_(NULL, NULL, childAttribs))) {
-	      if (addon_dir_for_current_cmd) { g_free(addon_dir_for_current_cmd); addon_dir_for_current_cmd=NULL; }
-	  } else {
-	      if (addon_dir_for_current_cmd) { g_free(addon_dir_for_current_cmd); addon_dir_for_current_cmd=NULL; }
 	  }
 	  add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
   }else {
@@ -3463,7 +3450,7 @@ static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousRea
 static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, gboolean from_stdin_readline, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *childAttribs){
 	    childAttribs->RunCmd = cmd_interpretor_pointer->cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE);
 	    childAttribs->stdIn_fd = -1; //set to non-zero, and will be set to a valid fd by g_spawn_async_with_pipes
-	    childAttribs->customCallBackFunc = from_stdin_readline ? g_spawn_async_callback_to_new_readline_thread : ( SearchResultTypePointer? update_SearchResultFileNameList_and_refresh_store : NULL); //如果不是从readline获取的命令，就把callback设成NULL,因为callback里面会创建新的readline线程，导致超过一个readline线程在运行.
+	    childAttribs->customCallBackFunc = from_stdin_readline ? g_spawn_async_callback_to_new_readline_thread : ( SearchResultTypePointer? update_SearchResultFileNameList_and_refresh_store : NULL); //如果不是从readline获取的命令，callback里面就不能包含new readline，否则会超过一个readline线程在运行.
 	    if (SearchResultTypePointer) {
               childAttribs->g_idle_add_once_to_run_CallBackFunc = TRUE; //TODO：目前函数是在 gtk main thread 运行的，所以这一行应该可以不要，加一下避免以后改动当前函数运行环境导致出错
 	      childAttribs->output_read_by_program = TRUE;
@@ -4133,7 +4120,7 @@ static RFM_SearchResultType* MatchSearchResultType(gchar* readlineResult){
 			   g_debug("Addon:%s; searchResultTypeName:%s",value->local_c_path,addon_resource->searchresulttypes[i].name);
 			   readlineResult[len-strlen(searchTypeNameSuffix)]='\0';//remove suffix from readlineResult
 			   g_free(searchTypeNameSuffix);
-			   //TODO：这里 addon_dir_for_current_cmd可能不为null, 可能在toolbar_exec里面就设置了,但如果是 readfromstdin 的,就应该为null, 这里应该是设置的第一个节点，但我们目前就不把readfromstdin等相关参数传进当前函数了，等后面重构parse_and_exec_command_in_gtk_thread的时候再考虑
+			   if (addon_dir_for_current_cmd) g_warning("addon_dir_for_current_cmd not NULL:%s, it can be that previous search cmd was not successful", addon_dir_for_current_cmd);
 			   addon_dir_for_current_cmd = g_dirname(value->local_c_path);
 			   return &(addon_resource->searchresulttypes[i]);
 			 }
@@ -4217,6 +4204,13 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 	           RFM_ADDON_RESOURCE_TYPE* addon_resource = value->resource_managed_by_addon;
 	           if (addon_resource->check_cmd_interpretor_switch_or_effective_cmd_interpretor){
 		       stdin_cmd_interpretor * new_cmd_interpretor = addon_resource->check_cmd_interpretor_switch_or_effective_cmd_interpretor(&readlineResult, &effective_cmd_interpretor_pointer,&Addon_prefix, from_stdin_readline? &execStdinCmdInNewVT:&execCmdInNewVT, &Addon_Prompt);
+		       //TODO: check_cmd_interpretor 会设置 addon_dir_for_current_cmd, 设全局变量可能比传childAttribs参数给check_cmd_interpretor要好，暴露的信息要少些。但结下来要用它更新哪个值呢？是childAttribs->workingDir 吗？
+		       //在目前AI_Model addon 的实现中，如果 effective_cmd_interpretor是AI_Model, 并且目前 addon_dir 为null,就会设置addon_dir
+		       if (addon_dir_for_current_cmd){
+			 if (childAttribs->workingDir) g_warning("childAttribs already have addon_dir value.");
+			 else { childAttribs->workingDir = addon_dir_for_current_cmd; addon_dir_for_current_cmd = NULL;}
+
+		       }
 		       if (new_cmd_interpretor){
 			   current_stdin_cmd_interpretor_pointer = new_cmd_interpretor;
 			   goto switchToReadlineThread;
@@ -4329,9 +4323,6 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 	      int wordexp_retval = wordexp(readlineResult,&parsed_msg,0);
 	      if (wordexp_retval==0 && parse_and_exec_stdin_builtin_command_in_gtk_thread(&parsed_msg, childAttribs->readlineResultString)){ //wordexp_retval 0 means success
 		childAttribs->readlineResultString=NULL; //since readlineInseperatethread function will check this, we must clear it here after cmd already been executed.
-#ifdef RFM_AddOn
-		if (addon_dir_for_current_cmd) { g_free(addon_dir_for_current_cmd); addon_dir_for_current_cmd=NULL; }
-#endif
 	      }
 	      if (wordexp_retval == 0) wordfree(&parsed_msg);
 	    }
