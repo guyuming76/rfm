@@ -2654,7 +2654,7 @@ static void g_spawn_wrapper_for_selected_fileList_(FREE_FULL RFM_ChildAttribs *c
    }
 }
 
-
+//TODO: 目前这里config.h里面的bash,nu,python等interpreter,稍后再尝试 zsh等,都无需在AddOn里面. 如果需要用AI来解析命令,须参照parse_and_exec_command_in_gtk_thread 里面代码扩充此部分
 static NO_FREE stdin_cmd_interpretor* match_cmd_str_array_with_interpretors(gchar** RunCmd){
   for (int i=0; i<G_N_ELEMENTS(stdin_cmd_interpretors); i++){
     if (RunCmd[0] == stdin_cmd_interpretors[i].name)//注意这里比较的是两个字符串的地址，而不是用strcmp比较内容，这样不会因为恰巧相同的字符串造成误判
@@ -5046,8 +5046,8 @@ static int ProcessCmdOutputFromSearchResultWithFunction(CALLER_OWN char *oneline
    }
 
    char SearchResultOnelineDocProcessingCmd[PATH_MAX];
-   
-   stdin_cmd_interpretor *cmd_interpretor_pointer = match_cmd_str_array_with_interpretors(cmdtemplate);
+
+   stdin_cmd_interpretor *cmd_interpretor_pointer = match_cmd_str_array_with_interpretors(cmdtemplate);//TODO:这个函数扩充到AI,Addon interpretor
    char** cmd;
    if (cmd_interpretor_pointer){//用户在config.h里定义的命令模板字符串数组，如果第0个字符串指定命令解释器，则第1个字符串指定命令模板; 否则，第0个字符串即是命令模板
      snprintf(SearchResultOnelineDocProcessingCmd,PATH_MAX,cmdtemplate[1],oneline);
@@ -5059,12 +5059,13 @@ static int ProcessCmdOutputFromSearchResultWithFunction(CALLER_OWN char *oneline
 
    g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"ProcessCmdOutputFromSearchResultWithFunction file:%s, cmd:%s, MatchedCmdInterpretor:%s, current_stdin_cmd_interpretor %s", oneline, SearchResultOnelineDocProcessingCmd, cmd_interpretor_pointer?cmd_interpretor_pointer->name:"null", current_stdin_cmd_interpretor_pointer?current_stdin_cmd_interpretor_pointer->name:"null");
 
-   child_attribs->customCallBackFunc = func;
-   child_attribs->RunCmd = cmd;
-   child_attribs->spawn_async = FALSE;
-   child_attribs->output_read_by_program=TRUE;
-   child_attribs->workingDir = g_strdup(rfm_SearchResultPath);
-   g_spawn_wrapper_(NULL,NULL,child_attribs);
+   RFM_ChildAttribs *childAttribs = calloc(1, sizeof(RFM_ChildAttribs));
+   childAttribs->customCallBackFunc = func;
+   childAttribs->RunCmd = cmd;
+   childAttribs->spawn_async = FALSE;
+   childAttribs->output_read_by_program=TRUE;
+   childAttribs->workingDir = g_strdup(rfm_SearchResultPath);
+   g_spawn_wrapper_(NULL,NULL,childAttribs);
 }
 
 static int ProcessGKeyfileStrWrapper(RFM_ChildAttribs *child_attribs) {
