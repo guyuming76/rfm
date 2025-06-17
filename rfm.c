@@ -54,6 +54,7 @@ typedef struct {
    gint        rfm_sortColumn;   /* The column in the tree model to sort on */
    GUnixMountMonitor *rfm_mountMonitor;   /* Reference for monitor mount events */
    guint       delayedRefresh_GSourceID;  /* Main loop source ID for refresh_store() delayed refresh timer */
+   RFM_ChildAttribs *childAttribs; //TODO:是在childAttribs里面放SearchResultTypeProcessingContext指针好,还是反过来在这里放SearchResultTypeProcessingContext?
 } RFM_ctx;
 static RFM_ctx *rfmCtx = NULL;
 static gchar*  PROG_NAME = NULL;
@@ -339,7 +340,7 @@ static void refresh_store(RFM_ctx *rfmCtx);
 static void refresh_store_on_searchresult(RFM_ctx* ctx);
 static void clear_store(void);
 static void rfm_stop_all(RFM_ctx *rfmCtx);
-static gboolean fill_fileAttributeList_with_filenames_from_search_result_and_then_insert_into_store();
+static gboolean fill_fileAttributeList_with_filenames_from_search_result_and_then_insert_into_store(RFM_ChildAttribs* childAttribs);
 static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store_if_onebyone(GDir *dir);
 static void toggle_insert_fileAttributes_into_store_one_by_one();
 static void Iterate_through_fileAttribute_list_to_insert_into_store();
@@ -393,9 +394,9 @@ static void cmdToggleInotifyHandler(wordexp_t *parsed_msg,GString *readline_resu
 /****************************************************/
 /******Search Result related definitions*************/
 typedef struct {
-  const RFM_ChildAttribs* SearchCommandContext;//运行查询的命令当时的childAttribs,比如包含WorkingDir,指的是查询命令执行时的WorkingDir
+  const RFM_ChildAttribs* SearchCommandChildAttributes;//运行查询的命令当时的childAttribs,比如包含WorkingDir,指的是查询命令执行时的WorkingDir
   const RFM_SearchResultType *SearchResultTypePointer;
-  const gchar *WorkingDir;//这个是SearchResultTypeProcessingFunc工作的WorkingDir,不一定等同于SearchCommandContext->WorkingDir。这里的Dir取决于SearchResultTypePointer,如果SearchResultTypePointer指向某个AddOn里面的定义，WorkingDir就会被设成那个AddOn的Dir,因为 SearchResultLineProcessingFunc 通常会调用WorkingDir里面定义的一些脚本，而AddOn里面的脚本统一使用相对于AddOn的根路径比较方便。
+  const gchar *SearchResultType_AddonDir;//这个是SearchResultTypeProcessingFunc工作的WorkingDir,不一定等同于SearchCommandContext->WorkingDir。这里的Dir取决于SearchResultTypePointer,如果SearchResultTypePointer指向某个AddOn里面的定义，WorkingDir就会被设成那个AddOn的Dir,因为 SearchResultLineProcessingFunc 通常会调用WorkingDir里面定义的一些脚本，而AddOn里面的脚本统一使用相对于AddOn的根路径比较方便。
 } SearchResultTypeProcessingContext;
 
 static gchar *rfm_SearchResultPath=NULL; /*keep the rfm_curPath value when SearchResult was created */
@@ -425,9 +426,9 @@ static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboo
 static int ProcessOnelineForSearchResult_with_title(CALLER_OWN char* oneline, gboolean new_search);
 static void CallDefaultSearchResultFunctionForNewSearch(CALLER_OWN char *one_line_in_search_result);
 static int ProcessKeyValuePairInFilesFromSearchResult(CALLER_OWN char *oneline, gboolean new_search);
-static int ProcessKeyValuePairInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char **cmdtemplate);
-int ProcessJsonInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate);
-static int ProcessCmdOutputFromSearchResultWithFunction(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate, int (*func)(RFM_ChildAttribs*));
+static int ProcessKeyValuePairInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char **cmdtemplate, RFM_ChildAttribs *childAttribs);
+int ProcessJsonInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate, RFM_ChildAttribs* child_attribs);
+static int ProcessCmdOutputFromSearchResultWithFunction(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate, RFM_ChildAttribs* child_attribs, int (*func)(RFM_ChildAttribs*));
 static int ProcessKeyValuePairInData(GKeyFile* keyfile, char *groupname);
 static void ProcessKeyValuePair(CALLER_OWN gchar *key, OWNER_CHANGE gchar* currentExtColumnValue, CALLER_OWN char* currentColumnOriginalTitle);
 static int ProcessGKeyfileStrWrapper(RFM_ChildAttribs *child_attribs);
@@ -435,7 +436,7 @@ static int ProcessGKeyfileStr(CALLER_OWN gchar *cmdOutput);
 static int ProcessJsonStrWrapper(RFM_ChildAttribs *child_attribs);
 static int ProcessJsonStr(CALLER_OWN gchar* json_data);
 static int ProcessJsonFileFromSearchResult(CALLER_OWN char *oneline, gboolean new_search);
-static int CallMatchingProcessorForSearchResultLine(char *oneline, gboolean new_search, char *cmdtemplate, RFM_FileAttributes* fileAttributes);
+static int CallMatchingProcessorForSearchResultLine(char *oneline, gboolean new_search, char *cmdtemplate, RFM_FileAttributes* fileAttributes, RFM_ChildAttribs* childAttribs);
 static void cmdSearchResultColumnSeperator(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
 //matched search result type suffix will be removed from readlineResults
 static RFM_SearchResultType* MatchSearchResultType(gchar *readlineResult);
@@ -2100,7 +2101,7 @@ static void set_pagesize_for_searchresultview(const char *pagesize){
 }
 
 
-static gboolean fill_fileAttributeList_with_filenames_from_search_result_and_then_insert_into_store() {
+static gboolean fill_fileAttributeList_with_filenames_from_search_result_and_then_insert_into_store(RFM_ChildAttribs *childAttribs) {
   time_t mtimeThreshold=time(NULL)-RFM_MTIME_OFFSET;
   RFM_FileAttributes *fileAttributes;
   GHashTable *mount_hash=get_mount_points();
@@ -2115,7 +2116,7 @@ static gboolean fill_fileAttributeList_with_filenames_from_search_result_and_the
       rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
       g_log(RFM_LOG_DATA,G_LOG_LEVEL_DEBUG,"appended into rfm_fileAttributeList:%s", (char*)name->data);
       if (SearchResultViewInsteadOfDirectoryView && SearchResultTypePointerForCurrentExistingSearchResult)
-	SearchResultTypePointerForCurrentExistingSearchResult->SearchResultLineProcessingFunc((gchar*)(name->data), FALSE, SearchResultTypePointerForCurrentExistingSearchResult->cmdTemplate, fileAttributes);
+	SearchResultTypePointerForCurrentExistingSearchResult->SearchResultLineProcessingFunc((gchar*)(name->data), FALSE, SearchResultTypePointerForCurrentExistingSearchResult->cmdTemplate, fileAttributes, childAttribs);
     }
     fileAttributeID++;//上面SearchResultLineProcessingFunc里面会使用fileAttributeID作为hashtable的key, commit ab8f8c2f832bc32b431ced50bda21de36b9314d5 之前是分两次从fileAttributeID=1开始遍历文件名列表的,但commit ab8f8c2f832bc32b431ced50bda21de36b9314d5 和并成了现在的一次遍历, 造成了一个bug: 之前在 get_fileAttributes_for_a_file 调用fileAttributeID++, 后面的SearchResultLineProcessingFunc里fileAttributeID值就错了,所以现在改在这里调用 fileAttributeID++
     name=g_list_next(name);
@@ -2222,7 +2223,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
      }
      fileAttributeID=currentFileNum;
      title=g_strdup_printf(PipeTitle, currentFileNum,SearchResultFileNameListLength,PageSize_SearchResultView);
-     fill_fileAttributeList_with_filenames_from_search_result_and_then_insert_into_store();
+     fill_fileAttributeList_with_filenames_from_search_result_and_then_insert_into_store(rfmCtx->childAttribs);
 
      In_refresh_store=FALSE;
      gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
@@ -5027,16 +5028,16 @@ static int ProcessJsonFileFromSearchResult(CALLER_OWN char *oneline, gboolean ne
 // cmdtemplate的解析结果会通过 cmdOutput 局部变量传递到下一环节。这个cmdOutput会对应到查询结果的一行
 // 而parse_and_exec_cmd_in_gtk_thread 里的readlineResult是返回这个查询结果多行记录的，每行一个文件。
 // 所以这两个函数看上去都是执行命令模板的，有类似之处，却不好合并
-static int ProcessKeyValuePairInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate){
-  ProcessCmdOutputFromSearchResultWithFunction(oneline,new_search,cmdtemplate,ProcessGKeyfileStrWrapper);
+static int ProcessKeyValuePairInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate, RFM_ChildAttribs* childAttribs){
+  ProcessCmdOutputFromSearchResultWithFunction(oneline,new_search,cmdtemplate,childAttribs,ProcessGKeyfileStrWrapper);
 }
 
-int ProcessJsonInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate){
-  ProcessCmdOutputFromSearchResultWithFunction(oneline,new_search,cmdtemplate,ProcessJsonStrWrapper);
+int ProcessJsonInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate, RFM_ChildAttribs* child_attribs){
+  ProcessCmdOutputFromSearchResultWithFunction(oneline,new_search,cmdtemplate,child_attribs,ProcessJsonStrWrapper);
 }
 
 //TODO: SearchResultType 里面定义的cmdTemplate格式是独特的：一方面，可以指明cmd_interpretor, 使用match_cmd_str_array_with_interpretors, 另一方面，却又不是通过parse_and_exec_command_in_gtk_thread来执行，通过调用cmd_interpretor的cmdTransformer来转换成 g_spawn_wrapper接受的形式。同时做了一个简单的把cmdTemplate中%s替换成查询结果文件名oneline的操作，这个替换既没使用build_cmd_vector中的文件名替换，又没使用parse_and_exec_command_in_gtk_thread中的选中文件名替换。本来g_spawn_wrapper接受的命令形式和parse_and_exec_command_in_gtk_thread接受的就比较难区别了，这里又多了一个易混淆的。考虑把这三者重构下，大致的思路是让parse_and_exec_command_in_gtk_thread 能接受 RFM_ChildAttribs*, 把之前在其中使用的全局变量放到 RFM_ChildAttribs 中，这样，parse_and_exec_command_in_gtk_thread就可以变成一个可重入的函数。要求可重入是因为search命令会使用parse_and_exec_command_in_gtk_thread, 而update_searchresult_and_refresh_store又会调用 SearchResultTypeProcessingFunc并执行这里的cmdTemplate。
-static int ProcessCmdOutputFromSearchResultWithFunction(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate, int (*func)(RFM_ChildAttribs*)){
+static int ProcessCmdOutputFromSearchResultWithFunction(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate, RFM_ChildAttribs* child_attribs, int (*func)(RFM_ChildAttribs*)){
    if (new_search){
      CallDefaultSearchResultFunctionForNewSearch(oneline);
      return 0;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
@@ -5056,7 +5057,6 @@ static int ProcessCmdOutputFromSearchResultWithFunction(CALLER_OWN char *oneline
 
    g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"ProcessCmdOutputFromSearchResultWithFunction file:%s, cmd:%s, MatchedCmdInterpretor:%s, current_stdin_cmd_interpretor %s", oneline, SearchResultOnelineDocProcessingCmd, cmd_interpretor_pointer?cmd_interpretor_pointer->name:"null", current_stdin_cmd_interpretor_pointer?current_stdin_cmd_interpretor_pointer->name:"null");
 
-   RFM_ChildAttribs *child_attribs=calloc(1,sizeof(RFM_ChildAttribs));
    child_attribs->customCallBackFunc = func;
    child_attribs->RunCmd = cmd;
    child_attribs->spawn_async = FALSE;
@@ -5107,7 +5107,7 @@ static int ProcessKeyValuePairInData(GKeyFile *keyfile, char* groupname){
 // 用SearchResultType[i].name 去匹配文件名后缀,以匹配到的最长后缀为准
 // 比如 searchresulttype name 有 ".md", 还有 "TODO.md"
 // 一个没匹配到,默认用 searchresultype[0]
-static int CallMatchingProcessorForSearchResultLine(char *oneline, gboolean new_search, char *cmdtemplate, RFM_FileAttributes* fileAttributes){
+ static int CallMatchingProcessorForSearchResultLine(char *oneline, gboolean new_search, char *cmdtemplate, RFM_FileAttributes* fileAttributes, RFM_ChildAttribs* childAttribs){
    assert(g_strcmp0(SearchResultTypePointerForCurrentExistingSearchResult->name,SrchRsltType_multitype)==0);
    gchar *rfm_SearchResultPath_for_multitype = g_strdup(rfm_SearchResultPath); //保存最外层multitype search 执行时的目录
    if (new_search){
@@ -5146,7 +5146,7 @@ static int CallMatchingProcessorForSearchResultLine(char *oneline, gboolean new_
 	    }
 #endif
 	    g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"%s: SearchResultType name %s matched for file:%s. rfm_SearchResultPath changed from %s to %s for matched SearchResultTypeProcessing and will restore after processing",SrchRsltType_multitype,longest_matched_searchresulttype_name,oneline, rfm_SearchResultPath_for_multitype, rfm_SearchResultPath);
-   int ret = matched_searchresulttype_pointer->SearchResultLineProcessingFunc(oneline,new_search,matched_searchresulttype_pointer->cmdTemplate, fileAttributes);
+	    int ret = matched_searchresulttype_pointer->SearchResultLineProcessingFunc(oneline,new_search,matched_searchresulttype_pointer->cmdTemplate, fileAttributes, childAttribs);
    //TODO:这里我们可以看到 rfm_searchresultpath 只有在 matched search result processing func 执行的期间才等于 addon 的目录，前后都通过备份恢复来保持"最外层"processingfunc执行时的值，也许重构 parse_and_exec_command_in_gtk_thread 的时候，可以考虑把 SearchResultLineProcessingFunc 也带上 ChildAttribs 参数，这样就可避免全局的 rfm_searchresultpath
    g_free(rfm_SearchResultPath); rfm_SearchResultPath=rfm_SearchResultPath_for_multitype; //恢复前面保存的值，作为处理下一个oneline,即下个查询结果文件时的默认值
 
@@ -5351,7 +5351,7 @@ static void update_SearchResultFileNameList_and_refresh_store(RFM_ChildAttribs *
   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"update_SearchResultFileNameList, length: %ld charactor(s)",filenamelist?strlen((gchar*)filenamelist):0);
   gchar * oneline=strtok((gchar*)filenamelist,"\n");
   while (oneline!=NULL){
-    SearchResultTypePointer->SearchResultLineProcessingFunc(oneline, TRUE, SearchResultTypePointer->cmdTemplate,NULL);
+    SearchResultTypePointer->SearchResultLineProcessingFunc(oneline, TRUE, SearchResultTypePointer->cmdTemplate,NULL, childAttribs);
     fileAttributeID++;
     oneline=strtok(NULL, "\n");
   }
