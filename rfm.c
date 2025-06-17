@@ -685,7 +685,9 @@ static void free_thumbQueueData(RFM_ThumbQueueData *thumbData)
 
 static void free_child_attribs(FREE_FULL RFM_ChildAttribs *child_attribs)
 {
-   g_log(RFM_LOG_GSPAWN,G_LOG_LEVEL_DEBUG,"RFM_childAttribs %p free",child_attribs);
+   g_log(RFM_LOG_GSPAWN,G_LOG_LEVEL_DEBUG,"RFM_childAttribs %p free %s",child_attribs, child_attribs->no_free? "with no_free":"");
+   if(child_attribs->no_free) return;
+  
    free(child_attribs->stdOut); child_attribs->stdOut = NULL;
    free(child_attribs->stdErr); child_attribs->stdErr = NULL;
    g_free(child_attribs->name);   child_attribs->name = NULL;
@@ -3435,12 +3437,12 @@ static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousRea
 	    childAttribs->output_read_by_program = TRUE;
 	    childAttribs->customCallBackFunc = update_SearchResultFileNameList_and_refresh_store;
 	    childAttribs->runOpts = G_SPAWN_SEARCH_PATH|G_SPAWN_CHILD_INHERITS_STDIN|G_SPAWN_CHILD_INHERITS_STDERR;
+	    childAttribs->no_free = TRUE; //update_SearchResultFileNameList_and_refresh_store 要多次调用SearchResultTypeProcessingFunc, 可能会重复使用这个childAttribs,多次穿过 g_spawn_wrapper调用, 在update_SearchResultFileNameList_and_refresh_store 调用的最后置为 FALSE.
+	    ret = g_spawn_wrapper_(NULL, NULL, childAttribs);
+	    childAttribs->name = strdup(SearchResultTypePointer->name);
 	  }else{
 	    childAttribs->runOpts = G_SPAWN_SEARCH_PATH|G_SPAWN_CHILD_INHERITS_STDIN|G_SPAWN_CHILD_INHERITS_STDOUT|G_SPAWN_CHILD_INHERITS_STDERR;
-	  }
-
-	  if (SearchResultTypePointer && (ret = g_spawn_wrapper_(NULL, NULL, childAttribs))){
-	  } else if (SearchResultTypePointer==NULL && (ret = g_spawn_wrapper_(NULL, NULL, childAttribs))) {
+	    ret = g_spawn_wrapper_(NULL, NULL, childAttribs);
 	  }
 	  add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
   }else {
@@ -5364,9 +5366,11 @@ static void update_SearchResultFileNameList_and_refresh_store(RFM_ChildAttribs *
     strcpy(SearchResultColumnSeperator, old_searchresultcolumnSeperator);
   }
 
+  rfmCtx->childAttribs = childAttribs;
   FirstPage(rfmCtx);
   if (old_filenamelist!=NULL) g_list_free(old_filenamelist);
   for(int i=0;i<=NUM_Ext_Columns;i++) if (old_ExtColumnHashTable[i]!=NULL) { g_hash_table_destroy(old_ExtColumnHashTable[i]); old_ExtColumnHashTable[i] = NULL; }
+  childAttribs->no_free = FALSE;
 }
 
 static gboolean startWithVT(){
