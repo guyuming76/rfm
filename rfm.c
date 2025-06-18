@@ -5366,6 +5366,7 @@ static void update_SearchResultFileNameList_and_refresh_store(RFM_ChildAttribs *
   if (SearchResultTypePointer->SearchResultColumnSeperator) {
     strcpy(SearchResultColumnSeperator, old_searchresultcolumnSeperator);
   }
+  SearchResultTypePointer = NULL; //完成向SearchResultTypePointerForCurrentExistingSearchResult转移后清零,TODO:如果Search命令执行失败如何清零?把他们从全局变量改为childAttribs属性应该就好了
 
   rfmCtx->childAttribs = childAttribs;
   FirstPage(rfmCtx);
