@@ -4209,13 +4209,10 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 	      while (g_hash_table_iter_next(&ht_iter, &key, &value)){
 	           RFM_ADDON_RESOURCE_TYPE* addon_resource = value->resource_managed_by_addon;
 	           if (addon_resource->check_cmd_interpretor_switch_or_effective_cmd_interpretor){
-		       stdin_cmd_interpretor * new_cmd_interpretor = addon_resource->check_cmd_interpretor_switch_or_effective_cmd_interpretor(&readlineResult, &effective_cmd_interpretor_pointer,&Addon_prefix, from_stdin_readline? &execStdinCmdInNewVT:&execCmdInNewVT, &Addon_Prompt);
-		       //TODO: check_cmd_interpretor 会设置 addon_dir_for_current_cmd, 设全局变量可能比传childAttribs参数给check_cmd_interpretor要好，暴露的信息要少些。但结下来要用它更新哪个值呢？是childAttribs->workingDir 吗？
+		       if (childAttribs->workingDir) g_warning("childAttribs->workingDir already have value: %s", childAttribs->workingDir);
+		       stdin_cmd_interpretor * new_cmd_interpretor = addon_resource->check_cmd_interpretor_switch_or_effective_cmd_interpretor(&readlineResult, &effective_cmd_interpretor_pointer,&Addon_prefix, from_stdin_readline? &execStdinCmdInNewVT:&execCmdInNewVT, &Addon_Prompt, &(childAttribs->workingDir));
+		       //TODO: 都用childAttribs->workingDir 是不合理的，这里应该用 childAttribs->cmd_interpretor_addon_dir ，g_spawn的时候再判断
 		       //在目前AI_Model addon 的实现中，如果 effective_cmd_interpretor是AI_Model, 并且目前 addon_dir 为null,就会设置addon_dir
-		       if (addon_dir_for_current_cmd){
-			 if (childAttribs->workingDir) g_warning("childAttribs already have addon_dir value.");
-			 else { childAttribs->workingDir = addon_dir_for_current_cmd; addon_dir_for_current_cmd = NULL;}
-		       }
 		       if (new_cmd_interpretor){
 			   current_stdin_cmd_interpretor_pointer = new_cmd_interpretor;
 			   goto switchToReadlineThread;

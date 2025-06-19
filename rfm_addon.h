@@ -151,7 +151,7 @@ typedef struct {
   size_t searchresulttypes_array_size;
   stdin_cmd_interpretor **stdin_cmd_interpretors;
   size_t stdin_cmd_interpretors_array_size;
-  stdin_cmd_interpretor*(*check_cmd_interpretor_switch_or_effective_cmd_interpretor)(gchar**, stdin_cmd_interpretor** , gboolean*, gboolean* , gchar**);
+  stdin_cmd_interpretor*(*check_cmd_interpretor_switch_or_effective_cmd_interpretor)(gchar**, stdin_cmd_interpretor** , gboolean*, gboolean* , gchar**, gchar**);
   char * addon_dir; //TODO:有必要加这个字段吗？通过获取RFM_ADDON指针，然后使用local_c_path的目录不行吗？不安全？
 } RFM_ADDON_RESOURCE_TYPE;
 
