@@ -1095,6 +1095,7 @@ static void check_wait_status_and_set_exit_code(CALLER_OWN RFM_ChildAttribs *chi
 }
 
 static gchar *choose_working_directory_for_g_spawn(RFM_ChildAttribs *childAttribs) {
+  if (childAttribs->cmd_interpretor_addon_dir) return childAttribs->cmd_interpretor_addon_dir;
   return childAttribs->workingDir? childAttribs->workingDir:rfm_curPath;
 }
 
@@ -4214,10 +4215,7 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 	      while (g_hash_table_iter_next(&ht_iter, &key, &value)){
 	           RFM_ADDON_RESOURCE_TYPE* addon_resource = value->resource_managed_by_addon;
 	           if (addon_resource->check_cmd_interpretor_switch_or_effective_cmd_interpretor){
-		       if (childAttribs->workingDir) g_warning("childAttribs->workingDir already have value: %s", childAttribs->workingDir);
-		       stdin_cmd_interpretor * new_cmd_interpretor = addon_resource->check_cmd_interpretor_switch_or_effective_cmd_interpretor(&readlineResult, &effective_cmd_interpretor_pointer,&Addon_prefix, from_stdin_readline? &execStdinCmdInNewVT:&execCmdInNewVT, &Addon_Prompt, &(childAttribs->workingDir));
-		       //TODO: 都用childAttribs->workingDir 是不合理的，这里应该用 childAttribs->cmd_interpretor_addon_dir ，g_spawn的时候再判断
-		       //在目前AI_Model addon 的实现中，如果 effective_cmd_interpretor是AI_Model, 并且目前 addon_dir 为null,就会设置addon_dir
+		       stdin_cmd_interpretor * new_cmd_interpretor = addon_resource->check_cmd_interpretor_switch_or_effective_cmd_interpretor(&readlineResult, &effective_cmd_interpretor_pointer,&Addon_prefix, from_stdin_readline? &execStdinCmdInNewVT:&execCmdInNewVT, &Addon_Prompt, &(childAttribs->cmd_interpretor_addon_dir));//在目前AI_Model addon 的实现中，如果 effective_cmd_interpretor是AI_Model, 就会设置addon_dir
 		       if (new_cmd_interpretor){
 			   current_stdin_cmd_interpretor_pointer = new_cmd_interpretor;
 			   goto switchToReadlineThread;
