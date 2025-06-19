@@ -206,6 +206,7 @@ static void null_log_handler(const gchar *log_domain,GLogLevelFlags log_level,co
 static GList *rfm_childList = NULL;
 static int rfm_childListLength = 0;
 static void free_child_attribs(FREE_FULL RFM_ChildAttribs *child_attribs);
+static gchar *choose_working_directory_for_g_spawn(RFM_ChildAttribs *childAttribs);
 static void g_spawn_wrapper_for_selected_fileList_(FREE_FULL RFM_ChildAttribs *childAttribs);
 /* instantiate childAttribs and call g_spawn_wrapper_ */
 /* caller should g_list_free(file_list), but usually not g_list_free_full, since the file char* is usually owned by rfm_fileattributes */
@@ -988,7 +989,7 @@ static gboolean g_spawn_async_with_pipes_wrapper(CALLER_OWN gchar **v, RFM_Child
       GError* err = NULL;
 /* https://docs.gtk.org/glib/func.spawn_async_with_pipes_and_fds.html */
 /*       If non-NULL, the stdin_pipe_out, stdout_pipe_out, stderr_pipe_out locations will be filled with file descriptors for writing to the child's standard input or reading from its standard output or standard error. The caller of g_spawn_async_with_pipes() must close these file descriptors when they are no longer in use. If these parameters are NULL, the corresponding pipe won't be created. */
-      rv=g_spawn_async_with_pipes(child_attribs->workingDir? child_attribs->workingDir:rfm_curPath, v, child_attribs->env, G_SPAWN_DO_NOT_REAP_CHILD | G_SPAWN_SEARCH_PATH | child_attribs->runOpts,
+      rv=g_spawn_async_with_pipes(choose_working_directory_for_g_spawn(child_attribs), v, child_attribs->env, G_SPAWN_DO_NOT_REAP_CHILD | G_SPAWN_SEARCH_PATH | child_attribs->runOpts,
 				  //本commit 是revert 3d53359fdb97498a895a0cec97e3076558908a02 消除冲突后的结果，注意上一行|child_attribs->runOpts 是保留3d53359fdb97498a895a0cec97e3076558908a02改动的
 
 				  GSpawnChildSetupFunc_setenv,child_attribs,
@@ -1093,6 +1094,10 @@ static void check_wait_status_and_set_exit_code(CALLER_OWN RFM_ChildAttribs *chi
 	            }
 }
 
+static gchar *choose_working_directory_for_g_spawn(RFM_ChildAttribs *childAttribs) {
+  return childAttribs->workingDir? childAttribs->workingDir:rfm_curPath;
+}
+
 //caller should g_list_free(file_list), but usually not g_list_free_full, since the file char* is usually owned by rfm_fileattributes
 //TODO：file_list 和 dest_path 这两个参数我都是从Rodney那里继承过来的，我猜最初可能是为了匹配cp,mv这一类的文件命令。我改动了 build_cmd_vector 这个方法。我原先一直觉得dest_path这个变量有些多余，但现在突然发觉，file_list是个list,如果只有一个文件名，造个list比较麻烦，用dest_path参数反倒比较好，这里我们还要处理一下 build_cmd_vector 的TODO,来应对dest_path 不是追加到命令结尾，而是替换命令中间%s的情况
 gboolean g_spawn_wrapper_(CALLER_OWN const GList *file_list, CALLER_OWN const char *dest_path, FREE_FULL RFM_ChildAttribs * child_attribs)
@@ -1115,7 +1120,7 @@ gboolean g_spawn_wrapper_(CALLER_OWN const GList *file_list, CALLER_OWN const ch
 	       GError *spawn_err = NULL;
 
 	       g_log(RFM_LOG_GSPAWN,G_LOG_LEVEL_DEBUG,"g_spawn_sync, workingdir:%s, argv:%s",child_attribs->workingDir? child_attribs->workingDir:rfm_curPath, argv);
-	       if (!g_spawn_sync(child_attribs->workingDir? child_attribs->workingDir:rfm_curPath, v, child_attribs->env, G_SPAWN_SEARCH_PATH|child_attribs->runOpts, GSpawnChildSetupFunc_setenv,child_attribs,((child_attribs->runOpts & G_SPAWN_STDOUT_TO_DEV_NULL) || (child_attribs->runOpts & G_SPAWN_CHILD_INHERITS_STDOUT))? NULL : &child_attribs->stdOut, (child_attribs->runOpts & G_SPAWN_CHILD_INHERITS_STDERR)? NULL : &child_attribs->stdErr,&child_attribs->status,&spawn_err)){
+	       if (!g_spawn_sync(choose_working_directory_for_g_spawn(child_attribs), v, child_attribs->env, G_SPAWN_SEARCH_PATH|child_attribs->runOpts, GSpawnChildSetupFunc_setenv,child_attribs,((child_attribs->runOpts & G_SPAWN_STDOUT_TO_DEV_NULL) || (child_attribs->runOpts & G_SPAWN_CHILD_INHERITS_STDOUT))? NULL : &child_attribs->stdOut, (child_attribs->runOpts & G_SPAWN_CHILD_INHERITS_STDERR)? NULL : &child_attribs->stdErr,&child_attribs->status,&spawn_err)){
 	            g_warning("g_spawn_sync %s failed to execute: %s. Check command in config.h!", argv, spawn_err ? spawn_err->message : "Unknown error");
 	            if (spawn_err) g_error_free(spawn_err);
 	            free_child_attribs(child_attribs);
