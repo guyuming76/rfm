@@ -4206,7 +4206,6 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
             }
 
 #ifdef RFM_AddOn
-            gboolean addon_cmd_interpretor_activationKey_found_as_prefix_of_readlineResult = FALSE;
             if (!(prefix_found)){
 	      GHashTableIter ht_iter;
 	      gchar *key;
@@ -4215,7 +4214,7 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 	      while (g_hash_table_iter_next(&ht_iter, &key, &value)){
 	           RFM_ADDON_RESOURCE_TYPE* addon_resource = value->resource_managed_by_addon;
 	           if (addon_resource->check_cmd_interpretor_switch_or_effective_cmd_interpretor){
-		       stdin_cmd_interpretor * new_cmd_interpretor = addon_resource->check_cmd_interpretor_switch_or_effective_cmd_interpretor(&readlineResult, &effective_cmd_interpretor_pointer,&addon_cmd_interpretor_activationKey_found_as_prefix_of_readlineResult, from_stdin_readline? &execStdinCmdInNewVT:&execCmdInNewVT, &Addon_Prompt, &(childAttribs->cmd_interpretor_addon_dir));//在目前AI_Model addon 的实现中，如果 effective_cmd_interpretor是AI_Model, 就会设置addon_dir
+		       stdin_cmd_interpretor * new_cmd_interpretor = addon_resource->check_cmd_interpretor_switch_or_effective_cmd_interpretor(&readlineResult, &effective_cmd_interpretor_pointer, from_stdin_readline? &execStdinCmdInNewVT:&execCmdInNewVT, &Addon_Prompt, &(childAttribs->cmd_interpretor_addon_dir));//在目前AI_Model addon 的实现中，如果 effective_cmd_interpretor是AI_Model, 就会设置addon_dir
 		       if (new_cmd_interpretor){
 			   current_stdin_cmd_interpretor_pointer = new_cmd_interpretor;
 			   goto switchToReadlineThread;
@@ -4235,7 +4234,7 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 	    len = strlen(readlineResult);
 
 #ifdef RFM_AddOn
-            if (childAttribs->cmd_interpretor_addon_dir){ //如何表示某个cmd_interpretor 无需后续的命令行解析呢？ 在 stdin_cmd_interpretor上加属性会显得复杂，让人迷惑。像现在这样写死不利于扩展
+            if (childAttribs->cmd_interpretor_addon_dir){ //如果使用的是Addon cmd interpretor,就无需执行后续计算execStdinCmdInNewVT的代码了，因为rfm和cmd interpretor addon 的沟通都通过 check_cmd_interpretor_switch_or_effective_cmd_interpretor 函数及参数完成。
 	    }else{
 #endif
 	    //stdin_cmd_ending_space, execStdinCmdInNewVT, SearchResultAsInput 应该也可以通过正则表达式匹配实现.
