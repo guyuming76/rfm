@@ -4235,7 +4235,7 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 	    len = strlen(readlineResult);
 
 #ifdef RFM_AddOn
-            if ((from_stdin_readline && Addon_Prompt) || addon_cmd_interpretor_activationKey_found_as_prefix_of_readlineResult){ //如何表示某个cmd_interpretor 无需后续的命令行解析呢？ 在 stdin_cmd_interpretor上加属性会显得复杂，让人迷惑。像现在这样写死不利于扩展
+            if (childAttribs->cmd_interpretor_addon_dir){ //如何表示某个cmd_interpretor 无需后续的命令行解析呢？ 在 stdin_cmd_interpretor上加属性会显得复杂，让人迷惑。像现在这样写死不利于扩展
 	    }else{
 #endif
 	    //stdin_cmd_ending_space, execStdinCmdInNewVT, SearchResultAsInput 应该也可以通过正则表达式匹配实现.
