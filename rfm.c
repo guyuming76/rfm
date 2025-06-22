@@ -86,11 +86,15 @@ static void startPythonEmbedding(){
 	return;
   }
   Py_SetProgramName(pyProgramName);  /* optional but recommended */
-  Py_Initialize();
+  Py_InitializeEx(0);//参数`0`禁用Python的信号处理器，减少意外退出的风险
+  if (!Py_IsInitialized()) {
+            g_warning("Python embedding initialization failed. Continuing without Python.");
+            if (PyErr_Occurred()) PyErr_Print();
+  } else g_debug("Python embeding initialized successfully");// 添加详细诊断信息
 }
 
 static void endPythonEmbedding(){
-    if (Py_FinalizeEx() < 0) {
+    if (Py_IsInitialized() && Py_FinalizeEx() < 0) {
         g_warning("Py_FinalizeEx()<0");
 	return;
     }
