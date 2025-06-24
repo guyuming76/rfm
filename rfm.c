@@ -1097,6 +1097,7 @@ static void check_wait_status_and_set_exit_code(CALLER_OWN RFM_ChildAttribs *chi
 }
 
 static gchar *choose_working_directory_for_g_spawn(RFM_ChildAttribs *childAttribs) {
+  if (childAttribs->searchresulttype_addon_dir) return childAttribs->searchresulttype_addon_dir;
   if (childAttribs->cmd_interpretor_addon_dir) return childAttribs->cmd_interpretor_addon_dir;
   return childAttribs->workingDir? childAttribs->workingDir:rfm_curPath;
 }
@@ -1111,8 +1112,9 @@ gboolean g_spawn_wrapper_(CALLER_OWN const GList *file_list, CALLER_OWN const ch
    v=build_cmd_vector(child_attribs->RunCmd, file_list, dest_path);
    if (v != NULL) {
       gchar * argv=g_strjoinv(" ", v);
+      gchar* workingDir = choose_working_directory_for_g_spawn(child_attribs);
       if (child_attribs->spawn_async){
-	       g_log(RFM_LOG_GSPAWN,G_LOG_LEVEL_DEBUG,"g_spawn_async_with_pipes_wrapper, workingdir:%s, argv:%s",child_attribs->workingDir? child_attribs->workingDir:rfm_curPath, argv);
+	       g_log(RFM_LOG_GSPAWN,G_LOG_LEVEL_DEBUG,"g_spawn_async_with_pipes_wrapper, workingdir:%s, argv:%s",workingDir, argv);
 	       if (!g_spawn_async_with_pipes_wrapper(v, child_attribs)) {
                    g_warning("g_spawn_async_with_pipes_wrapper: %s failed to execute. Check command in config.h!", argv);
                    free_child_attribs(child_attribs); //这里是失败的异步，成功的异步会在  child_supervisor_to_ReadStdout_ShowOutput_ExecCallback 里面 free
@@ -1121,9 +1123,8 @@ gboolean g_spawn_wrapper_(CALLER_OWN const GList *file_list, CALLER_OWN const ch
       } else {
 	       child_attribs->status=-1; // Initialize status
 	       GError *spawn_err = NULL;
-
-	       g_log(RFM_LOG_GSPAWN,G_LOG_LEVEL_DEBUG,"g_spawn_sync, workingdir:%s, argv:%s",child_attribs->workingDir? child_attribs->workingDir:rfm_curPath, argv);
-	       if (!g_spawn_sync(choose_working_directory_for_g_spawn(child_attribs), v, child_attribs->env, G_SPAWN_SEARCH_PATH|child_attribs->runOpts, GSpawnChildSetupFunc_setenv,child_attribs,((child_attribs->runOpts & G_SPAWN_STDOUT_TO_DEV_NULL) || (child_attribs->runOpts & G_SPAWN_CHILD_INHERITS_STDOUT))? NULL : &child_attribs->stdOut, (child_attribs->runOpts & G_SPAWN_CHILD_INHERITS_STDERR)? NULL : &child_attribs->stdErr,&child_attribs->status,&spawn_err)){
+	       g_log(RFM_LOG_GSPAWN,G_LOG_LEVEL_DEBUG,"g_spawn_sync, workingdir:%s, argv:%s",workingDir, argv);
+	       if (!g_spawn_sync(workingDir, v, child_attribs->env, G_SPAWN_SEARCH_PATH|child_attribs->runOpts, GSpawnChildSetupFunc_setenv,child_attribs,((child_attribs->runOpts & G_SPAWN_STDOUT_TO_DEV_NULL) || (child_attribs->runOpts & G_SPAWN_CHILD_INHERITS_STDOUT))? NULL : &child_attribs->stdOut, (child_attribs->runOpts & G_SPAWN_CHILD_INHERITS_STDERR)? NULL : &child_attribs->stdErr,&child_attribs->status,&spawn_err)){
 	            g_warning("g_spawn_sync %s failed to execute: %s. Check command in config.h!", argv, spawn_err ? spawn_err->message : "Unknown error");
 	            if (spawn_err) g_error_free(spawn_err);
 	            free_child_attribs(child_attribs);
@@ -5065,7 +5066,8 @@ static int ProcessCmdOutputFromSearchResultWithFunction(CALLER_OWN char *oneline
    childAttribs->RunCmd = cmd;
    childAttribs->spawn_async = FALSE;
    childAttribs->output_read_by_program=TRUE;
-   childAttribs->workingDir = g_strdup(rfm_SearchResultPath);
+   if (child_attribs->workingDir) childAttribs->workingDir = strdup(child_attribs->workingDir);
+   if (child_attribs->searchresulttype_addon_dir) childAttribs->searchresulttype_addon_dir = strdup(child_attribs->searchresulttype_addon_dir);
    g_spawn_wrapper_(NULL,NULL,childAttribs);
 }
 
@@ -5113,7 +5115,6 @@ static int ProcessKeyValuePairInData(GKeyFile *keyfile, char* groupname){
 // 一个没匹配到,默认用 searchresultype[0]
  static int CallMatchingProcessorForSearchResultLine(char *oneline, gboolean new_search, char *cmdtemplate, RFM_FileAttributes* fileAttributes, RFM_ChildAttribs* childAttribs){
    assert(g_strcmp0(SearchResultTypePointerForCurrentExistingSearchResult->name,SrchRsltType_multitype)==0);
-   gchar *rfm_SearchResultPath_for_multitype = g_strdup(rfm_SearchResultPath); //保存最外层multitype search 执行时的目录
    if (new_search){
      CallDefaultSearchResultFunctionForNewSearch(oneline);
      return 0;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
@@ -5142,18 +5143,15 @@ static int ProcessKeyValuePairInData(GKeyFile *keyfile, char* groupname){
 			   if (strlen(addon_resource->searchresulttypes[i].name)>strlen(longest_matched_searchresulttype_name)){
 			     longest_matched_searchresulttype_name = addon_resource->searchresulttypes[i].name;
 			     matched_searchresulttype_pointer = &(addon_resource->searchresulttypes[i]);
-    			     //在update_searchresultfilenamelist_and_refresh_store 方法里面会根据 addon_dir_for_current_cmd设置 rfm_searchresultpath, 然后再调用searchresultprocessingfunc。所以这里在searchresultprocessingfunc里面，就不用管addon_dir_for_current_cmd, 直接设 rfm_searchresultpath 就可以了
-			     g_free(rfm_SearchResultPath);rfm_SearchResultPath = g_path_get_dirname(value->local_c_path);
+			     childAttribs->searchresulttype_addon_dir = g_path_get_dirname(value->local_c_path);
 			   }
 			 }
 		   }
 	    }
 #endif
-	    g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"%s: SearchResultType name %s matched for file:%s. rfm_SearchResultPath changed from %s to %s for matched SearchResultTypeProcessing and will restore after processing",SrchRsltType_multitype,longest_matched_searchresulttype_name,oneline, rfm_SearchResultPath_for_multitype, rfm_SearchResultPath);
+	    g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"%s: SearchResultType name %s matched for file:%s.", SrchRsltType_multitype,longest_matched_searchresulttype_name,oneline);
 	    int ret = matched_searchresulttype_pointer->SearchResultLineProcessingFunc(oneline,new_search,matched_searchresulttype_pointer->cmdTemplate, fileAttributes, childAttribs);
-   //TODO:这里我们可以看到 rfm_searchresultpath 只有在 matched search result processing func 执行的期间才等于 addon 的目录，前后都通过备份恢复来保持"最外层"processingfunc执行时的值，也许重构 parse_and_exec_command_in_gtk_thread 的时候，可以考虑把 SearchResultLineProcessingFunc 也带上 ChildAttribs 参数，这样就可避免全局的 rfm_searchresultpath
-   g_free(rfm_SearchResultPath); rfm_SearchResultPath=rfm_SearchResultPath_for_multitype; //恢复前面保存的值，作为处理下一个oneline,即下个查询结果文件时的默认值
-
+	    g_free(childAttribs->searchresulttype_addon_dir); childAttribs->searchresulttype_addon_dir = NULL;//当前的searchresulttype是multitype,对应的addon_dir是null
    //对于multitype来说，每一行的showcolumn应该是匹配到的具体searchresulttype的showcolumn, 所以应该给每种匹配到的showcolumn做个并集
    if (SearchResultTypePointerForCurrentExistingSearchResult->showcolumn==NULL) SearchResultTypePointerForCurrentExistingSearchResult->showcolumn = g_ptr_array_new();
    if (matched_searchresulttype_pointer->showcolumn){
@@ -5341,16 +5339,11 @@ static void update_SearchResultFileNameList_and_refresh_store(RFM_ChildAttribs *
   }
   SearchResultFileNameListLength=0;
   fileAttributeID=1;
-  g_debug("update_SearchResultFileNameList_and_refresh_store, rfm_SearchResultPath %s", rfm_SearchResultPath);
-  g_free(rfm_SearchResultPath);
-  if (childAttribs->searchresulttype_addon_dir){
-    rfm_SearchResultPath = childAttribs->searchresulttype_addon_dir;
-    g_debug("update_SearchResultFileNameList_and_refresh_store, rfm_SearchResultPath set to addon_dir:%s", rfm_SearchResultPath);
-  }else{
-    rfm_SearchResultPath=strdup(rfm_curPath);
-    g_debug("update_SearchResultFileNameList_and_refresh_store, rfm_SearchResultPath set to rfm_curPath:%s", rfm_SearchResultPath);
-  }
 
+  g_free(rfm_SearchResultPath);
+  rfm_SearchResultPath=strdup(rfm_curPath);//TODO: 按理说在这个应该在执行查询命令获得filenamelist的时候获取
+  g_debug("update_SearchResultFileNameList_and_refresh_store, rfm_SearchResultPath %s", rfm_SearchResultPath);
+  
   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"update_SearchResultFileNameList, length: %ld charactor(s)",filenamelist?strlen((gchar*)filenamelist):0);
   gchar * oneline=strtok((gchar*)filenamelist,"\n");
   while (oneline!=NULL){
