@@ -5584,7 +5584,7 @@ static gboolean compile_local_extension(RFM_ADDON* addon) {
     DCmarkTools = "-DCmarkTools";
 #endif
 
-    gchar* rfm_local_c_compile_cmd = g_strdup_printf(rfm_local_c_compile_cmd_template, DCmarkTools, DGitIntegration, RFM_SearchResultTypeNamePrefix, RFM_NEW_TERM_SUFFIX, RFM_selected_filename_placeholder, RFM_SEARCH_RESULT_AS_INPUT_PREFIX, addon->local_so_path, hash_define, addon->local_c_path);
+    gchar* rfm_local_c_compile_cmd = g_strdup_printf(rfm_local_c_compile_cmd_template, DCmarkTools, DGitIntegration, rfmLANGUAGE, RFM_SearchResultTypeNamePrefix, RFM_NEW_TERM_SUFFIX, RFM_selected_filename_placeholder, RFM_SEARCH_RESULT_AS_INPUT_PREFIX, addon->local_so_path, hash_define, addon->local_c_path);
     RFM_ChildAttribs *childAttribs = calloc(1, sizeof(RFM_ChildAttribs));
     return parse_and_exec_command_in_gtk_thread(rfm_local_c_compile_cmd, FALSE, &(stdin_cmd_interpretors[0]), childAttribs);
 }
