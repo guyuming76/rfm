@@ -444,7 +444,7 @@ static int ProcessJsonFileFromSearchResult(CALLER_OWN char *oneline, gboolean ne
 static int CallMatchingProcessorForSearchResultLine(char *oneline, gboolean new_search, char *cmdtemplate, RFM_FileAttributes* fileAttributes, RFM_ChildAttribs* childAttribs);
 static void cmdSearchResultColumnSeperator(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
 //matched search result type suffix will be removed from readlineResults
-static RFM_SearchResultType* MatchSearchResultType(gchar *readlineResult);
+static RFM_SearchResultType* MatchSearchResultType(gchar *readlineResult, RFM_ChildAttribs *childattribs);
 static void set_pagesize_for_searchresultview(const char *pagesize);
 static void cmdPagesize(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
 static void writeSearchResultIntoFD_in_gtk_thread(gint *fd);
@@ -603,8 +603,6 @@ static gboolean compile_local_extension(RFM_ADDON *addon);
 static gchar* calculate_file_hash(const gchar *filepath);
 static void find_and_unload_addons_before_leaving_current_directory();
 #endif
-//TODO：把全局变量变成 parse_and_exec_command_in_gtk_thread, exec_stdin_command 等函数的参数，一路传递下去，去掉全局变量
-gchar *addon_dir_for_current_cmd = NULL; //this should be inside define RFM_AddOn, but the code that reference this should be in define RFM_AddOn too. to simplify the code, keep this outside RFM_AddOn
 
 /**************gtk UI, filemenu, toolbar end**************************/
 
@@ -4097,7 +4095,7 @@ static void toggle_exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread(){
 // searchresulttype can be matched with index number or name
 // you can use >0  or >default or >your_custom_searchresulttype_name_or_index as suffix of your command
 // i use the ">" as RFM_SearchResultTypeNamePrefix since the beginning of development, but it can be confused with redirect to file in Bash. So, you mean define it to "}" or anything else you like in config.h
-static RFM_SearchResultType* MatchSearchResultType(gchar* readlineResult){
+static RFM_SearchResultType* MatchSearchResultType(gchar* readlineResult, RFM_ChildAttribs *childattribs){
             gint len = strlen(readlineResult);
 	    if (len<=2) return NULL; // the shortest suffix is >0 or >1 ...
 
@@ -4136,8 +4134,8 @@ static RFM_SearchResultType* MatchSearchResultType(gchar* readlineResult){
 			   g_debug("Addon:%s; searchResultTypeName:%s",value->local_c_path,addon_resource->searchresulttypes[i].name);
 			   readlineResult[len-strlen(searchTypeNameSuffix)]='\0';//remove suffix from readlineResult
 			   g_free(searchTypeNameSuffix);
-			   if (addon_dir_for_current_cmd) g_warning("addon_dir_for_current_cmd not NULL:%s, it can be that previous search cmd was not successful", addon_dir_for_current_cmd);
-			   addon_dir_for_current_cmd = g_dirname(value->local_c_path);
+
+			   childattribs->searchresulttype_addon_dir = g_dirname(value->local_c_path);
 			   return &(addon_resource->searchresulttypes[i]);
 			 }
 			 g_free(searchTypeNameSuffix);
@@ -4258,7 +4256,7 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 	    while (len>=1 && readlineResult[len-1]==' ') { readlineResult[len-1]='\0'; len--; } //remove ending space
 
 	    if (!execStdinCmdInNewVT && !(!from_stdin_readline && execCmdInNewVT)){
-	      SearchResultTypePointer = MatchSearchResultType(readlineResult);
+	      SearchResultTypePointer = MatchSearchResultType(readlineResult,childAttribs);
 	      len = strlen(readlineResult);
 	    }
 
@@ -5345,10 +5343,9 @@ static void update_SearchResultFileNameList_and_refresh_store(RFM_ChildAttribs *
   fileAttributeID=1;
   g_debug("update_SearchResultFileNameList_and_refresh_store, rfm_SearchResultPath %s", rfm_SearchResultPath);
   g_free(rfm_SearchResultPath);
-  if (addon_dir_for_current_cmd){
-    rfm_SearchResultPath = addon_dir_for_current_cmd;
-    g_debug("update_SearchResultFileNameList_and_refresh_store, rfm_SearchResultPath set to addon_dir_for_current_cmd:%s", rfm_SearchResultPath);
-    addon_dir_for_current_cmd = NULL;//取完值后就置空，只有新查询会执行到这里，刷新不会
+  if (childAttribs->searchresulttype_addon_dir){
+    rfm_SearchResultPath = childAttribs->searchresulttype_addon_dir;
+    g_debug("update_SearchResultFileNameList_and_refresh_store, rfm_SearchResultPath set to addon_dir:%s", rfm_SearchResultPath);
   }else{
     rfm_SearchResultPath=strdup(rfm_curPath);
     g_debug("update_SearchResultFileNameList_and_refresh_store, rfm_SearchResultPath set to rfm_curPath:%s", rfm_SearchResultPath);
