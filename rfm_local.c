@@ -41,16 +41,16 @@ RFM_ToolButton tool_buttons_local[] = {
 
 RFM_MenuItem file_menus_local[] = {
    /* name           mime root        mime sub type            filenameSuffix           OrSearchResultType	func		runCmd            		showCondition	*/
-   { "test cmd",     "*",              "*",                    NULL,			NULL,			NULL,		testcmd,             		NULL },
+   //{ "test cmd",     "*",              "*",                    NULL,			NULL,			NULL,		testcmd,             		NULL },
 };
 
-void rfm_local_enter() {
+void rfm_local_enter(char * Addon_dir) {
      fprintf(stderr,"rfm_local_enter called!\n");
      saved_history_dir=strdup(rfm_historyFile_ParentDirectory);
      save_current_history();
-     if (getcwd(rfm_historyFile_ParentDirectory,sizeof(rfm_historyFile_ParentDirectory))==NULL) fprintf(stderr,"getcwd return NULL");
+     snprintf(rfm_historyFile_ParentDirectory,sizeof(rfm_historyFile_ParentDirectory),Addon_dir);
      load_history_for_prompt();
-
+     addon_resource.addon_dir = Addon_dir;
      addon_resource.toolbar_button_definitions_local = tool_buttons_local;
      addon_resource.toolbar_button_definitions_local_array_size = G_N_ELEMENTS(tool_buttons_local);
      addon_resource.file_menuitem_definitions_local = file_menus_local;
