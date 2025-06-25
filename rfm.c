@@ -1099,7 +1099,9 @@ static void check_wait_status_and_set_exit_code(CALLER_OWN RFM_ChildAttribs *chi
 static gchar *choose_working_directory_for_g_spawn(RFM_ChildAttribs *childAttribs) {
   if (childAttribs->searchresulttype_addon_dir) return childAttribs->searchresulttype_addon_dir;
   if (childAttribs->cmd_interpretor_addon_dir) return childAttribs->cmd_interpretor_addon_dir;
-  return childAttribs->workingDir? childAttribs->workingDir:rfm_curPath;
+  if (childAttribs->toolbar_button_or_filemenu_addon_dir) return childAttribs->toolbar_button_or_filemenu_addon_dir;
+  if (childAttribs->workingDir) childAttribs->workingDir;
+  return rfm_curPath;
 }
 
 //caller should g_list_free(file_list), but usually not g_list_free_full, since the file char* is usually owned by rfm_fileattributes
@@ -2694,9 +2696,7 @@ static void toolbar_button_exec(GtkToolItem *item, RFM_ToolButton *button_defini
      while (g_hash_table_iter_next(&ht_iter, &key, &value)){
        if ((button_definition >= value->resource_managed_by_addon->toolbar_button_definitions_local)
 	   && button_definition < value->resource_managed_by_addon->toolbar_button_definitions_local + (value->resource_managed_by_addon->toolbar_button_definitions_local_array_size)*sizeof(RFM_ToolButton)){ //根据地址判断button_definition 指向某个静态数组.TODO:建立一个反向索引hashtable,以resource_managed_by_addon成员地址为key,addon为value,这样就不用循环了，直接lookup。问题是建一个hashtable呢还是每种成员建一个hashtable，如果是每种成员建一个hashtable，需要iterate时，每次只需要在特定hashtable上iterate就可以了
-         //child_attribs->workingDir = g_strdup(value->resource_managed_by_addon->addon_dir);
-	 child_attribs->workingDir = g_path_get_dirname(value->local_c_path);
-	 g_debug("Addon working directory:%s", child_attribs->workingDir);
+	 child_attribs->toolbar_button_or_filemenu_addon_dir = g_path_get_dirname(value->local_c_path);
 	 break;
        }
      }
@@ -2732,9 +2732,7 @@ static void file_menu_exec(GtkMenuItem *menuitem, RFM_MenuItem *file_menu_item_d
      while (g_hash_table_iter_next(&ht_iter, &key, &value)){
        if ((file_menu_item_definition >= value->resource_managed_by_addon->file_menuitem_definitions_local)
 	   && file_menu_item_definition < value->resource_managed_by_addon->file_menuitem_definitions_local + (value->resource_managed_by_addon->file_menuitem_definitions_local_array_size)*sizeof(RFM_MenuItem)){ //根据地址判断button_definition 指向某个静态数组.TODO:建立一个反向索引hashtable,以resource_managed_by_addon成员地址为key,addon为value,这样就不用循环了，直接lookup。问题是建一个hashtable呢还是每种成员建一个hashtable，如果是每种成员建一个hashtable，需要iterate时，每次只需要在特定hashtable上iterate就可以了
-         //child_attribs->workingDir = g_strdup(value->resource_managed_by_addon->addon_dir);
-	 child_attribs->workingDir = g_path_get_dirname(value->local_c_path);
-	 g_debug("Addon working directory:%s", child_attribs->workingDir);
+	 child_attribs->toolbar_button_or_filemenu_addon_dir = g_path_get_dirname(value->local_c_path);
 	 break;
        }
      }
@@ -5066,7 +5064,7 @@ static int ProcessCmdOutputFromSearchResultWithFunction(CALLER_OWN char *oneline
    childAttribs->RunCmd = cmd;
    childAttribs->spawn_async = FALSE;
    childAttribs->output_read_by_program=TRUE;
-   if (child_attribs->workingDir) childAttribs->workingDir = strdup(child_attribs->workingDir);
+   if (child_attribs->toolbar_button_or_filemenu_addon_dir) childAttribs->toolbar_button_or_filemenu_addon_dir = strdup(child_attribs->toolbar_button_or_filemenu_addon_dir);
    if (child_attribs->searchresulttype_addon_dir) childAttribs->searchresulttype_addon_dir = strdup(child_attribs->searchresulttype_addon_dir);
    g_spawn_wrapper_(NULL,NULL,childAttribs);
 }

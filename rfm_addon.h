@@ -175,7 +175,7 @@ typedef struct RFM_ChildAttributes{
    gboolean spawn_async;
    gint exitcode;
    gboolean output_read_by_program;
-   gchar *workingDir;//use rfm_curPath if this is NULL //TODO：这个应该叫addon_dir, 和全局变量 addon_dir_for_current_cmd 作用类似，放到childAttribs里避免全局冲突。但一条命令可以涉及到多个addon,所以下面添加了按类型分的_addon_dir属性，到命令g_spawn 的时候再根据具体情况设置g_spawn的工作目录参数
+   gchar *workingDir;//一条命令可以涉及到多个addon,所以下面添加了按类型分的_addon_dir属性，到命令g_spawn 的时候再根据具体情况设置g_spawn的工作目录参数
    gchar *toolbar_button_or_filemenu_addon_dir;
    gchar *searchresulttype_addon_dir;
    gchar *cmd_interpretor_addon_dir;
