@@ -1100,7 +1100,7 @@ static gchar *choose_working_directory_for_g_spawn(RFM_ChildAttribs *childAttrib
   if (childAttribs->searchresulttype_addon_dir) return childAttribs->searchresulttype_addon_dir;
   if (childAttribs->cmd_interpretor_addon_dir) return childAttribs->cmd_interpretor_addon_dir;
   if (childAttribs->toolbar_button_or_filemenu_addon_dir) return childAttribs->toolbar_button_or_filemenu_addon_dir;
-  if (childAttribs->workingDir) childAttribs->workingDir;
+  if (childAttribs->workingDir) return childAttribs->workingDir;
   return rfm_curPath;
 }
 
@@ -4191,6 +4191,7 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 		       current_stdin_cmd_interpretor_pointer = &(stdin_cmd_interpretors[i]);
 #ifdef RFM_AddOn
 		       g_free(Addon_Prompt);Addon_Prompt = NULL;
+		       sprintf(rfm_historyFile_ParentDirectory, getenv("HOME"));//对于在config.h里面定义的cmd_interpretor,history都保留在home下; 下面切换到Addon里面的cmd_interpretor, 由addon代码处理history切换，这里有可能是从Addon切换回来的，所以要重置到home下
 #endif
 		       load_history_for_prompt();
 		       goto switchToReadlineThread;//如果当前输入命令是选择命令解释器,选择完后就直接进入一轮命令读取,无需再对当前输入命令进一步处理
