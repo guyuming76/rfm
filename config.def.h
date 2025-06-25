@@ -5,6 +5,7 @@
 #include <linux/limits.h>
 #define RFM_TOOL_SIZE 22
 #define RFM_ICON_SIZE 48
+#define PIPE_SZ 65535      /* Kernel pipe size */ //TODO：如果 locate rfmTODO|rfm.sh 通过pipe传递的数据比这个大会怎样？
 //#define RFM_CACHE_THUMBNAIL_IN_MEM TRUE
 #define RFM_MX_MSGBOX_CHARS 1500 /* Maximum chars for show_msg output; messages exceeding this will be displayed in parent stdout */
 #define RFM_MX_ARGS 128 /* Maximum allowed number of command line arguments in action commands below */
