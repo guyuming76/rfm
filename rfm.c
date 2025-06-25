@@ -4504,7 +4504,6 @@ static int setup(RFM_ctx *rfmCtx)
    startPythonEmbedding();
 #endif
    if (getcwd(cwd, sizeof(cwd)) == NULL) die("ERROR: %s: getcwd() failed.\n", PROG_NAME); /* getcwd returns NULL if cwd[] not big enough! */
-   ReadFromPipeStdinIfAny(pipefd); //rfm_SearchResultPath may be filled with cwd here
 
    sprintf(rfm_historyFile_ParentDirectory, getenv("HOME"));
    rfm_historyFileLocation = g_build_filename(rfm_historyFile_ParentDirectory, current_stdin_cmd_interpretor_pointer->HistoryFilename ? current_stdin_cmd_interpretor_pointer->HistoryFilename : ".rfm_history", NULL);
@@ -4536,7 +4535,9 @@ static int setup(RFM_ctx *rfmCtx)
 #endif
    if (initDir == NULL) initDir = cwd;
    set_rfm_curPath(initDir);
- 
+
+   ReadFromPipeStdinIfAny(pipefd);
+  
    if (showHelpOnStart && startWithVT() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)) stdin_command_help(NULL,NULL);
    if (auto_execution_command_after_rfm_start==NULL){
      refresh_store(rfmCtx);
@@ -5190,30 +5191,14 @@ static NO_FREE RFM_FileAttributes *get_fileAttributes_byId(guint fileAttributeId
 static void ReadFromPipeStdinIfAny(char * fd)
 {
    if (readlink_proc_self_fd_pipefd_and_confirm_pipefd_is_used_by_pipeline()){
-         if (initDir!=NULL && (SearchResultViewInsteadOfDirectoryView^1)) die("if you have -d specified, and read file name list from pipeline, -p parameter must goes BEFORE -d\n");
-	 SearchResultViewInsteadOfDirectoryView=1;
-	 //SearchResultTypeIndex=1; 这里之前怎么会是1而不是0啊，是不是bug？
-         SearchResultTypePointer = &(searchresultTypes[0]);
-	 SearchResultTypePointerForCurrentExistingSearchResult=SearchResultTypePointer;
-	 fileAttributeID=1;
-	 gchar *oneline_stdin=calloc(1,PATH_MAX);
-	 FILE *pipeStream = stdin;
-	 if (atoi(fd) != 0) pipeStream = fdopen(atoi(fd),"r");
-         while (fgets(oneline_stdin, PATH_MAX,pipeStream ) != NULL) {
-   	   g_log(RFM_LOG_DATA,G_LOG_LEVEL_DEBUG,"%s",oneline_stdin);
-           oneline_stdin[strcspn(oneline_stdin, "\n")] = 0; //manual set the last char to NULL to eliminate the trailing \n from fgets
-	   ProcessOnelineForSearchResult(oneline_stdin, TRUE);
-	   fileAttributeID++;
-           oneline_stdin=calloc(1,PATH_MAX);
-         }
-         if (SearchResultFileNameList != NULL) {
-           SearchResultFileNameList = g_list_reverse(SearchResultFileNameList);
-           SearchResultFileNameList = g_list_first(SearchResultFileNameList);
-	   CurrentPage_SearchResultView=SearchResultFileNameList;
-	   currentFileNum=1;
-	   g_free(rfm_SearchResultPath);
-	   rfm_SearchResultPath=strdup(cwd);
-	 }
+         //if (initDir!=NULL && (SearchResultViewInsteadOfDirectoryView^1)) die("if you have -d specified, and read file name list from pipeline, -p parameter must goes BEFORE -d\n");
+         //TODO：本commit 移动了ReadFromPipeStdinIfAny调用在setup里的位置, 所以上面一行不能要了，否则rfm直接退出，但我这会儿不太记得上面这句在这里有啥作用
+	 RFM_ChildAttribs *childAttribs = calloc(1, sizeof(RFM_ChildAttribs));
+	 read_char_pipe(atoi(fd), PIPE_SZ, &childAttribs->stdOut);
+         SearchResultTypePointer = &(searchresultTypes[1]);//multitype
+         update_SearchResultFileNameList_and_refresh_store(childAttribs);
+         free_child_attribs(childAttribs);
+
 	 ensure_fd0_is_opened_for_stdin_inherited_from_parent_process_instead_of_used_by_pipeline_any_more();
    }
 }

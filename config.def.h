@@ -366,6 +366,7 @@ static gchar* AddOnStatusColumns[] = { "AddOnStatus",NULL };
 static RFM_SearchResultType searchresultTypes[] = {
 //name	       SearchResultLineProcessingFunc                  showcolumn     SearchResultColumnSeperator  cmdTemplate Description
   {"default",  ProcessOnelineForSearchResult,                  NULL,          NULL, NULL,                            SearchResultType_default }, //default searchresult, contain only filename list such as returned by locate, or filename followed by additional info such as returned by grep
+  {SrchRsltType_multitype,CallMatchingProcessorForSearchResultLine,NULL,      NULL, NULL,                            SearchResultType_multitype },
   {"gkeyfile", ProcessKeyValuePairInFilesFromSearchResult,     NULL,          NULL, NULL,                            SearchResultType_gkeyfile},
 #ifdef MU_VIEW
   {"muview",   ProcessKeyValuePairInCmdOutputFromSearchResult, MailColumns    , "&" , MU_VIEW_cmdTemplate ,          SearchResultType_muview }, //%s in cmdTemplate will be replaced by filename in searchresult
@@ -374,7 +375,6 @@ static RFM_SearchResultType searchresultTypes[] = {
   {".md",      ProcessKeyValuePairInCmdOutputFromSearchResult, NULL,          NULL, MD_parsing_cmdTemplate,          SearchResultType_markdown1 },
   {"TODO.md",  ProcessKeyValuePairInCmdOutputFromSearchResult, NULL,          NULL, TODO_MD_parsing_cmdTemplate,     SearchResultType_TODO_md },
 #endif
-  {SrchRsltType_multitype,CallMatchingProcessorForSearchResultLine,NULL,      NULL, NULL,                            SearchResultType_multitype },
   {"withTitle",ProcessOnelineForSearchResult_with_title,       NULL,          NULL, NULL,                            SearchResultType_default_with_title },
   {".json",    ProcessJsonFileFromSearchResult,                NULL,          NULL, NULL,                            "json key value"},
 #ifdef RFM_AddOn
