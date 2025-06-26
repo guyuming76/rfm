@@ -458,6 +458,7 @@ static gchar* get_current_column_layout(CALLER_OWN gchar *column_layout,gboolean
 static CALLER_OWN gchar* get_showcolumn_cmd_from_currently_displaying_columns();
 static void show_hide_treeview_columns_in_order(CALLER_OWN gchar *order_sequence);
 static void show_hide_treeview_columns_enum(int count, ...);
+static void hide_column_menuitem_activated(GtkMenuItem *menuitem, RFM_treeviewColumn *col);
 static void cmd_showcolumn(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
 static void init_ext_columns_in_treeviewColumns();
 /******TreeView column related definitions end*******/
@@ -482,9 +483,9 @@ static gboolean path_is_selected(GtkWidget *widget, gboolean treeview, GtkTreePa
 /******View sort related definitions*****************/
 static GtkSortType current_sorttype=GTK_SORT_ASCENDING;
 static gint current_sort_column_id = GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID;
-static void sort_on_column_header(RFM_treeviewColumn *rfmCol);
+static void sort_on_column_header(GtkMenuItem *menuitem, RFM_treeviewColumn *rfmCol);
 static void sort_on_column(wordexp_t * parsed_msg);
-static void view_column_header_clicked(GtkTreeViewColumn* tree_column, gpointer user_data);
+static gboolean view_column_header_clicked(GtkTreeViewColumn* tree_column, GdkEvent *event, RFM_treeviewColumn* col);
 static gint sort_func(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, gpointer user_data);
 static void cmdSort(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
 /******View sort related definitions end*************/
@@ -514,6 +515,8 @@ static GtkWidget *tool_bar = NULL;
 static GtkWidget **tool_bar_buttons = NULL;
 static GtkWidget *menu = NULL;
 static GtkWidget **menuItem = NULL;
+static GtkWidget *columnHeaderMenu = NULL;
+static GtkWidget *HideColumnMenuItem = NULL;
 
 static void up_clicked(gpointer user_data);
 static void home_clicked(gpointer user_data);
@@ -2746,7 +2749,7 @@ void add_file_menuitems(GtkWidget ***menuitems, const RFM_MenuItem menuitem_defi
      for(int i=0; i<size; i++) {
        (*menuitems)[i]=gtk_menu_item_new_with_label(menuitem_definitions[i].runName);
        gtk_menu_shell_append(GTK_MENU_SHELL(menu), (*menuitems)[i]);
-       g_signal_connect((*menuitems)[i], "activate", G_CALLBACK(file_menu_exec), &(menuitem_definitions[i]));;
+       g_signal_connect((*menuitems)[i], "activate", G_CALLBACK(file_menu_exec), &(menuitem_definitions[i]));
      }
 }
 
@@ -2846,7 +2849,7 @@ static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx)
    return TRUE;
 }
 
-static void sort_on_column_header(RFM_treeviewColumn* rfmCol){
+static void sort_on_column_header(GtkMenuItem *menuitem, RFM_treeviewColumn* rfmCol){
   if (rfmCol==NULL) return;
   gint sort_column_id_for_clicked_column_id=rfmCol->enumSortCol==NUM_COLS? rfmCol->enumCol:rfmCol->enumSortCol;
   if (sort_column_id_for_clicked_column_id==COL_FILENAME) sort_column_id_for_clicked_column_id=GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID;
@@ -2865,10 +2868,30 @@ static void sort_on_column_header(RFM_treeviewColumn* rfmCol){
   current_sort_column_id = sort_column_id_for_clicked_column_id;
 }
 
-static void view_column_header_clicked(GtkTreeViewColumn* tree_column, gpointer user_data){
+static void hide_column_menuitem_activated(GtkMenuItem *menuitem, RFM_treeviewColumn *col) {
+    char cmd[256];
+    snprintf(cmd, sizeof(cmd), "showcolumn -%s", col->title);
+    wordexp_t parsed_msg;
+    if (wordexp(cmd, &parsed_msg, 0) == 0) {
+        printf("\n%s\033[32m%s%s]\033[0m%s\n",InheritedPrompt, current_stdin_cmd_interpretor_pointer->prompt,(ItemSelected==0)?"":"*",cmd);
+        cmd_showcolumn(&parsed_msg, NULL);
+        wordfree(&parsed_msg);
+    }
+}
+
+static gboolean view_column_header_clicked(GtkTreeViewColumn* tree_column, GdkEvent *event, RFM_treeviewColumn *col){
   //there seems to be gtk_tree_view_column_get_title, but we can also get the data through treeviewColumns array to be more independent and easy to get other RFM_treeviewColumn member
-  RFM_treeviewColumn* rfmCol=get_treeviewcolumnByGtkTreeviewcolumn(tree_column);
-  sort_on_column_header(rfmCol);
+  GdkEventButton *bevent = (GdkEventButton *)event;
+  if (bevent->type == GDK_BUTTON_PRESS && bevent->button == 3) { // Right click
+    g_signal_connect(HideColumnMenuItem, "activate", G_CALLBACK(hide_column_menuitem_activated), col);
+    gtk_widget_show_all(columnHeaderMenu);
+    gtk_menu_popup_at_pointer(columnHeaderMenu, event);
+    return TRUE;
+  }else if (bevent->type == GDK_BUTTON_PRESS && bevent->button == 1) { // Left click
+    sort_on_column_header(NULL, col);
+    return TRUE;
+  }
+  return FALSE;
 }
 
 
@@ -3045,7 +3068,7 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
        gtk_tree_view_append_column(GTK_TREE_VIEW(_view),TREEVIEW_COLUMNS[i].gtkCol);
        gtk_tree_view_column_set_visible(TREEVIEW_COLUMNS[i].gtkCol, TREEVIEW_COLUMNS[i].Show && ((TREEVIEW_COLUMNS[i].showCondition==NULL) ? TRUE: TREEVIEW_COLUMNS[i].showCondition(NULL)));
        gtk_tree_view_column_set_sort_column_id(TREEVIEW_COLUMNS[i].gtkCol, TREEVIEW_COLUMNS[i].enumSortCol==NUM_COLS? TREEVIEW_COLUMNS[i].enumCol: TREEVIEW_COLUMNS[i].enumSortCol);
-       g_signal_connect(TREEVIEW_COLUMNS[i].gtkCol, "clicked", G_CALLBACK(view_column_header_clicked), NULL);
+       g_signal_connect(gtk_tree_view_column_get_button(TREEVIEW_COLUMNS[i].gtkCol), "button-press-event", G_CALLBACK(view_column_header_clicked), &(TREEVIEW_COLUMNS[i]));
      }
 
    } else {
@@ -3867,7 +3890,7 @@ static void sort_on_column(wordexp_t * parsed_msg){
     g_warning("invalid column:%s",parsed_msg->we_wordv[1]);
   else if (col->enumCol==NUM_COLS)
     g_warning("column %s don't have associated storage column", col->title);
-  else sort_on_column_header(col);
+  else sort_on_column_header(NULL, col);
 }
 
 static void print_columns_status(wordexp_t * parsed_msg){
@@ -4529,6 +4552,10 @@ static int setup(RFM_ctx *rfmCtx)
    add_toolbar(rfm_main_box, defaultPixbufs, rfmCtx);
    menu=gtk_menu_new();
    add_file_menuitems(&menuItem,run_actions,G_N_ELEMENTS(run_actions));
+
+   columnHeaderMenu = gtk_menu_new();
+   HideColumnMenuItem = gtk_menu_item_new_with_label("Hide this column");
+   gtk_menu_shell_append(GTK_MENU_SHELL(columnHeaderMenu), HideColumnMenuItem);
 
 #ifdef RFM_AddOn
    if (!disable_addon) g_spawn_wrapper(global_addons_locating_cmd_template, NULL, G_SPAWN_DEFAULT, NULL, NULL, FALSE, load_global_addons_callback, NULL, TRUE); //同步打开rfm会太慢吗?
