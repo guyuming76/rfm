@@ -5201,11 +5201,10 @@ static void ReadFromPipeStdinIfAny(char * fd)
          //if (initDir!=NULL && (SearchResultViewInsteadOfDirectoryView^1)) die("if you have -d specified, and read file name list from pipeline, -p parameter must goes BEFORE -d\n");
          //TODO：本commit 移动了ReadFromPipeStdinIfAny调用在setup里的位置, 所以上面一行不能要了，否则rfm直接退出，但我这会儿不太记得上面这句在这里有啥作用
 	 RFM_ChildAttribs *childAttribs = calloc(1, sizeof(RFM_ChildAttribs));
+         childAttribs->no_free = TRUE;
 	 read_char_pipe(atoi(fd), PIPE_SZ, &childAttribs->stdOut);
          SearchResultTypePointer = &(searchresultTypes[1]);//multitype
          update_SearchResultFileNameList_and_refresh_store(childAttribs);
-         free_child_attribs(childAttribs);
-
 	 ensure_fd0_is_opened_for_stdin_inherited_from_parent_process_instead_of_used_by_pipeline_any_more();
    }
 }
@@ -5334,8 +5333,15 @@ static void update_SearchResultFileNameList_and_refresh_store(RFM_ChildAttribs *
   g_free(rfm_SearchResultPath);
   rfm_SearchResultPath=strdup(rfm_curPath);//TODO: 按理说在这个应该在执行查询命令获得filenamelist的时候获取
   g_debug("update_SearchResultFileNameList_and_refresh_store, rfm_SearchResultPath %s", rfm_SearchResultPath);
-  
   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"update_SearchResultFileNameList, length: %ld charactor(s)",filenamelist?strlen((gchar*)filenamelist):0);
+
+  //释放上次查询的childAttribs,换上这次新的
+  if (rfmCtx->childAttribs){
+    rfmCtx->childAttribs->no_free = FALSE;
+    free_child_attribs(rfmCtx->childAttribs);
+  }
+  rfmCtx->childAttribs = childAttribs;
+  
   gchar * oneline=strtok((gchar*)filenamelist,"\n");
   while (oneline!=NULL){
     SearchResultTypePointer->SearchResultLineProcessingFunc(oneline, TRUE, SearchResultTypePointer->cmdTemplate,NULL, childAttribs);
@@ -5352,11 +5358,9 @@ static void update_SearchResultFileNameList_and_refresh_store(RFM_ChildAttribs *
   }
   SearchResultTypePointer = NULL; //完成向SearchResultTypePointerForCurrentExistingSearchResult转移后清零,TODO:如果Search命令执行失败如何清零?把他们从全局变量改为childAttribs属性应该就好了
 
-  rfmCtx->childAttribs = childAttribs;
   FirstPage(rfmCtx);
   if (old_filenamelist!=NULL) g_list_free(old_filenamelist);
   for(int i=0;i<=NUM_Ext_Columns;i++) if (old_ExtColumnHashTable[i]!=NULL) { g_hash_table_destroy(old_ExtColumnHashTable[i]); old_ExtColumnHashTable[i] = NULL; }
-  childAttribs->no_free = FALSE;
 }
 
 static gboolean startWithVT(){
