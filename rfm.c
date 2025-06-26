@@ -4516,6 +4516,12 @@ static int setup(RFM_ctx *rfmCtx)
    if ((e=read_history(rfm_historyFileLocation))) g_warning("failed to read_history(%s) error code:%d.",rfm_historyFileLocation,e);
    OLD_rl_attempted_completion_function = rl_attempted_completion_function;
    rl_attempted_completion_function = gnu_readline_completion;
+   rl_variable_bind("menu-complete-display-prefix", "on");
+   rl_bind_key('\t', rl_menu_complete);
+   rl_variable_bind("show-all-if-ambiguous", "on");
+   rl_variable_bind("completion-ignore-case", "on");
+   rl_bind_keyseq("\e[A", rl_history_search_backward);
+   rl_bind_keyseq("\e[B", rl_history_search_forward);
 #endif
 #ifdef LINENOISE
    linenoiseHistorySetMaxLen(RFM_HISTORY_SIZE);

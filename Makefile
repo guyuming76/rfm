@@ -231,9 +231,6 @@ ifneq ($(RFM_AddOn),)
 #删除RFM_ADDON_SO_FILE, ADDON机制只会在rfm_local.c文件hash变化时重新编译，如果rfm_addon.h变了，rfm.c重新编译了，而rfm_local.c不重新编译，会出错
 endif
 
-	@echo
-	@echo "***please copy the .inputrc file into your home directory (~) manually."
-
 uninstall:
 	@echo removing files from ${DESTDIR}${PREFIX}/{bin,lib}
 ifneq ($(RFM_FILE_CHOOSER),)
