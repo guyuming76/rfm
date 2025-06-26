@@ -4520,6 +4520,7 @@ static int setup(RFM_ctx *rfmCtx)
    rl_bind_key('\t', rl_menu_complete);
    rl_variable_bind("show-all-if-ambiguous", "on");
    rl_variable_bind("completion-ignore-case", "on");
+   rl_variable_bind("mark-directories", "on");
    rl_bind_keyseq("\e[A", rl_history_search_backward);
    rl_bind_keyseq("\e[B", rl_history_search_forward);
 #endif
