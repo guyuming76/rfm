@@ -5360,6 +5360,7 @@ static void update_SearchResultFileNameList_and_refresh_store(RFM_ChildAttribs *
   if (rfmCtx->childAttribs){
     rfmCtx->childAttribs->no_free = FALSE;
     free_child_attribs(rfmCtx->childAttribs);
+    rfmCtx->childAttribs = NULL;
   }
   rfmCtx->childAttribs = childAttribs;
   
