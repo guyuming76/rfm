@@ -1094,10 +1094,10 @@ static void check_wait_status_and_set_exit_code(CALLER_OWN RFM_ChildAttribs *chi
 }
 
 static gchar *choose_working_directory_for_g_spawn(RFM_ChildAttribs *childAttribs) {
+  if (childAttribs->workingDir) return childAttribs->workingDir;//workingDir 是强制指定的，有最高优先级
   if (childAttribs->searchresulttype_addon_dir) return childAttribs->searchresulttype_addon_dir;
   if (childAttribs->cmd_interpretor_addon_dir) return childAttribs->cmd_interpretor_addon_dir;
   if (childAttribs->toolbar_button_or_filemenu_addon_dir) return childAttribs->toolbar_button_or_filemenu_addon_dir;
-  if (childAttribs->workingDir) return childAttribs->workingDir;
   return rfm_curPath;
 }
 
