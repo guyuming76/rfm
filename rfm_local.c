@@ -27,7 +27,7 @@ extern void remove_toolbar_buttons(GtkWidget ***buttons, const size_t size);
 extern void remove_file_menuitems(GtkWidget ***menuitems, const size_t size);
 
 RFM_ADDON_RESOURCE_TYPE addon_resource = {0};
-const enum RFM_ADDON_TYPE addon_type = Directory;
+const enum RFM_ADDON_TYPE addon_type = DirectoryTree;
 
 static const char *rfmTODO[] = { NULL, "find . \\( -name \"rfmTODO.*\" -o -name \"*.rfmTODO.*\" -o -name \"*.rfmTODO\" -o -name \"rfmTODO\" \\)" RFM_SearchResultTypeNamePrefix "multitype", NULL };
 static const char *testcmd[] = { "echo","test local file menu command",NULL };
