@@ -25,6 +25,7 @@
 #define SAVESEARCHRESULT "保存（选中的）查询结果到文件"
 #define FIND_FILES "find ."
 #define LS_AI_DIALOG "ls AI对话"
+#define SearchResult_contains_ColumnSeperator "查询结果内容包含当前设置的列分隔符 %s , 请使用SearchResultColumnSeperator命令设置一个和当前内容不冲突的列分割符，可使用多个连续字符以避免冲突. 冲突内容:\n%s"
 
 #define PipeTitle "当前:%d/总数:%d, 每葉:%d"
 

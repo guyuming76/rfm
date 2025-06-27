@@ -24,8 +24,9 @@
 #define SAVESEARCHRESULT "save (selected) search result into file"
 #define FIND_FILES "find ."
 #define LS_AI_DIALOG "ls AI dialog"
-#define PipeTitle "Current:%d/Total:%d, PageSize:%d"
+#define SearchResult_contains_ColumnSeperator "查询结果内容包含当前设置的列分隔符 %s , 请使用SearchResultColumnSeperator命令设置一个和当前内容不冲突的列分割符，可使用多个连续字符以避免冲突.冲突内容:\n%s"
 
+#define PipeTitle "Current:%d/Total:%d, PageSize:%d"
 #define AI_MODEL_AS_CMD_INTERPRETER "Switch to the current AI model. The section below lists all candidate models. The first column is the command"
 
 #define TOOL_TIP_PathAndRepositoryNameDisplay "click to switch between directory and search result view, or use // command; \npagesize xxx command can set file number per page at search result view"

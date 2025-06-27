@@ -3546,7 +3546,10 @@ static void writeSearchResultIntoFD_in_gtk_thread(gint *fd){
 	      gchar * str_value = g_value_get_string(&val);
 	      if (c==columns)//this means the first column
 		dprintf(*fd, "\n%s", str_value? str_value:""); //首列输出回车 加 值
-	      else dprintf(*fd, "%s%s",SearchResultColumnSeperator, str_value?str_value:""); //非首列输出 分隔符 加值
+	      else{
+		if (str_value && strstr(str_value, SearchResultColumnSeperator)!=NULL) g_warning(SearchResult_contains_ColumnSeperator, SearchResultColumnSeperator, str_value);
+		dprintf(*fd, "%s%s",SearchResultColumnSeperator, str_value?str_value:""); //非首列输出 分隔符 加值
+	      }
 	      if (str_value) g_free(str_value);
 	  }else{ //GTYPE_UINT64
 	      if (c==columns)//this means the first column
