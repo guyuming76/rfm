@@ -5352,7 +5352,7 @@ static void update_SearchResultFileNameList_and_refresh_store(RFM_ChildAttribs *
   fileAttributeID=1;
 
   g_free(rfm_SearchResultPath);
-  rfm_SearchResultPath=strdup(rfm_curPath);//TODO: 按理说在这个应该在执行查询命令获得filenamelist的时候获取
+  rfm_SearchResultPath=strdup(choose_working_directory_for_g_spawn(childAttribs));//按理说在这个应该在执行查询命令获得filenamelist的时候获取,但Search可能是在exec_stdin_command里执行，也可能在exec_stdin_command_with_searchresultasinput 里执行，要重复写了，所以就放这里了
   g_debug("update_SearchResultFileNameList_and_refresh_store, rfm_SearchResultPath %s", rfm_SearchResultPath);
   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"update_SearchResultFileNameList, length: %ld charactor(s)",filenamelist?strlen((gchar*)filenamelist):0);
 
