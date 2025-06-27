@@ -598,7 +598,7 @@ static void remove_addon_treeviewColumns(RFM_ADDON *addon);
 static void unload_local_extension(RFM_ADDON *addon);
 static gboolean compile_local_extension(RFM_ADDON *addon);
 static gchar* calculate_file_hash(const gchar *filepath);
-static void find_and_unload_addons_before_leaving_current_directory();
+static void find_and_unload_addons_before_leaving_current_directory(CALLER_OWN const gchar* path);
 #endif
 
 /**************gtk UI, filemenu, toolbar end**************************/
@@ -2336,7 +2336,7 @@ static gboolean show_gitColumns(RFM_FileAttributes * fileAttributes) {
 
 static void set_rfm_curPath_internal(CALLER_OWN const gchar* path){
 #ifdef RFM_AddOn
-  find_and_unload_addons_before_leaving_current_directory();
+  find_and_unload_addons_before_leaving_current_directory(path);
 #endif
   //https://blog.csdn.net/CaspianSea/article/details/78817778
        if (rfm_curPath != path) {
@@ -5789,22 +5789,22 @@ static void load_global_addons_callback(RFM_ChildAttribs* child_attribs) {
   }
 }
 
-static void find_and_unload_addons_before_leaving_current_directory() {
+static void find_and_unload_addons_before_leaving_current_directory(CALLER_OWN const gchar* path) {
     GHashTableIter ht_iter;
     gchar *key;
     RFM_ADDON *value;
     g_hash_table_iter_init(&ht_iter, addons);
     while (g_hash_table_iter_next(&ht_iter, &key, &value)){
-      if (value->addon_type==Directory) {
+      gchar * addon_dir = g_path_get_dirname(value->local_c_path);
+      if (value->addon_type==Directory || (value->addon_type==DirectoryTree && !g_str_has_prefix(path, addon_dir))) {
 	g_hash_table_iter_remove(&ht_iter);
 	unload_local_extension(value);
 	free_addon(value);
         g_debug("addons size after unloading:%d",g_hash_table_size(addons));
       }
-      //TODO: 处理其他addon类型
+      g_free(addon_dir);
     }
 }
-
 
 static void unload_local_extension(RFM_ADDON *addon) {
   if (addon->rfm_local_so_handle) {
