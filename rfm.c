@@ -2635,35 +2635,18 @@ middle-mouse-click.  */
    gtk_clipboard_set_text(clipboard, rfm_curPath, -1);
 }
 
-// 这个函数的主要目的就是获得当前选中文件,产生一个data为 fileAttributes->path
-// 的Glist,然后汇同参数childAttribs一起传递各g_spawn_wrapper
-// TODO: 直接往g_spawn_wrapper 里面传data 我fileAttributes 的GList不好吗?不过要注意释放问题,目前fileAttributes都是在refresh_store时统一释放的,其他地方都是引用
 static void g_spawn_wrapper_for_selected_fileList_(FREE_FULL RFM_ChildAttribs *childAttribs)
 {
-   GtkTreeIter iter;
-   GList *listElement;
-   GList *actionFileList=NULL;
-   GList *selectionList=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
-   RFM_FileAttributes *fileAttributes;
-
-   if (selectionList!=NULL) {
-      listElement=g_list_first(selectionList);
-
-      while(listElement!=NULL) {
-         gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, listElement->data);
-         gtk_tree_model_get (GTK_TREE_MODEL(store), &iter, COL_ATTR, &fileAttributes, -1);
-         actionFileList=g_list_append(actionFileList, fileAttributes->path);
-         listElement=g_list_next(listElement);
-      }
-
+  //selectionChanged(NULL,NULL); //TODO: 如果cpu资源不够，gtk有没有可能漏掉触发，要不要强制调用下？
+  if (filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView]!=NULL) {
+      GList *filepath_list_for_selection_on_view_clone = g_list_copy_deep(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView],g_strdup,NULL);
       if (ItemSelected==1){
 	childAttribs->env=g_get_environ();
-	set_env_to_pass_into_child_process(&iter,&(childAttribs->env));
-	g_spawn_wrapper_(actionFileList,NULL,childAttribs);
-      }else g_spawn_wrapper_(actionFileList,NULL,childAttribs);
-      g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
-      g_list_free(actionFileList); /* Do not free list elements: owned by GList rfm_fileAttributeList */
-   }
+	set_env_to_pass_into_child_process(&iter_selectionChanged,&(childAttribs->env));
+      }
+      g_spawn_wrapper_(filepath_list_for_selection_on_view_clone, NULL,childAttribs);
+      g_list_free_full(filepath_list_for_selection_on_view_clone,(GDestroyNotify)g_free);
+  }
 }
 
 //TODO: 目前这里config.h里面的bash,nu,python等interpreter,稍后再尝试 zsh等,都无需在AddOn里面. 如果需要用AI来解析命令,须参照parse_and_exec_command_in_gtk_thread 里面代码扩充此部分
