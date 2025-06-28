@@ -472,7 +472,7 @@ static GList * filepath_lists_for_selection_on_view[2] = {NULL,NULL};
 static GList * filepath_lists_for_selection_on_view_clone;
 
 static GList * stdin_cmd_selection_list=NULL; //selected files used in stdin cmd expansion(or we call it substitution) which replace ending space and %s with selected file names
-static RFM_FileAttributes *stdin_cmd_selection_fileAttributes;
+static RFM_FileAttributes *stdin_cmd_selection_fileAttributes;//TODO：这个以及上面stdin_cmd_selection_list 统一由 selectionChanged 代码来维护似乎更好看
 
 static GList* get_view_selection_list(GtkWidget * view, gboolean treeview, GtkTreeModel ** model);
 static void selectionChanged(GtkWidget *view, gpointer user_data);
@@ -4177,7 +4177,7 @@ static void combine_command_with_selected_files_and_setenv(CALLER_OWN GString* r
 	      // TODO: the following code share the same pattern as g_spawn_wrapper_for_selected_fileList_ , anyway to remove the duplicate code?
 	    GtkTreeIter iter;
 	    GList *listElement;
-	    GList *stdin_cmd_selection_list=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
+	    stdin_cmd_selection_list=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
 
 	    if (stdin_cmd_selection_list!=NULL) {
 		listElement=g_list_first(stdin_cmd_selection_list);
@@ -4211,7 +4211,6 @@ static void combine_command_with_selected_files_and_setenv(CALLER_OWN GString* r
 		    *env = g_get_environ();
 		    set_env_to_pass_into_child_process(&iter, env); //正是因为这里对于 &iter 的使用，我们只能使用 stdin_cmd_selection_list, 而不能简单地使用filepath_lists_for_selection_on_view 
 		}
-		g_list_free_full(stdin_cmd_selection_list, (GDestroyNotify)gtk_tree_path_free);
             } else { // end if (stdin_cmd_selection_list!=NULL)
 	      unsetenv("RFM_SELECTED_FILES");
 	    }
@@ -4360,6 +4359,10 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 		childAttribs->readlineResultString=NULL; //since readlineInseperatethread function will check this, we must clear it here after cmd already been executed.
 	      }
 	      if (wordexp_retval == 0) wordfree(&parsed_msg);
+	    }
+	    if (stdin_cmd_selection_list!=NULL){//全局变量在这里释放，因为 builtin_command cmd_cd 里面可能会用到
+	      g_list_free_full(stdin_cmd_selection_list, (GDestroyNotify)gtk_tree_path_free);
+	      stdin_cmd_selection_list=NULL;
 	    }
 	} //end if (len == 0)
  switchToReadlineThread:
