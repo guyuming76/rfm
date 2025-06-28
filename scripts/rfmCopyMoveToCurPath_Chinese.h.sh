@@ -71,7 +71,7 @@ if [[ ! -z "$source" ]];then
 				fi; \
 				[[ $? -ne 0 ]] && cp_mv_ln_return0=false; \
 			done <$namedpipe &
-			rfm -d $source -r $namedpipe
+			rfm -n -d $source -r $namedpipe
 			wait
 			rm -f $namedpipe
 		else

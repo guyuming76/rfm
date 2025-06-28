@@ -51,7 +51,7 @@ if [[ ! -z "$source" ]];then
 					mv -v $line $target; \
 				fi \
 			done <$namedpipe &
-			rfm -d $source -r $namedpipe
+			rfm -n -d $source -r $namedpipe
 			wait
 			rm -f $namedpipe
 		else
