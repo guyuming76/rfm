@@ -2443,7 +2443,7 @@ static void selectionChanged(GtkWidget *view, gpointer user_data)
   
   g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
 
-  if (rfm_prePath!=NULL) { g_free(rfm_prePath); rfm_prePath=NULL; } //TODO: why?
+  if (rfm_prePath!=NULL) { g_free(rfm_prePath); rfm_prePath=NULL; } //可能是因为 refresh_store 里 RFM_AUTOSELECT_OLDPWD_IN_VIEW 的情况，这里要清空。而 cd - 用的是环境变量OLDPWD,所以这里不影响。
 }
 
 // establish environmental varables for view columns
