@@ -177,7 +177,7 @@ static void g_spawn_async_callback_to_new_readline_thread(RFM_ChildAttribs *chil
 static void regcomp_for_regex_rules();
 static void set_stdin_cmd_leading_space_true();
 static NO_FREE stdin_cmd_interpretor* match_cmd_str_array_with_interpretors(gchar** RunCmd);
-static void combine_command_with_selected_files_and_setenv(CALLER_OWN RFM_ChildAttribs* childAttribs, gboolean cmd_end_with_space);
+static void combine_command_with_selected_files_and_setenv(CALLER_OWN GString* readlineResultString, gboolean cmd_end_with_space, gchar** *env);
 static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboolean from_stdin_readline, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs* childAttribs);
 static void parse_and_exec_stdin_command_in_gtk_thread(gchar *msg);
 static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * parsed_msg, GString* readline_result_string);
@@ -4172,7 +4172,7 @@ static void set_stdin_cmd_leading_space_true(){
   stdin_cmd_leading_space=TRUE;
 }
 
-static void combine_command_with_selected_files_and_setenv(CALLER_OWN RFM_ChildAttribs* childAttribs, gboolean cmd_end_with_space) {
+static void combine_command_with_selected_files_and_setenv(CALLER_OWN GString* readlineResultString, gboolean cmd_end_with_space, gchar** *env) {
 	      // combine runCmd with selected files to get gchar** v
 	      // TODO: the following code share the same pattern as g_spawn_wrapper_for_selected_fileList_ , anyway to remove the duplicate code?
 	    GtkTreeIter iter;
@@ -4188,10 +4188,10 @@ static void combine_command_with_selected_files_and_setenv(CALLER_OWN RFM_ChildA
 
 		  //if there is %s in msg, replace it with selected filename one by one, otherwise, append filenames to the end.
 		  if (cmd_end_with_space){
-		    if (strstr(childAttribs->readlineResultString->str, RFM_selected_filename_placeholder) == NULL) g_string_append(childAttribs->readlineResultString, selected_filename_placeholder_in_space);
+		    if (strstr(readlineResultString->str, RFM_selected_filename_placeholder) == NULL) g_string_append(readlineResultString, selected_filename_placeholder_in_space);
 		    //if file path contains space, wrap path inside ''
-		    if (strstr(stdin_cmd_selection_fileAttributes->path," ") != NULL) g_string_replace(childAttribs->readlineResultString, RFM_selected_filename_placeholder, selected_filename_placeholder_in_quotation, 1);
-		    g_string_replace(childAttribs->readlineResultString, RFM_selected_filename_placeholder,stdin_cmd_selection_fileAttributes->path, 1);
+		    if (strstr(stdin_cmd_selection_fileAttributes->path," ") != NULL) g_string_replace(readlineResultString, RFM_selected_filename_placeholder, selected_filename_placeholder_in_quotation, 1);
+		    g_string_replace(readlineResultString, RFM_selected_filename_placeholder,stdin_cmd_selection_fileAttributes->path, 1);
 		  }
 
 		  if (env_rfm_selected_files != NULL) {
@@ -4208,8 +4208,8 @@ static void combine_command_with_selected_files_and_setenv(CALLER_OWN RFM_ChildA
 		setenv("RFM_SELECTED_FILES",env_rfm_selected_files,1);
 	        g_free(env_rfm_selected_files);
 		if (ItemSelected==1){ //通过环境变量把当前选中的文件的数据(比如grepMatch列)传递给子进程,目前人为限制只有单选文件时起作用,因为多选文件时不同文件的同一列值可能不同
-		    childAttribs->env = g_get_environ();
-		    set_env_to_pass_into_child_process(&iter, &(childAttribs->env)); //正是因为这里对于 &iter 的使用，我们只能使用 stdin_cmd_selection_list, 而不能简单地使用filepath_lists_for_selection_on_view 
+		    *env = g_get_environ();
+		    set_env_to_pass_into_child_process(&iter, env); //正是因为这里对于 &iter 的使用，我们只能使用 stdin_cmd_selection_list, 而不能简单地使用filepath_lists_for_selection_on_view 
 		}
 		g_list_free_full(stdin_cmd_selection_list, (GDestroyNotify)gtk_tree_path_free);
             } else { // end if (stdin_cmd_selection_list!=NULL)
@@ -4346,7 +4346,7 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 #endif
             childAttribs->readlineResultString=g_string_new(strdup(readlineResult));
 
-            if (!SearchResultAsInput) combine_command_with_selected_files_and_setenv(childAttribs, stdin_cmd_ending_space);
+            if (!SearchResultAsInput) combine_command_with_selected_files_and_setenv(childAttribs->readlineResultString, stdin_cmd_ending_space,&(childAttribs->env));
             
 #ifdef RFM_AddOn
 	    if (!execStdinCmdInNewVT && !(!from_stdin_readline && execCmdInNewVT) || Addon_Prompt){ //Addon_Prompt不为空实际上就相当于 current_stdin_cmd_interpretor_pointer == AI_Model
