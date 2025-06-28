@@ -177,6 +177,7 @@ static void g_spawn_async_callback_to_new_readline_thread(RFM_ChildAttribs *chil
 static void regcomp_for_regex_rules();
 static void set_stdin_cmd_leading_space_true();
 static NO_FREE stdin_cmd_interpretor* match_cmd_str_array_with_interpretors(gchar** RunCmd);
+static void combine_command_with_selected_files_and_setenv(CALLER_OWN RFM_ChildAttribs* childAttribs, gboolean cmd_end_with_space);
 static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboolean from_stdin_readline, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs* childAttribs);
 static void parse_and_exec_stdin_command_in_gtk_thread(gchar *msg);
 static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * parsed_msg, GString* readline_result_string);
@@ -4171,6 +4172,52 @@ static void set_stdin_cmd_leading_space_true(){
   stdin_cmd_leading_space=TRUE;
 }
 
+static void combine_command_with_selected_files_and_setenv(CALLER_OWN RFM_ChildAttribs* childAttribs, gboolean cmd_end_with_space) {
+	      // combine runCmd with selected files to get gchar** v
+	      // TODO: the following code share the same pattern as g_spawn_wrapper_for_selected_fileList_ , anyway to remove the duplicate code?
+	    GtkTreeIter iter;
+	    GList *listElement;
+	    GList *stdin_cmd_selection_list=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
+
+	    if (stdin_cmd_selection_list!=NULL) {
+		listElement=g_list_first(stdin_cmd_selection_list);
+	        gchar *env_rfm_selected_files = NULL;
+		while(listElement!=NULL) {
+		  gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, listElement->data);
+		  gtk_tree_model_get (GTK_TREE_MODEL(store), &iter, COL_ATTR, &stdin_cmd_selection_fileAttributes, -1);
+
+		  //if there is %s in msg, replace it with selected filename one by one, otherwise, append filenames to the end.
+		  if (cmd_end_with_space){
+		    if (strstr(childAttribs->readlineResultString->str, RFM_selected_filename_placeholder) == NULL) g_string_append(childAttribs->readlineResultString, selected_filename_placeholder_in_space);
+		    //if file path contains space, wrap path inside ''
+		    if (strstr(stdin_cmd_selection_fileAttributes->path," ") != NULL) g_string_replace(childAttribs->readlineResultString, RFM_selected_filename_placeholder, selected_filename_placeholder_in_quotation, 1);
+		    g_string_replace(childAttribs->readlineResultString, RFM_selected_filename_placeholder,stdin_cmd_selection_fileAttributes->path, 1);
+		  }
+
+		  if (env_rfm_selected_files != NULL) {
+		    gchar *new_str = g_strconcat(env_rfm_selected_files, "\n", stdin_cmd_selection_fileAttributes->path, NULL);
+		    g_free(env_rfm_selected_files);
+		    env_rfm_selected_files = new_str;
+		  } else {
+		    env_rfm_selected_files = g_strdup(stdin_cmd_selection_fileAttributes->path);
+		  }
+
+		  listElement=g_list_next(listElement);
+		}
+
+		setenv("RFM_SELECTED_FILES",env_rfm_selected_files,1);
+	        g_free(env_rfm_selected_files);
+		if (ItemSelected==1){ //通过环境变量把当前选中的文件的数据(比如grepMatch列)传递给子进程,目前人为限制只有单选文件时起作用,因为多选文件时不同文件的同一列值可能不同
+		    childAttribs->env = g_get_environ();
+		    set_env_to_pass_into_child_process(&iter, &(childAttribs->env)); //正是因为这里对于 &iter 的使用，我们只能使用 stdin_cmd_selection_list, 而不能简单地使用filepath_lists_for_selection_on_view 
+		}
+		g_list_free_full(stdin_cmd_selection_list, (GDestroyNotify)gtk_tree_path_free);
+            } else { // end if (stdin_cmd_selection_list!=NULL)
+	      unsetenv("RFM_SELECTED_FILES");
+	    }
+}  
+
+
 // this runs in gtk thread
 // from_stdin_readline 为 TRUE 时，表示用户从命令窗口输入的字符串，这时忽略 cmd_interpretor_index 参数为调用时的 current_stdin_cmd_interpretor
 // from_stdin_readline 为假时，readlineResults 通常是 config.h 里面配置好的命令字符串。此时命令字符串数组头部会配置 cmd_interpretor_index 对应的name
@@ -4299,47 +4346,8 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 #endif
             childAttribs->readlineResultString=g_string_new(strdup(readlineResult));
 
-	      // combine runCmd with selected files to get gchar** v
-	      // TODO: the following code share the same pattern as g_spawn_wrapper_for_selected_fileList_ , anyway to remove the duplicate code?
-	    GtkTreeIter iter;
-	    GList *listElement;
-	    stdin_cmd_selection_list=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
-
-	    if (stdin_cmd_selection_list!=NULL && !SearchResultAsInput) {
-		listElement=g_list_first(stdin_cmd_selection_list);
-	        gchar *env_rfm_selected_files = NULL;
-		while(listElement!=NULL) {
-		  gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, listElement->data);
-		  gtk_tree_model_get (GTK_TREE_MODEL(store), &iter, COL_ATTR, &stdin_cmd_selection_fileAttributes, -1);
-
-		  //if there is %s in msg, replace it with selected filename one by one, otherwise, append filenames to the end.
-		  if (stdin_cmd_ending_space){
-		    if (strstr(childAttribs->readlineResultString->str, RFM_selected_filename_placeholder) == NULL) g_string_append(childAttribs->readlineResultString, selected_filename_placeholder_in_space);
-		    //if file path contains space, wrap path inside ''
-		    if (strstr(stdin_cmd_selection_fileAttributes->path," ") != NULL) g_string_replace(childAttribs->readlineResultString, RFM_selected_filename_placeholder, selected_filename_placeholder_in_quotation, 1);
-		    g_string_replace(childAttribs->readlineResultString, RFM_selected_filename_placeholder,stdin_cmd_selection_fileAttributes->path, 1);
-		  }
-
-		  if (env_rfm_selected_files != NULL) {
-		    gchar *new_str = g_strconcat(env_rfm_selected_files, "\n", stdin_cmd_selection_fileAttributes->path, NULL);
-		    g_free(env_rfm_selected_files);
-		    env_rfm_selected_files = new_str;
-		  } else {
-		    env_rfm_selected_files = g_strdup(stdin_cmd_selection_fileAttributes->path);
-		  }
-
-		  listElement=g_list_next(listElement);
-		}
-
-		setenv("RFM_SELECTED_FILES",env_rfm_selected_files,1);
-	        g_free(env_rfm_selected_files);
-		if (ItemSelected==1){ //通过环境变量把当前选中的文件的数据(比如grepMatch列)传递给子进程,目前人为限制只有单选文件时起作用,因为多选文件时不同文件的同一列值可能不同
-		    childAttribs->env = g_get_environ();
-		    set_env_to_pass_into_child_process(&iter, &(childAttribs->env)); //正是因为这里对于 &iter 的使用，我们只能使用 stdin_cmd_selection_list, 而不能简单地使用filepath_lists_for_selection_on_view 
-		}
-            } else { // end if (stdin_cmd_selection_list!=NULL && !SearchResultAsInput)
-	      unsetenv("RFM_SELECTED_FILES");
-	    }
+            if (!SearchResultAsInput) combine_command_with_selected_files_and_setenv(childAttribs, stdin_cmd_ending_space);
+            
 #ifdef RFM_AddOn
 	    if (!execStdinCmdInNewVT && !(!from_stdin_readline && execCmdInNewVT) || Addon_Prompt){ //Addon_Prompt不为空实际上就相当于 current_stdin_cmd_interpretor_pointer == AI_Model
 	      //TODO：在NewTerm里执行命令就意味着无法运行下面的builtin_commnd,但是AI模式除外，AI模式下可能会在NewTerm里执行命令，但仍然可以执行builtin_command. 用Addon_Prompt 区分状态可能不是很好，现在只有AI模式一个Addon包含 stdin_cmd_interpretor, 所以能用，以后增加类似 Addon 还要重新定义
@@ -4353,13 +4361,6 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 	      }
 	      if (wordexp_retval == 0) wordfree(&parsed_msg);
 	    }
-
-
-	    if (stdin_cmd_selection_list!=NULL){
-	      g_list_free_full(stdin_cmd_selection_list, (GDestroyNotify)gtk_tree_path_free);
-	      stdin_cmd_selection_list=NULL;
-	    }
-
 	} //end if (len == 0)
  switchToReadlineThread:
         g_free (readlineResult); // Free the original buffer
