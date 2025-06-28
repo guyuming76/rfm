@@ -1457,8 +1457,7 @@ static void free_fileAttributes(RFM_FileAttributes *fileAttributes) {
 static RFM_FileAttributes *malloc_fileAttributes(void)
 {
    RFM_FileAttributes *fileAttributes=calloc(1,sizeof(RFM_FileAttributes));
-   if (fileAttributes==NULL)
-     g_error("calloc failed!");
+   if (fileAttributes==NULL) g_warning("calloc failed!");
    return fileAttributes;
 }
 
@@ -1478,6 +1477,8 @@ static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guin
    gchar *is_mounted=NULL;
    gint i;
    RFM_FileAttributes *fileAttributes=malloc_fileAttributes();
+   if (fileAttributes==NULL) return NULL;
+
    fileAttributes->id = fileAttributeID;
    gchar *absoluteaddr = SearchResultViewInsteadOfDirectoryView ? g_canonicalize_filename(name, rfm_SearchResultPath) : g_canonicalize_filename(name, rfm_curPath); //address returned by find can be ./blabla, and g_build_filename return something like /rfm/./blabla, so, need to be canonicalized here
 
@@ -1997,9 +1998,7 @@ static void read_git_status_porcelain_cmd_output_into_hashtable(gpointer *child_
 	  && g_strcmp0(g_path_get_dirname(fullpath), rfm_curPath)==0){
 	//add item into fileattributelist so that user can git stage on it
 	RFM_FileAttributes *fileAttributes=malloc_fileAttributes();
-	if (fileAttributes==NULL)
-	  g_warning("malloc_fileAttributes failed");
-	else{//if the file is rfm ignord file, we still add it into display here,but this may be changed.
+	if (fileAttributes!=NULL){//if the file is rfm ignord file, we still add it into display here,but this may be changed.
 	  fileAttributes->pixbuf=g_object_ref(defaultPixbufs->broken);
 	  fileAttributes->file_name=g_strdup(filenames[i]);
 	  //fileAttributes->display_name=g_strdup(filename);
