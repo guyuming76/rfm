@@ -4579,20 +4579,15 @@ static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx)
 	g_warning("failed to open rfmFileChooserReturnSelectionIntoFilename:%s",rfmFileChooserReturnSelectionIntoFilename);
       else if(returnToFile_fd>=0 || rfmFileChooserReturnSelectionIntoFilename==NULL ){
 	  g_debug("fd for rfmFileChooserReturnSelectionIntoFilename in child process:%d",returnToFile_fd);
-	  GList *selectionList = get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
-	  selectionList=g_list_first(selectionList);
+	  GList *selectionList=filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView] ? g_list_first(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView]):NULL;
 	  while(selectionList!=NULL){
-	    GValue fullpath = G_VALUE_INIT;
-	    gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, selectionList->data);
-	    gtk_tree_model_get_value(treemodel, &iter, COL_FULL_PATH, &fullpath);
 	    if (returnToFile_fd>=0){
-	      write(returnToFile_fd, g_value_get_string(&fullpath), strlen(g_value_get_string(&fullpath)));
+	      write(returnToFile_fd, selectionList->data, strlen(selectionList->data));
 	      write(returnToFile_fd,"\n",1);
-	    }else printf("%s\n",g_value_get_string(&fullpath));
+	    }else printf("%s\n",selectionList->data);
 	    selectionList=g_list_next(selectionList);
 	  };
 	  if (returnToFile_fd>0) close(returnToFile_fd);
-	  g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
       }
    }
 
