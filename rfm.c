@@ -470,10 +470,9 @@ static void init_ext_columns_in_treeviewColumns();
 // filepath string in this list is created with strdup.
 static GList * filepath_lists_for_selection_on_view[2] = {NULL,NULL};
 static GList * filepath_lists_for_selection_on_view_clone;
-
 static GList * stdin_cmd_selection_list=NULL; //selected files used in stdin cmd expansion(or we call it substitution) which replace ending space and %s with selected file names
-static RFM_FileAttributes *stdin_cmd_selection_fileAttributes;//TODO：这个以及上面stdin_cmd_selection_list 统一由 selectionChanged 代码来维护似乎更好看
-
+static GtkTreeIter iter_selectionChanged;
+static gchar* selected_file_mode_str = NULL;
 static GList* get_view_selection_list(GtkWidget * view, gboolean treeview, GtkTreeModel ** model);
 static void selectionChanged(GtkWidget *view, gpointer user_data);
 static void set_view_selection(GtkWidget* view, gboolean treeview, GtkTreePath* treePath);
@@ -2414,17 +2413,17 @@ static void set_rfm_curPath(CALLER_OWN const gchar* path)
 static void selectionChanged(GtkWidget *view, gpointer user_data)
 {
   GList *newSelectionFilePathList=NULL;
-  GList *selectionList=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
+  if (stdin_cmd_selection_list) g_list_free_full(stdin_cmd_selection_list, (GDestroyNotify)gtk_tree_path_free);
+  stdin_cmd_selection_list=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
   int count=0; //TODO: why not remove this and use ItemSelected directly?
-  if (selectionList==NULL){
+  if (stdin_cmd_selection_list==NULL){
     ItemSelected=0;
   }else{
-    GtkTreeIter iter;
-    GList * selectionListElement = g_list_first(selectionList);
+    GList * selectionListElement = g_list_first(stdin_cmd_selection_list);
     while(selectionListElement!=NULL){
 	GValue fullpath = G_VALUE_INIT;
-        gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, selectionListElement->data);
-	gtk_tree_model_get_value(treemodel, &iter, COL_FULL_PATH, &fullpath);
+        gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter_selectionChanged, selectionListElement->data);
+	gtk_tree_model_get_value(treemodel, &iter_selectionChanged, COL_FULL_PATH, &fullpath);
 	newSelectionFilePathList = g_list_prepend(newSelectionFilePathList, g_strdup(g_value_get_string(&fullpath)));
 	g_debug("selected file before refresh:%s",(char *)newSelectionFilePathList->data);
 	count++;
@@ -2435,13 +2434,17 @@ static void selectionChanged(GtkWidget *view, gpointer user_data)
     rfm_selection_completion = g_strdup(newSelectionFilePathList->data);
     ItemSelected=count;
     g_mutex_unlock(&rfm_selection_completion_lock);
+    if (ItemSelected==1){
+      GValue file_mode_str = G_VALUE_INIT;
+      gtk_tree_model_get_value(treemodel, &iter_selectionChanged, COL_MODE_STR, &file_mode_str);
+      g_free(selected_file_mode_str);
+      selected_file_mode_str = g_strdup(g_value_get_string(&file_mode_str));
+    }
   }
 
   g_list_free_full(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView],g_free);
   filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView] = newSelectionFilePathList;
   g_debug("Number of view selection:%d",count);
-  
-  g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
 
   if (rfm_prePath!=NULL) { g_free(rfm_prePath); rfm_prePath=NULL; } //可能是因为 refresh_store 里 RFM_AUTOSELECT_OLDPWD_IN_VIEW 的情况，这里要清空。而 cd - 用的是环境变量OLDPWD,所以这里不影响。
 }
@@ -4082,17 +4085,16 @@ static void cmd_cd(wordexp_t *parsed_msg, GString *readline_result_string_after_
 	    }
 	  }else if (parsed_msg->we_wordc==1){ // cd without parameter
 	      if (stdin_cmd_ending_space){
-		if (stdin_cmd_selection_list!=NULL && stdin_cmd_selection_fileAttributes!=NULL && stdin_cmd_selection_fileAttributes->file_mode_str!=NULL){
-		  //user can accidentally select multple files, but we only use one of them here.
-		  if (stdin_cmd_selection_fileAttributes->file_mode_str[0]=='d'){
-		    set_rfm_curPath(stdin_cmd_selection_fileAttributes->path);
+		if (ItemSelected==1){
+		  if (selected_file_mode_str[0]=='d'){
+		    set_rfm_curPath(rfm_selection_completion);//因为当前函数和selectionChanged函数运行在同一线程里，所以读取rfm_selection_completion不用加锁
 		    if (SearchResultViewInsteadOfDirectoryView) Switch_SearchResultView_DirectoryView(NULL, rfmCtx);		  
 		  }else if (SearchResultViewInsteadOfDirectoryView){
 		    SearchResultViewInsteadOfDirectoryView = SearchResultViewInsteadOfDirectoryView^1;
 		    g_list_free_full(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView],(GDestroyNotify)g_free);
 		    filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView]=NULL;
-		    filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView]=g_list_prepend(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView],strdup(stdin_cmd_selection_fileAttributes->path));
-		    char * parentdir = g_path_get_dirname(stdin_cmd_selection_fileAttributes->path);
+		    filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView]=g_list_prepend(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView],strdup(rfm_selection_completion));
+		    char * parentdir = g_path_get_dirname(rfm_selection_completion);
 		    set_rfm_curPath(parentdir);
 		    g_free(parentdir);
 		  }
@@ -4175,43 +4177,38 @@ static void set_stdin_cmd_leading_space_true(){
 static void combine_command_with_selected_files_and_setenv(CALLER_OWN GString* readlineResultString, gboolean cmd_end_with_space, gchar** *env) {
 	      // combine runCmd with selected files to get gchar** v
 	      // TODO: the following code share the same pattern as g_spawn_wrapper_for_selected_fileList_ , anyway to remove the duplicate code?
-	    GtkTreeIter iter;
 	    GList *listElement;
-	    stdin_cmd_selection_list=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
 
-	    if (stdin_cmd_selection_list!=NULL) {
-		listElement=g_list_first(stdin_cmd_selection_list);
+	    if (filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView]!=NULL) {
+		listElement=g_list_first(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView]);
 	        gchar *env_rfm_selected_files = NULL;
 		while(listElement!=NULL) {
-		  gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, listElement->data);
-		  gtk_tree_model_get (GTK_TREE_MODEL(store), &iter, COL_ATTR, &stdin_cmd_selection_fileAttributes, -1);
-
 		  //if there is %s in msg, replace it with selected filename one by one, otherwise, append filenames to the end.
 		  if (cmd_end_with_space){
 		    if (strstr(readlineResultString->str, RFM_selected_filename_placeholder) == NULL) g_string_append(readlineResultString, selected_filename_placeholder_in_space);
 		    //if file path contains space, wrap path inside ''
-		    if (strstr(stdin_cmd_selection_fileAttributes->path," ") != NULL) g_string_replace(readlineResultString, RFM_selected_filename_placeholder, selected_filename_placeholder_in_quotation, 1);
-		    g_string_replace(readlineResultString, RFM_selected_filename_placeholder,stdin_cmd_selection_fileAttributes->path, 1);
+		    if (strstr(listElement->data," ") != NULL) g_string_replace(readlineResultString, RFM_selected_filename_placeholder, selected_filename_placeholder_in_quotation, 1);
+		    g_string_replace(readlineResultString, RFM_selected_filename_placeholder,listElement->data, 1);
 		  }
 
 		  if (env_rfm_selected_files != NULL) {
-		    gchar *new_str = g_strconcat(env_rfm_selected_files, "\n", stdin_cmd_selection_fileAttributes->path, NULL);
+		    gchar *new_str = g_strconcat(env_rfm_selected_files, "\n", listElement->data, NULL);
 		    g_free(env_rfm_selected_files);
 		    env_rfm_selected_files = new_str;
 		  } else {
-		    env_rfm_selected_files = g_strdup(stdin_cmd_selection_fileAttributes->path);
+		    env_rfm_selected_files = g_strdup(listElement->data);
 		  }
 
 		  listElement=g_list_next(listElement);
 		}
 
-		setenv("RFM_SELECTED_FILES",env_rfm_selected_files,1);
+		setenv("RFM_SELECTED_FILES",env_rfm_selected_files,1);//selectionChanged 函数维护全局变量stdin_cmd_selection_list，环境变量只有在创建子进程时才用
 	        g_free(env_rfm_selected_files);
 		if (ItemSelected==1){ //通过环境变量把当前选中的文件的数据(比如grepMatch列)传递给子进程,目前人为限制只有单选文件时起作用,因为多选文件时不同文件的同一列值可能不同
 		    *env = g_get_environ();
-		    set_env_to_pass_into_child_process(&iter, env); //正是因为这里对于 &iter 的使用，我们只能使用 stdin_cmd_selection_list, 而不能简单地使用filepath_lists_for_selection_on_view 
+		    set_env_to_pass_into_child_process(&iter_selectionChanged, env);
 		}
-            } else { // end if (stdin_cmd_selection_list!=NULL)
+            } else {
 	      unsetenv("RFM_SELECTED_FILES");
 	    }
 }  
@@ -4359,10 +4356,6 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 		childAttribs->readlineResultString=NULL; //since readlineInseperatethread function will check this, we must clear it here after cmd already been executed.
 	      }
 	      if (wordexp_retval == 0) wordfree(&parsed_msg);
-	    }
-	    if (stdin_cmd_selection_list!=NULL){//全局变量在这里释放，因为 builtin_command cmd_cd 里面可能会用到
-	      g_list_free_full(stdin_cmd_selection_list, (GDestroyNotify)gtk_tree_path_free);
-	      stdin_cmd_selection_list=NULL;
 	    }
 	} //end if (len == 0)
  switchToReadlineThread:
