@@ -2443,7 +2443,7 @@ static void selectionChanged(GtkWidget *view, gpointer user_data)
   
   g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
 
-  if (rfm_prePath!=NULL) { g_free(rfm_prePath); rfm_prePath=NULL; }
+  if (rfm_prePath!=NULL) { g_free(rfm_prePath); rfm_prePath=NULL; } //TODO: why?
 }
 
 // establish environmental varables for view columns
@@ -3531,7 +3531,7 @@ static void writeSearchResultIntoFD_in_gtk_thread(gint *fd){
 
     GtkTreeIter iter;
     GList *selectedListElement=NULL;
-    stdin_cmd_selection_list = get_view_selection_list(icon_or_tree_view,treeview,&treemodel); //TODO: 将来这里不需要重新获取 stdin_cmd_selection_list 值，因为值在 parse_and_exec_cmd_in_gtk_thread 里已经获取过了，但现状是在exec_stdin_command_with_SearchResultAsInput前已经释放掉了。但既然使用了全局变量，也许在 parse_and_exec_cmd_in_gtk_thread 里晚点释放，然后这里就不用获取，也就不用释放了。
+    GList *stdin_cmd_selection_list = get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
     if (stdin_cmd_selection_list) selectedListElement=g_list_first(stdin_cmd_selection_list);
         
     if (stdin_cmd_selection_list?
@@ -3566,7 +3566,7 @@ static void writeSearchResultIntoFD_in_gtk_thread(gint *fd){
       dprintf(*fd, "\n");
     }else g_warning("empty search result view or list view has not been opened, switch to list view if search result is not empty!");
     g_list_free(columns);
-    if (stdin_cmd_selection_list) { g_list_free_full(stdin_cmd_selection_list, (GDestroyNotify)gtk_tree_path_free); stdin_cmd_selection_list = NULL; }
+    if (stdin_cmd_selection_list) g_list_free_full(stdin_cmd_selection_list, (GDestroyNotify)gtk_tree_path_free);
   }else g_warning("currently not in search result view!");
   close(*fd);
 }
