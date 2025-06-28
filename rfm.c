@@ -4305,7 +4305,7 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 	    GList *listElement;
 	    stdin_cmd_selection_list=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
 
-	    if (stdin_cmd_selection_list!=NULL) {
+	    if (stdin_cmd_selection_list!=NULL && !SearchResultAsInput) {
 		listElement=g_list_first(stdin_cmd_selection_list);
 	        gchar *env_rfm_selected_files = NULL;
 		while(listElement!=NULL) {
@@ -4337,7 +4337,7 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 		    childAttribs->env = g_get_environ();
 		    set_env_to_pass_into_child_process(&iter, &(childAttribs->env)); //正是因为这里对于 &iter 的使用，我们只能使用 stdin_cmd_selection_list, 而不能简单地使用filepath_lists_for_selection_on_view 
 		}
-            } else { // end if (stdin_cmd_selection_list!=NULL)
+            } else { // end if (stdin_cmd_selection_list!=NULL && !SearchResultAsInput)
 	      unsetenv("RFM_SELECTED_FILES");
 	    }
 #ifdef RFM_AddOn
