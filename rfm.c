@@ -5163,9 +5163,10 @@ static int ProcessKeyValuePairInData(GKeyFile *keyfile, char* groupname){
    if (matched_searchresulttype_pointer->showcolumn){
        for(int i=0; matched_searchresulttype_pointer->showcolumn[i];i++){
 	 gboolean already_exists_in_multitype_showcolumn = FALSE; //用于避免重复加入字符串数组元素
-	 for(int j=0; SearchResultTypePointerForCurrentExistingSearchResult->showcolumn[j];j++) if (matched_searchresulttype_pointer->showcolumn[i]==SearchResultTypePointerForCurrentExistingSearchResult->showcolumn[j]) { already_exists_in_multitype_showcolumn = TRUE; break; }
+	 for(guint j=0; j<((GPtrArray*)(SearchResultTypePointerForCurrentExistingSearchResult->showcolumn))->len;j++)
+	   if (matched_searchresulttype_pointer->showcolumn[i]==((GPtrArray*)(SearchResultTypePointerForCurrentExistingSearchResult->showcolumn))->pdata[j]) { already_exists_in_multitype_showcolumn = TRUE; break; }
 	 if (!already_exists_in_multitype_showcolumn) {
-	   g_ptr_array_add(SearchResultTypePointerForCurrentExistingSearchResult->showcolumn, matched_searchresulttype_pointer->showcolumn[i]);
+	   g_ptr_array_add((GPtrArray*)(SearchResultTypePointerForCurrentExistingSearchResult->showcolumn), matched_searchresulttype_pointer->showcolumn[i]);
 	   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"%s: SearchResultType name %s matched for file:%s. showcolumn element '%s' added",SrchRsltType_multitype,longest_matched_searchresulttype_name,oneline,matched_searchresulttype_pointer->showcolumn[i]);
 	 }
        }
@@ -5264,10 +5265,14 @@ static void showSearchResultExtColumnsBasedOnHashTableValues(){
 	 }
   }
 
-  int i=0;
+  guint i=0;
   gchar* column_sequence;
   if (SearchResultTypePointerForCurrentExistingSearchResult->showcolumn){
-    while ((column_sequence = (g_strcmp0(SearchResultTypePointerForCurrentExistingSearchResult->name,SrchRsltType_multitype)==0 ? (i<(((GPtrArray*)(SearchResultTypePointerForCurrentExistingSearchResult->showcolumn))->len) ? g_ptr_array_index((GPtrArray*)(SearchResultTypePointerForCurrentExistingSearchResult->showcolumn), i):NULL) : SearchResultTypePointerForCurrentExistingSearchResult->showcolumn[i]))){
+    while ((column_sequence = (g_strcmp0(SearchResultTypePointerForCurrentExistingSearchResult->name,SrchRsltType_multitype)==0 ?
+			             (i<(((GPtrArray*)(SearchResultTypePointerForCurrentExistingSearchResult->showcolumn))->len) ?
+				          g_ptr_array_index((GPtrArray*)(SearchResultTypePointerForCurrentExistingSearchResult->showcolumn), i)
+				          :NULL)
+			             : SearchResultTypePointerForCurrentExistingSearchResult->showcolumn[i]))){
       show_hide_treeview_columns_in_order(column_sequence);//如果查询结果不包含getExtColumnValueFromHashTable列,只包含文件名,默认会显示文件日期大小等常规列,如果不想显示这些列,可以指定 { ",FileName,", NULL } 这样一个包含 ",FileName," 逗号开头结尾的showcolumn字符串数组
       i++;
     }
@@ -5275,7 +5280,7 @@ static void showSearchResultExtColumnsBasedOnHashTableValues(){
   do_not_show_VALUE_MAY_NOT_LOADED_message_because_we_will_add_GtkTreeViewColumn_later=old_value;
   showSearchResultExtColumnsBasedOnHashTableValues_has_already_been_called_for_searchresult = TRUE;
   if (g_strcmp0(SearchResultTypePointerForCurrentExistingSearchResult->name,SrchRsltType_multitype)==0 && SearchResultTypePointerForCurrentExistingSearchResult->showcolumn) {
-    g_ptr_array_free(SearchResultTypePointerForCurrentExistingSearchResult->showcolumn, FALSE); //multitype searcharesulttype 的showcolumn属性默认是NULL的，动态添加  MatchedSearchResultType 的showcolumn, 用完后释放字符串数组，字符串本身不用释放
+    g_ptr_array_free((GPtrArray*)(SearchResultTypePointerForCurrentExistingSearchResult->showcolumn), FALSE); //multitype searcharesulttype 的showcolumn属性默认是NULL的，动态添加  MatchedSearchResultType 的showcolumn, 用完后释放字符串数组，字符串本身不用释放
     SearchResultTypePointerForCurrentExistingSearchResult->showcolumn = NULL;
   }
 }
