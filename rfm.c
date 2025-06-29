@@ -895,7 +895,7 @@ static int read_char_pipe(gint fd, ssize_t block_size, char **buffer)
    read_size=read(fd, txt, block_size);
    if (read_size < 1) {
       free(txt);
-      return -1;
+      return read_size;
    }
    g_debug("read_char_pipe fd:%d read_size:%ld",fd,read_size);
    txt[read_size]='\0';
