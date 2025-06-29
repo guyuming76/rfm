@@ -460,6 +460,8 @@ static CALLER_OWN gchar* get_showcolumn_cmd_from_currently_displaying_columns();
 static void show_hide_treeview_columns_in_order(CALLER_OWN gchar *order_sequence);
 static void show_hide_treeview_columns_enum(int count, ...);
 static void hide_column_menuitem_activated(GtkMenuItem *menuitem, RFM_treeviewColumn *col);
+static void createCandidateColumnsMenu(GtkMenuItem* parent, RFM_treeviewColumn *col);
+static void insert_column_menuitem_callback(GtkMenuItem *menuitem,char *order_seq);
 static void cmd_showcolumn(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
 static void init_ext_columns_in_treeviewColumns();
 /******TreeView column related definitions end*******/
@@ -517,7 +519,8 @@ static GtkWidget *menu = NULL;
 static GtkWidget **menuItem = NULL;
 static GtkWidget *columnHeaderMenu = NULL;
 static GtkWidget *HideColumnMenuItem = NULL;
-
+static GtkWidget *InsertBeforeMenuItem = NULL;
+static GtkWidget *InsertAfterMenuItem = NULL;
 static void up_clicked(gpointer user_data);
 static void home_clicked(gpointer user_data);
 static void PreviousPage(RFM_ctx *rfmCtx);
@@ -2859,17 +2862,71 @@ static void hide_column_menuitem_activated(GtkMenuItem *menuitem, RFM_treeviewCo
     snprintf(cmd, sizeof(cmd), "showcolumn -%s", col->title);
     wordexp_t parsed_msg;
     if (wordexp(cmd, &parsed_msg, 0) == 0) {
-        printf("\n%s\033[32m%s%s]\033[0m%s\n",InheritedPrompt, current_stdin_cmd_interpretor_pointer->prompt,(ItemSelected==0)?"":"*",cmd);
+        if (startWithVT()) printf("\n%s\033[32m%s%s]\033[0m%s\n",InheritedPrompt, current_stdin_cmd_interpretor_pointer->prompt,(ItemSelected==0)?"":"*",cmd);
         cmd_showcolumn(&parsed_msg, NULL);
         wordfree(&parsed_msg);
     }
+}
+
+static void insert_column_menuitem_callback(GtkMenuItem *menuitem,char *order_seq) {
+      if (startWithVT()) printf("\n%s\033[32m%s%s]\033[0m showcolumn %s\n",InheritedPrompt, current_stdin_cmd_interpretor_pointer->prompt,(ItemSelected==0)?"":"*",order_seq);
+      show_hide_treeview_columns_in_order(order_seq);
+}
+
+static void createCandidateColumnsMenu(GtkMenuItem* parent, RFM_treeviewColumn *col) {
+  GtkWidget* candidateColumnsMenu = gtk_menu_item_get_submenu(parent);
+  if (candidateColumnsMenu){
+    gtk_menu_item_set_submenu(parent, NULL);
+    if (GTK_IS_WIDGET(candidateColumnsMenu)) gtk_widget_destroy(candidateColumnsMenu);//TODO:这里为啥要判断GTK_IS_WIDGET？如果不判断，我会得到critical错误
+  }
+  //上面是删除上次生成的旧的，下面是根据当前 TREEVIEW_COLUMNS 建新的
+  candidateColumnsMenu = gtk_menu_new();
+  gtk_menu_item_set_submenu(parent, candidateColumnsMenu);
+  char menuTitle[256+10];
+  for(size_t i=0;i<TREEVIEW_COLUMNS_array_size;i++){
+    GtkMenuItem* menuItemForColumn = NULL;
+    if (TREEVIEW_COLUMNS[i].enumCol<NUM_COLS){
+      snprintf(menuTitle, sizeof(menuTitle),"%4d: %s%s", TREEVIEW_COLUMNS[i].Show? TREEVIEW_COLUMNS[i].enumCol : (-1)*TREEVIEW_COLUMNS[i].enumCol,TREEVIEW_COLUMNS[i].title, (current_sort_column_id==TREEVIEW_COLUMNS[i].enumCol?(current_sorttype==GTK_SORT_ASCENDING?"{v}":"{^}"):""));
+      menuItemForColumn = gtk_menu_item_new_with_label(menuTitle);
+    }else if (TREEVIEW_COLUMNS[i].ValueFunc!=getExtColumnValueFromHashTable){
+      g_assert(!TREEVIEW_COLUMNS[i].Show);
+      snprintf(menuTitle,sizeof(menuTitle),"    : %s",TREEVIEW_COLUMNS[i].title);
+      menuItemForColumn = gtk_menu_item_new_with_label(menuTitle);
+    }
+    if (menuItemForColumn){
+      gtk_menu_shell_append(GTK_MENU_SHELL(candidateColumnsMenu), menuItemForColumn);
+      
+      char order_seq[256*2+1];
+      if (parent==InsertAfterMenuItem)
+	snprintf(order_seq, sizeof(order_seq), "%s,%s",col->title,TREEVIEW_COLUMNS[i].title);
+      else{
+	int colIndexOfClickedHeader = get_treeviewColumnsIndexByEnum(col->enumCol);
+	if (colIndexOfClickedHeader<0)
+	  g_warning("get_treeviewColumnsIndexByEnum(%d) return %d", col->enumCol, colIndexOfClickedHeader);
+	else if (colIndexOfClickedHeader==0) //点击的是第一列的标题
+	  snprintf(order_seq, sizeof(order_seq), ",%s",TREEVIEW_COLUMNS[i].title,col->title);
+	else{
+	  if (TREEVIEW_COLUMNS[colIndexOfClickedHeader-1].Show)//显示在点击列的前一列后面，但要注意保持前一列的显隐状态
+	    snprintf(order_seq, sizeof(order_seq), "%s,%s",TREEVIEW_COLUMNS[colIndexOfClickedHeader-1].title, TREEVIEW_COLUMNS[i].title);
+	  else
+	    snprintf(order_seq, sizeof(order_seq), "-%s,%s",TREEVIEW_COLUMNS[colIndexOfClickedHeader-1].title, TREEVIEW_COLUMNS[i].title);
+	}
+      }
+      g_signal_connect(menuItemForColumn, "activate", G_CALLBACK(insert_column_menuitem_callback), g_strdup(order_seq));//TODO:删除旧的后，这里的signal data,也就是 order_seq会不会被释放？否则不是泄漏了吗？
+    }
+  }
 }
 
 static gboolean view_column_header_clicked(GtkTreeViewColumn* tree_column, GdkEvent *event, RFM_treeviewColumn *col){
   //there seems to be gtk_tree_view_column_get_title, but we can also get the data through treeviewColumns array to be more independent and easy to get other RFM_treeviewColumn member
   GdkEventButton *bevent = (GdkEventButton *)event;
   if (bevent->type == GDK_BUTTON_PRESS && bevent->button == 3) { // Right click
+    if (HideColumnMenuItem) gtk_widget_destroy(HideColumnMenuItem);
+    HideColumnMenuItem = gtk_menu_item_new_with_label(MENU_hideThisColumn);
+    gtk_menu_shell_append(GTK_MENU_SHELL(columnHeaderMenu), HideColumnMenuItem);
     g_signal_connect(HideColumnMenuItem, "activate", G_CALLBACK(hide_column_menuitem_activated), col);
+    createCandidateColumnsMenu(InsertBeforeMenuItem, col);
+    createCandidateColumnsMenu(InsertAfterMenuItem, col);
     gtk_widget_show_all(columnHeaderMenu);
     gtk_menu_popup_at_pointer(columnHeaderMenu, event);
     return TRUE;
@@ -2879,7 +2936,6 @@ static gboolean view_column_header_clicked(GtkTreeViewColumn* tree_column, GdkEv
   }
   return FALSE;
 }
-
 
 static gboolean view_key_press(GtkWidget *widget, GdkEvent *event,RFM_ctx *rfmCtx) {
   GdkEventKey *ek=(GdkEventKey *)event;
@@ -4537,8 +4593,10 @@ static int setup(RFM_ctx *rfmCtx)
    add_file_menuitems(&menuItem,run_actions,G_N_ELEMENTS(run_actions));
 
    columnHeaderMenu = gtk_menu_new();
-   HideColumnMenuItem = gtk_menu_item_new_with_label("Hide this column");
-   gtk_menu_shell_append(GTK_MENU_SHELL(columnHeaderMenu), HideColumnMenuItem);
+   InsertBeforeMenuItem = gtk_menu_item_new_with_label(MENU_InsertBeforeThisColumn);
+   gtk_menu_shell_append(GTK_MENU_SHELL(columnHeaderMenu), InsertBeforeMenuItem);
+   InsertAfterMenuItem = gtk_menu_item_new_with_label(MENU_InsertAfterThisColumn);
+   gtk_menu_shell_append(GTK_MENU_SHELL(columnHeaderMenu), InsertAfterMenuItem);
 
 #ifdef RFM_AddOn
    if (!disable_addon) g_spawn_wrapper(global_addons_locating_cmd_template, NULL, G_SPAWN_DEFAULT, NULL, NULL, FALSE, load_global_addons_callback, NULL, TRUE); //同步打开rfm会太慢吗?
