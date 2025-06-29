@@ -2908,7 +2908,7 @@ static void createCandidateColumnsMenu(GtkMenuItem* parent, RFM_treeviewColumn *
 	    snprintf(order_seq, sizeof(order_seq), "-%s,%s",TREEVIEW_COLUMNS[colIndexOfClickedHeader-1].title, TREEVIEW_COLUMNS[i].title);
 	}
       }
-      g_signal_connect(menuItemForColumn, "activate", G_CALLBACK(insert_column_menuitem_callback), g_strdup(order_seq));//TODO:删除旧的后，这里的signal data,也就是 order_seq会不会被释放？否则不是泄漏了吗？
+      g_signal_connect_data(menuItemForColumn, "activate", G_CALLBACK(insert_column_menuitem_callback), g_strdup(order_seq),g_free,G_CONNECT_DEFAULT);
     }
   }
 }
