@@ -178,7 +178,7 @@ static void regcomp_for_regex_rules();
 static void set_stdin_cmd_leading_space_true();
 static NO_FREE stdin_cmd_interpretor* match_cmd_str_array_with_interpretors(gchar** RunCmd);
 static void combine_command_with_selected_files_and_setenv(CALLER_OWN GString* readlineResultString, gboolean cmd_end_with_space, gchar** *env);
-static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboolean from_stdin_readline, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs* childAttribs);
+static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboolean const from_stdin_readline, NO_FREE const stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs* childAttribs);
 static void parse_and_exec_stdin_command_in_gtk_thread(gchar *msg);
 static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * parsed_msg, GString* readline_result_string);
 static void toggle_exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread();
@@ -2855,7 +2855,7 @@ static void sort_on_column_header(GtkMenuItem *menuitem, RFM_treeviewColumn* rfm
 }
 
 static void hide_column_menuitem_activated(GtkMenuItem *menuitem, RFM_treeviewColumn *col) {
-    char cmd[256];
+    char cmd[256+13];
     snprintf(cmd, sizeof(cmd), "showcolumn -%s", col->title);
     wordexp_t parsed_msg;
     if (wordexp(cmd, &parsed_msg, 0) == 0) {
@@ -3842,12 +3842,12 @@ static void show_hide_treeview_columns_in_order(CALLER_OWN gchar* order_sequence
 }
 
 static gchar* get_current_column_layout(CALLER_OWN gchar *column_layout, gboolean title){
-            if (column_layout==NULL) column_layout = calloc(TREEVIEW_COLUMNS_array_size * (title?ColumnTitleMaxLen:5) +1, sizeof(char));
+            if (column_layout==NULL) column_layout = calloc(TREEVIEW_COLUMNS_array_size * (title?(ColumnTitleMaxLen+2):5) +1, sizeof(char));
             for(size_t i=0;i<TREEVIEW_COLUMNS_array_size;i++){
 	      if (TREEVIEW_COLUMNS[i].enumCol==NUM_COLS) continue;
 	      if (title){
-		char onecolumn[ColumnTitleMaxLen];//5 chars for onecolumn + ending null
-		snprintf(onecolumn,ColumnTitleMaxLen,",%s%s",(TREEVIEW_COLUMNS[i].Show?"":"-"),TREEVIEW_COLUMNS[i].title);
+		char onecolumn[ColumnTitleMaxLen+2];
+		snprintf(onecolumn,ColumnTitleMaxLen+2,",%s%s",(TREEVIEW_COLUMNS[i].Show?"":"-"),TREEVIEW_COLUMNS[i].title);
 		strcat(column_layout, onecolumn);
 	      }else{
 		char onecolumn[6];//5 chars for onecolumn + ending null
@@ -4200,7 +4200,7 @@ static void combine_command_with_selected_files_and_setenv(CALLER_OWN GString* r
 // from_stdin_readline 为 TRUE 时，表示用户从命令窗口输入的字符串，这时忽略 cmd_interpretor_index 参数为调用时的 current_stdin_cmd_interpretor
 // from_stdin_readline 为假时，readlineResults 通常是 config.h 里面配置好的命令字符串。此时命令字符串数组头部会配置 cmd_interpretor_index 对应的name
 // 目前布尔返回值只在!from_stdin_readline情况下返回 exec_stdin_command 的返回值，用于编译 rfm_local.c 后返回成败
-static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboolean from_stdin_readline, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs* childAttribs)
+static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboolean const from_stdin_readline, NO_FREE const stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs* childAttribs)
 {
         gboolean ret = FALSE;
         gboolean SearchResultAsInput=FALSE;
@@ -4992,7 +4992,7 @@ static int ProcessJsonStr(CALLER_OWN gchar* json_data){
         JsonNode *root = json_parser_get_root(parser);
         JsonObject *root_obj = json_node_get_object(root);
         GList * keys = json_object_get_members(root_obj);
-        g_log(RFM_LOG_DATA, G_LOG_LEVEL_DEBUG, "number of keys:%ld", g_list_length(keys));
+        g_log(RFM_LOG_DATA, G_LOG_LEVEL_DEBUG, "number of keys:%d", g_list_length(keys));
 
         GList *key = g_list_first(keys);
 	char currentColumnOriginalTitle[10];
