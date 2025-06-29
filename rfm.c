@@ -2858,18 +2858,14 @@ static void sort_on_column_header(GtkMenuItem *menuitem, RFM_treeviewColumn* rfm
 }
 
 static void hide_column_menuitem_activated(GtkMenuItem *menuitem, RFM_treeviewColumn *col) {
-    char cmd[256+13];
-    snprintf(cmd, sizeof(cmd), "showcolumn -%s", col->title);
-    wordexp_t parsed_msg;
-    if (wordexp(cmd, &parsed_msg, 0) == 0) {
-        if (startWithVT()) printf("\n%s\033[32m%s%s]\033[0m%s\n",InheritedPrompt, current_stdin_cmd_interpretor_pointer->prompt,(ItemSelected==0)?"":"*",cmd);
-        cmd_showcolumn(&parsed_msg, NULL);
-        wordfree(&parsed_msg);
-    }
+        char cmd[256+1];
+        snprintf(cmd, sizeof(cmd),"-%s",col->title);
+        if (startWithVT()) printf("\n%s\033[32m%s%s]\033[0mshowcolumn %s\n",InheritedPrompt, current_stdin_cmd_interpretor_pointer->prompt,(ItemSelected==0)?"":"*",cmd);
+        show_hide_treeview_columns_in_order(cmd);
 }
 
 static void insert_column_menuitem_callback(GtkMenuItem *menuitem,char *order_seq) {
-      if (startWithVT()) printf("\n%s\033[32m%s%s]\033[0m showcolumn %s\n",InheritedPrompt, current_stdin_cmd_interpretor_pointer->prompt,(ItemSelected==0)?"":"*",order_seq);
+      if (startWithVT()) printf("\n%s\033[32m%s%s]\033[0mshowcolumn %s\n",InheritedPrompt, current_stdin_cmd_interpretor_pointer->prompt,(ItemSelected==0)?"":"*",order_seq);
       show_hide_treeview_columns_in_order(order_seq);
 }
 
