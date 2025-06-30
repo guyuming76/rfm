@@ -487,7 +487,7 @@ static GtkSortType current_sorttype=GTK_SORT_ASCENDING;
 static gint current_sort_column_id = GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID;
 static void sort_on_column_header(GtkMenuItem *menuitem, RFM_treeviewColumn *rfmCol);
 static void sort_on_column(wordexp_t * parsed_msg);
-static gboolean view_column_header_clicked(GtkTreeViewColumn* tree_column, GdkEvent *event, RFM_treeviewColumn* col);
+static gboolean view_column_header_clicked(GtkButton* column_header, GdkEvent *event, GtkWidget *gtkCol);
 static gint sort_func(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, gpointer user_data);
 static void cmdSort(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
 /******View sort related definitions end*************/
@@ -2916,9 +2916,9 @@ static void createCandidateColumnsMenu(GtkMenuItem* parent, RFM_treeviewColumn *
   }
 }
 
-static gboolean view_column_header_clicked(GtkTreeViewColumn* tree_column, GdkEvent *event, RFM_treeviewColumn *col){
-  //there seems to be gtk_tree_view_column_get_title, but we can also get the data through treeviewColumns array to be more independent and easy to get other RFM_treeviewColumn member
+static gboolean view_column_header_clicked(GtkButton* column_header, GdkEvent *event, GtkWidget *gtkCol){
   GdkEventButton *bevent = (GdkEventButton *)event;
+  RFM_treeviewColumn *col = get_treeviewcolumnByGtkTreeviewcolumn(gtkCol);
   if (bevent->type == GDK_BUTTON_PRESS && bevent->button == 3) { // Right click
     if (HideColumnMenuItem) gtk_widget_destroy(HideColumnMenuItem);
     HideColumnMenuItem = gtk_menu_item_new_with_label(MENU_hideThisColumn);
@@ -3109,7 +3109,7 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
        gtk_tree_view_append_column(GTK_TREE_VIEW(_view),TREEVIEW_COLUMNS[i].gtkCol);
        gtk_tree_view_column_set_visible(TREEVIEW_COLUMNS[i].gtkCol, TREEVIEW_COLUMNS[i].Show && ((TREEVIEW_COLUMNS[i].showCondition==NULL) ? TRUE: TREEVIEW_COLUMNS[i].showCondition(NULL)));
        gtk_tree_view_column_set_sort_column_id(TREEVIEW_COLUMNS[i].gtkCol, TREEVIEW_COLUMNS[i].enumSortCol==NUM_COLS? TREEVIEW_COLUMNS[i].enumCol: TREEVIEW_COLUMNS[i].enumSortCol);
-       g_signal_connect(gtk_tree_view_column_get_button(TREEVIEW_COLUMNS[i].gtkCol), "button-press-event", G_CALLBACK(view_column_header_clicked), &(TREEVIEW_COLUMNS[i]));
+       g_signal_connect(gtk_tree_view_column_get_button(TREEVIEW_COLUMNS[i].gtkCol), "button-press-event", G_CALLBACK(view_column_header_clicked),TREEVIEW_COLUMNS[i].gtkCol);
      }
 
    } else {
