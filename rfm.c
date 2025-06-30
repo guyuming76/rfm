@@ -455,8 +455,8 @@ static RFM_treeviewColumn* get_treeviewcolumnByGtkTreeviewcolumn(GtkTreeViewColu
 static RFM_treeviewColumn* get_treeviewColumnByEnum(enum RFM_treeviewCol col);
 static RFM_treeviewColumn* get_treeviewColumnByTitle(char* title);
 static enum RFM_treeviewCol get_available_ExtColumn(enum RFM_treeviewCol col);
-static gchar* get_current_column_layout(CALLER_OWN gchar *column_layout,gboolean title);
-static CALLER_OWN gchar* get_showcolumn_cmd_from_currently_displaying_columns();
+static MEM_ALLOC gchar* get_current_column_layout(gboolean title);
+static MEM_ALLOC gchar* get_showcolumn_cmd_from_currently_displaying_columns();
 static void show_hide_treeview_columns_in_order(CALLER_OWN gchar *order_sequence);
 static void show_hide_treeview_columns_enum(int count, ...);
 static void hide_column_menuitem_activated(GtkMenuItem *menuitem, RFM_treeviewColumn *col);
@@ -3893,8 +3893,8 @@ static void show_hide_treeview_columns_in_order(CALLER_OWN gchar* order_sequence
 	      g_strfreev(order_seq_array);
 }
 
-static gchar* get_current_column_layout(CALLER_OWN gchar *column_layout, gboolean title){
-            if (column_layout==NULL) column_layout = calloc(TREEVIEW_COLUMNS_array_size * (title?(ColumnTitleMaxLen+2):5) +1, sizeof(char));
+static MEM_ALLOC gchar* get_current_column_layout(gboolean title){
+            gchar *column_layout = calloc(TREEVIEW_COLUMNS_array_size * (title?(ColumnTitleMaxLen+2):5)+1, sizeof(char));// we suppose no more than 999 treeview_columns, and ",-999" takes 5 chars
             for(size_t i=0;i<TREEVIEW_COLUMNS_array_size;i++){
 	      if (TREEVIEW_COLUMNS[i].enumCol==NUM_COLS) continue;
 	      if (title){
@@ -3911,11 +3911,11 @@ static gchar* get_current_column_layout(CALLER_OWN gchar *column_layout, gboolea
             return column_layout;
 }
 
-static CALLER_OWN gchar* get_showcolumn_cmd_from_currently_displaying_columns(){
-            //gchar* showColumnHistory=calloc(TREEVIEW_COLUMNS_array_size*5+13, sizeof(char)); // we suppose no more than 999 treeview_columns, and ",-999" takes 5 chars ; leading "showcolumn ," take 13 char
-            gchar* showColumnHistory=calloc(TREEVIEW_COLUMNS_array_size*ColumnTitleMaxLen+13, sizeof(char));
-	    showColumnHistory = strcat(showColumnHistory, "showcolumn ");
-	    return get_current_column_layout(showColumnHistory,TRUE);
+static MEM_ALLOC gchar* get_showcolumn_cmd_from_currently_displaying_columns(){
+            gchar* column_layout = get_current_column_layout(TRUE);
+	    gchar* showColumnHistory = g_strconcat("showcolumn ",column_layout);
+            g_free(column_layout);
+	    return showColumnHistory;
 }
 
 static void sort_on_column(wordexp_t * parsed_msg){
@@ -5647,7 +5647,7 @@ static void remove_addon_treeviewColumns(RFM_ADDON *addon){
       if (col) col->enumCol = NUM_COLS;//先置空所有 enumCol TODO: 如果控件不为空,要释放控件吗?还是refresh_store的时候会自动处理?
       else g_warning("treeview column title %s in addon %s not found",addon->resource_managed_by_addon->treeviewColumns[i].title, addon->local_c_path);
     }
-    gchar *column_layout_without_addon = get_current_column_layout(NULL,TRUE);//获取除了此addon外的列layout
+    gchar *column_layout_without_addon = get_current_column_layout(TRUE);//获取除了此addon外的列layout
 
     free(DirectoryViewColumnsLayout); free(SearchResultViewColumnsLayout);
     //重新初始化 search 和dir viewcolumnslayouts,TODO:gtk控件要处理吗?
