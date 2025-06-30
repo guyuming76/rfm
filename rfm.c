@@ -2896,12 +2896,14 @@ static void createCandidateColumnsMenu(GtkMenuItem* parent, RFM_treeviewColumn *
       char order_seq[256*2+1];
       if (parent==InsertAfterMenuItem)
 	snprintf(order_seq, sizeof(order_seq), "%s,%s",col->title,TREEVIEW_COLUMNS[i].title);
-      else{
+      else{//在此列前插入的情况比较复杂，需要分析此列 col 的前一列的各种情况
 	int colIndexOfClickedHeader = get_treeviewColumnsIndexByEnum(col->enumCol);
 	if (colIndexOfClickedHeader<0)
 	  g_warning("get_treeviewColumnsIndexByEnum(%d) return %d", col->enumCol, colIndexOfClickedHeader);
 	else if (colIndexOfClickedHeader==0) //点击的是第一列的标题
-	  snprintf(order_seq, sizeof(order_seq), ",%s",TREEVIEW_COLUMNS[i].title,col->title);
+	  snprintf(order_seq, sizeof(order_seq), ",%s",TREEVIEW_COLUMNS[i].title);
+	else if ((colIndexOfClickedHeader-1)==i) //出现类似 showcolumn -AiPrompt,AiPrompt 这样的情况，直接变为 showcolumn AiPrompt
+	  snprintf(order_seq, sizeof(order_seq), "%s",TREEVIEW_COLUMNS[i].title);
 	else{
 	  if (TREEVIEW_COLUMNS[colIndexOfClickedHeader-1].Show)//显示在点击列的前一列后面，但要注意保持前一列的显隐状态
 	    snprintf(order_seq, sizeof(order_seq), "%s,%s",TREEVIEW_COLUMNS[colIndexOfClickedHeader-1].title, TREEVIEW_COLUMNS[i].title);
