@@ -3906,8 +3906,8 @@ static gchar* get_current_column_layout(CALLER_OWN gchar *column_layout, gboolea
 		snprintf(onecolumn,6,",%4d", TREEVIEW_COLUMNS[i].enumCol * (TREEVIEW_COLUMNS[i].Show?1:-1));
 		strcat(column_layout, onecolumn);
 	      }
-	      if (!g_str_has_suffix(column_layout, ",")) strcat(column_layout,",");
 	    }
+	    if (!g_str_has_suffix(column_layout, ",")) strcat(column_layout,",");
             return column_layout;
 }
 
