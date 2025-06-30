@@ -527,6 +527,7 @@ static void PreviousPage(RFM_ctx *rfmCtx);
 static void NextPage(RFM_ctx *rfmCtx);
 static void info_clicked(gpointer user_data);
 static void copy_curPath_to_clipboard(GtkWidget *menuitem, gpointer user_data);
+static void refresh_view(RFM_ctx *rfmCtx, gboolean switch_view);
 static void switch_iconview_treeview(RFM_ctx *rfmCtx);
 static void Switch_SearchResultView_DirectoryView(GtkToolItem *item,RFM_ctx *rfmCtx);
 /* callback function for toolbar buttons. Its possible to make function such as home_clicked as callback directly, instead of use toolbar_button_exec as a wrapper. However,i would add GtkToolItems as first parameter for so many different callback functions then. */
@@ -3141,21 +3142,25 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
      g_log(RFM_LOG_GTK, G_LOG_LEVEL_DEBUG,"gtk_icon_view_get_spacing:%d", gtk_icon_view_get_spacing((GtkIconView *)_view));
      g_log(RFM_LOG_GTK, G_LOG_LEVEL_DEBUG,"gtk_icon_view_get_item_width:%d", gtk_icon_view_get_item_width((GtkIconView *)_view));
      g_log(RFM_LOG_GTK, G_LOG_LEVEL_DEBUG,"gtk_icon_view_get_margin:%d", gtk_icon_view_get_margin((GtkIconView *)_view));
-   }
+   }else g_debug("add_view for treeview");
    
    return _view;
 }
 
-static void switch_iconview_treeview(RFM_ctx *rfmCtx) {
+static void refresh_view(RFM_ctx *rfmCtx, gboolean switch_view) {
   GList *  selectionList=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
   gtk_widget_hide(rfm_main_box);
   gtk_widget_destroy(scroll_window);
-  treeview=!treeview;
+  if (switch_view) treeview=!treeview;
   icon_or_tree_view=add_view(rfmCtx);
   gtk_widget_show_all(window);
   refresh_toolbar();
   set_view_selection_list(icon_or_tree_view, treeview, selectionList);
   g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
+}
+
+static void switch_iconview_treeview(RFM_ctx *rfmCtx) {
+  refresh_view(rfmCtx, TRUE);
 }
 
 static void Switch_SearchResultView_DirectoryView(GtkToolItem *item,RFM_ctx *rfmCtx)
@@ -3794,6 +3799,8 @@ static void show_hide_treeview_columns_in_order(CALLER_OWN gchar* order_sequence
   	      g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"        order_seq  %s",order_sequence);
               g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"in log subdomain %s, number in [] is the index for treeviewColumns array, otherwise, is column enum value.",RFM_LOG_COLUMN_VERBOSE);
 
+              gboolean pending_refresh_view = FALSE;
+              gboolean pending_refresh_store = FALSE;
               gchar** order_seq_array = g_strsplit_set(order_sequence, ",;", TREEVIEW_COLUMNS_array_size + 2);
 	      guint j=0; //用来索引 order_seq_array,下面的do while循环,j从零开始循环一遍到order_seq_array最后一项
 	      int target_treeviewColumn_index_for_order_sequence_item_j_to_move_after=-1; //用来索引 treeviewColumns,在下面的do while循环,第一轮,也就是j=0时,会赋值为treeviewColumn_index_for_order_sequence_item_j, 其他情况都通过 ++ 递增
@@ -3824,6 +3831,7 @@ static void show_hide_treeview_columns_in_order(CALLER_OWN gchar* order_sequence
 			    return;
 			  }
 			  col->enumCol=col_enum_with_sign;
+			  pending_refresh_store = TRUE;
 			}else col_enum_with_sign = col->enumCol;
 		      }else if (col->enumCol==NUM_COLS) {
 			g_warning("no need to hide column %s, because its enumCol==NUM_COLS", col->title);
@@ -3856,8 +3864,10 @@ static void show_hide_treeview_columns_in_order(CALLER_OWN gchar* order_sequence
 			  gtk_tree_view_move_column_after(GTK_TREE_VIEW(icon_or_tree_view) , TREEVIEW_COLUMNS[treeviewColumn_index_for_order_sequence_item_j].gtkCol, target_treeviewColumn_index_for_order_sequence_item_j_to_move_after_with_valid_gtkCol<0 ? NULL : TREEVIEW_COLUMNS[target_treeviewColumn_index_for_order_sequence_item_j_to_move_after_with_valid_gtkCol].gtkCol);
 			}
 		      }
-		    }else if (TREEVIEW_COLUMNS[treeviewColumn_index_for_order_sequence_item_j].Show && order_sequence!=treeviewcolumn_init_order_sequence && !do_not_show_VALUE_MAY_NOT_LOADED_message_because_we_will_add_GtkTreeViewColumn_later)
-		      printf(VALUE_MAY_NOT_LOADED,col_enum_at_order_sequence_item_j,TREEVIEW_COLUMNS[treeviewColumn_index_for_order_sequence_item_j].title);//TODO: shall we change this line into g_warning under subdomain rfm-column?
+		    }else if (TREEVIEW_COLUMNS[treeviewColumn_index_for_order_sequence_item_j].Show && order_sequence!=treeviewcolumn_init_order_sequence && !do_not_show_VALUE_MAY_NOT_LOADED_message_because_we_will_add_GtkTreeViewColumn_later){
+		      //printf(VALUE_MAY_NOT_LOADED,col_enum_at_order_sequence_item_j,TREEVIEW_COLUMNS[treeviewColumn_index_for_order_sequence_item_j].title);
+		      pending_refresh_view = TRUE;
+		    }
 		    
 		/* 几种情况: */
 		/* 第一:   2,1 */
@@ -3896,6 +3906,8 @@ static void show_hide_treeview_columns_in_order(CALLER_OWN gchar* order_sequence
 	
               } while (order_seq_array[j]!=NULL);
 	      g_strfreev(order_seq_array);
+              if (pending_refresh_store) refresh_store(rfmCtx);
+	      else if (pending_refresh_view) refresh_view(rfmCtx, FALSE);
 }
 
 static MEM_ALLOC gchar* get_current_column_layout(gboolean title){
