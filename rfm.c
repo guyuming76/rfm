@@ -5618,10 +5618,6 @@ static gchar* calculate_file_hash(const gchar *filepath) {
 
 // Compile rfm_local.c into rfm_local.so in the current directory
 static gboolean compile_local_extension(RFM_ADDON* addon) {
-    gboolean success = FALSE;
-    GError *err = NULL;
-    gint status;
-    gchar *std_out = NULL, *std_err = NULL;
     gchar *c_file_hash = NULL; // To store the hash of the .c file
 
     // Calculate hash of the .c file
