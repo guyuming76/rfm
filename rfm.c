@@ -4334,10 +4334,10 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 	           RFM_ADDON_RESOURCE_TYPE* addon_resource = value->resource_managed_by_addon;
 	           if (addon_resource->check_cmd_interpretor_switch_or_effective_cmd_interpretor){
 		       stdin_cmd_interpretor * new_cmd_interpretor = addon_resource->check_cmd_interpretor_switch_or_effective_cmd_interpretor(&readlineResult, &effective_cmd_interpretor_pointer, from_stdin_readline? &execStdinCmdInNewVT:&execCmdInNewVT, &Addon_Prompt, &(childAttribs->cmd_interpretor_addon_dir));//在目前AI_Model addon 的实现中，如果 effective_cmd_interpretor是AI_Model, 就会设置addon_dir
-		       if (new_cmd_interpretor){
+		       if (new_cmd_interpretor){ //切换到AI_model
 			   current_stdin_cmd_interpretor_pointer = new_cmd_interpretor;
 			   goto switchToReadlineThread;
-		       }else if(prefix_found){
+		       }else if(childAttribs->cmd_interpretor_addon_dir){ //如果不是 new_cmd_interpretor ,但 addon_dir 又不为空，可以推断出一定是找到命令中包含了AI prefix
 			   len = strlen(readlineResult); // Update length
 			   break;
 		       }
