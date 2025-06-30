@@ -3799,7 +3799,7 @@ static void show_hide_treeview_columns_in_order(CALLER_OWN gchar* order_sequence
 	      int target_treeviewColumn_index_for_order_sequence_item_j_to_move_after=-1; //用来索引 treeviewColumns,在下面的do while循环,第一轮,也就是j=0时,会赋值为treeviewColumn_index_for_order_sequence_item_j, 其他情况都通过 ++ 递增
 	      do {
 		gchar * cmd=get_showcolumn_cmd_from_currently_displaying_columns(); //TODO: cmd is only used in debug level log entry, is it possible to run this only when debug? 这里的意思时说能不能只有当前满足G_LOG_LEVEL_DEBUG 的时候才运行这个函数,省得浪费性能
-		g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"        %s",cmd);//TODO: replace leading showcolumn in cmd with string such as "treeviewColumns". 
+		g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"        %s",cmd);
 		g_free(cmd);
 		g_log(RFM_LOG_COLUMN_VERBOSE,G_LOG_LEVEL_DEBUG,"order_seq  %s",order_sequence);//把目标行紧接当前状态行显示方便在log里观察		
 
@@ -3849,7 +3849,12 @@ static void show_hide_treeview_columns_in_order(CALLER_OWN gchar* order_sequence
 		    if (TREEVIEW_COLUMNS[treeviewColumn_index_for_order_sequence_item_j].gtkCol!=NULL){
 		      if (icon_or_tree_view!=NULL && treeview) {
 			gtk_tree_view_column_set_visible(TREEVIEW_COLUMNS[treeviewColumn_index_for_order_sequence_item_j].gtkCol,TREEVIEW_COLUMNS[treeviewColumn_index_for_order_sequence_item_j].Show);
-			if (j>=1) gtk_tree_view_move_column_after(GTK_TREE_VIEW(icon_or_tree_view) , TREEVIEW_COLUMNS[treeviewColumn_index_for_order_sequence_item_j].gtkCol, target_treeviewColumn_index_for_order_sequence_item_j_to_move_after<0? NULL:TREEVIEW_COLUMNS[target_treeviewColumn_index_for_order_sequence_item_j_to_move_after].gtkCol);
+			if (j>=1) {
+			  //考虑下这个命令： showcolumn -ATime,Git， rfm启动后 ATime 对应的gtkCol是空的，所以下面要找到ATime前一个有效的gtkCol, 注意target_treeviewColumn_index_for_order_sequence_item_j_to_move_after 的值并不改变，也就是TREEVIEW—OLUMNS layout不受影响
+			  int target_treeviewColumn_index_for_order_sequence_item_j_to_move_after_with_valid_gtkCol = target_treeviewColumn_index_for_order_sequence_item_j_to_move_after;
+			  while (target_treeviewColumn_index_for_order_sequence_item_j_to_move_after_with_valid_gtkCol>=0 && !TREEVIEW_COLUMNS[target_treeviewColumn_index_for_order_sequence_item_j_to_move_after_with_valid_gtkCol].gtkCol) target_treeviewColumn_index_for_order_sequence_item_j_to_move_after_with_valid_gtkCol--;
+			  gtk_tree_view_move_column_after(GTK_TREE_VIEW(icon_or_tree_view) , TREEVIEW_COLUMNS[treeviewColumn_index_for_order_sequence_item_j].gtkCol, target_treeviewColumn_index_for_order_sequence_item_j_to_move_after_with_valid_gtkCol<0 ? NULL : TREEVIEW_COLUMNS[target_treeviewColumn_index_for_order_sequence_item_j_to_move_after_with_valid_gtkCol].gtkCol);
+			}
 		      }
 		    }else if (TREEVIEW_COLUMNS[treeviewColumn_index_for_order_sequence_item_j].Show && order_sequence!=treeviewcolumn_init_order_sequence && !do_not_show_VALUE_MAY_NOT_LOADED_message_because_we_will_add_GtkTreeViewColumn_later)
 		      printf(VALUE_MAY_NOT_LOADED,col_enum_at_order_sequence_item_j,TREEVIEW_COLUMNS[treeviewColumn_index_for_order_sequence_item_j].title);//TODO: shall we change this line into g_warning under subdomain rfm-column?
