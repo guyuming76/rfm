@@ -5283,9 +5283,9 @@ static void ReadFromPipeStdinIfAny(char * fd)
 }
 
 void handle_commandline_argument(char* arg){
-   if (strcmp(g_utf8_substring(arg, 0, 8),"/dev/fd/")==0) {
+   if (g_str_has_prefix(arg, "/dev/fd/")) {
       //try  `gdb --args rfm <(locate rfm.c)` and find in htop what this /dev/fd means
-     pipefd = g_utf8_substring(arg, 8, strlen(arg));
+      pipefd = strdup(arg + 8);
    }
 }
 
@@ -5294,12 +5294,15 @@ int readlink_proc_self_fd_pipefd_and_confirm_pipefd_is_used_by_pipeline(){
    char name[50];
    snprintf(name,50,"/proc/self/fd/%s", pipefd);
    int rslt = readlink(name, buf, PATH_MAX);
-   //g_debug("readlink for %s: %s",name,buf); //do we really need to use glib in this file?
-   if (strlen(buf)>4 && strcmp(g_utf8_substring(buf, 0, 4),"pipe")==0) {
-     if (atoi(pipefd)==STDIN_FILENO) pipeStream=stdin;
-     else pipeStream=fdopen(atoi(pipefd),"r");
-     return TRUE;
-   }else return FALSE;
+   if (rslt>4) {
+     buf[4]='\0';
+     if (strcmp(buf,"pipe")==0){
+       if (atoi(pipefd)==STDIN_FILENO) pipeStream=stdin;
+       else pipeStream=fdopen(atoi(pipefd),"r");
+       return TRUE;
+     }
+   }
+   return FALSE;
 }
 
 void ensure_fd0_is_opened_for_stdin_inherited_from_parent_process_instead_of_used_by_pipeline_any_more(){
