@@ -4639,8 +4639,6 @@ static int setup(RFM_ctx *rfmCtx)
 //RFM_builtinCMD 里传过来的和 g_signal_connect 里传过来的不一样，这里声明的是最初g_signal_connect里用的，但后来RFM_builtinCMD里也用到这个函数了,所以这里现在的signature干脆不含参数，避免错误的参数值被使用
 static void cleanup()
 {
-   int e;
-
    if (StartedAs_rfmFileChooser){
       GtkTreeIter iter;
       int returnToFile_fd=-1;
