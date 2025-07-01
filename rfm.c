@@ -4521,7 +4521,6 @@ static int setup(RFM_ctx *rfmCtx)
 
    defaultPixbufs=load_default_pixbufs(); /* TODO: WARNING: This can return NULL! */
    g_object_set_data_full(G_OBJECT(window),"rfm_default_pixbufs",defaultPixbufs,(GDestroyNotify)free_default_pixbufs);
-   //TODO: why list_store_new api cannot take a dynamic array of columns, correspoin?
    //Note that it is very important that the following G_TYPE_*s are in the same order of enum definition (RFM_treeviewCOL such as COL_FILENAME)
    store=gtk_list_store_new(NUM_COLS,
 			      G_TYPE_STRING,    //iconview_markup
