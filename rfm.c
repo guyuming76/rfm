@@ -3930,7 +3930,7 @@ static MEM_ALLOC gchar* get_current_column_layout(gboolean title){
 
 static MEM_ALLOC gchar* get_showcolumn_cmd_from_currently_displaying_columns(){
             gchar* column_layout = get_current_column_layout(TRUE);
-	    gchar* showColumnHistory = g_strconcat("showcolumn ",column_layout);
+	    gchar* showColumnHistory = g_strconcat("showcolumn ",column_layout,NULL);
             g_free(column_layout);
 	    return showColumnHistory;
 }
