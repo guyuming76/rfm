@@ -1477,7 +1477,7 @@ static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guin
    gchar *mime_type=NULL;
    //gchar *utf8_display_name=NULL;
    gchar *is_mounted=NULL;
-   gint i;
+   size_t i;
    RFM_FileAttributes *fileAttributes=malloc_fileAttributes();
    if (fileAttributes==NULL) return NULL;
 
