@@ -1030,16 +1030,16 @@ static MEM_ALLOC gchar **build_cmd_vector(CALLER_OWN const char **cmd, CALLER_OW
 {
    long j=0;
    gchar **v=NULL;
-   GList *listElement = (file_list==NULL)? NULL : g_list_first(file_list);
+   file_list=g_list_first(file_list);
   
    if((v=calloc((RFM_MX_ARGS), sizeof(gchar*)))==NULL)
       return NULL;
 
    while (cmd[j]!=NULL && j<RFM_MX_ARGS) {
-     if (strcmp(cmd[j],RFM_selected_filename_placeholder)==0 && listElement!=NULL){//TODO,如果file_list为NULL,而cmd里面有 RFM_selected_filename_picker, 如%s,并且dest_path 不为空，应该可以用dest_path来替换%s
+     if (strcmp(cmd[j],RFM_selected_filename_placeholder)==0 && file_list!=NULL){//TODO,如果file_list为NULL,而cmd里面有 RFM_selected_filename_picker, 如%s,并且dest_path 不为空，应该可以用dest_path来替换%s
        // before this commit, file_list and dest_path are all appended after cmd, but commands like ffmpeg to create thumbnail need to have file name in the middle of the argv, appended at the end won't work. So i modify the rule here so that if we have placeholder in cmd, we replace it with item in file_list. So, file_list can work as generic argument list later, not necessarily the filename. And replacing empty string place holders in cmd with items in file_list can be something like printf.
-       v[j]=listElement->data; //this data is owned by rfm_FileAttributes and was not freed before, but now, v and file_list share the reference.  g_list_free_full never called on file_list, and filename char* is not freed when free(v),  but freed with rfm_FileAttributes.
-       listElement=g_list_next(listElement);
+       v[j]=file_list->data; //this data is owned by rfm_FileAttributes and was not freed before, but now, v and file_list share the reference.  g_list_free_full never called on file_list, and filename char* is not freed when free(v),  but freed with rfm_FileAttributes.
+       file_list=g_list_next(file_list);
      }else if (cmd[j][0]=='$' && strlen(cmd[j])>1){
        const char* envName = cmd[j] + sizeof(char); //remove leading $ in cmd[j] to get envName
        char* envValue = getenv(envName);
@@ -1061,10 +1061,10 @@ static MEM_ALLOC gchar **build_cmd_vector(CALLER_OWN const char **cmd, CALLER_OW
       return NULL;
    }
    //把没用完的file_list成员append到命令结尾
-   while (listElement!=NULL) {
-      v[j]=listElement->data;
+   while (file_list!=NULL) {
+      v[j]=file_list->data;
       j++;
-      listElement=g_list_next(listElement);
+      file_list=g_list_next(file_list);
    }
 
    v[j]=dest_path; /* This may be NULL anyway */
