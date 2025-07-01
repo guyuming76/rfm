@@ -508,7 +508,6 @@ static gchar** rfmFileChooser_CMD(enum rfmTerminal startWithVT, gchar* search_cm
 /******FileChooser related definitions end***********/
 /********************************************************************/
 /**************gtk UI, filemenu, toolbar*****************************/
-
 static GtkWidget *window=NULL;      /* Main window */
 static GtkWidget *rfm_main_box;
 static GtkWidget *scroll_window = NULL;
@@ -4468,10 +4467,15 @@ void linenoise_completion(const char *buf, linenoiseCompletions *lc) {
 static int setup(RFM_ctx *rfmCtx)
 {
    gtk_init(NULL, NULL);
-
    window=gtk_window_new(GTK_WINDOW_TOPLEVEL);
    gtk_window_set_default_size(GTK_WINDOW(window), 640, 400);
 
+   if (getenv("rfmFontCSS")){//可以在rfm.sh里面设置字体环境变量
+     GtkCssProvider *provider = gtk_css_provider_new();
+     gtk_css_provider_load_from_data(provider, getenv("rfmFontCSS"), -1, NULL);
+     GdkScreen *screen = gdk_screen_get_default();
+     gtk_style_context_add_provider_for_screen(screen, GTK_STYLE_PROVIDER(provider),GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+   }
    GdkDisplay *display = gtk_widget_get_display(window);
    gchar* theme_name = getenv("XCURSOR_THEME");
    if (theme_name!=NULL){
@@ -4485,7 +4489,6 @@ static int setup(RFM_ctx *rfmCtx)
    gtk_container_add(GTK_CONTAINER(window), rfm_main_box);
 
    rfm_homePath=g_strdup(g_get_home_dir());
-   
    rfm_thumbDir=g_build_filename(g_get_user_cache_dir(), "thumbnails", "normal", NULL);
 
    thumb_hash=g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)gtk_tree_row_reference_free);
