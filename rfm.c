@@ -68,7 +68,7 @@ static gboolean treeview=FALSE;
 static void show_msgbox(gchar *msg, gchar *title, gint type);
 static void die(const char *errstr, ...);
 static int setup(RFM_ctx *rfmCtx);
-static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx);
+static void cleanup();
 gpointer transferPointerOwnership(gpointer *newOwner, gpointer *oldOwner);
 gboolean str_regex_replace(char **str, const regex_t * restrict pattern_compiled, const char *replacement);
 
@@ -2941,7 +2941,7 @@ static gboolean view_key_press(GtkWidget *widget, GdkEvent *event,RFM_ctx *rfmCt
   if (ek->keyval==GDK_KEY_Menu)
     return popup_file_menu(event, rfmCtx);
   else if (ek->keyval==GDK_KEY_q){
-    cleanup(NULL,rfmCtx);
+    cleanup();
     return TRUE;
   } else if (ek->keyval == GDK_KEY_Escape) {
     if(treeview)
@@ -4095,7 +4095,7 @@ static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * p
         }else if (g_strcmp0(parsed_msg->we_wordv[0],"pwd")==0) {
 	  printf("%s\n",getenv("PWD"));
         }else if (g_strcmp0(parsed_msg->we_wordv[0],"quit")==0) {
-	  cleanup(NULL,rfmCtx);
+	  cleanup();
         }else if (g_strcmp0(parsed_msg->we_wordv[0],"/")==0) {
 	  switch_iconview_treeview(rfmCtx);
 	}else if (g_strcmp0(parsed_msg->we_wordv[0],"//")==0) {
@@ -4564,7 +4564,7 @@ static int setup(RFM_ctx *rfmCtx)
                             G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING); //COL_Ext56..60
    treemodel=GTK_TREE_MODEL(store);
    
-   g_signal_connect(window,"destroy", G_CALLBACK(cleanup), rfmCtx);
+   g_signal_connect(window,"destroy", G_CALLBACK(cleanup), NULL);
 
    g_debug("initDir: %s",initDir);
    g_debug("rfm_curPath: %s",rfm_curPath);
@@ -4638,8 +4638,8 @@ static int setup(RFM_ctx *rfmCtx)
    return 0;
 }
 
-//别用这个函数参数，RFM_builtinCMD 里传过来的和 g_signal_connect 里传过来的不一样，这里声明的是最初g_signal_connect里用的，但后来RFM_builtinCMD里也用到这个函数了
-static void cleanup(GtkWidget *window, RFM_ctx *rfmCtx)
+//RFM_builtinCMD 里传过来的和 g_signal_connect 里传过来的不一样，这里声明的是最初g_signal_connect里用的，但后来RFM_builtinCMD里也用到这个函数了,所以这里现在的signature干脆不含参数，避免错误的参数值被使用
+static void cleanup()
 {
    int e;
 
