@@ -4620,8 +4620,8 @@ static int setup(RFM_ctx *rfmCtx)
    ReadFromPipeStdinIfAny(pipefd);
   
    if (showHelpOnStart && startWithTerm() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)) stdin_command_help(NULL,NULL);
+   refresh_store(rfmCtx);
    if (auto_execution_command_after_rfm_start==NULL){
-     refresh_store(rfmCtx);
      if(startWithTerm() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)){
        readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);
      }
