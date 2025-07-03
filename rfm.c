@@ -4408,7 +4408,7 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
  switchToReadlineThread:
         g_free (readlineResult); // Free the original buffer
 
-	if(startWithTerm() || auto_execution_command_after_rfm_start!=NULL){
+	if(startWithTerm()|| !from_stdin_readline || auto_execution_command_after_rfm_start!=NULL){//TODO: 为啥要加这一层判断？去掉这个if代码不是更简练？
           // Use effective_cmd_interpretor_index for execution calls
 	  if (SearchResultAsInput) exec_stdin_command_with_SearchResultAsInput(childAttribs->readlineResultString, from_stdin_readline, effective_cmd_interpretor_pointer, childAttribs);
 	  else if ((exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread || !from_stdin_readline) && !(execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT))) ret = exec_stdin_command(childAttribs->readlineResultString, effective_cmd_interpretor_pointer, childAttribs);
