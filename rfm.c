@@ -205,9 +205,6 @@ static void null_log_handler(const gchar *log_domain,GLogLevelFlags log_level,co
 /******Terminal Emulator related definitions end*****/
 /****************************************************/
 /******Process spawn related definitions*************/
-#define   RFM_EXEC_STDOUT   G_SPAWN_CHILD_INHERITS_STDIN | G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR
-#define   RFM_EXEC_MOUNT   G_SPAWN_CHILD_INHERITS_STDIN | G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR  //TODO: i don't know what this mean yet.
-
 static GList *rfm_childList = NULL;
 static int rfm_childListLength = 0;
 static void free_child_attribs(FREE_FULL RFM_ChildAttribs *child_attribs);
