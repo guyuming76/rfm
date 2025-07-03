@@ -296,7 +296,7 @@ static RFM_ToolButton tool_buttons[] = {
    { "Info",         "dialog-information",      info_clicked,           NULL,              TRUE,           TRUE,      0,                      NULL,                   NULL},
 // { "Home",         "go-home",                 home_clicked,           NULL,              FALSE,          TRUE,      0,                      NULL,                   NULL},
    { cpPath,         NULL,                      copy_curPath_to_clipboard, NULL,           TRUE,           TRUE,      0,                      "copy current path to clipboard", NULL},
-   { SAVESEARCHRESULT,NULL,                     NULL,                   save_searchresult_to_file,TRUE,    FALSE,     0,                      NULL,                   startWithVT },
+   { SAVESEARCHRESULT,NULL,                     NULL,                   save_searchresult_to_file,TRUE,    FALSE,     0,                      NULL,                   NULL },
    { FILTERSEARCHRESULT,NULL,                   NULL,                filter_selected_searchresult,TRUE,    FALSE,     0,                      NULL,                   NULL },
    { START_MENU,     NULL,                      NULL,                   start_menu,        FALSE,          TRUE,      0,                      NULL,                  NULL},
 #ifdef RFM_AddOn

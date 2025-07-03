@@ -168,7 +168,7 @@ void linenoise_completion(const char *buf, linenoiseCompletions *lc);
 void handle_commandline_argument(char* arg);
 int readlink_proc_self_fd_pipefd_and_confirm_pipefd_is_used_by_pipeline();
 void ensure_fd0_is_opened_for_stdin_inherited_from_parent_process_instead_of_used_by_pipeline_any_more();
-static gboolean startWithVT();
+static gboolean startWithTerm();
 static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs);
 static void ReadFromPipeStdinIfAny(char *fd);
 static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *child_attribs);
@@ -852,7 +852,7 @@ static void show_child_output(CALLER_OWN RFM_ChildAttribs *child_attribs)
    
    /* Show any output we have regardless of error status */
    if (child_attribs->stdOut!=NULL && child_attribs->stdOut[0]!=0) {
-     if (startWithVT()){
+     if (startWithTerm()){
        printf("%s",child_attribs->stdOut);
        g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_DEBUG, "output of strlen %ld from child PID %d shown", strlen(child_attribs->stdOut), child_attribs->pid);
        //TODO: if not startwithVT(), user won't see printf, but user also will not see all those g_warnings. maybe we can add some indicator on UI and guide user to some log file. When not startwithVT, redirect stdout and stderr to some log file
@@ -867,7 +867,7 @@ static void show_child_output(CALLER_OWN RFM_ChildAttribs *child_attribs)
    }
 
    if (child_attribs->stdErr!=NULL && child_attribs->stdErr[0]!=0) {
-     if (startWithVT()){
+     if (startWithTerm()){
        fprintf(stderr, "%s",child_attribs->stdErr);
        g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_WARNING, "error of strlen %ld from child PID %d shown", strlen(child_attribs->stdErr), child_attribs->pid);
        //TODO: if not startwithVT(), user won't see printf, but user also will not see all those g_warnings. maybe we can add some indicator on UI and guide user to some log file. When not startwithVT, redirect stdout and stderr to some log file
@@ -2185,7 +2185,7 @@ static void set_Titles(CALLER_OWN const gchar * title){
    gboolean title_is_rfm_curPath = (title[0]=='/');
    if (title_is_rfm_curPath) gtk_window_set_title(GTK_WINDOW(window), title);
    gtk_tool_button_set_label(GTK_TOOL_BUTTON(PathAndRepositoryNameDisplay), title);
-   if (title_is_rfm_curPath && startWithVT() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)) set_terminal_window_title(title);
+   if (title_is_rfm_curPath && startWithTerm() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)) set_terminal_window_title(title);
 }
 
 
@@ -2685,7 +2685,7 @@ static void toolbar_button_exec(GtkToolItem *item, RFM_ToolButton *button_defini
      stdin_cmd_interpretor *cmd_interpretor_pointer = match_cmd_str_array_with_interpretors(child_attribs->RunCmd);
      if (cmd_interpretor_pointer){
        gchar* cmd = strdup(child_attribs->RunCmd[1]);
-       if (startWithVT()) printf("\n%s\033[32m%s%s]\033[0m%s\n",InheritedPrompt, cmd_interpretor_pointer->prompt,(ItemSelected==0)?"":"*",cmd);
+       if (startWithTerm()) printf("\n%s\033[32m%s%s]\033[0m%s\n",InheritedPrompt, cmd_interpretor_pointer->prompt,(ItemSelected==0)?"":"*",cmd);
        parse_and_exec_command_in_gtk_thread(cmd, FALSE, cmd_interpretor_pointer, child_attribs);
      }else g_spawn_wrapper_(NULL, NULL, child_attribs);
    }
@@ -2721,7 +2721,7 @@ static void file_menu_exec(GtkMenuItem *menuitem, RFM_MenuItem *file_menu_item_d
      stdin_cmd_interpretor *cmd_interpretor_pointer = match_cmd_str_array_with_interpretors(child_attribs->RunCmd);
      if (cmd_interpretor_pointer){
        gchar* cmd = strdup(child_attribs->RunCmd[1]);
-       if (startWithVT()) printf("\n%s\033[32m%s%s]\033[0m%s\n",InheritedPrompt, cmd_interpretor_pointer->prompt,(ItemSelected==0)?"":"*",cmd);
+       if (startWithTerm()) printf("\n%s\033[32m%s%s]\033[0m%s\n",InheritedPrompt, cmd_interpretor_pointer->prompt,(ItemSelected==0)?"":"*",cmd);
        parse_and_exec_command_in_gtk_thread(cmd, FALSE, cmd_interpretor_pointer, child_attribs);
      }else g_spawn_wrapper_for_selected_fileList_(child_attribs);
   }
@@ -2855,12 +2855,12 @@ static void sort_on_column_header(GtkMenuItem *menuitem, RFM_treeviewColumn* rfm
 static void hide_column_menuitem_activated(GtkMenuItem *menuitem, RFM_treeviewColumn *col) {
         char cmd[256+1];
         snprintf(cmd, sizeof(cmd),"-%s",col->title);
-        if (startWithVT()) printf("\n%s\033[32m%s%s]\033[0mshowcolumn %s\n",InheritedPrompt, current_stdin_cmd_interpretor_pointer->prompt,(ItemSelected==0)?"":"*",cmd);
+        if (startWithTerm()) printf("\n%s\033[32m%s%s]\033[0mshowcolumn %s\n",InheritedPrompt, current_stdin_cmd_interpretor_pointer->prompt,(ItemSelected==0)?"":"*",cmd);
         show_hide_treeview_columns_in_order(cmd);
 }
 
 static void insert_column_menuitem_callback(GtkMenuItem *menuitem,char *order_seq) {
-      if (startWithVT()) printf("\n%s\033[32m%s%s]\033[0mshowcolumn %s\n",InheritedPrompt, current_stdin_cmd_interpretor_pointer->prompt,(ItemSelected==0)?"":"*",order_seq);
+      if (startWithTerm()) printf("\n%s\033[32m%s%s]\033[0mshowcolumn %s\n",InheritedPrompt, current_stdin_cmd_interpretor_pointer->prompt,(ItemSelected==0)?"":"*",order_seq);
       show_hide_treeview_columns_in_order(order_seq);
 }
 
@@ -3615,7 +3615,7 @@ static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs) {
   //这里不用 free childAttribs, 因为如果上一步if条件没满足，没有执行exec_stdin_command ，一定是在gtk_thread里面执行了 exec 的某个版本，但因为是异步的，这里我又不方便加assert判断 childAttribs
   execStdinCmdInNewVT = FALSE;
   
-  if(startWithVT() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)){
+  if(startWithTerm() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)){
     // Allocate more space for potentially longer AI prompts
     gchar *prompt = calloc(strlen(InheritedPrompt)+256, sizeof(gchar));
     sprintf(prompt,"%s",InheritedPrompt);
@@ -4408,7 +4408,7 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
  switchToReadlineThread:
         g_free (readlineResult); // Free the original buffer
 
-	if(startWithVT() || auto_execution_command_after_rfm_start!=NULL){
+	if(startWithTerm() || auto_execution_command_after_rfm_start!=NULL){
           // Use effective_cmd_interpretor_index for execution calls
 	  if (SearchResultAsInput) exec_stdin_command_with_SearchResultAsInput(childAttribs->readlineResultString, from_stdin_readline, effective_cmd_interpretor_pointer, childAttribs);
 	  else if ((exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread || !from_stdin_readline) && !(execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT))) ret = exec_stdin_command(childAttribs->readlineResultString, effective_cmd_interpretor_pointer, childAttribs);
@@ -4619,10 +4619,10 @@ static int setup(RFM_ctx *rfmCtx)
 
    ReadFromPipeStdinIfAny(pipefd);
   
-   if (showHelpOnStart && startWithVT() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)) stdin_command_help(NULL,NULL);
+   if (showHelpOnStart && startWithTerm() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)) stdin_command_help(NULL,NULL);
    if (auto_execution_command_after_rfm_start==NULL){
      refresh_store(rfmCtx);
-     if(startWithVT() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)){
+     if(startWithTerm() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)){
        readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);
      }
    }else stdin_command_Scheduler = g_idle_add_once(parse_and_exec_stdin_command_in_gtk_thread, auto_execution_command_after_rfm_start);
@@ -4864,7 +4864,7 @@ int main(int argc, char *argv[])
    else
       die("ERROR: %s: setup() failed\n", PROG_NAME);
 
-   if (startWithVT()) system("reset -I");
+   if (startWithTerm()) system("reset -I");
    return 0;
 }
 
@@ -5439,7 +5439,7 @@ static void update_SearchResultFileNameList_and_refresh_store(RFM_ChildAttribs *
   for(int i=0;i<=NUM_Ext_Columns;i++) if (old_ExtColumnHashTable[i]!=NULL) { g_hash_table_destroy(old_ExtColumnHashTable[i]); old_ExtColumnHashTable[i] = NULL; }
 }
 
-static gboolean startWithVT(){
+static gboolean startWithTerm(){
   return rfmStartWithVirtualTerminal && isatty(0);
 }
 
