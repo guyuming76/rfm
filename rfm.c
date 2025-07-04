@@ -775,10 +775,10 @@ static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_
 /* Identical to g_spawn_async_with_pipes_and_fds() but with n_fds set to zero, so no FD assignments are used. */
    
    if (child_attribs->output_read_by_program || (((child_attribs->runOpts & G_SPAWN_CHILD_INHERITS_STDOUT)!=G_SPAWN_CHILD_INHERITS_STDOUT) && ((child_attribs->runOpts & G_SPAWN_STDOUT_TO_DEV_NULL)!=G_SPAWN_STDOUT_TO_DEV_NULL)))
-     if (read_char_pipe(child_attribs->stdOut_fd, PIPE_SZ, &child_attribs->stdOut)<0) g_warning("read_char_pipe failed");
+     if (read_char_pipe(child_attribs->stdOut_fd, PIPE_SZ, &child_attribs->stdOut)<0) g_log(RFM_LOG_GSPAWN_READ_PIPE, G_LOG_LEVEL_DEBUG,"read_char_pipe failed");
 
    if ((((child_attribs->runOpts) & G_SPAWN_CHILD_INHERITS_STDERR)!=G_SPAWN_CHILD_INHERITS_STDERR) && (((child_attribs->runOpts) & G_SPAWN_STDERR_TO_DEV_NULL)!=G_SPAWN_STDERR_TO_DEV_NULL))
-     if (read_char_pipe(child_attribs->stdErr_fd, PIPE_SZ, &child_attribs->stdErr)<0) g_warning("read_char_pipe failed");
+     if (read_char_pipe(child_attribs->stdErr_fd, PIPE_SZ, &child_attribs->stdErr)<0) g_log(RFM_LOG_GSPAWN_READ_PIPE, G_LOG_LEVEL_DEBUG,"read_char_pipe failed");
    
    if (!child_attribs->output_read_by_program && ((child_attribs->stdOut && strlen(child_attribs->stdOut)>0) || (child_attribs->stdErr && strlen(child_attribs->stdErr)>0))) show_child_output(child_attribs);
    //TODO: devPicAndVideo submodule commit f746eaf096827adda06cb2a085787027f1dca027 的错误起源于上面一行代码和RFM_EXEC_FILECHOOSER 的引入。

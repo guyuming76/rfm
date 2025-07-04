@@ -37,6 +37,7 @@
 #define RFM_LOG_DATA_GIT "rfm-data-git"
 #endif
 #define RFM_LOG_GSPAWN "rfm-gspawn"
+#define RFM_LOG_GSPAWN_READ_PIPE "rfm-gspawn-readpipe"
 #define RFM_LOG_COLUMN "rfm-column"
 #define RFM_LOG_COLUMN_VERBOSE "rfm-column-verbose"
 #define RFM_LOG_GTK "rfm-gtk"
