@@ -4404,7 +4404,7 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
  switchToReadlineThread:
         g_free (readlineResult); // Free the original buffer
 
-	if(startWithTerm()|| !from_stdin_readline){//TODO: 为啥要加这一层判断？去掉这个if代码不是更简练？
+	assert(startWithTerm()|| !from_stdin_readline);
           // Use effective_cmd_interpretor_index for execution calls
 	  if (SearchResultAsInput) exec_stdin_command_with_SearchResultAsInput(childAttribs->readlineResultString, from_stdin_readline, effective_cmd_interpretor_pointer, childAttribs);
 	  else if ((exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread || !from_stdin_readline) && !(execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT))) ret = exec_stdin_command(childAttribs->readlineResultString, effective_cmd_interpretor_pointer, childAttribs);
@@ -4415,7 +4415,7 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
           // Pass the original readlineResultString (potentially NULL if handled by builtin) to the next thread
           // The next thread will use the global current_stdin_cmd_interpretor for its prompt
 	  if (from_stdin_readline && !SearchResultAsInput) readlineThread=g_thread_new("readline", readlineInSeperateThread, childAttribs);
-        }
+        
         return ret;
 }
 
