@@ -143,7 +143,6 @@ static gboolean stdin_cmd_leading_space = FALSE;
 static enum rfmTerminal rfmStartWithVirtualTerminal = INHERIT_TERMINAL;
 static guint stdin_command_Scheduler=0;
 static GThread * readlineThread=NULL;
-static gchar *auto_execution_command_after_rfm_start = NULL;
 /*keep the original user inputs for add_history*/
 static gchar *OriginalReadlineResult = NULL;
 static guint history_entry_added=0;
@@ -179,7 +178,8 @@ static void set_stdin_cmd_leading_space_true();
 static NO_FREE stdin_cmd_interpretor* match_cmd_str_array_with_interpretors(gchar** RunCmd);
 static void combine_command_with_selected_files_and_setenv(CALLER_OWN GString* readlineResultString, gboolean cmd_end_with_space, gchar** *env);
 static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboolean const from_stdin_readline, NO_FREE const stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs* childAttribs);
-static void parse_and_exec_stdin_command_in_gtk_thread(gchar *msg);
+static void parse_and_exec_stdin_command_in_gtk_thread(gchar *readlineResult);
+static void parse_and_exec_cmd_in_gtk_thread (gchar * cmd);
 static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * parsed_msg, GString* readline_result_string);
 static void toggle_exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread();
 static void add_history_timestamp();
@@ -3480,10 +3480,6 @@ static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPrevi
 
 static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *childAttribs){
   gboolean ret = FALSE;
-  if (auto_execution_command_after_rfm_start!=NULL){
-    //auto_execution_command_after_rfm_start was freed in exec_stdin_command as readlineresult
-    auto_execution_command_after_rfm_start = NULL;
-  }
   
   if (readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution!=NULL){ //this means it's not initial run after rfm start, so i should first run cmd from previous readline here
 #ifdef PythonEmbedded
@@ -4408,12 +4404,12 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
  switchToReadlineThread:
         g_free (readlineResult); // Free the original buffer
 
-	if(startWithTerm()|| !from_stdin_readline || auto_execution_command_after_rfm_start!=NULL){//TODO: 为啥要加这一层判断？去掉这个if代码不是更简练？
+	if(startWithTerm()|| !from_stdin_readline){//TODO: 为啥要加这一层判断？去掉这个if代码不是更简练？
           // Use effective_cmd_interpretor_index for execution calls
 	  if (SearchResultAsInput) exec_stdin_command_with_SearchResultAsInput(childAttribs->readlineResultString, from_stdin_readline, effective_cmd_interpretor_pointer, childAttribs);
 	  else if ((exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread || !from_stdin_readline) && !(execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT))) ret = exec_stdin_command(childAttribs->readlineResultString, effective_cmd_interpretor_pointer, childAttribs);
 
-	  if (from_stdin_readline && auto_execution_command_after_rfm_start==NULL) g_thread_join(readlineThread);//we won't have more than one readlineThread running at the same time since we join before new thread here
+	  if (from_stdin_readline) g_thread_join(readlineThread);//we won't have more than one readlineThread running at the same time since we join before new thread here
 	  if ((execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT)) && childAttribs->readlineResultString) exec_stdin_command_in_new_VT(childAttribs->readlineResultString, effective_cmd_interpretor_pointer, childAttribs); // 在AI Mode下输入builtin cmd,如 help, 会因为是AI mode 一开始把 execStdinCmdInNewVT 设成true,所以这里加上 readlineResultString 非NULL判断
 
           // Pass the original readlineResultString (potentially NULL if handled by builtin) to the next thread
@@ -4426,6 +4422,11 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult){
   RFM_ChildAttribs *childAttribs = calloc(1, sizeof(RFM_ChildAttribs));
   parse_and_exec_command_in_gtk_thread(readlineResult, TRUE, current_stdin_cmd_interpretor_pointer, childAttribs);
+}
+
+static void parse_and_exec_cmd_in_gtk_thread (gchar * cmd){
+  RFM_ChildAttribs *childAttribs = calloc(1, sizeof(RFM_ChildAttribs));
+  parse_and_exec_command_in_gtk_thread(cmd, FALSE, current_stdin_cmd_interpretor_pointer, childAttribs);
 }
 
 static char** rfm_filename_completion(const char *text){
@@ -4621,11 +4622,9 @@ static int setup(RFM_ctx *rfmCtx)
   
    if (showHelpOnStart && startWithTerm() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)) stdin_command_help(NULL,NULL);
    refresh_store(rfmCtx);
-   if (auto_execution_command_after_rfm_start==NULL){
-     if(startWithTerm() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)){
+   if(startWithTerm() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)){
        readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);
-     }
-   }else stdin_command_Scheduler = g_idle_add_once(parse_and_exec_stdin_command_in_gtk_thread, auto_execution_command_after_rfm_start);
+   }
    
    //block Ctrl+C. Without this, Ctrl+C in readline will terminate rfm. Now, if you run htop with readline, Ctrl+C only terminate htop. BTW, it's strange that i had tried sigprocmask, pthread_sigmask, and rl_clear_signals, and they didn't work.
    ignore_SIGINT.sa_handler = SIG_IGN;
@@ -4722,6 +4721,7 @@ int main(int argc, char *argv[])
 {
    struct stat statbuf;
    gchar *thumbnailsize;
+   gchar *auto_execution_command_after_rfm_start = NULL;
    g_log_set_handler (G_LOG_DOMAIN, G_LOG_LEVEL_MASK | G_LOG_FLAG_FATAL| G_LOG_FLAG_RECURSION, g_log_default_handler, NULL);
 
    addons = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
@@ -4859,9 +4859,10 @@ int main(int argc, char *argv[])
     c++;
    }
 
-   if (setup(rfmCtx)==0)
+   if (setup(rfmCtx)==0){
+      if (auto_execution_command_after_rfm_start) g_idle_add_once(parse_and_exec_cmd_in_gtk_thread, auto_execution_command_after_rfm_start);
       gtk_main();
-   else
+   }else
       die("ERROR: %s: setup() failed\n", PROG_NAME);
 
    if (startWithTerm()) system("reset -I");
