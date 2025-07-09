@@ -5808,6 +5808,8 @@ static void load_addon(CALLER_OWN char* addon_directory){
             goto cleanup;
         }else addon->addon_type = *addon_type_variable;
 
+	if (addon->addon_type == Directory && strcmp(rfm_curPath, addon_directory)!=0) goto cleanup;
+
 	addon->local_leave_func = dlsym(addon->rfm_local_so_handle, RFM_LOCAL_LEAVE_FUNC);
         dlsym_error = dlerror();
         if (dlsym_error) {
