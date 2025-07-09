@@ -23,9 +23,6 @@ RFM_FILE_CHOOSER =
 CmarkTools = -DCmarkTools
 #CmarkTools =
 
-MU_VIEW = -DMU_VIEW
-#MU_VIEW =
-
 RFM_AddOn = -DRFM_AddOn=\"rfm_local.so\"
 #RFM_LOCAL =
 

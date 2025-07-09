@@ -7,3 +7,6 @@
 [submodule "AI_model_API_config"]
 	path = AI_model_API_config
 	url = https://gitee.com/guyuming76/AI_model_API_config
+[submodule "mail_addon"]
+	path = mail_addon
+	url = https://gitee.com/guyuming76/rfm-mail.git

@@ -134,7 +134,7 @@ static const char *geogebraThumb[] = { rfmBinPath "rfmMakeThumbnailForGGB.sh",th
 static const char *term_cmd[]  = { "$RFM_TERM", NULL };
 static const char *new_rfm[]  = { "$RFM_TERM", rfmBinPath "rfm", NULL };
 static const char *share_dir[] = { "$RFM_TERM", rfmBinPath "rfmShareDir.sh", NULL };
-static const char *muview[] = { "mu", "view", NULL };
+
 static const char *launch_desktop[] = { "dex", "--term", "$RFM_TERM", NULL };
 //TODO: to get thumbnail from .desktop file
 #ifdef GitIntegration
@@ -207,7 +207,6 @@ static RFM_MenuItem run_actions[] = {
    { "Open with...", "*",              "*",                    NULL,			NULL,			NULL,		open_with,        		NULL },
    { RunActionChangeOwner,"*",         "*",                    NULL,			NULL,			NULL,		change_owner,                   NULL },
    { RunActionMkdirMoveFiles,"*",      "*",                    NULL,                    NULL,                   NULL,           mkdir_and_move_files_into_it,   NULL },
-   { "Open",         "message",        "rfc822",               NULL,			"muview",               NULL,		muview,                         NULL },
    { "Open",         "image",          "*",                    NULL,			NULL,			NULL,		show_image,       		NULL },
    { "Open",         "application",    "x-desktop",            NULL,                    NULL,                   NULL,           launch_desktop,                 NULL },
    { "Open",         "application",    "vnd.oasis.opendocument.text",          NULL,	NULL,			NULL,		soffice,  			NULL },
@@ -356,10 +355,7 @@ static RFM_treeviewColumn treeviewColumns_init[] = {
 static RFM_treeviewColumn treeviewColumns[G_N_ELEMENTS(treeviewColumns_init) + NUM_Ext_Columns - 1]; // 因为C1已经包含在treeviewColumns_init 里了，所以要-1
 
 static char SearchResultColumnSeperator[32]={':', 0}; //this is the default value and can be override by specific searchresulttype and can also be set manually with builtin cmd
-static gchar* MailColumns[] = { "-FileName",",From,Subject,Date,Attachments",NULL };
-#ifdef MU_VIEW
-static gchar* MU_VIEW_cmdTemplate[] = { stdin_cmd_interpretors[0].name, "mu view %s | rfmGetMailHeaderWithMuView.sh", NULL };
-#endif
+
 #ifdef CmarkTools
 static gchar* MD_parsing_cmdTemplate[] = { stdin_cmd_interpretors[0].name, "extractKeyValuePairFromMarkdown 0 %s", NULL };
 static gchar* TODO_MD_parsing_cmdTemplate[] = { stdin_cmd_interpretors[0].name, "extractKeyValuePairFromMarkdown 0 %s 简述 问题状态", NULL };
@@ -372,9 +368,6 @@ static RFM_SearchResultType searchresultTypes[] = {
   {"default",  ProcessOnelineForSearchResult,                  NULL,          NULL, NULL,                            SearchResultType_default }, //default searchresult, contain only filename list such as returned by locate, or filename followed by additional info such as returned by grep
   {SrchRsltType_multitype,CallMatchingProcessorForSearchResultLine,NULL,      NULL, NULL,                            SearchResultType_multitype },
   {"gkeyfile", ProcessKeyValuePairInFilesFromSearchResult,     NULL,          NULL, NULL,                            SearchResultType_gkeyfile},
-#ifdef MU_VIEW
-  {"muview",   ProcessKeyValuePairInCmdOutputFromSearchResult, MailColumns    , "&" , MU_VIEW_cmdTemplate ,          SearchResultType_muview }, //%s in cmdTemplate will be replaced by filename in searchresult
-#endif
 #ifdef CmarkTools
   {".md",      ProcessKeyValuePairInCmdOutputFromSearchResult, NULL,          NULL, MD_parsing_cmdTemplate,          SearchResultType_markdown1 },
   {"TODO.md",  ProcessKeyValuePairInCmdOutputFromSearchResult, NULL,          NULL, TODO_MD_parsing_cmdTemplate,     SearchResultType_TODO_md },

@@ -423,7 +423,7 @@ static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboo
 static int ProcessOnelineForSearchResult_with_title(CALLER_OWN char* oneline, gboolean new_search);
 static void CallDefaultSearchResultFunctionForNewSearch(CALLER_OWN char *one_line_in_search_result);
 static int ProcessKeyValuePairInFilesFromSearchResult(CALLER_OWN char *oneline, gboolean new_search);
-static int ProcessKeyValuePairInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char **cmdtemplate, RFM_FileAttributes* fileAttributes,RFM_ChildAttribs *childAttribs);
+int ProcessKeyValuePairInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char **cmdtemplate, RFM_FileAttributes* fileAttributes,RFM_ChildAttribs *childAttribs);
 int ProcessJsonInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate, RFM_FileAttributes* fileAttributes,RFM_ChildAttribs* child_attribs);
 static int ProcessCmdOutputFromSearchResultWithFunction(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate, RFM_ChildAttribs* child_attribs, int (*func)(RFM_ChildAttribs*));
 static int ProcessKeyValuePairInData(GKeyFile* keyfile, char *groupname);
@@ -5107,7 +5107,7 @@ static int ProcessJsonFileFromSearchResult(CALLER_OWN char *oneline, gboolean ne
 // cmdtemplate的解析结果会通过 cmdOutput 局部变量传递到下一环节。这个cmdOutput会对应到查询结果的一行
 // 而parse_and_exec_cmd_in_gtk_thread 里的readlineResult是返回这个查询结果多行记录的，每行一个文件。
 // 所以这两个函数看上去都是执行命令模板的，有类似之处，却不好合并
-static int ProcessKeyValuePairInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate, RFM_FileAttributes* fileAttributes, RFM_ChildAttribs* childAttribs){
+int ProcessKeyValuePairInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate, RFM_FileAttributes* fileAttributes, RFM_ChildAttribs* childAttribs){
   ProcessCmdOutputFromSearchResultWithFunction(oneline,new_search,cmdtemplate,childAttribs,ProcessGKeyfileStrWrapper);
 }
 
@@ -5126,15 +5126,17 @@ static int ProcessCmdOutputFromSearchResultWithFunction(CALLER_OWN char *oneline
 
    stdin_cmd_interpretor *cmd_interpretor_pointer = match_cmd_str_array_with_interpretors(cmdtemplate);//TODO:这个函数扩充到AI,Addon interpretor
    char** cmd;
+   gchar * absolute_address = g_canonicalize_filename(oneline, rfm_SearchResultPath);
    if (cmd_interpretor_pointer){//用户在config.h里定义的命令模板字符串数组，如果第0个字符串指定命令解释器，则第1个字符串指定命令模板; 否则，第0个字符串即是命令模板
-     snprintf(SearchResultOnelineDocProcessingCmd,PATH_MAX,cmdtemplate[1],oneline);
+     snprintf(SearchResultOnelineDocProcessingCmd,PATH_MAX,cmdtemplate[1],absolute_address);
      cmd = cmd_interpretor_pointer->cmdTransformer(SearchResultOnelineDocProcessingCmd, FALSE);
    }else{
-     snprintf(SearchResultOnelineDocProcessingCmd,PATH_MAX,cmdtemplate[0],oneline);
+     snprintf(SearchResultOnelineDocProcessingCmd,PATH_MAX,cmdtemplate[0],absolute_address);
      cmd = current_stdin_cmd_interpretor_pointer->cmdTransformer(SearchResultOnelineDocProcessingCmd, FALSE);
    }
 
-   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"ProcessCmdOutputFromSearchResultWithFunction file:%s, cmd:%s, MatchedCmdInterpretor:%s, current_stdin_cmd_interpretor %s", oneline, SearchResultOnelineDocProcessingCmd, cmd_interpretor_pointer?cmd_interpretor_pointer->name:"null", current_stdin_cmd_interpretor_pointer?current_stdin_cmd_interpretor_pointer->name:"null");
+   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"ProcessCmdOutputFromSearchResultWithFunction file:%s, cmd:%s, MatchedCmdInterpretor:%s, current_stdin_cmd_interpretor %s", absolute_address, SearchResultOnelineDocProcessingCmd, cmd_interpretor_pointer?cmd_interpretor_pointer->name:"null", current_stdin_cmd_interpretor_pointer?current_stdin_cmd_interpretor_pointer->name:"null");
+   g_free(absolute_address);
 
    RFM_ChildAttribs *childAttribs = calloc(1, sizeof(RFM_ChildAttribs));
    childAttribs->customCallBackFunc = func;
@@ -5407,7 +5409,7 @@ static void update_SearchResultFileNameList_and_refresh_store(RFM_ChildAttribs *
   fileAttributeID=1;
 
   g_free(rfm_SearchResultPath);
-  rfm_SearchResultPath=strdup(choose_working_directory_for_g_spawn(childAttribs));//按理说在这个应该在执行查询命令获得filenamelist的时候获取,但Search可能是在exec_stdin_command里执行，也可能在exec_stdin_command_with_searchresultasinput 里执行，要重复写了，所以就放这里了
+  rfm_SearchResultPath=strdup(rfm_curPath);//按理说在这个应该在执行查询命令获得filenamelist的时候获取,但Search可能是在exec_stdin_command里执行，也可能在exec_stdin_command_with_searchresultasinput 里执行，要重复写了，所以就放这里了
   g_debug("update_SearchResultFileNameList_and_refresh_store, rfm_SearchResultPath %s", rfm_SearchResultPath);
   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"update_SearchResultFileNameList, length: %ld charactor(s)",filenamelist?strlen((gchar*)filenamelist):0);
 

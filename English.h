@@ -180,10 +180,6 @@ BuiltInCmd_SearchResultColumnSeperator \
 #define	SearchResultType_markdown1 "default search result type will be called first to get command output, standalone programe extractKeyValuePairFromMarkdown in rfm project will be called to parse the file in search result row with markdown format; it will output key value pairs in gkeyfile format： markdown level one title = first line content under level one title. Finally, result will be show in the same way as gkeyfile result type. For example:\n" \
 "      find -name *.TODO.md>.md"
 
-#define SearchResultType_muview "default search result type will be called first to get command output, then mu view command is used to read mail header and output key value pairs in gkeyfile format, and displayed in the same way as gkeyfile search result type. For example(Note: there will be ':' in file name in Maidir, conflicting with the default SearchResultColumnSeperator, quotation mark should be added around file name to solve this. cd and ls command are used below instead of locate command, because we need the default displaying order of ls command,  and the cd command inside {} is that defined in the shell, not that defined in rfm):\n" \
-"      { cd /home/guyuming/Mail/139INBOX/cur; ls -1td \"$PWD\"/*; }>muview\n" \
-"      command above can be simplified as what follows. I keep the one above as a sample for bash {} syntax\n" \
-"      ls -1td \"/home/guyuming/Mail/139INBOX/cur\"/*>muview"
 
 #define SearchResultType_TODO_md "work in the same way as .md search result type except that only level one title '简述' and '问题状态' will be queried. For example:\n" \
 "      locate .rfmTODO.md>TODO.md"

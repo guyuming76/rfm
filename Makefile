@@ -164,7 +164,6 @@ endif
 #	@cp -f scripts/rfmNewFile.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmPressEnterToCloseWindowAfterCMD.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmExtractArchive_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmExtractArchive.sh
-	@cp -f scripts/rfmGetMailHeaderWithMuView.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmMakeThumbnailForGGB.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmMoveDirAndUpdateSymbolicLinks.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmCopyDirAndUpdateSymbolicLinks.sh ${DESTDIR}${PREFIX}/bin
@@ -214,7 +213,6 @@ endif
 #	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmNewFile.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmPressEnterToCloseWindowAfterCMD.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmExtractArchive.sh
-	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmGetMailHeaderWithMuView.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmMakeThumbnailForGGB.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmMoveDirAndUpdateSymbolicLinks.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmCopyDirAndUpdateSymbolicLinks.sh
@@ -264,7 +262,6 @@ endif
 #	@rm -f ${DESTDIR}${PREFIX}/bin/rfmNewFile.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmPressEnterToCloseWindowAfterCMD.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmExtractArchive.sh
-	@rm -f ${DESTDIR}${PREFIX}/bin/rfmGetMailHeaderWithMuView.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin//rfmMakeThumbnailForGGB.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmMoveDirAndUpdateSymbolicLinks.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmCopyDirAndUpdateSymbolicLinks.sh

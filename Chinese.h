@@ -185,10 +185,6 @@ BuiltInCmd_SearchResultColumnSeperator \
 #define SearchResultType_markdown1 "首先调用default结果类型获取命令输出行列,再使用rfm自带的独立程序extractKeyValuePairFromMarkdown,以markdown格式解析首列文件内容;以gkeyfile格式输出键值对：markdown文件一级标题=一级标题下面首行内容.最后同gkeyfile结果类型显示.命令举例:\n" \
 "      find -name *.TODO.md>.md"
 
-#define SearchResultType_muview "首先调用default查询结果类型获取命令输出行列,再使用 mu view 命令读取首列邮件文件内容,把邮件头,转换成前面keyfile要求的键值对格式,最后如同gkeyfile结果类型一样显示.命令举例(注意:Maidir中的文件名会包含冒号,同默认的SearchResultColumnSeperator冲突,要给文件名加引号解决.另外,下面我用cd 加ls而不是locate主要是考虑输出顺序, 而下面{}里的cd是运行于rfm创建的shell子进程,并不是前述rfm内置cd命令):\n" \
-"      { cd /home/guyuming/Mail/139INBOX/cur; ls -1td \"$PWD\"/*; }>muview\n" \
-"      上面命令也可以简化成如下形式,我这里保留上面作为一个使用bash {} 语法执行命令序列的备忘\n" \
-"      ls -1td \"/home/guyuming/Mail/139INBOX/cur\"/*>muview"
 
 #define SearchResultType_TODO_md "首先调用default结果类型获取命令输出行列,再使用rfm自带的独立程序extractKeyValuePairFromMarkdown,以markdown格式解析首列文件内容. extractKeyValuePairFromMarkdown 程序包含参数列表,以匹配markdown文件的一级标题,并输出gkeyfile格式键值对: 匹配到的markdown一级标题=一级标题下第一行内容. 最后同gkeyfile结果类型显示. 这里TODO.md类型会去匹配'简述'和'问题状态'这两个一级标题. 类似地,可以在config.h中定义新的查询结果类型,显示不同的markdown文件一级标题下的内容. 命令举例:\n" \
 "      locate .rfmTODO.md>TODO.md"
