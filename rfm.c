@@ -2352,7 +2352,17 @@ static void set_rfm_curPath_internal(CALLER_OWN const gchar* path){
    //so, we should first know the relationship between working directory parameter in g_spawn and PWD env value inheritence before we do anything furthur here.
    //anyway, setting OLDPWD is necessary for us here.
 #ifdef RFM_AddOn
-       if (!disable_addon) load_addon(rfm_curPath);
+	 if (!disable_addon){
+	   gchar * addon_path = g_strdup(rfm_curPath);
+	   gboolean is_root_dir;
+	   do {
+	     if (access(addon_path, R_OK) == 0); load_addon(addon_path);
+	     gchar *addon_path_parent = g_path_get_dirname(addon_path);
+	     is_root_dir = (g_strcmp0(addon_path, addon_path_parent)==0); // g_path_get_dirname("/") return "/"
+	     g_free(addon_path); addon_path = addon_path_parent;
+	   }while (!is_root_dir);
+	   g_free(addon_path);
+	 }
 #endif
       }
 }
