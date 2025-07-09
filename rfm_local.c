@@ -45,12 +45,12 @@ RFM_MenuItem file_menus_local[] = {
 };
 
 void rfm_local_enter(char * Addon_dir) {
-     fprintf(stderr,"rfm_local_enter called!\n");
+     fprintf(stderr,"rfm_local_enter called for %s\n", Addon_dir);
      saved_history_dir=strdup(rfm_historyFile_ParentDirectory);
      save_current_history();
      snprintf(rfm_historyFile_ParentDirectory,sizeof(rfm_historyFile_ParentDirectory),Addon_dir);
      load_history_for_prompt();
-     addon_resource.addon_dir = Addon_dir;
+     addon_resource.addon_dir = strdup(Addon_dir);
      addon_resource.toolbar_button_definitions_local = tool_buttons_local;
      addon_resource.toolbar_button_definitions_local_array_size = G_N_ELEMENTS(tool_buttons_local);
      addon_resource.file_menuitem_definitions_local = file_menus_local;
@@ -61,7 +61,7 @@ void rfm_local_enter(char * Addon_dir) {
 }
 
 void rfm_local_leave() {
-     fprintf(stderr,"rfm_local_leave called!\n");
+     fprintf(stderr,"rfm_local_leave called for %s\n", addon_resource.addon_dir);
      if (saved_history_dir) {
          save_current_history();
          sprintf(rfm_historyFile_ParentDirectory,"%s",saved_history_dir);
