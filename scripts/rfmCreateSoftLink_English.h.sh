@@ -6,6 +6,7 @@
 echo "输入为选中文件创建软链接的目录路径,可以是绝对路径或相对与当前路径($(pwd)),可用上下箭头方向键从历史输入中选择:"
 
 input_destination="$(rfmReadlineWithSpecificHistoryFile.sh ~/.rfm_history_directory)"
+input_destination=${input_destination/#~/${HOME}}
 
 if [[ ! -d "$input_destination" ]]; then
 	read -p "输入路径不存在,是否(y/n)创建目录?默认是(y)" -r mkdir_input_destination

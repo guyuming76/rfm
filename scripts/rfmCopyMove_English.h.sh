@@ -7,6 +7,7 @@ echo "Press enter to copy selected filenames to clipboard;"
 echo "Or input destination (fullpath or relative to current $(pwd)), use up/down arrow keys to browse input history:"
 
 input_destination="$(rfmReadlineWithSpecificHistoryFile.sh ~/.rfm_history_directory)"
+input_destination=${input_destination/#~/${HOME}}
 
 # Users are likely to select files in search results view and copy to current directory.
 # Default destination to current directory is necessary, though may encounter source files in same directory.

@@ -8,6 +8,7 @@ fi
 echo "输入查找(find命令)范围,直接按回车默认 $rfmFindScope,可用上下箭头方向键从历史输入中选择:"
 
 rfmInput="$(rfmReadlineWithSpecificHistoryFile.sh ~/.rfm_history_directory)"
+rfmInput=${rfmInput/#~/${HOME}}
 
 if [[ ! -z "$rfmInput" ]]; then
 	if [[ -d "$rfmInput" ]];then
