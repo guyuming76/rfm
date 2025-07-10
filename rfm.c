@@ -337,6 +337,7 @@ static int read_one_file_couter = 0;//this is useless except for logging informa
 static guint rfm_extColumnScheduler = 0;
 static RFM_FileAttributes *malloc_fileAttributes(void);
 static void free_fileAttributes(RFM_FileAttributes *fileAttributes);
+char* quote_path(char** path);
 char * get_drwxrwxrwx(mode_t st_mode);
 static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guint64 mtimeThreshold, GHashTable *mount_hash);
 static void refresh_store(RFM_ctx *rfmCtx);
@@ -603,7 +604,26 @@ static void find_and_unload_addons_before_leaving_current_directory(CALLER_OWN c
 
 /**************gtk UI, filemenu, toolbar end**************************/
 
+char* quote_path(char** path) {
+    if (path == NULL || *path == NULL) return NULL;
 
+    // 检查路径是否包含空格
+    int need_quotes = (strchr(*path, ' ') != NULL);
+
+    if (need_quotes) {
+        // 计算新字符串长度 = 原长度 + 2个引号 + 结束符
+        size_t len = strlen(*path);
+        char* new_path = malloc(len + 3);
+        if (!new_path) return NULL;
+        sprintf(new_path, "\"%s\"", *path); // 添加双引号
+	free(*path);
+	*path = new_path;
+        return new_path;
+    } else {
+        // 无空格时返回原字符串的副本
+        return *path;
+    }
+}
 
 char * get_drwxrwxrwx(mode_t st_mode){
     char * ret=calloc(11,sizeof(char));
@@ -5138,10 +5158,10 @@ static int ProcessCmdOutputFromSearchResultWithFunction(CALLER_OWN char *oneline
    char** cmd;
    gchar * absolute_address = g_canonicalize_filename(oneline, rfm_SearchResultPath);
    if (cmd_interpretor_pointer){//用户在config.h里定义的命令模板字符串数组，如果第0个字符串指定命令解释器，则第1个字符串指定命令模板; 否则，第0个字符串即是命令模板
-     snprintf(SearchResultOnelineDocProcessingCmd,PATH_MAX,cmdtemplate[1],absolute_address);
+     snprintf(SearchResultOnelineDocProcessingCmd,PATH_MAX,cmdtemplate[1],quote_path(&absolute_address));
      cmd = cmd_interpretor_pointer->cmdTransformer(SearchResultOnelineDocProcessingCmd, FALSE);
    }else{
-     snprintf(SearchResultOnelineDocProcessingCmd,PATH_MAX,cmdtemplate[0],absolute_address);
+     snprintf(SearchResultOnelineDocProcessingCmd,PATH_MAX,cmdtemplate[0],quote_path(&absolute_address));
      cmd = current_stdin_cmd_interpretor_pointer->cmdTransformer(SearchResultOnelineDocProcessingCmd, FALSE);
    }
 
