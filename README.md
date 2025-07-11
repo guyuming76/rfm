@@ -22,6 +22,8 @@ suckless 风格的应用，可以在config.h文件里做定制。
 
 集成文件git状态显示。
 
+动态编译加载文件目录内的c语言源文件，实现对特定目录定制工具栏按钮，文件菜单，搜素类型等。同时也可以使用此addon机制实现全局的扩展，如在终端内和大语言模型对话。下面使用场景部分列举了一些addon，可以通过git clone相应仓库或submodule获得。
+
 ...
 
 启动 rfm 后默认会在命令窗口显示详细帮助信息，或在rfm命令窗口执行help命令
@@ -115,10 +117,17 @@ rfm加 -r 参数就可以在退出时通过命名管道返回选中文件名列�
 
 # 使用rfm的一些场景 #
 
+## https://gitee.com/guyuming76/AI_model_API_config ##
+使用全局Addon扩展rfm,以支持在终端模拟器内和大语言模型对话
+
 ## rfm开发测试问题列表 ##
-github, gitee 等自带的issue列表是和商业网站绑定的，如果有一天，你想换个地方host仓库，例如自己架设一个 gitolite 网站，原来的issue是带不走的。我在rfm代码仓库下面建了一个子仓库，用来保存文档，如开发测试中遇到的问题的截屏，同时用来展示rfm处理SearchResult的功能(参见rfm启动时显示的帮助)。rfm config.def.h里面定义了命令别名 rfmTODO, 在clone rfm代码仓库时使用--recurse-submodules参数，或者使用`git submodule update --init --recursive`命令把这个子仓库clone到本地，就可以在rfm里使用rfmTODO命令查看问题列表(你可能还需要运行sudo updatedb,因为rfmTODO使用了locate命令):![如图](20241205_18h03m17s_grim.png)
+github, gitee 等自带的issue列表是和商业网站绑定的，如果有一天，你想换个地方host仓库，例如自己架设一个 gitolite 网站，原来的issue是带不走的。我在rfm代码仓库下面建了一个子仓库，用来保存文档，如开发测试中遇到的问题的截屏，同时用来展示rfm处理SearchResult的功能(参见rfm启动时显示的帮助)。在clone rfm代码仓库时使用--recurse-submodules参数，或者使用`git submodule update --init --recursive`命令把这个子仓库clone到本地，就可以在clone的目录里点击rfm工具栏按钮查看rfmTODO列表(你可能还需要运行sudo updatedb,因为rfmTODO使用了locate命令):![如图](20241205_18h03m17s_grim.png)
 
 ## https://gitee.com/guyuming76/mineral ##
+我的矿物晶体收藏目录，展示使用rfm管理图片并使用目录和软链接实现多维分类
+
+## https://gitee.com/guyuming76/rfm-mail ##
+使用mu view, mbsync查看MailDir
 
 ## https://gitee.com/guyuming76/guyuming_garden ##
 
@@ -184,6 +193,8 @@ GDK_BACKEND=x11 rfm.sh
 
 ```
 
+## https://koala.token-ai.cn/guyuming76/rfm ##
+AI 自动生成的代码文档
 
 # 计划更改备忘 #
 
