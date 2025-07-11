@@ -9,5 +9,6 @@ mkdir /tmp/$$
 #echo $ggbFile >> /tmp/$$/log.txt
 #echo $thumbnailFile >> /tmp/$$/log.txt
 unzip "$ggbFile" geogebra_thumbnail.png -d /tmp/$$
+# convert 命令在gentoo上源于 media-gfx/imagemagick 包
 convert /tmp/$$/geogebra_thumbnail.png -thumbnail $thumbnailsize_str -gravity center -extent $thumbnailsize_str "$thumbnailFile"
 rm -f /tmp/$$
