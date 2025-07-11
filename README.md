@@ -134,23 +134,6 @@ github, gitee 等自带的issue列表是和商业网站绑定的，如果有一�
 因为更多地利用了文件名和目录,就不必把很多内容放在一个office文档里,可以拆分成多个文本,图片文件,也就有机会让孩子接触使用最基础的应用工具解决问题,而不是只会依赖商业软件的傻瓜式操作. 比如作业常见的选择题, 类似我在 https://gitee.com/guyuming76/mineral 提到的"矿物属性" 文本文件和gkeyfile查询结果类型,可以每一个选择题单独一个文件,题干,选项都是属性.
 
 
-## 查看Maildir目录下的邮件 ##
-如下命令,通过config.h中定义的muview查询结果类型查看Maildir中邮件, 需要把locate 命令后的Maildir目录换成你自己系统上实际的目录:
-
-```
-locate 139INBOX/cur/>muview
-#上面命令邮件不一定按时间排序,可以换成下面的:
-cd /home/guyuming/Mail/139INBOX/cur
-ls -1t>muview
-```
-
-![查看Maildir](20240918_15h59m08s_grim.png)
-
-使用mbsync同步139邮箱和maildir, 配置文件参见(scripts/.mbssyncrc),同步命令如下:
-```
-$mbsync -a -V
-```
-
 # 一些TroubleShooting记录以及其他备注 #
 
 ## 显示调试信息 ##
