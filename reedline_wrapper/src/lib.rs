@@ -1,5 +1,5 @@
 use reedline::{Reedline, Signal, DefaultPrompt,DefaultPromptSegment};
-use libc::{c_char, c_void};
+use libc::c_char;
 use std::ffi::{CStr, CString};
 use std::ptr;
 
@@ -40,7 +40,7 @@ pub extern "C" fn reedline_readline(
 #[no_mangle]
 pub extern "C" fn string_free(s: *mut c_char) {
     if !s.is_null() {
-       unsafe { CString::from_raw(s) };
+       unsafe { let _ = std::ffi::CString::from_raw(s); };
     }
 }
 

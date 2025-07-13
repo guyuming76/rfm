@@ -3665,7 +3665,11 @@ static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs) {
     if (keep_selection_on_view_across_refresh && In_refresh_store) strcat(prompt,exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread ? "?]":"?>");
     else if (ItemSelected==0) strcat(prompt,exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread ? "]":">");
     else strcat(prompt,exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread ? "*]":"*>");
+#ifdef reedline
+    string_free(OriginalReadlineResult);
+#else
     g_free(OriginalReadlineResult);
+#endif
     int i=0;
     while ((OriginalReadlineResult = 
 #ifdef GNU_readline
