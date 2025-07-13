@@ -38,7 +38,7 @@ ifeq (${READLINE_LIB},-DGNU_readline)
 LIBS += `pkg-config --libs readline`
 endif
 ifeq (${READLINE_LIB},-Dreedline)
-LIBS += -L./reedline_wrapper/target/release -lreedline_wrapper
+LIBS += -L./reedline_wrapper/target/debug -lreedline_wrapper
 endif
 ifeq (${READLINE_LIB},-DLINENOISE)
 LIBS += -I/usr/local/include -L/usr/local/lib -llinenoise
@@ -147,7 +147,7 @@ ifneq ($(RFM_FILE_CHOOSER),)
 	@ln -sf ./${LIBNAME} ${DESTDIR}${PREFIX}/lib64/${LINKERNAME}
 endif
 ifeq ($(READLINE_LIB),-Dreedline)
-	@cp -f reedline_wrapper/target/release/libreedline_wrapper.so ${DESTDIR}${PREFIX}/lib64
+	@cp -f reedline_wrapper/target/debug/libreedline_wrapper.so ${DESTDIR}${PREFIX}/lib64
 endif
 ifneq (${CmarkTools},)
 	@cp -f extractKeyValuePairFromMarkdown ${DESTDIR}${PREFIX}/bin
@@ -298,7 +298,7 @@ endif
 
 build_reedline:
 	@echo "Building reedline_wrapper..."
-	@cd reedline_wrapper && cargo build --release && cd ..
+	@cd reedline_wrapper && cargo build && cd ..
 	@echo "reedline_wrapper built successfully."
 
 .PHONY: all options clean install uninstall build_reedline
