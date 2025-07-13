@@ -11,7 +11,8 @@ languageInclude = Chinese.h
 GitIntegration = -DGitIntegration
 #GitIntegration =
 
-READLINE_LIB = -DGNU_readline
+READLINE_LIB = -Dreedline
+#READLINE_LIB = -DGNU_readline
 #READLINE_LIB = -DLINENOISE
 
 PythonEmbedded = -DPythonEmbedded

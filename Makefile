@@ -37,6 +37,9 @@ LIBS += -L/usr/lib `pkg-config --libs ${GTK_VERSION} gio-unix-2.0 json-glib-1.0`
 ifeq (${READLINE_LIB},-DGNU_readline)
 LIBS += `pkg-config --libs readline`
 endif
+ifeq (${READLINE_LIB},-Dreedline)
+LIBS += -L./reedline_wrapper/target/release -lreedline_wrapper
+endif
 ifeq (${READLINE_LIB},-DLINENOISE)
 LIBS += -I/usr/local/include -L/usr/local/lib -llinenoise
 endif
@@ -82,6 +85,10 @@ options:
 	@echo CC $<
 	@${CC} -c ${CFLAGS} $<
 
+ifeq (${READLINE_LIB},-Dreedline)
+rfm.o: build_reedline
+endif
+
 ifneq ($(RFM_FILE_CHOOSER),)
 rfm.o: config.h rfmFileChooser.h
 else
@@ -125,7 +132,10 @@ endif
 ifneq (${CmarkTools},)
 	@rm -f extractKeyValuePairFromMarkdown extractKeyValuePairFromMarkdown.o extractContentFromMarkdownRecursive extractContentFromMarkdownRecursive.o
 endif
-
+ifeq ($(READLINE_LIB),-Dreedline)
+	@echo "Cleaning reedline_wrapper..."
+	@cd reedline_wrapper && cargo clean && cd ..
+endif
 
 install: all
 	@echo installing files to ${DESTDIR}${PREFIX}/{bin,lib}
@@ -135,6 +145,9 @@ ifneq ($(RFM_FILE_CHOOSER),)
 	@cp -f ${LIBNAME} ${DESTDIR}${PREFIX}/lib64/${LIBNAME}
 	@ln -sf ./${LIBNAME} ${DESTDIR}${PREFIX}/lib64/${SONAME}
 	@ln -sf ./${LIBNAME} ${DESTDIR}${PREFIX}/lib64/${LINKERNAME}
+endif
+ifeq ($(READLINE_LIB),-Dreedline)
+	@cp -f reedline_wrapper/target/release/libreedline_wrapper.so ${DESTDIR}${PREFIX}/lib64
 endif
 ifneq (${CmarkTools},)
 	@cp -f extractKeyValuePairFromMarkdown ${DESTDIR}${PREFIX}/bin
@@ -234,6 +247,9 @@ uninstall:
 ifneq ($(RFM_FILE_CHOOSER),)
 	@rm -f ${DESTDIR}${PREFIX}/lib64/${LIBNAME}
 endif
+ifeq ($(READLINE_LIB),-Dreedline)
+	@rm -f ${DESTDIR}${PREFIX}/lib64/libreedline_wrapper.so
+endif
 ifneq (${CmarkTools},)
 	@rm -f ${DESTDIR}${PREFIX}/bin/extractKeyValuePairFromMarkdown
 	@rm -f ${DESTDIR}${PREFIX}/bin/extractContentFromMarkdownRecursive
@@ -279,4 +295,10 @@ ifneq ($(CalledByEbuild),YES)
 	ldconfig
 endif
 
-.PHONY: all options clean install uninstall
+
+build_reedline:
+	@echo "Building reedline_wrapper..."
+	@cd reedline_wrapper && cargo build --release && cd ..
+	@echo "reedline_wrapper built successfully."
+
+.PHONY: all options clean install uninstall build_reedline

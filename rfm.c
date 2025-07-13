@@ -32,6 +32,9 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 #endif
+#ifdef reedline
+#include "reedline_wrapper.h"
+#endif
 #ifdef LINENOISE
 #include <linenoise.h>
 #endif
@@ -151,6 +154,10 @@ static char *rfm_historyFileLocation;
 static char *rfm_historyDirectory_FileLocation;//used by script rfmReadlineWithSpecificHistoryFile.sh 
 static gboolean showHelpOnStart = TRUE;
 static char* InheritedPrompt = "";
+#ifdef reedline
+static ReedlineHandle* reedline_handle = NULL;
+#endif
+
 #ifdef RFM_AddOn
 static gchar* Addon_Prompt = NULL;
 static NO_FREE char *AddOnStatus(guint fileAttributeId);
@@ -3667,6 +3674,9 @@ static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs) {
 #ifdef LINENOISE
       linenoise(prompt)
 #endif
+#ifdef reedline
+      reedline_readline(reedline_handle, prompt)
+#endif
 	    )==NULL){ g_debug("readline return null, %d",i++);}
 
     stdin_command_Scheduler = g_idle_add_once(parse_and_exec_stdin_command_in_gtk_thread, strdup(OriginalReadlineResult));
@@ -4622,6 +4632,10 @@ static int setup(RFM_ctx *rfmCtx)
    rl_variable_bind("mark-directories", "on");
    rl_bind_keyseq("\e[A", rl_history_search_backward);
    rl_bind_keyseq("\e[B", rl_history_search_forward);
+#endif
+#ifdef reedline
+  reedline_handle = reedline_create();
+  if (!reedline_handle) g_error("reedline_create return NULL handle");
 #endif
 #ifdef LINENOISE
    linenoiseHistorySetMaxLen(RFM_HISTORY_SIZE);
