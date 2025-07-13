@@ -1,0 +1,11 @@
+[package]
+name = "reedline_wrapper"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]  # 编译为C兼容的动态库
+
+[dependencies]
+reedline = "0.22.0"     # 使用最新版本
+libc = "0.2"            # 提供C类型支持
