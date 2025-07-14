@@ -1,7 +1,17 @@
-use reedline::{Reedline, Signal, DefaultPrompt,DefaultPromptSegment};
+use reedline::{ DefaultPrompt, DefaultPromptSegment, EditCommand, Emacs, Keybindings, KeyCode, KeyModifiers,Reedline, Signal, ValidationResult, Validator, ReedlineEvent };
+use reedline::default_emacs_keybindings;
 use libc::c_char;
 use std::ffi::{CStr, CString};
 use std::ptr;
+
+// 自定义验证器 - 始终返回未完成状态，强制按Enter提交
+struct AlwaysIncompleteValidator;
+impl Validator for AlwaysIncompleteValidator {
+    fn validate(&self, _line: &str) -> ValidationResult {
+        ValidationResult::Incomplete
+    }
+}
+
 
 // 定义不透明结构体（C中通过指针访问）
 pub struct ReedlineHandle {
@@ -10,7 +20,28 @@ pub struct ReedlineHandle {
 
 #[no_mangle]
 pub extern "C" fn reedline_create() -> *mut ReedlineHandle {
-    let engine = Reedline::create();
+    // 创建自定义键绑定
+    let mut keybindings = default_emacs_keybindings();
+    
+    // 添加 Alt+Enter 绑定到插入换行命令
+    keybindings.add_binding(
+    	KeyModifiers::ALT,
+    	KeyCode::Enter,
+    	ReedlineEvent::Edit(vec![EditCommand::InsertNewline])
+    );
+
+    // 绑定Enter键到提交操作
+    keybindings.add_binding(
+        KeyModifiers::NONE,
+        KeyCode::Enter,
+        ReedlineEvent::Submit
+    );
+
+    // 创建 Reedline 引擎并配置
+    let engine = Reedline::create()
+        .with_validator(Box::new(AlwaysIncompleteValidator)) // 使用自定义验证器
+        .with_edit_mode(Box::new(Emacs::new(keybindings)));  // 使用自定义键绑定
+
     Box::into_raw(Box::new(ReedlineHandle { inner: engine }))
 }
 
