@@ -1,5 +1,4 @@
-use reedline::{ DefaultPrompt, DefaultPromptSegment, EditCommand, Emacs, Keybindings, KeyCode, KeyModifiers,Reedline, Signal, ValidationResult, Validator, ReedlineEvent, FileBackedHistory };
-use reedline::default_emacs_keybindings;
+use reedline::{ DefaultPrompt, DefaultPromptSegment, EditCommand, Emacs, Keybindings, KeyCode, KeyModifiers,Reedline, Signal, ValidationResult, Validator, ReedlineEvent, FileBackedHistory, default_emacs_keybindings };
 use libc::c_char;
 use std::ffi::{CStr, CString};
 use std::ptr;
@@ -41,7 +40,8 @@ pub extern "C" fn reedline_create() -> *mut ReedlineHandle {
 
     // 创建 Reedline 引擎并配置
     let engine = match history_result {
-        Ok(history) => Reedline::create().with_history(Box::new(history))
+        Ok(history) => Reedline::create().use_bracketed_paste(true)
+					.with_history(Box::new(history))
         				.with_validator(Box::new(AlwaysIncompleteValidator)) // 使用自定义验证器
         				.with_edit_mode(Box::new(Emacs::new(keybindings))),  // 使用自定义键绑定
         Err(e) => {
