@@ -163,7 +163,7 @@ static gchar* Addon_Prompt = NULL;
 static NO_FREE char *AddOnStatus(guint fileAttributeId);
 static void unload_addon_filemenu_func();
 #endif
-static char **rfm_filename_completion(const char *text);
+static char **rfm_filename_completion(const char *text, int *count);
 #ifdef GNU_readline
 static char** gnu_readline_completion(const char *text, int start, int end);
 static char** (*OLD_rl_attempted_completion_function)(const char *text, int start, int end);
@@ -4473,7 +4473,7 @@ static void parse_and_exec_cmd_in_gtk_thread (gchar * cmd){
   parse_and_exec_command_in_gtk_thread(cmd, FALSE, current_stdin_cmd_interpretor_pointer, childAttribs);
 }
 
-static char** rfm_filename_completion(const char *text){
+static char** rfm_filename_completion(const char *text, int *count){
   if (ItemSelected && (text==NULL || g_strcmp0(text, "")==0)) { //有文件被选中 且 当前光标上下文为空
     char** ret = calloc(2,sizeof(char*));
     g_mutex_lock(&rfm_selection_completion_lock);
@@ -4481,6 +4481,7 @@ static char** rfm_filename_completion(const char *text){
     //see the update of rfm_selection_completion and usage of lock, it possible that when ItemSelected=0 here, we read the old rfm_selection_completion value, but i just prevent read just after rfm_selection_completion been freed here.
     g_mutex_unlock(&rfm_selection_completion_lock);
     g_log(RFM_LOG_READLINE,G_LOG_LEVEL_DEBUG,"rfm_filename_completion return %s",ret[0]);
+    *count = 1;//TODO:实现多个补全
     return ret;
   }else return NULL;
 }
@@ -4488,7 +4489,8 @@ static char** rfm_filename_completion(const char *text){
 #ifdef GNU_readline
 static char** gnu_readline_completion(const char *text, int start, int end){
   g_log(RFM_LOG_READLINE, G_LOG_LEVEL_DEBUG,"call gnu_readline_completion with %s, %d, %d",text, start, end);
-  char ** ret = rfm_filename_completion(text);
+  int count=0;
+  char ** ret = rfm_filename_completion(text, &count);
   if (ret) {
     //rl_attempted_completion_over = 1;
     rl_completion_suppress_append = 1;    
@@ -4501,7 +4503,8 @@ static char** gnu_readline_completion(const char *text, int start, int end){
 #endif
 #ifdef LINENOISE
 void linenoise_completion(const char *buf, linenoiseCompletions *lc) {
-  char** ret = rfm_filename_completion(buf);
+  int count=0;
+  char** ret = rfm_filename_completion(buf,&count);
   if (ret) linenoiseAddCompletion(lc, ret[0]);
 }
 #endif
@@ -4638,7 +4641,7 @@ static int setup(RFM_ctx *rfmCtx)
    rl_bind_keyseq("\e[B", rl_history_search_forward);
 #endif
 #ifdef reedline
-  reedline_handle = reedline_create();
+  reedline_handle = reedline_create(rfm_filename_completion);
   if (!reedline_handle) g_error("reedline_create return NULL handle");
 #endif
 #ifdef LINENOISE
