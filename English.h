@@ -83,6 +83,12 @@
 #define BuiltInCmd_help                        "help"
 #define BuiltInCmd_help_Description            "show this command help, add command name as parameter to show help for that command only"
 
+#ifdef reedline
+	#define reedline_specific_help "    The '〉' after the prompt shows that input is read with the reedline library，which supports multiline edit，and ALT+Enter can be used for new line.\n"
+#else
+	#define reedline_specific_help ""
+#endif
+
 #define builtinCMD_Help \
 "\n\033[32m system views: \033[0m\n" \
 "    with difference in data source, two types of view can be shown, one is current directory view, with the left-most toolbar button showing its path(and git branch). The other is search result view. You can switch between these two views with the left-most toolbar button.\n" \
@@ -96,6 +102,7 @@
 "    b?> means in refreshing and file selection cannot be determined, try press enter after refresh.\n" \
 "    prompt won't update when selection changes in rfm view, press Enter to refresh\n" \
 "    prompt b*],b>,b?] differ with explanation above only in that commands inputted in stdin is started in gtk thread instead of readline thread. When ] is displayed instead of >, gtk window will not refresh and file selection cannot be changed when command is executing(such as when selected file is being editted).\n" \
+reedline_specific_help \
 "    ctrl-z in command window will send rfm.sh to background, and the command prompt will change to the shell prompt before rfm.sh launch. fg command can bring rfm.sh back to foreground the the command prompt will change to rfm prompt described above.\n" \
 "\n\033[32m command history: \033[0m\n" \
 "    command history is saved in file ~/.rfm_history. command history for current running rfm is kept in memory and saved into file on quit, and will be read into memory on next launch.\n" \

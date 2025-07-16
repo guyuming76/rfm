@@ -85,6 +85,12 @@
 #define BuiltInCmd_help                        "help"
 #define BuiltInCmd_help_Description            "显示命令帮助,加命令名参数则仅显示这条命令的帮助"
 
+#ifdef reedline
+	#define reedline_specific_help "    提示符后的'〉'表示当前用reedline库读取命令输入，支持多行编辑，ALT+Enter可以用来换行.\n"
+#else
+	#define reedline_specific_help ""
+#endif
+
 #define builtinCMD_Help \
 "\n\033[32m 系统视图: \033[0m\n" \
 "    按照数据源分两种: 一种是当前目录文件视图,此时,工具栏左边第一按钮显示目录路径(和git分支). 另一种是文件搜索结果视图,此时工具栏左边提示当前条/结果总数,每葉条数, 点击此按钮在两种视图间切换.\n" \
@@ -98,6 +104,7 @@
 "    b?> 表示正在刷新,无法确定选中文件数,刷新完成后回车重试\n" \
 "    命令提示不随文件选中或取消自动更新, 用户可按回车键刷新\n" \
 "    提示符 b*],b>,b?] 分别同上解释,区别在与,此时输入命令会由gtk窗口线程启动,而不是readline线程;也就是说,此时输入命令执行期间(比如编辑选中文件时),文件视图不会刷新,也不能更改选项\n" \
+reedline_specific_help \
 "    在命令输入窗口按ctrl-z会把rfm.sh进程放入后台运行，命令提示符会变成启动rfm.sh前的shell提示符。在此状态下，若运行htop等交互命令异常，可先运行reset重置终端模拟器。运行fg命令可将rfm.sh任务恢复到前台运行，命令提示符恢复成上述rfm提示符.\n" \
 "\n\033[32m 命令历史记录: \033[0m\n" \
 "    命令历史记录保存在~/.rfm_history文件,当前活动rfm进程输入的命令历史保持在内存中,退出rfm时才写入文件,下次启动rfm时再读入内存.\n" \
