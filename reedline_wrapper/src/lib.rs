@@ -1,4 +1,5 @@
-use reedline::{ DefaultPrompt, DefaultPromptSegment, EditCommand, Emacs, Keybindings, KeyCode, KeyModifiers,Reedline, Signal, ValidationResult, Validator, ReedlineEvent, FileBackedHistory, default_emacs_keybindings, Completer ,Suggestion, Span, ReedlineMenu, ColumnarMenu, MenuBuilder };
+use reedline::{ DefaultPrompt, DefaultPromptSegment, EditCommand, Emacs, Keybindings, KeyCode, KeyModifiers,Reedline, Signal, ValidationResult, Validator, ReedlineEvent, FileBackedHistory, default_emacs_keybindings, Completer ,Suggestion, Span, ReedlineMenu, ColumnarMenu, MenuBuilder, CwdAwareHinter };
+use nu_ansi_term::{Color, Style};
 use libc::c_char;
 use std::ffi::{CStr, CString};
 use std::ptr;
@@ -134,7 +135,8 @@ pub extern "C" fn reedline_create(get_completion_fn: GetCompletionFn) -> *mut Re
 					.with_history(Box::new(history))
         				.with_validator(Box::new(AlwaysIncompleteValidator)) // 使用自定义验证器
         				.with_edit_mode(Box::new(Emacs::new(keybindings)))  // 使用自定义键绑定
-					.with_quick_completions(true),  // 启用快速补全,只有一个补全选项时，系统会自动选择该选项而不显示菜单
+					.with_quick_completions(true)  // 启用快速补全,只有一个补全选项时，系统会自动选择该选项而不显示菜单
+					.with_hinter(Box::new(CwdAwareHinter::default().with_style(Style::new().italic().fg(Color::LightGray)).with_min_chars(2))),
         Err(e) => {
             eprintln!("History load error: {}. Using in-memory history.", e);
             Reedline::create() // Fallback to default history

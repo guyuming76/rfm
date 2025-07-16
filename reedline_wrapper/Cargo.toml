@@ -7,5 +7,6 @@ edition = "2021"
 crate-type = ["cdylib"]  # 编译为C兼容的动态库
 
 [dependencies]
-reedline = "0.35"     # 使用最新版本
+reedline = "0.40.0"     # 使用最新版本
 libc = "0.2"            # 提供C类型支持
+nu-ansi-term = "0.50.0"
