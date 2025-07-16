@@ -163,8 +163,13 @@ pub extern "C" fn reedline_create(get_completion_fn: GetCompletionFn,
 					.with_hinter(Box::new(CwdAwareHinter::default().with_style(Style::new().italic().fg(Color::LightGray)).with_min_chars(2)))
                 			.with_cwd(rust_cwd),
         Err(e) => {
-            eprintln!("History load error: {}. Using in-memory history.", e);
+            eprintln!("History load error: {}.", e);
             Reedline::create() // Fallback to default history
+					.with_completer(Box::new(CCompleter::new(get_completion_fn)))
+					.with_menu(ReedlineMenu::EngineCompleter(completion_menu))
+        				.with_validator(Box::new(AlwaysIncompleteValidator)) // 使用自定义验证器
+        				.with_edit_mode(Box::new(Emacs::new(keybindings)))  // 使用自定义键绑定
+					.with_quick_completions(true)  // 启用快速补全,只有一个补全选项时，系统会自动选择该选项而不显示菜单
         }
     };
 
