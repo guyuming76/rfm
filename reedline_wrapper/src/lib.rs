@@ -3,6 +3,8 @@ use nu_ansi_term::{Color, Style};
 use libc::c_char;
 use std::ffi::{CStr, CString};
 use std::ptr;
+use std::path::PathBuf;
+use dirs::home_dir;
 
 // 全局变量存储当前ReedlineHandle实例
 //static mut CURRENT_HANDLE: *mut ReedlineHandle = std::ptr::null_mut();
@@ -92,8 +94,8 @@ impl Validator for AlwaysIncompleteValidator {
 // 定义不透明结构体（C中通过指针访问）
 pub struct ReedlineHandle {
     inner: Reedline,
+    history_path: PathBuf,
 }
-
 
 #[no_mangle]
 pub extern "C" fn reedline_create(get_completion_fn: GetCompletionFn,
@@ -117,7 +119,15 @@ pub extern "C" fn reedline_create(get_completion_fn: GetCompletionFn,
         ReedlineEvent::Submit
     );
 
-    let history_result = FileBackedHistory::with_file(1000, "~/.rfm_reedline_history.txt".into());
+    // 修改历史文件创建部分
+    let history_path = home_dir()
+        .map(|mut path| {
+            path.push(".rfm_reedline_history.txt");
+            path
+        })
+        .unwrap_or_else(|| "rfm_reedline_history.txt".into());
+
+    let history_result = FileBackedHistory::with_file(1000, history_path.clone());
 
     // 配置菜单（即使您不想显示菜单，也需要配置）
     let completion_menu = Box::new(ColumnarMenu::default().with_name("completion_menu"));
@@ -173,12 +183,15 @@ pub extern "C" fn reedline_create(get_completion_fn: GetCompletionFn,
         }
     };
 
-    let handle = Box::into_raw(Box::new(ReedlineHandle { inner: engine }));
+    Box::into_raw(Box::new(ReedlineHandle {
+        inner: engine,
+        history_path, // 存储路径到句柄
+    }))
     // 更新全局变量
     //unsafe {
     //    CURRENT_HANDLE = handle;
     //}
-    handle
+    //handle
 }
 
 #[no_mangle]
@@ -220,6 +233,24 @@ pub extern "C" fn reedline_free(handle: *mut ReedlineHandle) {
             //    CURRENT_HANDLE = std::ptr::null_mut();
             //}
             Box::from_raw(handle);
+        }
+    }
+}
+
+// 保存历史记录的C接口
+#[no_mangle]
+pub extern "C" fn reedline_save_history(handle: *mut ReedlineHandle) {
+    if handle.is_null() {
+        return;
+    }
+    let handle = unsafe { &mut *handle };
+    
+    match handle.inner.sync_history() {
+        Ok(_) => {
+            println!("History saved successfully to {:?}", handle.history_path);
+        }
+        Err(e) => {
+            eprintln!("Failed to save history to {:?}: {}", handle.history_path, e);
         }
     }
 }

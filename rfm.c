@@ -3470,6 +3470,9 @@ void save_current_history() {
 #endif
         g_debug("save command history to: %s",rfm_historyFileLocation);
     }
+#ifdef reedline
+    reedline_save_history(reedline_handle);
+#endif
 }
 
 void load_history_for_prompt() {

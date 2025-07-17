@@ -11,4 +11,5 @@ char* reedline_readline(ReedlineHandle* handle, const char* prompt);
 void string_free(char* s);
 // 销毁Reedline实例
 void reedline_free(ReedlineHandle* handle);
+void reedline_save_history(ReedlineHandle* handle);
 #endif
