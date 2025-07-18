@@ -137,7 +137,7 @@ ifeq ($(READLINE_LIB),-Dreedline)
 	@cd reedline_wrapper && cargo clean && cd ..
 endif
 
-install: all
+install:
 	@echo installing files to ${DESTDIR}${PREFIX}/{bin,lib}
 	@mkdir -p ${DESTDIR}${PREFIX}/bin
 ifneq ($(RFM_FILE_CHOOSER),)
