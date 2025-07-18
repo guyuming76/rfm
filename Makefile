@@ -147,6 +147,7 @@ ifneq ($(RFM_FILE_CHOOSER),)
 	@ln -sf ./${LIBNAME} ${DESTDIR}${PREFIX}/lib64/${LINKERNAME}
 endif
 ifeq ($(READLINE_LIB),-Dreedline)
+	@mkdir -p ${DESTDIR}${PREFIX}/lib64
 	@cp -f reedline_wrapper/target/debug/libreedline_wrapper.so ${DESTDIR}${PREFIX}/lib64
 endif
 ifneq (${CmarkTools},)
