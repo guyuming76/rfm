@@ -5,6 +5,8 @@ use std::ffi::{CStr, CString};
 use std::ptr;
 use std::path::PathBuf;
 use dirs::home_dir;
+use log::{error, warn, debug}; // 导入日志宏
+
 
 // 全局变量存储当前ReedlineHandle实例
 //static mut CURRENT_HANDLE: *mut ReedlineHandle = std::ptr::null_mut();
@@ -102,6 +104,12 @@ pub extern "C" fn reedline_create(get_completion_fn: GetCompletionFn,
     				cwd: *const c_char
 ) -> *mut ReedlineHandle {
 
+    // 只需初始化一次
+    static INIT: std::sync::Once = std::sync::Once::new();
+    INIT.call_once(|| {
+        env_logger::init();
+    });
+
     // 创建自定义键绑定
     let mut keybindings = default_emacs_keybindings();
     
@@ -173,7 +181,7 @@ pub extern "C" fn reedline_create(get_completion_fn: GetCompletionFn,
 					.with_hinter(Box::new(CwdAwareHinter::default().with_style(Style::new().italic().fg(Color::LightGray)).with_min_chars(2)))
                 			.with_cwd(rust_cwd),
         Err(e) => {
-            eprintln!("History load error: {}.", e);
+            warn!("History load error: {}", e);
             Reedline::create() // Fallback to default history
 					.with_completer(Box::new(CCompleter::new(get_completion_fn)))
 					.with_menu(ReedlineMenu::EngineCompleter(completion_menu))
@@ -211,7 +219,7 @@ pub extern "C" fn reedline_readline(
         Ok(Signal::Success(line)) => CString::new(line).unwrap().into_raw(),
         Ok(Signal::CtrlD | Signal::CtrlC) => ptr::null_mut(), // 处理Ctrl-C/Ctrl-D
         Err(e) => {
-            eprintln!("Reedline error: {}", e);
+            warn!("Reedline error: {}", e);
             ptr::null_mut()
         }
     }
@@ -247,10 +255,10 @@ pub extern "C" fn reedline_save_history(handle: *mut ReedlineHandle) {
     
     match handle.inner.sync_history() {
         Ok(_) => {
-            println!("History saved successfully to {:?}", handle.history_path);
+            debug!("History saved successfully to {:?}", handle.history_path);
         }
         Err(e) => {
-            eprintln!("Failed to save history to {:?}: {}", handle.history_path, e);
+            warn!("Failed to save history to {:?}: {}", handle.history_path, e);
         }
     }
 }

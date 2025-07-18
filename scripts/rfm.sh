@@ -51,7 +51,7 @@ if [ -n "$VIRTUAL_ENV" ]; then
     # 提取虚拟环境的名称，通常是路径的最后一部分
     venv_name=$(basename "$VIRTUAL_ENV")
     echo "The current python virtual environment is named '$venv_name'." >&2
-    MALLOC_CHECK_=1 rfm "$@" --InheritedPrompt "($venv_name) "
+    MALLOC_CHECK_=1 RUST_LOG=reedline_wrapper=debug rfm "$@" --InheritedPrompt "($venv_name) "
 else
-    MALLOC_CHECK_=1 rfm "$@"
+    MALLOC_CHECK_=1 RUST_LOG=reedline_wrapper=debug rfm "$@"
 fi
