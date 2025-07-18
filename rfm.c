@@ -3674,6 +3674,7 @@ static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs) {
 #ifdef reedline
     string_free(OriginalReadlineResult);
     if (reedline_handle_recreation_needed){
+      save_current_history();
       ReedlineHandle* new_reedline_handle = reedline_create(rfm_filename_completion, rfm_curPath);
       if (new_reedline_handle){
 	if (reedline_handle) reedline_free(reedline_handle);
