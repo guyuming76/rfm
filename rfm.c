@@ -4357,7 +4357,7 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 		       current_stdin_cmd_interpretor_pointer = &(stdin_cmd_interpretors[i]);
 #ifdef RFM_AddOn
 		       g_free(Addon_Prompt);Addon_Prompt = NULL;
-		       sprintf(rfm_historyFile_ParentDirectory, getenv("HOME"));//对于在config.h里面定义的cmd_interpretor,history都保留在home下; 下面切换到Addon里面的cmd_interpretor, 由addon代码处理history切换，这里有可能是从Addon切换回来的，所以要重置到home下
+		       sprintf(rfm_historyFile_ParentDirectory, "%s", getenv("HOME"));//对于在config.h里面定义的cmd_interpretor,history都保留在home下; 下面切换到Addon里面的cmd_interpretor, 由addon代码处理history切换，这里有可能是从Addon切换回来的，所以要重置到home下
 #endif
 		       load_history_for_prompt();
 		       goto switchToReadlineThread;//如果当前输入命令是选择命令解释器,选择完后就直接进入一轮命令读取,无需再对当前输入命令进一步处理
@@ -4636,7 +4636,7 @@ static int setup(RFM_ctx *rfmCtx)
 #endif
    if (getcwd(cwd, sizeof(cwd)) == NULL) die("ERROR: %s: getcwd() failed.\n", PROG_NAME); /* getcwd returns NULL if cwd[] not big enough! */
 
-   sprintf(rfm_historyFile_ParentDirectory, getenv("HOME"));
+   sprintf(rfm_historyFile_ParentDirectory, "%s", getenv("HOME"));
    rfm_historyFileLocation = g_build_filename(rfm_historyFile_ParentDirectory, current_stdin_cmd_interpretor_pointer->HistoryFilename ? current_stdin_cmd_interpretor_pointer->HistoryFilename : ".rfm_history", NULL);
    rfm_historyDirectory_FileLocation = g_build_filename(getenv("HOME"),".rfm_history_directory", NULL);
 #ifdef GNU_readline  
