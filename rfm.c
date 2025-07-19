@@ -156,7 +156,6 @@ static gboolean showHelpOnStart = TRUE;
 static char* InheritedPrompt = "";
 #ifdef reedline
 static ReedlineHandle* reedline_handle = NULL;
-static gboolean reedline_handle_recreation_needed = FALSE;
 #endif
 
 #ifdef RFM_AddOn
@@ -2372,7 +2371,9 @@ static void set_rfm_curPath_internal(CALLER_OWN const gchar* path){
 	 }
          rfm_curPath = g_strdup(path);
 #ifdef reedline
-	 reedline_handle_recreation_needed = TRUE;
+	 if (reedline_handle) reedline_free(reedline_handle);
+	 reedline_handle = reedline_create(rfm_filename_completion, rfm_curPath);
+	 if (!reedline_handle) g_warning("reedline_create return NULL handle for path %s", rfm_curPath);
 #endif
 	 chdir(rfm_curPath);//TODO: i don't know whether we really need this
 	 g_setenv("rfm_curPath", rfm_curPath, 1);
@@ -3673,14 +3674,6 @@ static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs) {
     else strcat(prompt,exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread ? "*]":"*>");
 #ifdef reedline
     string_free(OriginalReadlineResult);
-    if (reedline_handle_recreation_needed){
-      ReedlineHandle* new_reedline_handle = reedline_create(rfm_filename_completion, rfm_curPath);
-      if (new_reedline_handle){
-	if (reedline_handle) reedline_free(reedline_handle);
-	reedline_handle = new_reedline_handle;
-      }else  g_warning("reedline_create return NULL handle for path %s", rfm_curPath);
-      reedline_handle_recreation_needed = FALSE;
-    }
 #else
     g_free(OriginalReadlineResult);
 #endif
