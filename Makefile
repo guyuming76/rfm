@@ -148,7 +148,9 @@ ifneq ($(RFM_FILE_CHOOSER),)
 endif
 ifeq ($(READLINE_LIB),-Dreedline)
 	@mkdir -p ${DESTDIR}${PREFIX}/lib64
-	@cp -f reedline_wrapper/target/debug/libreedline_wrapper.so ${DESTDIR}${PREFIX}/lib64
+	# deepseek说 先cp 再mv 可以让正在运行的rfm继续使用现有libreedline_wrapper,防止crash，这叫 原子替换
+	@cp -f reedline_wrapper/target/debug/libreedline_wrapper.so ${DESTDIR}${PREFIX}/lib64/libreedline_wrapper.so.new
+	@mv -f ${DESTDIR}${PREFIX}/lib64/libreedline_wrapper.so.new ${DESTDIR}${PREFIX}/lib64/libreedline_wrapper.so
 endif
 ifneq (${CmarkTools},)
 	@cp -f extractKeyValuePairFromMarkdown ${DESTDIR}${PREFIX}/bin
