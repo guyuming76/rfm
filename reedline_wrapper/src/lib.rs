@@ -8,9 +8,6 @@ use dirs::home_dir;
 use log::{error, warn, debug}; // 导入日志宏
 
 
-// 全局变量存储当前ReedlineHandle实例
-//static mut CURRENT_HANDLE: *mut ReedlineHandle = std::ptr::null_mut();
-
 fn empty_context_for_cursor(line: &str, pos: usize) -> bool {
     if pos > line.len() {
         return false;
@@ -100,9 +97,7 @@ pub struct ReedlineHandle {
 }
 
 #[no_mangle]
-pub extern "C" fn reedline_create(get_completion_fn: GetCompletionFn,
-    				cwd: *const c_char
-) -> *mut ReedlineHandle {
+pub extern "C" fn reedline_create(get_completion_fn: GetCompletionFn) -> *mut ReedlineHandle {
 
     // 只需初始化一次
     static INIT: std::sync::Once = std::sync::Once::new();
@@ -150,24 +145,6 @@ pub extern "C" fn reedline_create(get_completion_fn: GetCompletionFn,
     		]),
     	);
 
-    // 释放现有的handle（如果存在）
-    //unsafe {
-    //    if !CURRENT_HANDLE.is_null() {
-    //        reedline_free(CURRENT_HANDLE);
-    //    }
-    //}
-
-    // Convert C string to Rust Option<String>
-    //The conversion handles:
-    //- `NULL` pointers → `None`
-    //- Valid C strings → `Some(String)`
-    //- Invalid UTF-8 → `None` (via `to_str().ok()`)
-    //Note: The unsafe block is necessary for converting raw pointers, but we check for null first to ensure safety.
-    let rust_cwd = if cwd.is_null() {
-        None
-    } else {
-        unsafe { CStr::from_ptr(cwd).to_str().ok().map(|s| s.to_string()) }
-    };
 
     // 创建 Reedline 引擎并配置
     let engine = match history_result {
@@ -178,8 +155,7 @@ pub extern "C" fn reedline_create(get_completion_fn: GetCompletionFn,
         				.with_validator(Box::new(AlwaysIncompleteValidator)) // 使用自定义验证器
         				.with_edit_mode(Box::new(Emacs::new(keybindings)))  // 使用自定义键绑定
 					.with_quick_completions(true)  // 启用快速补全,只有一个补全选项时，系统会自动选择该选项而不显示菜单
-					.with_hinter(Box::new(CwdAwareHinter::default().with_style(Style::new().italic().fg(Color::LightGray)).with_min_chars(2)))
-                			.with_cwd(rust_cwd),
+					.with_hinter(Box::new(CwdAwareHinter::default().with_style(Style::new().italic().fg(Color::LightGray)).with_min_chars(2))),
         Err(e) => {
             warn!("History load error: {}", e);
             Reedline::create() // Fallback to default history
@@ -195,11 +171,6 @@ pub extern "C" fn reedline_create(get_completion_fn: GetCompletionFn,
         inner: engine,
         history_path, // 存储路径到句柄
     }))
-    // 更新全局变量
-    //unsafe {
-    //    CURRENT_HANDLE = handle;
-    //}
-    //handle
 }
 
 #[no_mangle]
@@ -235,13 +206,7 @@ pub extern "C" fn string_free(s: *mut c_char) {
 #[no_mangle]
 pub extern "C" fn reedline_free(handle: *mut ReedlineHandle) {
     if !handle.is_null() {
-        unsafe {
-            // 如果释放的是全局handle，则更新全局状态
-            //if handle == CURRENT_HANDLE {
-            //    CURRENT_HANDLE = std::ptr::null_mut();
-            //}
-            Box::from_raw(handle);
-        }
+       unsafe { Box::from_raw(handle) };
     }
 }
 

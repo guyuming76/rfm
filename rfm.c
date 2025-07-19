@@ -2370,13 +2370,9 @@ static void set_rfm_curPath_internal(CALLER_OWN const gchar* path){
 	   setenv("OLDPWD", rfm_prePath, 1);
 	 }
          rfm_curPath = g_strdup(path);
-#ifdef reedline
-	 if (reedline_handle) reedline_free(reedline_handle);
-	 reedline_handle = reedline_create(rfm_filename_completion, rfm_curPath);
-	 if (!reedline_handle) g_warning("reedline_create return NULL handle for path %s", rfm_curPath);
-#endif
 	 chdir(rfm_curPath);//TODO: i don't know whether we really need this
 	 g_setenv("rfm_curPath", rfm_curPath, 1);
+
          //g_setenv("PWD", rfm_curPath, 1);
 	 //TODO: i am not sure wether i shold set PWD env value here too, and remove the builtin command setpwd
    //when we run commands such as echo $PWD, we spawn child process with working directory rfm_curPath, so, even we do not set $PWD, we get result as expected with this kind of commands.
@@ -4646,6 +4642,10 @@ static int setup(RFM_ctx *rfmCtx)
    rl_variable_bind("mark-directories", "on");
    rl_bind_keyseq("\e[A", rl_history_search_backward);
    rl_bind_keyseq("\e[B", rl_history_search_forward);
+#endif
+#ifdef reedline
+  reedline_handle = reedline_create(rfm_filename_completion);
+  if (!reedline_handle) g_error("reedline_create return NULL handle");
 #endif
 #ifdef LINENOISE
    linenoiseHistorySetMaxLen(RFM_HISTORY_SIZE);
