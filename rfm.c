@@ -601,7 +601,7 @@ static void free_addon(RFM_ADDON *addon);
 static GHashTable* addons; // RFM_ADDON as value
 static void load_global_addons_callback(RFM_ChildAttribs* child_attribs);
 static void load_addon(CALLER_OWN char* filepath);
-static void append_addon_treeviewColumns(RFM_ADDON *addon);
+static void append_addon_treeviewColumns(RFM_ADDON *addon,gboolean searchresultview, gboolean dirview);
 static void remove_addon_treeviewColumns(RFM_ADDON *addon);
 static void unload_local_extension(RFM_ADDON *addon);
 static gboolean compile_local_extension(RFM_ADDON *addon);
@@ -5444,12 +5444,13 @@ static void update_SearchResultFileNameList_and_refresh_store(RFM_ChildAttribs *
   SearchResultViewInsteadOfDirectoryView = 1;
   memcpy(SearchResultViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
 #ifdef RFM_AddOn
+  TREEVIEW_COLUMNS_array_size = G_N_ELEMENTS(treeviewColumns);
   GHashTableIter ht_iter;
   gchar *key;
   RFM_ADDON *value;
   g_hash_table_iter_init(&ht_iter, addons);
   while (g_hash_table_iter_next(&ht_iter, &key, &value)){
-    append_addon_treeviewColumns(value);
+    append_addon_treeviewColumns(value,TRUE,FALSE);
   }
 #endif
   showSearchResultExtColumnsBasedOnHashTableValues_has_already_been_called_for_searchresult = FALSE;
@@ -5732,7 +5733,7 @@ static void remove_addon_treeviewColumns(RFM_ADDON *addon){
     RFM_ADDON *value;
     g_hash_table_iter_init(&ht_iter, addons);
     while (g_hash_table_iter_next(&ht_iter, &key, &value)){
-      if (value!=addon) append_addon_treeviewColumns(value);
+      if (value!=addon) append_addon_treeviewColumns(value,TRUE,TRUE);
     }
 
     show_hide_treeview_columns_in_order(column_layout_without_addon);//重新应用前面保存的layout
@@ -5741,19 +5742,24 @@ static void remove_addon_treeviewColumns(RFM_ADDON *addon){
 }
 
 //不同于addon中filemen,toolbarbutton等,addon中的treeviewColumns定义在使用前需要append到全局的treeviewColumns数组里,这主要是因为显示隐藏列,调整顺序等操作都是基于一个数组定义的
-static void append_addon_treeviewColumns(RFM_ADDON *addon) {
+static void append_addon_treeviewColumns(RFM_ADDON *addon, gboolean searchresultview, gboolean dirview) {
   if (addon->resource_managed_by_addon->treeviewColumns_array_size>0){
     RFM_treeviewColumn *old_DirectoryViewColumnLayout = DirectoryViewColumnsLayout;
     RFM_treeviewColumn *old_SearchResultViewColumnsLayout = SearchResultViewColumnsLayout;
     size_t old_TREEVIEW_COLUMNS_array_size = TREEVIEW_COLUMNS_array_size;
     TREEVIEW_COLUMNS_array_size += addon->resource_managed_by_addon->treeviewColumns_array_size;
-    DirectoryViewColumnsLayout = malloc(TREEVIEW_COLUMNS_array_size*sizeof(RFM_treeviewColumn));
-    memcpy((void*)DirectoryViewColumnsLayout, old_DirectoryViewColumnLayout, sizeof(RFM_treeviewColumn)*old_TREEVIEW_COLUMNS_array_size);
-    memcpy((void*)DirectoryViewColumnsLayout + sizeof(RFM_treeviewColumn)*old_TREEVIEW_COLUMNS_array_size, addon->resource_managed_by_addon->treeviewColumns, sizeof(RFM_treeviewColumn)*addon->resource_managed_by_addon->treeviewColumns_array_size);
-    SearchResultViewColumnsLayout = malloc(TREEVIEW_COLUMNS_array_size*sizeof(RFM_treeviewColumn));
-    memcpy((void*)SearchResultViewColumnsLayout, old_SearchResultViewColumnsLayout, sizeof(RFM_treeviewColumn)*old_TREEVIEW_COLUMNS_array_size);
-    memcpy((void*)SearchResultViewColumnsLayout + sizeof(RFM_treeviewColumn)*old_TREEVIEW_COLUMNS_array_size, addon->resource_managed_by_addon->treeviewColumns, sizeof(RFM_treeviewColumn)*addon->resource_managed_by_addon->treeviewColumns_array_size);
-    free(old_DirectoryViewColumnLayout); free(old_SearchResultViewColumnsLayout);
+    if (dirview){
+      DirectoryViewColumnsLayout = malloc(TREEVIEW_COLUMNS_array_size*sizeof(RFM_treeviewColumn));
+      memcpy((void*)DirectoryViewColumnsLayout, old_DirectoryViewColumnLayout, sizeof(RFM_treeviewColumn)*old_TREEVIEW_COLUMNS_array_size);
+      memcpy((void*)DirectoryViewColumnsLayout + sizeof(RFM_treeviewColumn)*old_TREEVIEW_COLUMNS_array_size, addon->resource_managed_by_addon->treeviewColumns, sizeof(RFM_treeviewColumn)*addon->resource_managed_by_addon->treeviewColumns_array_size);
+      free(old_DirectoryViewColumnLayout);
+    }
+    if (searchresultview){
+      SearchResultViewColumnsLayout = malloc(TREEVIEW_COLUMNS_array_size*sizeof(RFM_treeviewColumn));
+      memcpy((void*)SearchResultViewColumnsLayout, old_SearchResultViewColumnsLayout, sizeof(RFM_treeviewColumn)*old_TREEVIEW_COLUMNS_array_size);
+      memcpy((void*)SearchResultViewColumnsLayout + sizeof(RFM_treeviewColumn)*old_TREEVIEW_COLUMNS_array_size, addon->resource_managed_by_addon->treeviewColumns, sizeof(RFM_treeviewColumn)*addon->resource_managed_by_addon->treeviewColumns_array_size);
+      free(old_SearchResultViewColumnsLayout);
+    }
   }
 }
 
@@ -5871,7 +5877,7 @@ static void load_addon(CALLER_OWN char* addon_directory){
             g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Calling %s from %s", RFM_LOCAL_ENTER_FUNC, addon->local_so_path);
             (*(addon->local_enter_func))(addon_directory); //call enter function
 	    g_hash_table_insert(addons, strdup(addon->local_c_path), addon);
-	    append_addon_treeviewColumns(addon);
+	    append_addon_treeviewColumns(addon,TRUE,TRUE);
 	    g_debug("addons size after loading:%d",g_hash_table_size(addons));
 	    return; // 成功call enter funtion 就不要cleanup, unload 完再cleanup
         } else {
