@@ -1,4 +1,4 @@
-use reedline::{ DefaultPrompt, DefaultPromptSegment, EditCommand, Emacs, Keybindings, KeyCode, KeyModifiers,Reedline, Signal, ValidationResult, Validator, ReedlineEvent, FileBackedHistory, default_emacs_keybindings, Completer ,Suggestion, Span, ReedlineMenu, ColumnarMenu, MenuBuilder, CwdAwareHinter };
+use reedline::{ DefaultPrompt, DefaultPromptSegment, EditCommand, Emacs, Keybindings, KeyCode, KeyModifiers,Reedline, Signal, ValidationResult, Validator, ReedlineEvent, FileBackedHistory, default_emacs_keybindings, Completer ,Suggestion, Span, ReedlineMenu, ColumnarMenu, MenuBuilder, CwdAwareHinter, DefaultCompleter };
 use nu_ansi_term::{Color, Style};
 use libc::c_char;
 use std::ffi::{CStr, CString};
@@ -7,14 +7,6 @@ use std::path::PathBuf;
 use dirs::home_dir;
 use log::{error, warn, debug}; // 导入日志宏
 
-use nu_cli::completions::{FileCompletion, Completer, CompletionOptions};
-use nu_protocol::{
-    engine::{EngineState, Stack, StateWorkingSet},
-    Span as NuShellSpan,
-};
-use std::sync::Arc;
-use nu_engine::command_prelude::Value;
-use nu_protocol::CompletionSort;
 
 fn empty_context_for_cursor(line: &str, pos: usize) -> bool {
     if pos > line.len() {
@@ -92,34 +84,14 @@ impl Completer for CCompleter {
 // 定义组合补全器
 pub struct CombinedCompleter {
     c_completer: CCompleter,
-    engine_state: Arc<EngineState>,
-    stack: Arc<Stack>,
+    reedline_DefaultCompleter: DefaultCompleter
 }
 
 impl CombinedCompleter {
     pub fn new(c_completer: CCompleter) -> Self {
-        // 创建默认的 Nushell 上下文
-        let mut engine_state = nu_cmd_lang::create_default_context();
-        engine_state = nu_command::add_shell_command_context(engine_state);
-
-        // 添加 $nu 常量
-        engine_state.generate_nu_constant();
-
-        // 创建栈并设置当前工作目录
-        let mut stack = Stack::new();
-        let cwd = std::env::current_dir().unwrap_or_default();
-        stack.add_env_var(
-            "PWD".to_string(),
-            Value::string(cwd.to_string_lossy(), NuShellSpan::unknown()),
-        );
-
-        // 合并环境变量到引擎状态
-        let _ = engine_state.merge_env(&mut stack);
-
         Self {
             c_completer,
-            engine_state: Arc::new(engine_state),
-            stack: Arc::new(stack),
+	    reedline_DefaultCompleter: DefaultCompleter::default(),
         }
     }
 }
@@ -132,40 +104,8 @@ impl Completer for CombinedCompleter {
         if !c_suggestions.is_empty() {
             return c_suggestions;
         }else{
-
-        // 2. 如果 C 补全为空，调用文件补全
-            // 创建 StateWorkingSet
-            let working_set = StateWorkingSet::new(&self.engine_state);
-
-            // 创建补全选项
-            let options = CompletionOptions {
-                case_sensitive: false,
-                match_algorithm: nu_cli::completions::MatchAlgorithm::Prefix,
-                sort: CompletionSort::Alphabetical,
-            };
-
-            // 提取当前输入的前缀（简化处理）
-            let prefix = if pos > 0 && pos <= line.len() {
-                &line[..pos]
-            } else {
-                line
-            };
-            // 调用文件补全
-            let mut file_completer = FileCompletion;
-            let suggestions = file_completer.fetch(
-                &working_set,
-                &self.stack,
-                prefix,
-                NuShellSpan::unknown(),
-                0,
-                &options,
-            );
-
-            // 转换为 reedline 的 Suggestion 格式
-            suggestions
-                .into_iter()
-                .map(|s| s.suggestion)
-                .collect()
+	    // 调用 reedline DefaultCompleter
+	    return self.reedline_DefaultCompleter.complete(line,pos);
 	}
     }
 }
@@ -237,7 +177,7 @@ pub extern "C" fn reedline_create(get_completion_fn: GetCompletionFn) -> *mut Re
     // 创建 Reedline 引擎并配置
     let engine = match history_result {
         Ok(history) => Reedline::create().use_bracketed_paste(true)
-					.with_completer(Box::new(CombinedCompleter::new(get_completion_fn))) // 使用组合补全器
+					.with_completer(Box::new(CombinedCompleter::new(CCompleter::new(get_completion_fn)))) // 使用组合补全器
 					.with_menu(ReedlineMenu::EngineCompleter(completion_menu))
 					.with_history(Box::new(history))
         				.with_validator(Box::new(AlwaysIncompleteValidator)) // 使用自定义验证器
@@ -246,8 +186,7 @@ pub extern "C" fn reedline_create(get_completion_fn: GetCompletionFn) -> *mut Re
 					.with_hinter(Box::new(CwdAwareHinter::default().with_style(Style::new().italic().fg(Color::LightGray)).with_min_chars(2))),
         Err(e) => {
             warn!("History load error: {}", e);
-            Reedline::create() // Fallback to default history
-					.with_completer(Box::new(CombinedCompleter::new(get_completion_fn))) // 使用组合补全器
+            Reedline::create().with_completer(Box::new(CombinedCompleter::new(CCompleter::new(get_completion_fn)))) // 使用组合补全器
 					.with_menu(ReedlineMenu::EngineCompleter(completion_menu))
         				.with_validator(Box::new(AlwaysIncompleteValidator)) // 使用自定义验证器
         				.with_edit_mode(Box::new(Emacs::new(keybindings)))  // 使用自定义键绑定
