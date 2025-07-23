@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use dirs::home_dir;
 use log::{error, warn, debug}; // 导入日志宏
 
-
+// LineBuffer.current_word_range().is_empty() 和 LineBuffer.on_whitespace() 经测试都不能满足我的需求，所以自定义下面函数
 fn empty_context_for_cursor(line: &str, pos: usize) -> bool {
     if pos > line.len() {
         return false;

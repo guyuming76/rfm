@@ -28,12 +28,15 @@
 #include <glib-unix.h>
 #include <mntent.h>
 #include <icons.h>
+#include <readline/readline.h> //在使用 reedline 时，我们还是会使用gnu readline 的filename completion, 不考虑 linenoise, 所以我们总是加上gnu readline
 #ifdef GNU_readline
-#include <readline/readline.h>
 #include <readline/history.h>
 #endif
 #ifdef reedline
 #include "reedline_wrapper.h"
+char **rl_filename_complete_wrapper(char *text) {
+  return rl_completion_matches(text, rl_filename_completion_function);
+}
 #endif
 #ifdef LINENOISE
 #include <linenoise.h>
