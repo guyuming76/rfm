@@ -6,27 +6,44 @@ use std::ptr;
 use std::path::PathBuf;
 use dirs::home_dir;
 use log::{error, warn, debug}; // 导入日志宏
+use std::io::Write;
 
 // LineBuffer.current_word_range().is_empty() 和 LineBuffer.on_whitespace() 经测试都不能满足我的需求，所以自定义下面函数
+// deepwiki 回答说 line 只包含光标前的字符串，光标及其后面字符都不包含，输入abcd,然后光标向左一道c下，则line只包含ab. 也就是说代码里检查cursor_and_after后面的部分貌似目前都没有用，但还是留着。
 fn empty_context_for_cursor(line: &str, pos: usize) -> bool {
     if pos > line.len() {
         return false;
     }
+    //debug!("line:{} ,pos:{}",line,pos);
+    // 将字符串分割为光标前后的两部分
+    let before_cursor = &line[..pos];  // 光标前的子串
+    //debug!("before_cursor:{}",before_cursor);
+    let char_before_cursor = before_cursor.chars().last();
+    //debug!("char_before_cursor:{:?}",char_before_cursor);
+    // 检查光标前最后一个字符. 如果是空格 或 光标前无字符（行首） -> true
+    let char_before_cursor_is_space_or_none = char_before_cursor == Some(' ') || before_cursor.is_empty();
+    //debug!("char_before_cursor_is_space_or_none:{}",char_before_cursor_is_space_or_none);
 
-    let before_cursor = &line[..pos];
-    let after_cursor = &line[pos..];
+    let cursor_and_after = &line[pos..];   // 光标后的子串（含光标位置字符
+    //debug!("cursor_and_after:{}",cursor_and_after);
+    let char_at_cursor = cursor_and_after.chars().nth(0);
+    //debug!("char_at_cursor:{:?}",char_at_cursor);
+    // 光标处必须是空格
+    let char_at_cursor_is_space = char_at_cursor == Some(' ') || cursor_and_after.is_empty();
+    //debug!("char_at_cursor_is_space:{}",char_at_cursor_is_space);
 
-    // 检查光标前最后一个字符
-    let prev_is_space = before_cursor.chars().last() == Some(' ') || before_cursor.is_empty();
+    let char_after_cursor = cursor_and_after.chars().next();
+    //debug!("char_after_cursor:{:?}",char_after_cursor);
+    // 检查光标后第一个字符. 如果是空格 或 光标后无字符（行尾） -> true
+    let char_after_cursor_is_space_or_none = char_after_cursor == Some(' ') || cursor_and_after.is_empty();
+    //debug!("char_after_cursor_is_space_or_none:{}",char_after_cursor_is_space_or_none);
 
-    // 检查光标后第一个字符
-    let next_is_space = after_cursor.chars().next() == Some(' ') || after_cursor.is_empty();
-
-    prev_is_space && next_is_space
+    return char_before_cursor_is_space_or_none && char_at_cursor_is_space && char_after_cursor_is_space_or_none;
 }
 
 // 定义 C 函数指针类型  
 type GetCompletionFn = extern "C" fn(*const i8, *mut i32) -> *mut *mut i8;
+type GNUFileCompleteWrapperFn = extern "C" fn(*const i8) -> *mut *mut i8;
 
 // c 语言tab补全器，补全rfm当前选中文件
 pub struct CCompleter {
@@ -41,10 +58,6 @@ impl CCompleter {
 
 impl Completer for CCompleter {
     fn complete(&mut self, line: &str, pos: usize) -> Vec<Suggestion> {
-        //let c_input = match CString::new(line) {
-        //    Ok(s) => s,
-        //    Err(_) => return vec![],
-        //};
 
         if !empty_context_for_cursor(line, pos) { return vec![] }
 	let mut count: i32 = 0;
@@ -126,13 +139,24 @@ pub struct ReedlineHandle {
 
 #[no_mangle]
 pub extern "C" fn reedline_create(get_completion_fn: GetCompletionFn) -> *mut ReedlineHandle {
-
+    //测试用例. TODO: rfm好像还没有专门的跑测试用例的方法，资源有限，我都是自己用，相当于边开发边跑集成测试
+    assert!(!empty_context_for_cursor(" d ", 1)); // 光标在'd'上 -> false
+    assert!(empty_context_for_cursor("  ", 1));     // 连续空格中间 -> true
+    assert!(!empty_context_for_cursor("w", 0));     // 非空格起始 -> false
+    assert!(empty_context_for_cursor("   ", 0));    // 行首空格 -> true
+    assert!(empty_context_for_cursor("a  ", 2));    // 结尾空格 -> true
+    assert!(!empty_context_for_cursor(" a b ", 2)); // 光标在'a'后 -> false
     // 只需初始化一次
     static INIT: std::sync::Once = std::sync::Once::new();
     INIT.call_once(|| {
+	//env_logger::builder()
+    	//	.format(|buf, record| {
+        //	writeln!(buf, "{}\r", record.args()) // 显式添加 \r
+    	//	})
+    	//	.init();
+        // 如果觉得debug!输出的内容显示效果像是只包含换行符，不包含回车符，可以用上面代码定制
         env_logger::init();
     });
-
     // 创建自定义键绑定
     let mut keybindings = default_emacs_keybindings();
     
