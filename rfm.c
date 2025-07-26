@@ -3538,7 +3538,7 @@ static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousRea
 	    childAttribs->g_idle_add_once_to_run_CallBackFunc = TRUE;
 	    childAttribs->output_read_by_program = TRUE;
 	    childAttribs->customCallBackFunc = update_SearchResultFileNameList_and_refresh_store;
-	    childAttribs->runOpts = G_SPAWN_SEARCH_PATH|G_SPAWN_CHILD_INHERITS_STDIN|G_SPAWN_CHILD_INHERITS_STDERR;
+	    childAttribs->runOpts = G_SPAWN_SEARCH_PATH|G_SPAWN_STDIN_FROM_DEV_NULL;
 	    childAttribs->no_free = TRUE; //update_SearchResultFileNameList_and_refresh_store 要多次调用SearchResultTypeProcessingFunc, 可能会重复使用这个childAttribs,多次穿过 g_spawn_wrapper调用, 在update_SearchResultFileNameList_and_refresh_store 调用的最后置为 FALSE.
 	    ret = g_spawn_wrapper_(NULL, NULL, childAttribs);
 	    childAttribs->name = strdup(SearchResultTypePointer->name);
@@ -5200,6 +5200,7 @@ static int ProcessCmdOutputFromSearchResultWithFunction(CALLER_OWN char *oneline
    childAttribs->RunCmd = cmd;
    childAttribs->spawn_async = FALSE;
    childAttribs->output_read_by_program=TRUE;
+   childAttribs->runOpts = G_SPAWN_STDIN_FROM_DEV_NULL;
    if (child_attribs->toolbar_button_or_filemenu_addon_dir) childAttribs->toolbar_button_or_filemenu_addon_dir = strdup(child_attribs->toolbar_button_or_filemenu_addon_dir);
    if (child_attribs->searchresulttype_addon_dir) childAttribs->searchresulttype_addon_dir = strdup(child_attribs->searchresulttype_addon_dir);
    g_spawn_wrapper_(NULL,NULL,childAttribs);
