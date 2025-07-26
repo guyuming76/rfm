@@ -4471,20 +4471,7 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 
 static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult){
   RFM_ChildAttribs *childAttribs = calloc(1, sizeof(RFM_ChildAttribs));
-  struct sigaction old_sa, new_sa;
-  // 1. 忽略 SIGTTIN
-  new_sa.sa_handler = SIG_IGN;
-  sigemptyset(&new_sa.sa_mask);
-  new_sa.sa_flags = 0;
-  if (sigaction(SIGTTIN, &new_sa, &old_sa) == -1) {
-        perror("sigaction(SIGTTIN ignore)");
-        return;
-  }
   parse_and_exec_command_in_gtk_thread(readlineResult, TRUE, current_stdin_cmd_interpretor_pointer, childAttribs);
-  // 3. 恢复原始配置
-  if (sigaction(SIGTTIN, &old_sa, NULL) == -1) {
-        perror("sigaction(SIGTTIN restore)");
-  }
 }
 
 static void parse_and_exec_cmd_in_gtk_thread (gchar * cmd){
