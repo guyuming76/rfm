@@ -1103,8 +1103,8 @@ static void GSpawnChildSetupFunc_setenv(gpointer user_data) {
       RFM_ChildAttribs* child_attribs=(RFM_ChildAttribs*) user_data;
       //if (rfm_curPath!=NULL) setenv("PWD",rfm_curPath,TRUE);
       //working_directory won't update child process PWD env, which inherits parents PWD env,why?
+      if (child_attribs->runOpts & G_SPAWN_STDIN_FROM_DEV_NULL) setsid();//创建单独的， 防止子进程和readline线程争夺终端控制权，产生SIGTTIN 信号，导致readline所在进程组被放入后台。目前，我们把设置 G_SPAWN_STDIN_FROM_DEV_NULL 作为标志，如有不妥，再考虑使用其他标志，比如在child_attribs 里面建立专门的标志
 }
-
 
 static void check_wait_status_and_set_exit_code(CALLER_OWN RFM_ChildAttribs *child_attribs) {
 	            GError *wait_err = NULL;
@@ -4476,7 +4476,11 @@ static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult){
 
 static void parse_and_exec_cmd_in_gtk_thread (gchar * cmd){
   RFM_ChildAttribs *childAttribs = calloc(1, sizeof(RFM_ChildAttribs));
+  // 在创建子进程前暂停readline
+  //rl_callback_handler_remove();
   parse_and_exec_command_in_gtk_thread(cmd, FALSE, current_stdin_cmd_interpretor_pointer, childAttribs);
+  // 子进程结束后恢复
+  //rl_callback_handler_install(prompt, readline_callback);
 }
 
 static char** rfm_filename_completion(const char *text, int *count){
