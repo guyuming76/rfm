@@ -3655,21 +3655,6 @@ static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs) {
   execStdinCmdInNewVT = FALSE;
   
   if(startWithTerm() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)){
-
-    // 1. 屏蔽 SIGTTIN/SIGTTOU 避免干扰
-    sigset_t mask;
-    sigemptyset(&mask);
-    sigaddset(&mask, SIGTTIN);
-    sigaddset(&mask, SIGTTOU);
-    pthread_sigmask(SIG_BLOCK, &mask, NULL);
-    // 2. 声明终端控制权
-    pid_t my_pgrp = getpgrp();
-    if (tcsetpgrp(STDIN_FILENO, my_pgrp) == -1) {
-        perror("tcsetpgrp(readline) failed");
-        return;
-    }
-
-    
     // Allocate more space for potentially longer AI prompts
     gchar *prompt = calloc(strlen(InheritedPrompt)+256, sizeof(gchar));
     sprintf(prompt,"%s",InheritedPrompt);
@@ -4795,12 +4780,6 @@ int main(int argc, char *argv[])
    gchar *thumbnailsize;
    gchar *auto_execution_command_after_rfm_start = NULL;
    g_log_set_handler (G_LOG_DOMAIN, G_LOG_LEVEL_MASK | G_LOG_FLAG_FATAL| G_LOG_FLAG_RECURSION, g_log_default_handler, NULL);
-
-   pid_t main_pgrp = getpgrp();
-   if (tcsetpgrp(STDIN_FILENO, main_pgrp) == -1) {
-     perror("tcsetpgrp(main) failed");
-     exit(EXIT_FAILURE);
-   }
 
    addons = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
    rfmCtx=calloc(1,sizeof(RFM_ctx));
