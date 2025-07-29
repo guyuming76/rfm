@@ -76,28 +76,35 @@ impl Completer for CCompleter {
         unsafe {
             let result_ptr = (self.get_completion_fn)(context_for_cursor(line, pos).as_ptr(), &mut count);
 
-            if result_ptr.is_null() || result_ptr.wrapping_add(0).is_null() {
+            if result_ptr.is_null() {
                 return vec![];
             }
 
-            let c_str = CStr::from_ptr(*(result_ptr.wrapping_add(0)));
-            let result = match c_str.to_str() {
-                Ok(s) => s.to_string(),
-                Err(_) => return vec![],
-            };
-
-            if result.is_empty() {
-                return vec![];
+            let mut suggestions = Vec::new();
+            let mut i = 0;
+            
+            // 遍历所有补全建议直到遇到空指针
+            while !result_ptr.wrapping_add(i).is_null() && !(*result_ptr.wrapping_add(i)).is_null() {
+                let c_str = CStr::from_ptr(*result_ptr.wrapping_add(i));
+                if let Ok(result) = c_str.to_str() {
+                    if !result.is_empty() {
+                        suggestions.push(Suggestion {
+                            value: result.to_string(),
+                            description: None,
+                            style: None,
+                            extra: None,
+                            span: Span::new(last_space_pos, pos),
+                            append_whitespace: false,
+                        });
+                    }
+                }
+                i += 1;
             }
 
-            vec![Suggestion {
-                value: result,
-                description: None,
-                style: None,
-                extra: None,
-                span: Span::new(last_space_pos, pos), // 修正span范围以替换当前单词
-                append_whitespace: false,
-            }]
+            // 释放C端分配的内存
+            libc::free(result_ptr as *mut libc::c_void);
+
+            suggestions
         }
     }
 }
