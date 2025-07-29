@@ -4493,7 +4493,11 @@ static char** rfm_filename_completion(const char *text, int *count){
     g_log(RFM_LOG_READLINE,G_LOG_LEVEL_DEBUG,"rfm_filename_completion return %s",ret[0]);
     *count = 1;//TODO:实现多个补全
     return ret;
+#ifdef reedline
+  }else return rl_filename_complete_wrapper(text);
+#else
   }else return NULL;
+#endif
 }
 
 #ifdef GNU_readline
