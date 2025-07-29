@@ -8,11 +8,13 @@ use dirs::home_dir;
 use log::{error, warn, debug}; // 导入日志宏
 use std::io::Write;
 
-// LineBuffer.current_word_range().is_empty() 和 LineBuffer.on_whitespace() 经测试都不能满足我的需求，所以自定义下面函数
 // deepwiki 回答说 line 只包含光标前的字符串，光标及其后面字符都不包含，输入abcd,然后光标向左一道c下，则line只包含ab. 也就是说代码里检查cursor_and_after后面的部分貌似目前都没有用，但还是留着。
-fn empty_context_for_cursor(line: &str, pos: usize) -> bool {
+fn context_for_cursor(line: &str, pos: usize) -> CString {
+    // 创建 C 兼容的空字符串
+    let empty_cstr = CString::new("").expect("CString::new failed");
+
     if pos > line.len() {
-        return false;
+        return empty_cstr;
     }
     //debug!("line:{} ,pos:{}",line,pos);
     // 将字符串分割为光标前后的两部分
@@ -38,12 +40,21 @@ fn empty_context_for_cursor(line: &str, pos: usize) -> bool {
     let char_after_cursor_is_space_or_none = char_after_cursor == Some(' ') || cursor_and_after.is_empty();
     //debug!("char_after_cursor_is_space_or_none:{}",char_after_cursor_is_space_or_none);
 
-    return char_before_cursor_is_space_or_none && char_at_cursor_is_space && char_after_cursor_is_space_or_none;
+    if char_before_cursor_is_space_or_none && char_at_cursor_is_space && char_after_cursor_is_space_or_none {
+	return empty_cstr;
+    } else {
+        // TODO:LineBuffer.current_word_range() 可以用吗？
+	// 从后往前找第一个空格的位置
+        let last_space_pos = before_cursor.rfind(' ').map(|p| p + 1).unwrap_or(0);
+        // 截取从最后一个空格到光标位置的子串，不包含空格
+        let word = &before_cursor[last_space_pos..];
+        CString::new(word).unwrap_or_else(|_| CString::new("").expect("CString failed"))
+    }
 }
 
 // 定义 C 函数指针类型  
 type GetCompletionFn = extern "C" fn(*const i8, *mut i32) -> *mut *mut i8;
-type GNUFileCompleteWrapperFn = extern "C" fn(*const i8) -> *mut *mut i8;
+//type GNUFileCompleteWrapperFn = extern "C" fn(*const i8) -> *mut *mut i8;
 
 // c 语言tab补全器，补全rfm当前选中文件
 pub struct CCompleter {
@@ -59,14 +70,9 @@ impl CCompleter {
 impl Completer for CCompleter {
     fn complete(&mut self, line: &str, pos: usize) -> Vec<Suggestion> {
 
-        if !empty_context_for_cursor(line, pos) { return vec![] }
 	let mut count: i32 = 0;
         unsafe {
-            // 创建 C 兼容的空字符串
-            let empty_cstr = CString::new("").expect("CString::new failed");
-
-            // 调用传入的函数指针
-            let result_ptr = (self.get_completion_fn)(empty_cstr.as_ptr(), &mut count);
+            let result_ptr = (self.get_completion_fn)(context_for_cursor(line, pos).as_ptr(), &mut count);
 
             if result_ptr.is_null() || result_ptr.wrapping_add(0).is_null() {
                 return vec![];
@@ -139,13 +145,6 @@ pub struct ReedlineHandle {
 
 #[no_mangle]
 pub extern "C" fn reedline_create(get_completion_fn: GetCompletionFn) -> *mut ReedlineHandle {
-    //测试用例. TODO: rfm好像还没有专门的跑测试用例的方法，资源有限，我都是自己用，相当于边开发边跑集成测试
-    assert!(!empty_context_for_cursor(" d ", 1)); // 光标在'd'上 -> false
-    assert!(empty_context_for_cursor("  ", 1));     // 连续空格中间 -> true
-    assert!(!empty_context_for_cursor("w", 0));     // 非空格起始 -> false
-    assert!(empty_context_for_cursor("   ", 0));    // 行首空格 -> true
-    assert!(empty_context_for_cursor("a  ", 2));    // 结尾空格 -> true
-    assert!(!empty_context_for_cursor(" a b ", 2)); // 光标在'a'后 -> false
     // 只需初始化一次
     static INIT: std::sync::Once = std::sync::Once::new();
     INIT.call_once(|| {
