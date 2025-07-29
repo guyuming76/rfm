@@ -69,8 +69,10 @@ impl CCompleter {
 
 impl Completer for CCompleter {
     fn complete(&mut self, line: &str, pos: usize) -> Vec<Suggestion> {
-
-	let mut count: i32 = 0;
+        let mut count: i32 = 0;
+        let before_cursor = &line[..pos];
+        let last_space_pos = before_cursor.rfind(' ').map(|p| p + 1).unwrap_or(0);
+        
         unsafe {
             let result_ptr = (self.get_completion_fn)(context_for_cursor(line, pos).as_ptr(), &mut count);
 
@@ -93,7 +95,7 @@ impl Completer for CCompleter {
                 description: None,
                 style: None,
                 extra: None,
-                span: Span::new(pos, pos),
+                span: Span::new(last_space_pos, pos), // 修正span范围以替换当前单词
                 append_whitespace: false,
             }]
         }
