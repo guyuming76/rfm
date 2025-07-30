@@ -1,4 +1,4 @@
-use reedline::{ DefaultPrompt, DefaultPromptSegment, EditCommand, Emacs, Keybindings, KeyCode, KeyModifiers,Reedline, Signal, ValidationResult, Validator, ReedlineEvent, FileBackedHistory, default_emacs_keybindings, Completer ,Suggestion, Span, ReedlineMenu, ColumnarMenu, MenuBuilder, CwdAwareHinter, DefaultCompleter };
+use reedline::{ DefaultPrompt, DefaultPromptSegment, EditCommand, Emacs, Keybindings, KeyCode, KeyModifiers,Reedline, Signal, ValidationResult, Validator, ReedlineEvent, FileBackedHistory, default_emacs_keybindings, Completer ,Suggestion, Span, ReedlineMenu, ColumnarMenu, MenuBuilder, CwdAwareHinter, DefaultCompleter, Result, ReedlineError };
 use nu_ansi_term::{Color, Style};
 use libc::c_char;
 use std::ffi::{CStr, CString};
@@ -284,5 +284,37 @@ pub extern "C" fn reedline_save_history(handle: *mut ReedlineHandle) {
         Err(e) => {
             warn!("Failed to save history to {:?}: {}", handle.history_path, e);
         }
+    }
+}
+
+
+
+struct RfmEditor {
+    line_editor: Reedline,
+    current_file: Option<PathBuf>,
+    modified: bool,
+}
+
+impl RfmEditor {
+    fn new() -> Self {
+        let mut keybindings = default_emacs_keybindings();
+        // 添加自定义键绑定
+        keybindings.add_binding(KeyModifiers::CONTROL, KeyCode::Char('o'),
+                               ReedlineEvent::ExecuteHostCommand("save".to_string()));
+        keybindings.add_binding(KeyModifiers::CONTROL, KeyCode::Char('x'),
+                               ReedlineEvent::ExecuteHostCommand("exit".to_string()));
+        let edit_mode = Box::new(Emacs::new(keybindings));
+        let line_editor = Reedline::create().with_edit_mode(edit_mode);
+        Self {
+            line_editor,
+            current_file: None,
+            modified: false,
+        }
+    }
+    fn edit_file(&mut self, filename: &str) -> Result<()> {
+        // 加载文件内容到编辑器
+        // 进入编辑循环
+        // 处理保存和退出事件
+	Ok(())
     }
 }
