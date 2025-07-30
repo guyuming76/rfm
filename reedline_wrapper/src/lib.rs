@@ -1,4 +1,4 @@
-use reedline::{ DefaultPrompt, DefaultPromptSegment, EditCommand, Emacs, Keybindings, KeyCode, KeyModifiers,Reedline, Signal, ValidationResult, Validator, ReedlineEvent, FileBackedHistory, default_emacs_keybindings, Completer ,Suggestion, Span, ReedlineMenu, ColumnarMenu, MenuBuilder, CwdAwareHinter, DefaultCompleter, Result, ReedlineError,UndoBehavior };
+use reedline::{ DefaultPrompt, DefaultPromptSegment, EditCommand, Emacs, Keybindings, KeyCode, KeyModifiers,Reedline, Signal, ValidationResult, Validator, ReedlineEvent, FileBackedHistory, default_emacs_keybindings, Completer ,Suggestion, Span, ReedlineMenu, ColumnarMenu, MenuBuilder, CwdAwareHinter, DefaultCompleter, Result, ReedlineError, LineBuffer, UndoBehavior };
 use nu_ansi_term::{Color, Style};
 use libc::c_char;
 use std::ffi::{CStr, CString};
@@ -321,14 +321,14 @@ impl RfmEditor {
 	} else {
             String::new() // 新文件
 	};
+        let mut line_buffer = LineBuffer::from(content.as_str());
 
 	// 2. 设置当前文件和修改状态
 	self.current_file = Some(file_path);
 	self.modified = false;
 	
 	// 3. 将文件内容加载到编辑器缓冲区
-	self.line_editor.editor.set_buffer(content, UndoBehavior::CreateUndoPoint);
-	
+        self.line_editor.set_line_buffer(line_buffer, UndoBehavior::CreateUndoPoint);
 	// 4. 创建编辑提示符
 	let prompt = DefaultPrompt::new(
             DefaultPromptSegment::Basic("edit".to_string()),
