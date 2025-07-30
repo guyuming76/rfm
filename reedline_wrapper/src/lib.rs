@@ -1,4 +1,4 @@
-use reedline::{ DefaultPrompt, DefaultPromptSegment, EditCommand, Emacs, Keybindings, KeyCode, KeyModifiers,Reedline, Signal, ValidationResult, Validator, ReedlineEvent, FileBackedHistory, default_emacs_keybindings, Completer ,Suggestion, Span, ReedlineMenu, ColumnarMenu, MenuBuilder, CwdAwareHinter, DefaultCompleter, Result, ReedlineError };
+use reedline::{ DefaultPrompt, DefaultPromptSegment, EditCommand, Emacs, Keybindings, KeyCode, KeyModifiers,Reedline, Signal, ValidationResult, Validator, ReedlineEvent, FileBackedHistory, default_emacs_keybindings, Completer ,Suggestion, Span, ReedlineMenu, ColumnarMenu, MenuBuilder, CwdAwareHinter, DefaultCompleter, Result, ReedlineError,UndoBehavior };
 use nu_ansi_term::{Color, Style};
 use libc::c_char;
 use std::ffi::{CStr, CString};
@@ -311,10 +311,70 @@ impl RfmEditor {
             modified: false,
         }
     }
+
+
     fn edit_file(&mut self, filename: &str) -> Result<()> {
-        // 加载文件内容到编辑器
-        // 进入编辑循环
-        // 处理保存和退出事件
+	// 1. 加载文件内容
+	let file_path = PathBuf::from(filename);
+	let content = if file_path.exists() {
+            std::fs::read_to_string(&file_path)?
+	} else {
+            String::new() // 新文件
+	};
+
+	// 2. 设置当前文件和修改状态
+	self.current_file = Some(file_path);
+	self.modified = false;
+	
+	// 3. 将文件内容加载到编辑器缓冲区
+	self.line_editor.editor.set_buffer(content, UndoBehavior::CreateUndoPoint);
+	
+	// 4. 创建编辑提示符
+	let prompt = DefaultPrompt::new(
+            DefaultPromptSegment::Basic("edit".to_string()),
+            DefaultPromptSegment::Basic(format!(" {} ", filename)),
+	);
+	
+	// 5. 编辑循环
+	loop {
+            match self.line_editor.read_line(&prompt)? {
+		Signal::Success(command) => {
+                    match command.as_str() {
+			"save" => {
+                            self.save_file()?;
+			}
+			"exit" => {
+                            if self.modified {
+				// 提示保存
+				println!("File modified. Save? (y/n)");
+				// 处理用户选择
+                            }
+                            break;
+			}
+			_ => {
+                            // 处理其他编辑命令  
+                            self.modified = true;
+			}
+                    }
+		}
+		Signal::CtrlC | Signal::CtrlD => {
+                    break;
+		}
+            }
+	}
+	
 	Ok(())
     }
+    
+    fn save_file(&mut self) -> Result<()> {
+	if let Some(ref file_path) = self.current_file {
+            let content = self.line_editor.current_buffer_contents();
+            std::fs::write(file_path, content)?;
+            self.modified = false;
+            println!("File saved: {}", file_path.display());
+	}
+	Ok(())
+    }
+
+
 }
