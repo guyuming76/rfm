@@ -12,4 +12,10 @@ void string_free(char* s);
 // 销毁Reedline实例
 void reedline_free(ReedlineHandle* handle);
 void reedline_save_history(ReedlineHandle* handle);
+
+
+typedef void RfmEditor;
+RfmEditor* rfm_editor_new(void);
+int rfm_editor_edit_file(RfmEditor *editor, const gchar *filename, gchar **error);
+void rfm_editor_free(RfmEditor *editor);
 #endif

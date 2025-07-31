@@ -199,6 +199,9 @@ void save_current_history();
 static void stdin_command_help(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
 static void cmd_glog(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
 static void cmd_setenv(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
+#ifdef reedline
+static void cmd_rfmEdit(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
+#endif
 gchar shell_cmd_buffer[PATH_MAX]; //TODO: notice that this is shared single instance. But we only run shell command in sync mode now. so, no more than one thread will use this
 gchar* stdin_cmd_template_bash[]={"/bin/bash","-i","-c", shell_cmd_buffer, NULL};
 static gchar* stdin_cmd_template_nu[]={"nu","-c", shell_cmd_buffer, NULL};
@@ -4116,6 +4119,35 @@ static void cmd_setenv(wordexp_t *parsed_msg, GString *readline_result_string_af
     }else setenv(parsed_msg->we_wordv[1],parsed_msg->we_wordv[2],1);
   }else printf(SETENV_USAGE);
 }
+
+#ifdef reedline
+static void cmd_rfmEdit(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution) {
+  if (parsed_msg->we_wordc==2){
+    gchar* filepath = parsed_msg->we_wordv[1];
+
+    // 创建编辑器实例
+    RfmEditor *editor = rfm_editor_new();
+    if (!editor) {
+        g_warning("创建编辑器失败");
+        return;
+    }
+
+    // 调用编辑器
+    char *error_msg = NULL;
+    int result = rfm_editor_edit_file(editor, filepath, &error_msg);
+
+    if (result) {
+        g_message("文件保存成功: %s", filepath);
+    } else if (error_msg) {
+        g_warning("编辑失败: %s", error_msg);
+        g_free(error_msg);
+    }
+    // 清理资源
+    rfm_editor_free(editor);
+  }
+}
+#endif
+
 
 //返回TRUE表示成功匹配为BuiltInCmd并被执行,无论执行成功与否,都不需要在调用Shell来执行了;返回false表示未能识别为builtInCmd,需要进一步处理. 返回true后, GString*参数内存被释放,但调用者仍需将其设为NULL,因为后续处理根据其是否为NULL来判断是否需要继续处理(比如是否需要发送到Shell执行)
 static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution){

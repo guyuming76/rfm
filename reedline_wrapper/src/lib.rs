@@ -331,8 +331,8 @@ impl RfmEditor {
         self.line_editor.set_line_buffer(line_buffer, UndoBehavior::CreateUndoPoint);
 	// 4. 创建编辑提示符
 	let prompt = DefaultPrompt::new(
-            DefaultPromptSegment::Basic("edit".to_string()),
-            DefaultPromptSegment::Basic(format!(" {} ", filename)),
+            DefaultPromptSegment::Basic("".to_string()),
+            DefaultPromptSegment::Basic("".to_string()),
 	);
 	
 	// 5. 编辑循环
@@ -375,6 +375,38 @@ impl RfmEditor {
 	}
 	Ok(())
     }
+}
 
 
+#[no_mangle]
+pub extern "C" fn rfm_editor_new() -> *mut RfmEditor {
+    Box::into_raw(Box::new(RfmEditor::new()))
+}
+
+#[no_mangle]
+pub extern "C" fn rfm_editor_edit_file(
+    editor: *mut RfmEditor,
+    filename: *const libc::c_char,
+    error: *mut *mut libc::c_char,
+) -> libc::c_int {
+    let editor = unsafe { &mut *editor };
+    let filename = unsafe { CStr::from_ptr(filename).to_string_lossy().into_owned() };
+
+    match editor.edit_file(&filename) {
+        Ok(_) => 1,
+        Err(e) => {
+            if !error.is_null() {
+                let msg = CString::new(e.to_string()).unwrap();
+                unsafe { *error = msg.into_raw() };
+            }
+            0
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn rfm_editor_free(editor: *mut RfmEditor) {
+    if !editor.is_null() {
+        unsafe { Box::from_raw(editor) };
+    }
 }
