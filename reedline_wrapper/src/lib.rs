@@ -322,6 +322,7 @@ impl RfmEditor {
             String::new() // 新文件
 	};
         let mut line_buffer = LineBuffer::from(content.as_str());
+        //line_buffer.move_to_start();
 
 	// 2. 设置当前文件和修改状态
 	self.current_file = Some(file_path);
