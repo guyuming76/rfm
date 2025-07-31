@@ -313,7 +313,7 @@ impl RfmEditor {
     }
 
 
-    fn edit_file(&mut self, filename: &str) -> Result<()> {
+    fn edit_file(&mut self, filename: &str) -> Result<bool> {
 	// 1. 加载文件内容
 	let file_path = PathBuf::from(filename);
 	let content = if file_path.exists() {
@@ -364,17 +364,48 @@ impl RfmEditor {
             }
 	}
 	
-	Ok(())
+	let mut saved = false;
+	// 编辑循环
+	loop {
+            match self.line_editor.read_line(&prompt)? {
+		Signal::Success(command) => {
+                    match command.as_str() {
+			"save" => {
+                            saved = self.save_file()?;
+			}
+			"exit" => {
+                            if self.modified {
+				// 提示保存
+				//println!("File modified. Save? (y/n)");
+				// 处理用户选择
+                            }
+                            break;
+			}
+			_ => {
+                            // 处理其他编辑命令  
+                            self.modified = true;
+			}
+                    }
+		}
+		Signal::CtrlC | Signal::CtrlD => {
+                    break;
+		}
+            }
+	}
+	
+	Ok(saved)
     }
     
-    fn save_file(&mut self) -> Result<()> {
+    fn save_file(&mut self) -> Result<bool> {
 	if let Some(ref file_path) = self.current_file {
             let content = self.line_editor.current_buffer_contents();
             std::fs::write(file_path, content)?;
             self.modified = false;
             //println!("File saved: {}", file_path.display());
+            Ok(true)
+	} else {
+            Ok(false)
 	}
-	Ok(())
     }
 }
 
@@ -394,7 +425,8 @@ pub extern "C" fn rfm_editor_edit_file(
     let filename = unsafe { CStr::from_ptr(filename).to_string_lossy().into_owned() };
 
     match editor.edit_file(&filename) {
-        Ok(_) => 1,
+        Ok(true) => 2,  // 保存成功
+        Ok(false) => 1, // 正常退出未保存
         Err(e) => {
             if !error.is_null() {
                 let msg = CString::new(e.to_string()).unwrap();
