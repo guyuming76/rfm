@@ -4136,9 +4136,9 @@ static void cmd_rfmEdit(wordexp_t *parsed_msg, GString *readline_result_string_a
     char *error_msg = NULL;
     int result = rfm_editor_edit_file(editor, filepath, &error_msg);
 
-    if (result) {
+    if (result==2) {
         g_message("文件保存成功: %s", filepath);
-    } else if (error_msg) {
+    } else if (result==0 && error_msg) {
         g_warning("编辑失败: %s", error_msg);
         g_free(error_msg);
     }

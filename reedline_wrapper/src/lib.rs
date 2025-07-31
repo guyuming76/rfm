@@ -344,6 +344,7 @@ impl RfmEditor {
                     match command.as_str() {
 			"save" => {
                             saved = self.save_file()?;
+                            break;
 			}
 			"exit" => {
                             if self.modified {
