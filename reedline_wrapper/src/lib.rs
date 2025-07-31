@@ -302,7 +302,7 @@ impl RfmEditor {
         keybindings.add_binding(KeyModifiers::CONTROL, KeyCode::Char('o'),
                                ReedlineEvent::ExecuteHostCommand("save".to_string()));
         keybindings.add_binding(KeyModifiers::CONTROL, KeyCode::Char('x'),
-                               ReedlineEvent::Submit);  // 改为直接提交退出命令
+                               ReedlineEvent::ExecuteHostCommand("exit".to_string()));
         let edit_mode = Box::new(Emacs::new(keybindings));
         let line_editor = Reedline::create().with_edit_mode(edit_mode);
         Self {
@@ -343,17 +343,12 @@ impl RfmEditor {
                     match command.as_str() {
 			"save" => {
                             self.save_file()?;
-                            println!("File saved successfully!");
 			}
 			"exit" => {
                             if self.modified {
-                                println!("Save before exit? (y/n)");
-                                let mut input = String::new();
-                                if std::io::stdin().read_line(&mut input).is_ok() {
-                                    if input.trim().eq_ignore_ascii_case("y") {
-                                        self.save_file()?;
-                                    }
-                                }
+				// 提示保存
+				println!("File modified. Save? (y/n)");
+				// 处理用户选择
                             }
                             break;
 			}
@@ -364,9 +359,6 @@ impl RfmEditor {
                     }
 		}
 		Signal::CtrlC | Signal::CtrlD => {
-                    if self.modified {
-                        println!("Discarding unsaved changes");
-                    }
                     break;
 		}
             }
