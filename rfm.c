@@ -4476,7 +4476,7 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 	    if (!execStdinCmdInNewVT && !(!from_stdin_readline && execCmdInNewVT)){
 #endif
               wordexp_t parsed_msg;
-	      int wordexp_retval = wordexp(readlineResult,&parsed_msg,0);
+	      int wordexp_retval = wordexp(childAttribs->readlineResultString->str,&parsed_msg,0);
 	      if (wordexp_retval==0 && parse_and_exec_stdin_builtin_command_in_gtk_thread(&parsed_msg, childAttribs->readlineResultString)){ //wordexp_retval 0 means success
 		childAttribs->readlineResultString=NULL; //since readlineInseperatethread function will check this, we must clear it here after cmd already been executed.
 	      }
