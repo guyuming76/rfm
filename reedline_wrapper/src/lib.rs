@@ -347,7 +347,7 @@ impl RfmEditor {
 			"exit" => {
                             if self.modified {
 				// 提示保存
-				println!("File modified. Save? (y/n)");
+				//println!("File modified. Save? (y/n)");
 				// 处理用户选择
                             }
                             break;
@@ -372,7 +372,7 @@ impl RfmEditor {
             let content = self.line_editor.current_buffer_contents();
             std::fs::write(file_path, content)?;
             self.modified = false;
-            println!("File saved: {}", file_path.display());
+            //println!("File saved: {}", file_path.display());
 	}
 	Ok(())
     }
