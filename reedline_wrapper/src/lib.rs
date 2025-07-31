@@ -337,35 +337,7 @@ impl RfmEditor {
 	);
 	
 	// 5. 编辑循环
-	loop {
-            match self.line_editor.read_line(&prompt)? {
-		Signal::Success(command) => {
-                    match command.as_str() {
-			"save" => {
-                            self.save_file()?;
-			}
-			"exit" => {
-                            if self.modified {
-				// 提示保存
-				//println!("File modified. Save? (y/n)");
-				// 处理用户选择
-                            }
-                            break;
-			}
-			_ => {
-                            // 处理其他编辑命令  
-                            self.modified = true;
-			}
-                    }
-		}
-		Signal::CtrlC | Signal::CtrlD => {
-                    break;
-		}
-            }
-	}
-	
 	let mut saved = false;
-	// 编辑循环
 	loop {
             match self.line_editor.read_line(&prompt)? {
 		Signal::Success(command) => {
