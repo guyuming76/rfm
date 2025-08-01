@@ -9,7 +9,7 @@ use log::{error, warn, debug}; // 导入日志宏
 use std::io::Write;
 
 // deepwiki 回答说 line 只包含光标前的字符串，光标及其后面字符都不包含，输入abcd,然后光标向左一道c下，则line只包含ab. 也就是说代码里检查cursor_and_after后面的部分貌似目前都没有用，但还是留着。
-fn context_for_cursor(line: &str, pos: usize) -> CString {
+fn context_for_cursor(line: &str, pos: usize, completion_start_pos: &mut usize) -> CString {
     // 创建 C 兼容的空字符串
     let empty_cstr = CString::new("").expect("CString::new failed");
 
@@ -79,7 +79,9 @@ impl Completer for CCompleter {
         let last_space_pos = before_cursor.rfind(' ').map(|p| p + 1).unwrap_or(0);
         
         unsafe {
-            let result_ptr = (self.get_completion_fn)(context_for_cursor(line, pos).as_ptr(), &mut count);
+            let mut start_pos: usize = 0;
+            let context = context_for_cursor(line, pos, &mut start_pos);
+            let result_ptr = (self.get_completion_fn)(context.as_ptr(), &mut count);
 
             if result_ptr.is_null() {
                 return vec![];
@@ -98,7 +100,7 @@ impl Completer for CCompleter {
                             description: None,
                             style: None,
                             extra: None,
-                            span: Span::new(last_space_pos, pos),
+                            span: Span::new(start_pos, start_pos + result.len()),
                             append_whitespace: false,
                         });
                     }
