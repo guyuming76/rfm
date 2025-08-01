@@ -179,6 +179,7 @@ typedef struct RFM_ChildAttributes{
    gchar *searchresulttype_addon_dir;
    gchar *cmd_interpretor_addon_dir;
    GString *readlineResultString;
+   gchar *rfmEditFilePath;
 } RFM_ChildAttribs;
 
 

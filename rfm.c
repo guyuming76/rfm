@@ -200,7 +200,7 @@ static void stdin_command_help(wordexp_t * parsed_msg, GString* readline_result_
 static void cmd_glog(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
 static void cmd_setenv(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
 #ifdef reedline
-static void cmd_rfmEdit(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
+static void rfmEdit(gchar* filepath);
 #endif
 gchar shell_cmd_buffer[PATH_MAX]; //TODO: notice that this is shared single instance. But we only run shell command in sync mode now. so, no more than one thread will use this
 gchar* stdin_cmd_template_bash[]={"/bin/bash","-i","-c", shell_cmd_buffer, NULL};
@@ -731,6 +731,7 @@ static void free_child_attribs(FREE_FULL RFM_ChildAttribs *child_attribs)
    g_free(child_attribs->toolbar_button_or_filemenu_addon_dir); child_attribs->toolbar_button_or_filemenu_addon_dir = NULL;
    g_free(child_attribs->cmd_interpretor_addon_dir); child_attribs->cmd_interpretor_addon_dir = NULL;
    g_free(child_attribs->searchresulttype_addon_dir); child_attribs->searchresulttype_addon_dir = NULL;
+   g_free(child_attribs->rfmEditFilePath); child_attribs->rfmEditFilePath = NULL;
    g_free(child_attribs);
    //child_attribs->readlineResultString 在 add_history_after_stdin_command_execution 函数内 free, 因为child_attribs 在g_spawn_wrapper执行玩命令后就要free,但命令执行玩还要 add_history 呢。
 }
@@ -3552,7 +3553,7 @@ static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousRea
 	  add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
   }else {
     g_debug("exec_stdin_command(NULL,%s)",cmd_interpretor_pointer->name);
-    free_child_attribs(childAttribs);
+    if (!(childAttribs->rfmEditFilePath)) free_child_attribs(childAttribs); //rfmEditfilepath 有值得话，需要传递到readlineInSeperateThread里
   }
   return ret;
 }
@@ -3658,6 +3659,10 @@ static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs) {
   execStdinCmdInNewVT = FALSE;
   
   if(startWithTerm() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)){
+#ifdef reedline
+    // rfmEdit 其实也可以只在readlineInSeperateThread 里完成 parse 和执行，而不是像现在那样和其他命令一样在gtk线程里面parse,然后绕一个圈子又回到readlineInSeperateThread里执行。现在这样，好处是可以利用 leading_space 消除，当前选中文件补全等 gtk 线程里面的功能，并且将来还有可能扩展
+    if (childAttribs && childAttribs->rfmEditFilePath) { rfmEdit(childAttribs->rfmEditFilePath); free_child_attribs(childAttribs); }
+#endif
     // Allocate more space for potentially longer AI prompts
     gchar *prompt = calloc(strlen(InheritedPrompt)+256, sizeof(gchar));
     sprintf(prompt,"%s",InheritedPrompt);
@@ -4121,10 +4126,14 @@ static void cmd_setenv(wordexp_t *parsed_msg, GString *readline_result_string_af
 }
 
 #ifdef reedline
-static void cmd_rfmEdit(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution) {
-  if (parsed_msg->we_wordc==2){
-    gchar* filepath = parsed_msg->we_wordv[1];
+static gboolean parse_rfmEdit(wordexp_t *parsed_msg,RFM_ChildAttribs *childAttribs) {
+  if (g_strcmp0(parsed_msg->we_wordv[0], "rfmEdit")==0 && parsed_msg->we_wordc==2){
+    childAttribs->rfmEditFilePath = strdup(parsed_msg->we_wordv[1]);
+    return TRUE;
+  }else return FALSE;
+}
 
+static void rfmEdit(gchar* filepath) {
     // 创建编辑器实例
     RfmEditor *editor = rfm_editor_new(rfm_filename_completion);
     if (!editor) {
@@ -4144,7 +4153,6 @@ static void cmd_rfmEdit(wordexp_t *parsed_msg, GString *readline_result_string_a
     }
     // 清理资源
     rfm_editor_free(editor);
-  }
 }
 #endif
 
@@ -4477,7 +4485,7 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 #endif
               wordexp_t parsed_msg;
 	      int wordexp_retval = wordexp(childAttribs->readlineResultString->str,&parsed_msg,0);
-	      if (wordexp_retval==0 && parse_and_exec_stdin_builtin_command_in_gtk_thread(&parsed_msg, childAttribs->readlineResultString)){ //wordexp_retval 0 means success
+	      if (wordexp_retval==0 && (parse_rfmEdit(&parsed_msg, childAttribs) || parse_and_exec_stdin_builtin_command_in_gtk_thread(&parsed_msg, childAttribs->readlineResultString))){ //wordexp_retval 0 means success
 		childAttribs->readlineResultString=NULL; //since readlineInseperatethread function will check this, we must clear it here after cmd already been executed.
 	      }
 	      if (wordexp_retval == 0) wordfree(&parsed_msg);
