@@ -13,12 +13,17 @@ fn context_for_cursor(line: &str, pos: usize) -> CString {
     // 创建 C 兼容的空字符串
     let empty_cstr = CString::new("").expect("CString::new failed");
 
-    if pos > line.len() {
+    // 找到最后一个换行符的位置（如果有的话）
+    let last_newline = line[..pos].rfind('\n').map(|n| n + 1).unwrap_or(0);
+    let current_line = &line[last_newline..];
+    let current_line_pos = pos - last_newline;
+
+    if current_line_pos > current_line.len() {
         return empty_cstr;
     }
-    //debug!("line:{} ,pos:{}",line,pos);
-    // 将字符串分割为光标前后的两部分
-    let before_cursor = &line[..pos];  // 光标前的子串
+    //debug!("current_line:{} ,current_line_pos:{}", current_line, current_line_pos);
+    // 将字符串分割为光标前后的两部分（仅处理当前行）
+    let before_cursor = &current_line[..current_line_pos];  // 光标前的子串
     //debug!("before_cursor:{}",before_cursor);
     let char_before_cursor = before_cursor.chars().last();
     //debug!("char_before_cursor:{:?}",char_before_cursor);
