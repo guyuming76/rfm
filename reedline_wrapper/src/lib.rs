@@ -46,6 +46,7 @@ fn context_for_cursor(line: &str, pos: usize, completion_start_pos: &mut usize) 
     //debug!("char_after_cursor_is_space_or_none:{}",char_after_cursor_is_space_or_none);
 
     if char_before_cursor_is_space_or_none && char_at_cursor_is_space && char_after_cursor_is_space_or_none {
+        *completion_start_pos = pos;
 	return empty_cstr;
     } else {
         // TODO:LineBuffer.current_word_range() 可以用吗？
