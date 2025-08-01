@@ -51,6 +51,8 @@ fn context_for_cursor(line: &str, pos: usize, completion_start_pos: &mut usize) 
         // TODO:LineBuffer.current_word_range() 可以用吗？
 	// 从后往前找第一个空格的位置
         let last_space_pos = before_cursor.rfind(' ').map(|p| p + 1).unwrap_or(0);
+        // 计算完整字符串中的补全起始位置 = 当前行起始位置 + 行内最后一个空格的位置
+        *completion_start_pos = last_newline + last_space_pos;
         // 截取从最后一个空格到光标位置的子串，不包含空格
         let word = &before_cursor[last_space_pos..];
         CString::new(word).unwrap_or_else(|_| CString::new("").expect("CString failed"))
