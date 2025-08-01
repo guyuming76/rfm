@@ -308,6 +308,19 @@ struct RfmEditor {
 impl RfmEditor {
     fn new(get_completion_fn: GetCompletionFn) -> Self {
         let mut keybindings = default_emacs_keybindings();
+        // 配置菜单（即使您不想显示菜单，也需要配置）
+        let completion_menu = Box::new(ColumnarMenu::default().with_name("completion_menu"));
+
+        // 配置 Tab 键绑定
+        keybindings.add_binding(
+	    KeyModifiers::NONE,
+    	    KeyCode::Tab,
+	    ReedlineEvent::UntilFound(vec![
+		ReedlineEvent::Menu("completion_menu".to_string()),
+        	ReedlineEvent::MenuNext,
+    		]),
+    	);
+
         // 添加自定义键绑定
         keybindings.add_binding(KeyModifiers::CONTROL, KeyCode::Char('o'),
                                ReedlineEvent::ExecuteHostCommand("save".to_string()));
@@ -318,6 +331,7 @@ impl RfmEditor {
             .with_validator(Box::new(AlwaysIncompleteValidator)) // 缺少这行，在编辑多行文本时就没法中中间插入行，新行会被加到最后
             .with_edit_mode(edit_mode)
             .use_bracketed_paste(true)
+            .with_menu(ReedlineMenu::EngineCompleter(completion_menu))
 	    .with_completer(Box::new(CombinedCompleter::new(CCompleter::new(get_completion_fn)))) // 使用组合补全器;
             .with_quick_completions(true);  // 启用快速补全,只有一个补全选项时，系统会自动选择该选项而不显示菜单
         Self {
