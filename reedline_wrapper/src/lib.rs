@@ -103,7 +103,7 @@ impl Completer for CCompleter {
                             description: None,
                             style: None,
                             extra: None,
-                            span: Span::new(start_pos, start_pos + result.len()),
+                            span: Span::new(start_pos, pos),
                             append_whitespace: false,
                         });
                     }
