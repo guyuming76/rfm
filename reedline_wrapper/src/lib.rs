@@ -315,6 +315,7 @@ impl RfmEditor {
                                ReedlineEvent::ExecuteHostCommand("exit".to_string()));
         let edit_mode = Box::new(Emacs::new(keybindings));
         let line_editor = Reedline::create()
+            .with_validator(Box::new(AlwaysIncompleteValidator)) // 缺少这行，在编辑多行文本时就没法中中间插入行，新行会被加到最后
             .with_edit_mode(edit_mode)
             .use_bracketed_paste(true)
 	    .with_completer(Box::new(CombinedCompleter::new(CCompleter::new(get_completion_fn)))) // 使用组合补全器;
