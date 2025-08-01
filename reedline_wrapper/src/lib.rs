@@ -296,7 +296,7 @@ struct RfmEditor {
 }
 
 impl RfmEditor {
-    fn new() -> Self {
+    fn new(get_completion_fn: GetCompletionFn) -> Self {
         let mut keybindings = default_emacs_keybindings();
         // 添加自定义键绑定
         keybindings.add_binding(KeyModifiers::CONTROL, KeyCode::Char('o'),
@@ -304,7 +304,11 @@ impl RfmEditor {
         keybindings.add_binding(KeyModifiers::CONTROL, KeyCode::Char('x'),
                                ReedlineEvent::ExecuteHostCommand("exit".to_string()));
         let edit_mode = Box::new(Emacs::new(keybindings));
-        let line_editor = Reedline::create().with_edit_mode(edit_mode);
+        let line_editor = Reedline::create()
+            .with_edit_mode(edit_mode)
+            .use_bracketed_paste(true)
+	    .with_completer(Box::new(CombinedCompleter::new(CCompleter::new(get_completion_fn)))) // 使用组合补全器;
+            .with_quick_completions(true);  // 启用快速补全,只有一个补全选项时，系统会自动选择该选项而不显示菜单
         Self {
             line_editor,
             current_file: None,
@@ -384,8 +388,8 @@ impl RfmEditor {
 
 
 #[no_mangle]
-pub extern "C" fn rfm_editor_new() -> *mut RfmEditor {
-    Box::into_raw(Box::new(RfmEditor::new()))
+pub extern "C" fn rfm_editor_new(get_completion_fn: GetCompletionFn) -> *mut RfmEditor {
+    Box::into_raw(Box::new(RfmEditor::new(get_completion_fn)))
 }
 
 #[no_mangle]

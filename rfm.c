@@ -4126,7 +4126,7 @@ static void cmd_rfmEdit(wordexp_t *parsed_msg, GString *readline_result_string_a
     gchar* filepath = parsed_msg->we_wordv[1];
 
     // 创建编辑器实例
-    RfmEditor *editor = rfm_editor_new();
+    RfmEditor *editor = rfm_editor_new(rfm_filename_completion);
     if (!editor) {
         g_warning("创建编辑器失败");
         return;

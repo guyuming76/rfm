@@ -15,7 +15,7 @@ void reedline_save_history(ReedlineHandle* handle);
 
 
 typedef void RfmEditor;
-RfmEditor* rfm_editor_new(void);
+RfmEditor* rfm_editor_new(GetCompletionFn rfm_filename_completion_fn);
 int rfm_editor_edit_file(RfmEditor *editor, const gchar *filename, gchar **error);
 void rfm_editor_free(RfmEditor *editor);
 #endif
