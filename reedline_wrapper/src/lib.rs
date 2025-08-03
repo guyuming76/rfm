@@ -104,9 +104,13 @@ impl Completer for CCompleter {
                 if let Ok(result) = c_str.to_str() {
                     if !result.is_empty() {
                         let final_path = match &self.use_relative_path {
-                            Some(base_path) => {
+                            Some(file_path) => {
                                 let abs_path = Path::new(result);
-                                match pathdiff::diff_paths(abs_path, base_path) {
+                                // 获取文件所在目录作为基准路径
+                                let base_dir = Path::new(file_path).parent()
+                                    .unwrap_or_else(|| Path::new(".")); // 如果无法获取目录则使用当前目录
+                                
+                                match pathdiff::diff_paths(abs_path, base_dir) {
                                     Some(rel_path) => rel_path.to_string_lossy().into_owned(),
                                     None => result.to_string(),
                                 }
