@@ -106,9 +106,9 @@ impl Completer for CCompleter {
                         let final_path = match &self.use_relative_path {
                             Some(base_path) => {
                                 let abs_path = Path::new(result);
-                                match abs_path.strip_prefix(base_path) {
-                                    Ok(rel_path) => rel_path.to_string_lossy().into_owned(),
-                                    Err(_) => result.to_string(),
+                                match pathdiff::diff_paths(abs_path, base_path) {
+                                    Some(rel_path) => rel_path.to_string_lossy().into_owned(),
+                                    None => result.to_string(),
                                 }
                             }
                             None => result.to_string(),
