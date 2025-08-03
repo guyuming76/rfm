@@ -3,10 +3,11 @@ use nu_ansi_term::{Color, Style};
 use libc::c_char;
 use std::ffi::{CStr, CString};
 use std::ptr;
-use std::path::PathBuf;
+use std::path::{PathBuf, Path};
 use dirs::home_dir;
 use log::{error, warn, debug}; // 导入日志宏
 use std::io::Write;
+
 
 // deepwiki 回答说 line 只包含光标前的字符串，光标及其后面字符都不包含，输入abcd,然后光标向左一道c下，则line只包含ab. 也就是说代码里检查cursor_and_after后面的部分貌似目前都没有用，但还是留着。
 fn context_for_cursor(line: &str, pos: usize, completion_start_pos: &mut usize) -> CString {
