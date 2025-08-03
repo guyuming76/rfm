@@ -4135,16 +4135,9 @@ static gboolean parse_rfmEdit(wordexp_t *parsed_msg,RFM_ChildAttribs *childAttri
 }
 
 static void rfmEdit(gchar* filepath) {
-    // 创建编辑器实例
-    RfmEditor *editor = rfm_editor_new(rfm_filename_completion);
-    if (!editor) {
-        g_warning("创建编辑器失败");
-        return;
-    }
-
     // 调用编辑器
     char *error_msg = NULL;
-    int result = rfm_editor_edit_file(editor, filepath, &error_msg);
+    int result = rfm_editor_edit_file(rfm_filename_completion, filepath, &error_msg);
 
     if (result==2) {
         g_message("文件保存成功: %s", filepath);
@@ -4152,8 +4145,6 @@ static void rfmEdit(gchar* filepath) {
         g_warning("编辑失败: %s", error_msg);
         g_free(error_msg);
     }
-    // 清理资源
-    rfm_editor_free(editor);
 }
 #endif
 

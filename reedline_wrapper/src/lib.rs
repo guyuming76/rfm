@@ -232,7 +232,7 @@ pub extern "C" fn reedline_create(get_completion_fn: GetCompletionFn) -> *mut Re
 					.with_hinter(Box::new(CwdAwareHinter::default().with_style(Style::new().italic().fg(Color::LightGray)).with_min_chars(2))),
         Err(e) => {
             warn!("History load error: {}", e);
-            Reedline::create().with_completer(Box::new(CombinedCompleter::new(CCompleter::new(get_completion_fn)))) // 使用组合补全器
+            Reedline::create().with_completer(Box::new(CombinedCompleter::new(CCompleter::new(get_completion_fn, false)))) // 使用组合补全器
 					.with_menu(ReedlineMenu::EngineCompleter(completion_menu))
         				.with_validator(Box::new(AlwaysIncompleteValidator)) // 使用自定义验证器
         				.with_edit_mode(Box::new(Emacs::new(keybindings)))  // 使用自定义键绑定
@@ -422,7 +422,7 @@ pub extern "C" fn rfm_editor_edit_file(
     filename: *const libc::c_char,
     error: *mut *mut libc::c_char,
 ) -> libc::c_int {
-    let editor = Box::new(RfmEditor::new(get_completion_fn));
+    let mut editor = Box::new(RfmEditor::new(get_completion_fn));
     let filename = unsafe { CStr::from_ptr(filename).to_string_lossy().into_owned() };
 
     match editor.edit_file(&filename) {
