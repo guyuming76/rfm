@@ -67,11 +67,15 @@ type GetCompletionFn = extern "C" fn(*const i8, *mut i32) -> *mut *mut i8;
 // c 语言tab补全器，补全rfm当前选中文件
 pub struct CCompleter {
     get_completion_fn: GetCompletionFn,
+    use_relative_path: bool,
 }
 
 impl CCompleter {
-    pub fn new(get_completion_fn: GetCompletionFn) -> Self {
-        Self { get_completion_fn }
+    pub fn new(get_completion_fn: GetCompletionFn, use_relative_path: bool) -> Self {
+        Self { 
+            get_completion_fn,
+            use_relative_path 
+        }
     }
 }
 
@@ -219,7 +223,7 @@ pub extern "C" fn reedline_create(get_completion_fn: GetCompletionFn) -> *mut Re
     // 创建 Reedline 引擎并配置
     let engine = match history_result {
         Ok(history) => Reedline::create().use_bracketed_paste(true)
-					.with_completer(Box::new(CombinedCompleter::new(CCompleter::new(get_completion_fn)))) // 使用组合补全器
+					.with_completer(Box::new(CombinedCompleter::new(CCompleter::new(get_completion_fn, false)))) // 使用组合补全器
 					.with_menu(ReedlineMenu::EngineCompleter(completion_menu))
 					.with_history(Box::new(history))
         				.with_validator(Box::new(AlwaysIncompleteValidator)) // 使用自定义验证器
@@ -332,7 +336,7 @@ impl RfmEditor {
             .with_edit_mode(edit_mode)
             .use_bracketed_paste(true)
             .with_menu(ReedlineMenu::EngineCompleter(completion_menu))
-	    .with_completer(Box::new(CombinedCompleter::new(CCompleter::new(get_completion_fn)))) // 使用组合补全器;
+	    .with_completer(Box::new(CombinedCompleter::new(CCompleter::new(get_completion_fn, true)))) // 使用组合补全器;
             .with_quick_completions(true);  // 启用快速补全,只有一个补全选项时，系统会自动选择该选项而不显示菜单
         Self {
             line_editor,
