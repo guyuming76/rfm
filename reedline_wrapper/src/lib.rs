@@ -417,17 +417,12 @@ impl RfmEditor {
 
 
 #[no_mangle]
-pub extern "C" fn rfm_editor_new(get_completion_fn: GetCompletionFn) -> *mut RfmEditor {
-    Box::into_raw(Box::new(RfmEditor::new(get_completion_fn)))
-}
-
-#[no_mangle]
 pub extern "C" fn rfm_editor_edit_file(
-    editor: *mut RfmEditor,
+    get_completion_fn: GetCompletionFn,
     filename: *const libc::c_char,
     error: *mut *mut libc::c_char,
 ) -> libc::c_int {
-    let editor = unsafe { &mut *editor };
+    let editor = Box::new(RfmEditor::new(get_completion_fn));
     let filename = unsafe { CStr::from_ptr(filename).to_string_lossy().into_owned() };
 
     match editor.edit_file(&filename) {
@@ -443,9 +438,3 @@ pub extern "C" fn rfm_editor_edit_file(
     }
 }
 
-#[no_mangle]
-pub extern "C" fn rfm_editor_free(editor: *mut RfmEditor) {
-    if !editor.is_null() {
-        unsafe { Box::from_raw(editor) };
-    }
-}
