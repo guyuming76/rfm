@@ -67,11 +67,11 @@ type GetCompletionFn = extern "C" fn(*const i8, *mut i32) -> *mut *mut i8;
 // c 语言tab补全器，补全rfm当前选中文件
 pub struct CCompleter {
     get_completion_fn: GetCompletionFn,
-    use_relative_path: bool,
+    use_relative_path: Option<String>,
 }
 
 impl CCompleter {
-    pub fn new(get_completion_fn: GetCompletionFn, use_relative_path: bool) -> Self {
+    pub fn new(get_completion_fn: GetCompletionFn, use_relative_path: Option<String>) -> Self {
         Self { 
             get_completion_fn,
             use_relative_path 
@@ -223,7 +223,7 @@ pub extern "C" fn reedline_create(get_completion_fn: GetCompletionFn) -> *mut Re
     // 创建 Reedline 引擎并配置
     let engine = match history_result {
         Ok(history) => Reedline::create().use_bracketed_paste(true)
-					.with_completer(Box::new(CombinedCompleter::new(CCompleter::new(get_completion_fn, false)))) // 使用组合补全器
+					.with_completer(Box::new(CombinedCompleter::new(CCompleter::new(get_completion_fn, None)))) // 使用组合补全器
 					.with_menu(ReedlineMenu::EngineCompleter(completion_menu))
 					.with_history(Box::new(history))
         				.with_validator(Box::new(AlwaysIncompleteValidator)) // 使用自定义验证器
@@ -232,7 +232,7 @@ pub extern "C" fn reedline_create(get_completion_fn: GetCompletionFn) -> *mut Re
 					.with_hinter(Box::new(CwdAwareHinter::default().with_style(Style::new().italic().fg(Color::LightGray)).with_min_chars(2))),
         Err(e) => {
             warn!("History load error: {}", e);
-            Reedline::create().with_completer(Box::new(CombinedCompleter::new(CCompleter::new(get_completion_fn, false)))) // 使用组合补全器
+            Reedline::create().with_completer(Box::new(CombinedCompleter::new(CCompleter::new(get_completion_fn, None)))) // 使用组合补全器
 					.with_menu(ReedlineMenu::EngineCompleter(completion_menu))
         				.with_validator(Box::new(AlwaysIncompleteValidator)) // 使用自定义验证器
         				.with_edit_mode(Box::new(Emacs::new(keybindings)))  // 使用自定义键绑定
@@ -310,7 +310,7 @@ struct RfmEditor {
 }
 
 impl RfmEditor {
-    fn new(get_completion_fn: GetCompletionFn) -> Self {
+    fn new(get_completion_fn: GetCompletionFn, filename: String) -> Self {
         let mut keybindings = default_emacs_keybindings();
         // 配置菜单（即使您不想显示菜单，也需要配置）
         let completion_menu = Box::new(ColumnarMenu::default().with_name("completion_menu"));
@@ -336,7 +336,7 @@ impl RfmEditor {
             .with_edit_mode(edit_mode)
             .use_bracketed_paste(true)
             .with_menu(ReedlineMenu::EngineCompleter(completion_menu))
-	    .with_completer(Box::new(CombinedCompleter::new(CCompleter::new(get_completion_fn, true)))) // 使用组合补全器;
+	    .with_completer(Box::new(CombinedCompleter::new(CCompleter::new(get_completion_fn, Some(filename))))) // 使用组合补全器;
             .with_quick_completions(true);  // 启用快速补全,只有一个补全选项时，系统会自动选择该选项而不显示菜单
         Self {
             line_editor,
@@ -422,7 +422,8 @@ pub extern "C" fn rfm_editor_edit_file(
     filename: *const libc::c_char,
     error: *mut *mut libc::c_char,
 ) -> libc::c_int {
-    let mut editor = Box::new(RfmEditor::new(get_completion_fn));
+    let filename_str = filename.clone();
+    let mut editor = Box::new(RfmEditor::new(get_completion_fn, filename_str));
     let filename = unsafe { CStr::from_ptr(filename).to_string_lossy().into_owned() };
 
     match editor.edit_file(&filename) {
