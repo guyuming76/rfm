@@ -422,7 +422,7 @@ pub extern "C" fn rfm_editor_edit_file(
     filename: *const libc::c_char,
     error: *mut *mut libc::c_char,
 ) -> libc::c_int {
-    let filename_str = filename.clone();
+    let filename_str = unsafe { CStr::from_ptr(filename).to_string_lossy().into_owned() };
     let mut editor = Box::new(RfmEditor::new(get_completion_fn, filename_str));
     let filename = unsafe { CStr::from_ptr(filename).to_string_lossy().into_owned() };
 
