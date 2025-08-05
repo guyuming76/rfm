@@ -89,6 +89,12 @@
 	#define reedline_specific_help ""
 #endif
 
+#ifdef reedline
+       #define rfmEdit_help "    \033[33mrfmEdit\033[0m     followed by text filename to edit。rfmEdit works in rfm process with rust reedline crate，filename Tab completion is supported to make it easy to edit link in markdown\n"
+#else
+       #define rfmEdit_help ""
+#endif
+
 #define builtinCMD_Help \
 "\n\033[32m system views: \033[0m\n" \
 "    with difference in data source, two types of view can be shown, one is current directory view, with the left-most toolbar button showing its path(and git branch). The other is search result view. You can switch between these two views with the left-most toolbar button.\n" \
@@ -122,6 +128,7 @@ reedline_specific_help \
 "    \033[33m//\033[0m          to switch between current directory and search result view, with data refreshed\n" \
 "    \033[33mpwd\033[0m         get rfm env PWD\n" \
 "    \033[33msetpwd\033[0m      set rfm env PWD with current directory\n" \
+rfmEdit_help
 
 #define rfmLaunchHelp \
 "This is the help for command line argumants you can use to launch program with, there is another help in command window for commands you can use there.\n" \

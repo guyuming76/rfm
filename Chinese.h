@@ -91,6 +91,12 @@
 	#define reedline_specific_help ""
 #endif
 
+#ifdef reedline
+	#define rfmEdit_help "    \033[33mrfmEdit\033[0m     后接文本文件名，编辑文本文件。rfmEdit命令使用reedline库，工作在rfm进程内，可以使用文件名Tab补全，方便编辑markdown文件里的链接\n"
+#else
+	#define rfmEdit_help ""
+#endif
+
 #define builtinCMD_Help \
 "\n\033[32m 系统视图: \033[0m\n" \
 "    按照数据源分两种: 一种是当前目录文件视图,此时,工具栏左边第一按钮显示目录路径(和git分支). 另一种是文件搜索结果视图,此时工具栏左边提示当前条/结果总数,每葉条数, 点击此按钮在两种视图间切换.\n" \
@@ -124,6 +130,7 @@ reedline_specific_help \
 "    \033[33m//\033[0m          在当前目录和搜索结果视图间切换,此操作包含数据刷新\n" \
 "    \033[33mpwd\033[0m         获取rfm进程 PWD 环境变量值\n" \
 "    \033[33msetpwd\033[0m      设置rfm PWD 为当前显示目录\n" \
+rfmEdit_help
 
 #define rfmLaunchHelp \
 "这里是shell中启动rfm的命令行参数说明, rfm启动后的命令窗口内另有帮助提示在那里可若是在搜索结果文件列表界面,并选中文件或目录,则cd后接空格直接进入此文件所在目录,此时cd命令无需地址参用的命令.\n" \
