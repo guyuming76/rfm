@@ -521,6 +521,7 @@ static gchar** rfmFileChooser_CMD(enum rfmTerminal startWithVT, gchar* search_cm
 /******FileChooser related definitions end***********/
 /********************************************************************/
 /**************gtk UI, filemenu, toolbar*****************************/
+static gboolean no_window=FALSE;
 static GtkWidget *window=NULL;      /* Main window */
 static GtkWidget *rfm_main_box;
 static GtkWidget *scroll_window = NULL;
@@ -772,7 +773,7 @@ static void rfm_stop_all(RFM_ctx *rfmCtx) {
      rfm_thumbQueue=NULL;
    }
 
-   gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
+   if (!no_window) gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
 }
 
 
@@ -1507,7 +1508,7 @@ static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guin
    GFileInfo *info=NULL;
    gchar *attibuteList="*";
    GFileType fileType;
-   RFM_defaultPixbufs *defaultPixbufs=g_object_get_data(G_OBJECT(window),"rfm_default_pixbufs");
+   //RFM_defaultPixbufs *defaultPixbufs=g_object_get_data(G_OBJECT(window),"rfm_default_pixbufs");
    gchar *mime_type=NULL;
    //gchar *utf8_display_name=NULL;
    gchar *is_mounted=NULL;
@@ -1635,7 +1636,7 @@ static gboolean iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_o
     if (rfm_gitCommitMsgScheduler==0){
 #endif
       In_refresh_store = FALSE;
-      gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
+      if (!no_window) gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
 #ifdef GitIntegration
     }
 #endif
@@ -1652,7 +1653,7 @@ static gboolean iterate_through_store_to_load_latest_git_log_one_by_one_when_idl
        rfm_gitCommitMsgScheduler=0;
        if (rfm_thumbLoadScheduler==0){
 	 In_refresh_store = FALSE;
-	 gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
+	 if (!no_window) gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
        }
        return G_SOURCE_REMOVE;
      }
@@ -1817,7 +1818,7 @@ static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,
 {
       GtkTreePath *treePath=NULL;
       GdkPixbuf *theme_pixbuf=NULL;
-      RFM_defaultPixbufs *defaultPixbufs=g_object_get_data(G_OBJECT(window),"rfm_default_pixbufs");
+      //RFM_defaultPixbufs *defaultPixbufs=g_object_get_data(G_OBJECT(window),"rfm_default_pixbufs");
 
       if (fileAttributes->icon_name!=NULL) {
          /* Fall back to generic icon if possible: GTK_ICON_LOOKUP_GENERIC_FALLBACK doesn't always work, e.g. flac files */
@@ -2098,7 +2099,7 @@ static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store_if
    else if (insert_fileAttributes_into_store_one_by_one) {
        if (rfm_thumbQueue && mkThumb_thread==NULL) mkThumb_thread = g_thread_new("mkThumbnail", mkThumbLoop, NULL);
        In_refresh_store = FALSE;
-       gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
+       if (!no_window) gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
    }
 
    rfm_readDirSheduler=0;
@@ -2171,7 +2172,7 @@ static gboolean fill_fileAttributeList_with_filenames_from_search_result_and_the
 
   if (SearchResultTypePointerForCurrentExistingSearchResult && !showSearchResultExtColumnsBasedOnHashTableValues_has_already_been_called_for_searchresult) showSearchResultExtColumnsBasedOnHashTableValues();
 
-  icon_or_tree_view = add_view(rfmCtx);//add view have to be called after showSearchResultExtColumnsBasedOnHashTableValues()
+  if (!no_window) icon_or_tree_view = add_view(rfmCtx);//add view have to be called after showSearchResultExtColumnsBasedOnHashTableValues()
   //commit ab8f8c2f832bc32b431ced50bda21de36b9314d5 里, 我发现 add_view 需要在showSearchResultExtColumnsBasedOnHashTableValues()后面调用,就在那个commit 里面移动了add_view 的位置,否则会出现一个问题:运行 locate .rfmTODO.md>TODO.md 后,只有filename列显示,需要连续回车刷新下才会显示ext列. 究其原因,可能和第 3334 行代码有关, 也就是说,在调用 show_hide_treeview_column 时,需要 icon_or_tree_view值有效,否则gtkcolumn不会被设置成显示
   //但commit ab8f8c2f832bc32b431ced50bda21de36b9314d5 造成了新的问题, Iterate_through_fileAttribute_list_to_insert_into_store() 调用会自动选择刷新前选中的行,这功能需要 icon_or_tree_view 变量值有效,也就是add_view 要发生在Iterate_through_fileAttribute_list_to_insert_into_store()调用前
   gtk_tree_sortable_set_default_sort_func(GTK_TREE_SORTABLE(store), sort_func, NULL, NULL);
@@ -2219,7 +2220,7 @@ static gint sort_func(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, gpoin
 }
 
 static void set_Titles(CALLER_OWN const gchar * title){
-   if (title==NULL) return;
+   if (title==NULL || no_window) return;
    gboolean title_is_rfm_curPath = (title[0]=='/');
    if (title_is_rfm_curPath) gtk_window_set_title(GTK_WINDOW(window), title);
    gtk_tool_button_set_label(GTK_TOOL_BUTTON(PathAndRepositoryNameDisplay), title);
@@ -2236,7 +2237,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
    /*   g_signal_handler_disconnect((treeview? gtk_tree_view_get_selection(GTK_TREE_VIEW(icon_or_tree_view)) : icon_or_tree_view), viewSelectionChangedSignalConnection); */
    /*   viewSelectionChangedSignalConnection=0; */
    /* } */
-   if (keep_selection_on_view_across_refresh){
+   if (!no_window && keep_selection_on_view_across_refresh){
      //clone filepath_lists_for_selection_on_view
      g_list_free_full(g_list_first(filepath_lists_for_selection_on_view_clone),(GDestroyNotify)g_free);
      filepath_lists_for_selection_on_view_clone = g_list_copy_deep(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView],g_strdup,NULL);
@@ -2244,11 +2245,13 @@ static void refresh_store(RFM_ctx *rfmCtx)
      if (RFM_AUTOSELECT_OLDPWD_IN_VIEW && rfm_prePath!=NULL)
        filepath_lists_for_selection_on_view_clone = g_list_prepend(filepath_lists_for_selection_on_view_clone, g_strdup(rfm_prePath));
    }
-   
-   gtk_widget_hide(rfm_main_box);
-   if (scroll_window) {gtk_widget_destroy(scroll_window); icon_or_tree_view=NULL;}
 
+   if (!no_window){
+   gtk_widget_hide(rfm_main_box);
+   if (scroll_window) {gtk_widget_destroy(scroll_window); icon_or_tree_view=NULL;} 
    gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, FALSE);
+   }
+
    clear_store();
 
 #ifdef GitIntegration
@@ -2271,9 +2274,9 @@ static void refresh_store(RFM_ctx *rfmCtx)
      fill_fileAttributeList_with_filenames_from_search_result_and_then_insert_into_store(rfmCtx->childAttribs);
 
      In_refresh_store=FALSE;
-     gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
+     if (!no_window) gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
    } else {
-     icon_or_tree_view = add_view(rfmCtx);//call add_view earlier for directory view so that user won't see a blank window for long.
+     if (!no_window) icon_or_tree_view = add_view(rfmCtx);//call add_view earlier for directory view so that user won't see a blank window for long.
      gtk_tree_sortable_set_default_sort_func(GTK_TREE_SORTABLE(store), sort_func, NULL, NULL);
      gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(store), current_sort_column_id, current_sorttype);
      fileAttributeID=1;
@@ -2308,9 +2311,11 @@ static void refresh_store(RFM_ctx *rfmCtx)
   }
    set_Titles(title);
    g_free(title);
-  
+
+   if(!no_window){
    gtk_widget_show_all(window);
    refresh_toolbar();
+   }
 }
 
 //在目录视图，添加删除文件会有inotify handler促发刷新，在searchresultview才需要作为动作的后续调用刷新
@@ -2792,6 +2797,7 @@ static void file_menu_exec(GtkMenuItem *menuitem, RFM_MenuItem *file_menu_item_d
 }
 
 void add_file_menuitems(GtkWidget ***menuitems, const RFM_MenuItem menuitem_definitions[], const size_t size){
+     if (no_window) return;
      assert(*menuitems==NULL);
      *menuitems = calloc(size + 1, sizeof(GtkWidget*));
      for(int i=0; i<size; i++) {
@@ -2803,6 +2809,7 @@ void add_file_menuitems(GtkWidget ***menuitems, const RFM_MenuItem menuitem_defi
 
 #ifdef RFM_AddOn
 void remove_file_menuitems(FREE GtkWidget ***menuitems, const size_t size) {
+  if (no_window) return;
   for (int i=0; i<size; i++) if ((*menuitems)[i]) gtk_widget_destroy((*menuitems)[i]);
   free(*menuitems); *menuitems=NULL;
 }
@@ -3098,12 +3105,14 @@ static void refresh_toolbar()
 
 #ifdef RFM_AddOn
 void remove_toolbar_buttons(FREE GtkWidget ***buttons, const size_t size) {
+  if (no_window) return;
   for (int i=0; i<size; i++) if ((*buttons)[i]) gtk_widget_destroy((*buttons)[i]);
   free(*buttons); *buttons=NULL;
 }
 #endif
 
 void add_toolbar_buttons(GtkWidget ***buttons, const RFM_ToolButton button_definitions[], const size_t size) {
+  if (no_window) return;
    GtkWidget *buttonImage=NULL; /* Temp store for button image; gtk_tool_button_new() appears to take the reference */
    assert(*buttons==NULL);
    *buttons=calloc(size + 1, sizeof(GtkWidget*));
@@ -3231,7 +3240,7 @@ static void Switch_SearchResultView_DirectoryView(GtkToolItem *item,RFM_ctx *rfm
 
 static void inotify_insert_item(gchar *name, gboolean is_dir)
 {
-   RFM_defaultPixbufs *defaultPixbufs=g_object_get_data(G_OBJECT(window),"rfm_default_pixbufs");
+   //RFM_defaultPixbufs *defaultPixbufs=g_object_get_data(G_OBJECT(window),"rfm_default_pixbufs");
    //gchar *utf8_display_name=NULL;
    GtkTreeIter iter;
    RFM_FileAttributes *fileAttributes=malloc_fileAttributes();
@@ -4581,6 +4590,7 @@ void linenoise_completion(const char *buf, linenoiseCompletions *lc) {
 static int setup(RFM_ctx *rfmCtx)
 {
    gtk_init(NULL, NULL);
+   if (!no_window){
    window=gtk_window_new(GTK_WINDOW_TOPLEVEL);
    gtk_window_set_default_size(GTK_WINDOW(window), 640, 400);
 
@@ -4601,8 +4611,10 @@ static int setup(RFM_ctx *rfmCtx)
 
    rfm_main_box=gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
    gtk_container_add(GTK_CONTAINER(window), rfm_main_box);
-
+   }
+  
    rfm_homePath=g_strdup(g_get_home_dir());
+  
    rfm_thumbDir=g_build_filename(g_get_user_cache_dir(), "thumbnails", "normal", NULL);
 
    thumb_hash=g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)gtk_tree_row_reference_free);
@@ -4634,7 +4646,7 @@ static int setup(RFM_ctx *rfmCtx)
    #endif
 
    defaultPixbufs=load_default_pixbufs(); /* TODO: WARNING: This can return NULL! */
-   g_object_set_data_full(G_OBJECT(window),"rfm_default_pixbufs",defaultPixbufs,(GDestroyNotify)free_default_pixbufs);
+   //g_object_set_data_full(G_OBJECT(window),"rfm_default_pixbufs",defaultPixbufs,(GDestroyNotify)free_default_pixbufs);
    //Note that it is very important that the following G_TYPE_*s are in the same order of enum definition (RFM_treeviewCOL such as COL_FILENAME)
    store=gtk_list_store_new(NUM_COLS,
 			      G_TYPE_STRING,    //iconview_markup
@@ -4678,7 +4690,7 @@ static int setup(RFM_ctx *rfmCtx)
                             G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING); //COL_Ext56..60
    treemodel=GTK_TREE_MODEL(store);
    
-   g_signal_connect(window,"destroy", G_CALLBACK(cleanup), NULL);
+   if (!no_window) g_signal_connect(window,"destroy", G_CALLBACK(cleanup), NULL);
 
    g_debug("initDir: %s",initDir);
    g_debug("rfm_curPath: %s",rfm_curPath);
@@ -4721,6 +4733,7 @@ static int setup(RFM_ctx *rfmCtx)
 
    rfm_prePath= getenv("OLDPWD");
    if (rfm_prePath!=NULL) rfm_prePath=strdup(rfm_prePath); //i don't remember exactly, but i think i do this because i read somewhere that getenv result is special and i should not free it.
+   if (!no_window){
    add_toolbar(rfm_main_box, defaultPixbufs, rfmCtx);
    menu=gtk_menu_new();
    add_file_menuitems(&menuItem,run_actions,G_N_ELEMENTS(run_actions));
@@ -4730,7 +4743,7 @@ static int setup(RFM_ctx *rfmCtx)
    gtk_menu_shell_append(GTK_MENU_SHELL(columnHeaderMenu), InsertBeforeMenuItem);
    InsertAfterMenuItem = gtk_menu_item_new_with_label(MENU_InsertAfterThisColumn);
    gtk_menu_shell_append(GTK_MENU_SHELL(columnHeaderMenu), InsertAfterMenuItem);
-
+   }
 #ifdef RFM_AddOn
    if (!disable_addon) g_spawn_wrapper(global_addons_locating_cmd_template, NULL, G_SPAWN_DEFAULT, NULL, NULL, FALSE, load_global_addons_callback, NULL, TRUE); //同步打开rfm会太慢吗?
   //TODO: 考虑partse_and_exec_cmd_in_gtk_thread里支持 类似callback, readoutput by program 这种机制, 也许可以和SearchResult那一块有交集.这会儿作为workaround,就为命令做了一个单独的bash脚本,一边可以在命令里有管道
@@ -4740,9 +4753,9 @@ static int setup(RFM_ctx *rfmCtx)
 
    ReadFromPipeStdinIfAny(pipefd);
   
-   if (showHelpOnStart && startWithTerm() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)) stdin_command_help(NULL,NULL);
+   if (!no_window && showHelpOnStart && startWithTerm() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)) stdin_command_help(NULL,NULL);
    refresh_store(rfmCtx);
-   if(startWithTerm() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)){
+   if(!no_window && startWithTerm() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)){
        readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);
    }
    
@@ -4969,7 +4982,9 @@ int main(int argc, char *argv[])
         }else if (g_strcmp0(longArgument, "disable-addon")==0){
 	  disable_addon = TRUE;
 #endif
-        }
+        }else if (g_strcmp0(longArgument, "no-window")==0){
+	  no_window = TRUE;
+	}
 	break;
       default:
 	 die("invalid parameter, %s -h for help\n",PROG_NAME);
@@ -4981,7 +4996,7 @@ int main(int argc, char *argv[])
 
    if (setup(rfmCtx)==0){
       if (auto_execution_command_after_rfm_start) g_idle_add_once(parse_and_exec_cmd_in_gtk_thread, auto_execution_command_after_rfm_start);
-      gtk_main();
+      if (!no_window) gtk_main();
    }else
       die("ERROR: %s: setup() failed\n", PROG_NAME);
 
