@@ -2,7 +2,9 @@
 
 #define PageUp  "PageUp"
 #define PageDown  "PageDown"
-#define Up "UP"
+#define Up "Up"
+#define Previous "Back"
+#define Next "Forward"
 #define SwitchView "List/Icon"
 #define Menu "Menu"
 #define RunActionCopy "Copy files to destination, or copy filenames to clipboard"

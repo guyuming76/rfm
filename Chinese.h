@@ -3,6 +3,8 @@
 #define PageUp  "上葉"
 #define PageDown  "下葉"
 #define Up "父"
+#define Previous "后退"
+#define Next "前进"
 #define SwitchView "表/图"
 #define Menu "菜单"
 #define RunActionCopy "复制文件至目标路径或复制文件名至剪贴板"

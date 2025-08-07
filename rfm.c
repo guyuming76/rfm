@@ -346,6 +346,7 @@ static int rfm_curPath_wd = -1;    /* Current path (rfm_curPath) watch */
 static gboolean pauseInotifyHandler = FALSE;
 static gchar *rfm_curPath=NULL;  /* The current directory */
 static gchar *rfm_prePath=NULL;  /* keep previous rfm_curPath, so that it will be autoselected in view. But manual selection change such as user pressing ESC in view will set it to null. Rodney invented this to autoselect child directory after going to parent directory*/
+static GList *rfm_path_history_current = NULL;
 static int read_one_file_couter = 0;//this is useless except for logging information
 //TODO: i added the following two schedulers so that i can put off the loading of these slow columns after file list appears in the view first. But have not implemented them yet. Anyway, if user choose to show this slow columns, they have to wait to the end, show files slowly one by one may be better.
 static guint rfm_extColumnScheduler = 0;
@@ -377,7 +378,7 @@ static gboolean delayed_refreshAll(gpointer user_data);
 static void Update_Store_ExtColumns(RFM_ChildAttribs *childAttribs);
 static gchar* getExtColumnValueFromHashTable(guint fileAttributeId, guint ExtColumnHashTableIndex);
 static NO_FREE RFM_FileAttributes *get_fileAttributes_byId(guint fileAttributeId);
-static void set_rfm_curPath(CALLER_OWN const gchar *path);
+static void set_rfm_curPath(CALLER_OWN gchar *path);
 static void set_rfm_curPath_internal(CALLER_OWN const gchar* path);
 static void cmd_cd(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
 #ifdef GitIntegration
@@ -533,6 +534,8 @@ static GtkWidget *HideColumnMenuItem = NULL;
 static GtkWidget *InsertBeforeMenuItem = NULL;
 static GtkWidget *InsertAfterMenuItem = NULL;
 static void up_clicked(gpointer user_data);
+static void prev_path_clicked(gpointer user_data) {set_rfm_curPath("<");}
+static void next_path_clicked(gpointer user_data) {set_rfm_curPath(">");}
 static void home_clicked(gpointer user_data);
 static void PreviousPage(RFM_ctx *rfmCtx);
 static void NextPage(RFM_ctx *rfmCtx);
@@ -2403,14 +2406,28 @@ static void set_rfm_curPath_internal(CALLER_OWN const gchar* path){
 }
 
 /* caller owns path, free(rfm_prePath), rfm_curPath assigned to rfm_prePath; strdup(path) will be assigned to rfm_curPath,*/
-static void set_rfm_curPath(CALLER_OWN const gchar* path)
+static void set_rfm_curPath(CALLER_OWN gchar* path)
 {
    char *msg;
-   gchar * realpath=path;
+   gchar * realpath;
    int rfm_new_wd;
    //int e;
 
    if (path==NULL) return;
+   if (g_strcmp0(path, ">")==0){
+     if (rfm_path_history_current && rfm_path_history_current->prev){
+       rfm_path_history_current = g_list_previous(rfm_path_history_current);
+       path = rfm_path_history_current->data;
+     }else return;
+   }else if (g_strcmp0(path, "<")==0){
+     if (rfm_path_history_current && rfm_path_history_current->next){
+       rfm_path_history_current = g_list_next(rfm_path_history_current);
+       path = rfm_path_history_current->data;
+     }else return;
+   }else{
+     if (rfm_path_history_current) rfm_path_history_current = g_list_first(rfm_path_history_current);
+     rfm_path_history_current = g_list_prepend(rfm_path_history_current, g_strdup(path));
+     
 #ifdef GNU_readline
    add_history(g_strconcat("cd ", path, NULL));
    add_history_timestamp();
@@ -2423,9 +2440,11 @@ static void set_rfm_curPath(CALLER_OWN const gchar* path)
    //TODO: in future if we need some directory specific history file, we may check that if the directory contains .rfm_history file, it will use this local history, otherwise, use the default global history file.
    /* if (rfm_curPath!=NULL && (e=append_history(history_entry_added, g_build_filename(rfm_curPath,".rfm_history", NULL)))) */
    /*     g_warning("failed to append_history(%d,%s) error code:%d",history_entry_added,g_build_filename(rfm_curPath,".rfm_history", NULL),e); */
+     }
+
 
      if (UseTargetAddressWhenEnterSymbloicLinkForDir) realpath=canonicalize_file_name(path);
-   
+     else realpath = path;
      rfm_new_wd=inotify_add_watch(rfm_inotify_fd, realpath, INOTIFY_MASK);
      if (rfm_new_wd < 0) {
        g_warning("set_rfm_curPath(): inotify_add_watch() failed for %s",realpath);

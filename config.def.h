@@ -287,6 +287,8 @@ static RFM_ToolButton tool_buttons[] = {
    { "git ls-files", NULL,                      NULL,                   git_ls_files,      TRUE,           TRUE,      0,                      NULL,                   show_gitMenus },
 #endif
    { Up,             "go-up",                   up_clicked,             NULL,              FALSE,          TRUE,      GDK_KEY_Up,            "MOD1(usually ALT)+Up",  NULL},
+   { Previous,       "go-previous",             prev_path_clicked,      NULL,              FALSE,          TRUE,      GDK_KEY_Left,          "MOD1(usually ALT)+Left",NULL},
+   { Next,           "go-next",                 next_path_clicked,      NULL,              FALSE,          TRUE,      GDK_KEY_Right,         "MOD1(usually ALT)+Right",NULL},
    { "Refresh",      "view-refresh",            refresh_store,          NULL,              TRUE,           TRUE,      0,                      NULL,                   NULL},
    { FIND_FILES,     NULL,                      NULL,                   find_files,        FALSE,          TRUE,      0,                      NULL,                   NULL},
    { "Share",        NULL,                      NULL,                   share_dir,         FALSE,          TRUE,      0,                      "share directory",      NULL},
