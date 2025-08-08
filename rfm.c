@@ -2172,7 +2172,7 @@ static gboolean fill_fileAttributeList_with_filenames_from_search_result_and_the
 
   if (SearchResultTypePointerForCurrentExistingSearchResult && !showSearchResultExtColumnsBasedOnHashTableValues_has_already_been_called_for_searchresult) showSearchResultExtColumnsBasedOnHashTableValues();
 
-  if (!no_window) icon_or_tree_view = add_view(rfmCtx);//add view have to be called after showSearchResultExtColumnsBasedOnHashTableValues()
+  icon_or_tree_view = add_view(rfmCtx);//add view have to be called after showSearchResultExtColumnsBasedOnHashTableValues()
   //commit ab8f8c2f832bc32b431ced50bda21de36b9314d5 里, 我发现 add_view 需要在showSearchResultExtColumnsBasedOnHashTableValues()后面调用,就在那个commit 里面移动了add_view 的位置,否则会出现一个问题:运行 locate .rfmTODO.md>TODO.md 后,只有filename列显示,需要连续回车刷新下才会显示ext列. 究其原因,可能和第 3334 行代码有关, 也就是说,在调用 show_hide_treeview_column 时,需要 icon_or_tree_view值有效,否则gtkcolumn不会被设置成显示
   //但commit ab8f8c2f832bc32b431ced50bda21de36b9314d5 造成了新的问题, Iterate_through_fileAttribute_list_to_insert_into_store() 调用会自动选择刷新前选中的行,这功能需要 icon_or_tree_view 变量值有效,也就是add_view 要发生在Iterate_through_fileAttribute_list_to_insert_into_store()调用前
   gtk_tree_sortable_set_default_sort_func(GTK_TREE_SORTABLE(store), sort_func, NULL, NULL);
@@ -2276,7 +2276,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
      In_refresh_store=FALSE;
      if (!no_window) gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
    } else {
-     if (!no_window) icon_or_tree_view = add_view(rfmCtx);//call add_view earlier for directory view so that user won't see a blank window for long.
+     icon_or_tree_view = add_view(rfmCtx);//call add_view earlier for directory view so that user won't see a blank window for long.
      gtk_tree_sortable_set_default_sort_func(GTK_TREE_SORTABLE(store), sort_func, NULL, NULL);
      gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(store), current_sort_column_id, current_sorttype);
      fileAttributeID=1;
@@ -3078,6 +3078,7 @@ static gboolean view_button_press(GtkWidget *widget, GdkEvent *event, RFM_ctx *r
 
 static void refresh_toolbar()
 {
+  if (no_window) return;
    gchar *tooltip = SearchResultViewInsteadOfDirectoryView? g_strdup_printf("rfm_curPath:%s\nrfm_SearchResultPath:%s\n%s",rfm_curPath,rfm_SearchResultPath,TOOL_TIP_PathAndRepositoryNameDisplay):g_strdup(TOOL_TIP_PathAndRepositoryNameDisplay);
    gtk_tool_item_set_tooltip_text(PathAndRepositoryNameDisplay, tooltip);
    g_free(tooltip);
@@ -3153,7 +3154,8 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
 static GtkWidget *add_view(RFM_ctx *rfmCtx)
 {
    GtkWidget *_view;
-
+   if (no_window) return NULL;
+  
    scroll_window=gtk_scrolled_window_new(NULL, NULL);
    gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(scroll_window), GTK_SHADOW_ETCHED_IN);
    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll_window), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
@@ -3217,6 +3219,7 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
 }
 
 static void refresh_view(RFM_ctx *rfmCtx, gboolean switch_view) {
+  if (no_window) return;
   GList *  selectionList=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
   gtk_widget_hide(rfm_main_box);
   gtk_widget_destroy(scroll_window);
