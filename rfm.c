@@ -3988,7 +3988,7 @@ static void show_hide_treeview_columns_in_order(CALLER_OWN gchar* order_sequence
 	
               } while (order_seq_array[j]!=NULL);
 	      g_strfreev(order_seq_array);
-              if (pending_refresh_store) refresh_store(rfmCtx);
+              if (pending_refresh_store) g_idle_add_once(refresh_store, rfmCtx);
 	      else if (pending_refresh_view) refresh_view(rfmCtx, FALSE);
 }
 
