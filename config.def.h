@@ -363,7 +363,7 @@ static gchar* MD_parsing_cmdTemplate[] = { stdin_cmd_interpretors[0].name, "extr
 static gchar* TODO_MD_parsing_cmdTemplate[] = { stdin_cmd_interpretors[0].name, "extractKeyValuePairFromMarkdown 0 %s 简述 问题状态", NULL };
 #endif
 #ifdef RFM_AddOn
-static gchar* AddOnStatusColumns[] = { "AddOnStatus",NULL };
+static gchar* AddOnStatusColumns[] = { fld_AddOnStatus,NULL };
 #endif
 static RFM_SearchResultType searchresultTypes[] = {
 //name	       SearchResultLineProcessingFunc                  showcolumn     SearchResultColumnSeperator  cmdTemplate Description
