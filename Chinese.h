@@ -158,7 +158,7 @@ BuiltInCmd_SearchResultColumnSeperator \
 BuiltInCmd_SearchResultColumnSeperator \
 "         显示默认搜索结果列分割符并退出rfm. 向rfm提供搜索结果输出的程序可以通过此参数获取rfm要求的分割符\n" \
 "--disable-addon   不自动加载插件\n" \
-"--no-window  从管道读取输入，直接在终端模拟器输出查询结果，而不启动rfm图形界面，可用在web服务器上处理用户查询,举例：locate rfm|head -n5|rfm.sh -l --no-window 2>/dev/null\n\n" \
+"--no-gui  从管道读取输入，直接在终端模拟器输出查询结果，而不启动rfm图形界面，可用在web服务器上处理用户查询,举例：locate rfm|head -n5|rfm.sh -l --no-gui 2>/dev/null\n\n" \
 "通过设置环境变量显示调试信息:G_MESSAGES_DEBUG=rfm, 这里rfm定义为log_domain(参见项目Makefile);代码中还定义了subdomain如rfm-data, rfm-gspawn, rfm-column 等(在config.h里查找完整subdomain列表), 所以,也可以设置环境变量G_MESSAGES_DEBUG=rfm-data,rfm-gspawn\n" \
 "         若是在命令窗口看到gtk显示的一些critical及其它级别消息，可以设置G_DEBUG环境变量调试rfm,以获得显示消息的调用栈：G_DEBUG=fatal-warnings gdb rfm\n"
 

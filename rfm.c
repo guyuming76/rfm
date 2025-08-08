@@ -521,7 +521,7 @@ static gchar** rfmFileChooser_CMD(enum rfmTerminal startWithVT, gchar* search_cm
 /******FileChooser related definitions end***********/
 /********************************************************************/
 /**************gtk UI, filemenu, toolbar*****************************/
-static gboolean no_window=FALSE;
+static gboolean no_window=FALSE;    // for the --no-gui command line parameter
 static GtkWidget *window=NULL;      /* Main window */
 static GtkWidget *rfm_main_box;
 static GtkWidget *scroll_window = NULL;
@@ -4986,7 +4986,7 @@ int main(int argc, char *argv[])
         }else if (g_strcmp0(longArgument, "disable-addon")==0){
 	  disable_addon = TRUE;
 #endif
-        }else if (g_strcmp0(longArgument, "no-window")==0){
+        }else if (g_strcmp0(longArgument, "no-gui")==0){
 	  no_window = TRUE;
 	}
 	break;

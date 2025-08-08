@@ -155,7 +155,7 @@ BuiltInCmd_SearchResultColumnSeperator \
 BuiltInCmd_SearchResultColumnSeperator \
 "         show default search result column seperator and quit rfm. program that provide search result for rfm can use this command to get search result column seperator first.\n" \
 "--disable-addon   do not auto load addons\n" \
-"--no-window  read filename list from pipe，and show processed result directly in stdout, without starting gtk GUI. can be used to process query on web server. example：locate rfm|head -n5|rfm.sh -l --no-window 2>/dev/null\n\n" \
+"--no-gui  read filename list from pipe，and show processed result directly in stdout, without starting gtk GUI. can be used to process query on web server. example：locate rfm|head -n5|rfm.sh -l --no-gui 2>/dev/null\n\n" \
 "Show debug message by setting environmental variable: G_MESSAGES_DEBUG=rfm,rfm-data,rfm-gspawn,rfm-column, etc.,please refer to config.h for log subdomain definition\n"
 
 #define CURRENT_COLUMN_STATUS "current column status(negative means invisible), {v}or{^} means sort ascending or descending (same as the little icon in column header)\n"
