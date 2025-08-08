@@ -455,7 +455,7 @@ static void cmdSearchResultColumnSeperator(wordexp_t * parsed_msg, GString* read
 static RFM_SearchResultType* MatchSearchResultType(gchar *readlineResult, RFM_ChildAttribs *childattribs);
 static void set_pagesize_for_searchresultview(const char *pagesize);
 static void cmdPagesize(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
-static void writeSearchResultIntoFD_in_gtk_thread(gint *fd);
+static void writeSearchResultIntoFD_in_gtk_thread(gint fd);
 static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, gboolean from_stdin_readline, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *childAttribs);
 /******Search Result related definitions end*********/
 /****************************************************/
@@ -3606,7 +3606,7 @@ static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResult
 		}
 		readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);//SearchResultAsInput情况下，g_spawn 失败,（命令根本就没执行，比如命令没找到），从这里新建readline
 	    } else {
-		writeSearchResultIntoFD_in_gtk_thread(&(childAttribs->stdIn_fd));
+		writeSearchResultIntoFD_in_gtk_thread(childAttribs->stdIn_fd);
 		add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
 	    }
 }
@@ -3623,17 +3623,17 @@ static void g_spawn_async_callback_to_new_readline_thread(RFM_ChildAttribs *chil
   readlineThread=g_thread_new("readline", readlineInSeperateThread, NULL);// SearchResultAsInput情况下，命令执行成功，从这里新建 readline;  这种情况下,新的readlineThread下不会再运行exec_stdin_command, 所以命令参数直接传NULL过去就可以了
 }
 
-static void writeSearchResultIntoFD_in_gtk_thread(gint *fd){
-  g_debug("writeSearchResultIntoFD(%d)",*fd);
+static void writeSearchResultIntoFD_in_gtk_thread(gint fd){
+  g_debug("writeSearchResultIntoFD(%d)",fd);
   if (SearchResultViewInsteadOfDirectoryView){
     gboolean firstColumn=TRUE;
     GList* columns=NULL;
     for (size_t i=0; i<TREEVIEW_COLUMNS_array_size;i++){
-      if (TREEVIEW_COLUMNS[i].Show && TREEVIEW_COLUMNS[i].enumCol!=NUM_COLS && TREEVIEW_COLUMNS[i].gtkCol){
+      if (TREEVIEW_COLUMNS[i].Show && TREEVIEW_COLUMNS[i].enumCol!=NUM_COLS && (TREEVIEW_COLUMNS[i].gtkCol||no_window)){
 	if (firstColumn){
-	  dprintf(*fd, "%s", TREEVIEW_COLUMNS[i].title); //首列输出列标题
+	  dprintf(fd, "%s", TREEVIEW_COLUMNS[i].title); //首列输出列标题
 	  firstColumn=FALSE;
-	}else dprintf(*fd, "%s%s",SearchResultColumnSeperator,TREEVIEW_COLUMNS[i].title); //非首列输出 分隔符 加列标题
+	}else dprintf(fd, "%s%s",SearchResultColumnSeperator,TREEVIEW_COLUMNS[i].title); //非首列输出 分隔符 加列标题
       columns=g_list_prepend(columns, &(TREEVIEW_COLUMNS[i].enumCol));
       }
     }
@@ -3656,16 +3656,16 @@ static void writeSearchResultIntoFD_in_gtk_thread(gint *fd){
 	  if (gtk_tree_model_get_column_type((GTK_TREE_MODEL(store)), *((enum RFM_treeviewCol *)(c->data)))==G_TYPE_STRING) { //到目前为止，只有 STRING 和 INT64 两种类型的列被显示，参加config.h里面 treeview 列定义以及对应列在 treeview store new 时候的类型
 	      gchar * str_value = g_value_get_string(&val);
 	      if (c==columns)//this means the first column
-		dprintf(*fd, "\n%s", str_value? str_value:""); //首列输出回车 加 值
+		dprintf(fd, "\n%s", str_value? str_value:""); //首列输出回车 加 值
 	      else{
 		if (str_value && strstr(str_value, SearchResultColumnSeperator)!=NULL) g_warning(SearchResult_contains_ColumnSeperator, SearchResultColumnSeperator, str_value);
-		dprintf(*fd, "%s%s",SearchResultColumnSeperator, str_value?str_value:""); //非首列输出 分隔符 加值
+		dprintf(fd, "%s%s",SearchResultColumnSeperator, str_value?str_value:""); //非首列输出 分隔符 加值
 	      }
 	      if (str_value) g_free(str_value);
 	  }else{ //GTYPE_UINT64
 	      if (c==columns)//this means the first column
-		dprintf(*fd, "\n%ld", g_value_get_uint64(&val)); //首列输出回车 加 值
-	      else dprintf(*fd, "%s%ld",SearchResultColumnSeperator, g_value_get_uint64(&val)); //非首列输出 分隔符 加值
+		dprintf(fd, "\n%ld", g_value_get_uint64(&val)); //首列输出回车 加 值
+	      else dprintf(fd, "%s%ld",SearchResultColumnSeperator, g_value_get_uint64(&val)); //非首列输出 分隔符 加值
 	  }
 	  //g_value_unset(&val);
 	}while((c=g_list_next(c)));
@@ -3673,12 +3673,12 @@ static void writeSearchResultIntoFD_in_gtk_thread(gint *fd){
       }while (stdin_cmd_selection_list?
 	      ((selectedListElement=g_list_next(selectedListElement)) && gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, selectedListElement->data))
 	      :gtk_tree_model_iter_next(GTK_TREE_MODEL(store), &iter));
-      dprintf(*fd, "\n");
+      dprintf(fd, "\n");
     }else g_warning("empty search result view or list view has not been opened, switch to list view if search result is not empty!");
     g_list_free(columns);
     if (stdin_cmd_selection_list) g_list_free_full(stdin_cmd_selection_list, (GDestroyNotify)gtk_tree_path_free);
   }else g_warning("currently not in search result view!");
-  close(*fd);
+  close(fd);
 }
 
 static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs) {
@@ -4752,6 +4752,7 @@ static int setup(RFM_ctx *rfmCtx)
    set_rfm_curPath(initDir);
 
    ReadFromPipeStdinIfAny(pipefd);
+   if (no_window) writeSearchResultIntoFD_in_gtk_thread(STDOUT_FILENO);
   
    if (!no_window && showHelpOnStart && startWithTerm() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)) stdin_command_help(NULL,NULL);
    refresh_store(rfmCtx);
@@ -5278,7 +5279,7 @@ static int ProcessCmdOutputFromSearchResultWithFunction(CALLER_OWN char *oneline
    childAttribs->RunCmd = cmd;
    childAttribs->spawn_async = FALSE;
    childAttribs->output_read_by_program=TRUE;
-   childAttribs->runOpts = G_SPAWN_STDIN_FROM_DEV_NULL;
+   if (!no_window) childAttribs->runOpts = G_SPAWN_STDIN_FROM_DEV_NULL; //如果在no_window模式下设置STDIN_FROM_DEV_NULL, 就会报错：无法设定终端进程组 (-1): 对设备不适当的 ioctl 操作。bash: 此 shell 中无任务控制
    if (child_attribs->toolbar_button_or_filemenu_addon_dir) childAttribs->toolbar_button_or_filemenu_addon_dir = strdup(child_attribs->toolbar_button_or_filemenu_addon_dir);
    if (child_attribs->searchresulttype_addon_dir) childAttribs->searchresulttype_addon_dir = strdup(child_attribs->searchresulttype_addon_dir);
    g_spawn_wrapper_(NULL,NULL,childAttribs);
