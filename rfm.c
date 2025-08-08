@@ -5363,7 +5363,7 @@ static int ProcessKeyValuePairInData(GKeyFile *keyfile, char* groupname){
 		   }
 	    }
 #endif
-	    g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"%s: SearchResultType name %s matched for file:%s.", SrchRsltType_multitype,longest_matched_searchresulttype_name,oneline);
+	    g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"%s: SearchResultType name %s matched for file:%s", SrchRsltType_multitype,longest_matched_searchresulttype_name,oneline);
 	    int ret = matched_searchresulttype_pointer->SearchResultLineProcessingFunc(oneline,new_search,matched_searchresulttype_pointer->cmdTemplate, fileAttributes, childAttribs);
 	    g_free(childAttribs->searchresulttype_addon_dir); childAttribs->searchresulttype_addon_dir = NULL;//当前的searchresulttype是multitype,对应的addon_dir是null
    //对于multitype来说，每一行的showcolumn应该是匹配到的具体searchresulttype的showcolumn, 所以应该给每种匹配到的showcolumn做个并集
@@ -5375,7 +5375,7 @@ static int ProcessKeyValuePairInData(GKeyFile *keyfile, char* groupname){
 	   if (matched_searchresulttype_pointer->showcolumn[i]==((GPtrArray*)(SearchResultTypePointerForCurrentExistingSearchResult->showcolumn))->pdata[j]) { already_exists_in_multitype_showcolumn = TRUE; break; }
 	 if (!already_exists_in_multitype_showcolumn) {
 	   g_ptr_array_add((GPtrArray*)(SearchResultTypePointerForCurrentExistingSearchResult->showcolumn), matched_searchresulttype_pointer->showcolumn[i]);
-	   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"%s: SearchResultType name %s matched for file:%s. showcolumn element '%s' added",SrchRsltType_multitype,longest_matched_searchresulttype_name,oneline,matched_searchresulttype_pointer->showcolumn[i]);
+	   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"%s: SearchResultType name %s matched for file:%s; showcolumn element '%s' added",SrchRsltType_multitype,longest_matched_searchresulttype_name,oneline,matched_searchresulttype_pointer->showcolumn[i]);
 	 }
        }
    }

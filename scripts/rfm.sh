@@ -59,8 +59,9 @@ fi
 exit_status=$?
 # 139 == 128 + 11, 11 意思是 sigsegv
 if [ $exit_status -eq 139 ]; then
+    echo
     echo "请使用 rfm.sh --disable-addon 排查是否是addon造成了rfm程序崩溃"
-    echo "如果最近更新了rfm程序，请尝试使用如下命令删除所有为旧版本编译的addon rfm_local.so，以便重新自动编译"
+    echo "如果最近更新了rfm程序，请尝试使用如下命令删除所有为旧版本编译的addon rfm_local.so，以便重新自动编译addon"
     echo "sudo updatedb"
     echo "locate rfm_local.so"
     echo "locate rfm_local.so|xargs rm"
