@@ -5367,7 +5367,10 @@ static int ProcessKeyValuePairInData(GKeyFile *keyfile, char* groupname){
 	    int ret = matched_searchresulttype_pointer->SearchResultLineProcessingFunc(oneline,new_search,matched_searchresulttype_pointer->cmdTemplate, fileAttributes, childAttribs);
 	    g_free(childAttribs->searchresulttype_addon_dir); childAttribs->searchresulttype_addon_dir = NULL;//当前的searchresulttype是multitype,对应的addon_dir是null
    //对于multitype来说，每一行的showcolumn应该是匹配到的具体searchresulttype的showcolumn, 所以应该给每种匹配到的showcolumn做个并集
-   if (SearchResultTypePointerForCurrentExistingSearchResult->showcolumn==NULL) SearchResultTypePointerForCurrentExistingSearchResult->showcolumn = g_ptr_array_new();
+   if (SearchResultTypePointerForCurrentExistingSearchResult->showcolumn==NULL){
+     SearchResultTypePointerForCurrentExistingSearchResult->showcolumn = g_ptr_array_new();
+     g_debug("SearchResultTypePointerForCurrentExistingSearchResult->showcolumn set to GPtrArray* %p for SearchResultType %s %p",SearchResultTypePointerForCurrentExistingSearchResult->showcolumn, SearchResultTypePointerForCurrentExistingSearchResult->name, SearchResultTypePointerForCurrentExistingSearchResult);
+   }
    if (matched_searchresulttype_pointer->showcolumn){
        for(int i=0; matched_searchresulttype_pointer->showcolumn[i];i++){
 	 gboolean already_exists_in_multitype_showcolumn = FALSE; //用于避免重复加入字符串数组元素
@@ -5478,7 +5481,7 @@ static void showSearchResultExtColumnsBasedOnHashTableValues(){
 
   guint i=0;
   gchar* column_sequence;
-  if (SearchResultTypePointerForCurrentExistingSearchResult->showcolumn){
+  if (g_strcmp0(SearchResultTypePointerForCurrentExistingSearchResult->name,SrchRsltType_multitype)==0 ?((GPtrArray*)(SearchResultTypePointerForCurrentExistingSearchResult->showcolumn)) : SearchResultTypePointerForCurrentExistingSearchResult->showcolumn){
     while ((column_sequence = (g_strcmp0(SearchResultTypePointerForCurrentExistingSearchResult->name,SrchRsltType_multitype)==0 ?
 			             (i<(((GPtrArray*)(SearchResultTypePointerForCurrentExistingSearchResult->showcolumn))->len) ?
 				          g_ptr_array_index((GPtrArray*)(SearchResultTypePointerForCurrentExistingSearchResult->showcolumn), i)
@@ -5493,6 +5496,7 @@ static void showSearchResultExtColumnsBasedOnHashTableValues(){
   if (g_strcmp0(SearchResultTypePointerForCurrentExistingSearchResult->name,SrchRsltType_multitype)==0 && SearchResultTypePointerForCurrentExistingSearchResult->showcolumn) {
     g_ptr_array_free((GPtrArray*)(SearchResultTypePointerForCurrentExistingSearchResult->showcolumn), FALSE); //multitype searcharesulttype 的showcolumn属性默认是NULL的，动态添加  MatchedSearchResultType 的showcolumn, 用完后释放字符串数组，字符串本身不用释放
     SearchResultTypePointerForCurrentExistingSearchResult->showcolumn = NULL;
+    g_debug("free SearchResultTypePointerForCurrentExistingSearchResult->showcolumn and set to NULL for SearchResultType %s %p", SearchResultTypePointerForCurrentExistingSearchResult->name, SearchResultTypePointerForCurrentExistingSearchResult);
   }
 }
 
