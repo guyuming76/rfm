@@ -201,7 +201,7 @@ static void cmd_glog(wordexp_t *parsed_msg, GString *readline_result_string_afte
 static void cmd_setenv(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
 #ifdef reedline
 static void rfmEdit(gchar* filepath);
-static gboolean parse_rfmEdit(wordexp_t *parsed_msg,RFM_ChildAttribs *childAttribs);
+static gboolean parse_rfmEdit(GString *readline_result_string_after_file_name_substitution,RFM_ChildAttribs *childAttribs);
 #endif
 gchar shell_cmd_buffer[PATH_MAX]; //TODO: notice that this is shared single instance. But we only run shell command in sync mode now. so, no more than one thread will use this
 gchar* stdin_cmd_template_bash[]={"/bin/bash","-i","-c", shell_cmd_buffer, NULL};
@@ -4158,9 +4158,12 @@ static void cmd_setenv(wordexp_t *parsed_msg, GString *readline_result_string_af
 }
 
 #ifdef reedline
-static gboolean parse_rfmEdit(wordexp_t *parsed_msg,RFM_ChildAttribs *childAttribs) {
-  if (g_strcmp0(parsed_msg->we_wordv[0], "rfmEdit")==0 && parsed_msg->we_wordc==2){
-    childAttribs->rfmEditFilePath = strdup(parsed_msg->we_wordv[1]);
+static gboolean parse_rfmEdit(GString *readline_result_string_after_file_name_substitution ,RFM_ChildAttribs *childAttribs) {
+  wordexp_t parsed_msg;
+  int wordexp_retval = wordexp(readline_result_string_after_file_name_substitution->str,&parsed_msg,0);
+  if (wordexp_retval==0 && g_strcmp0(parsed_msg.we_wordv[0], "rfmEdit")==0 && parsed_msg.we_wordc==2){
+    childAttribs->rfmEditFilePath = strdup(parsed_msg.we_wordv[1]);
+    wordfree(&parsed_msg);
     return TRUE;
   }else return FALSE;
 }
@@ -4507,10 +4510,10 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 	    if (!execStdinCmdInNewVT && !(!from_stdin_readline && execCmdInNewVT)){
 #endif
               wordexp_t parsed_msg;
-	      int wordexp_retval = wordexp(childAttribs->readlineResultString->str,&parsed_msg,0);
+	      int wordexp_retval = wordexp(readlineResult,&parsed_msg,0);
 	      if (wordexp_retval==0 && (
 #ifdef reedline
-					parse_rfmEdit(&parsed_msg, childAttribs) ||
+					parse_rfmEdit(childAttribs->readlineResultString, childAttribs) ||
 #endif
 					parse_and_exec_stdin_builtin_command_in_gtk_thread(&parsed_msg, childAttribs->readlineResultString))){ //wordexp_retval 0 means success
 		childAttribs->readlineResultString=NULL; //since readlineInseperatethread function will check this, we must clear it here after cmd already been executed.
