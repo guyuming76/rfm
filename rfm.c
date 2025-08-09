@@ -2364,7 +2364,7 @@ static void get_git_root_with_rev_parse(gpointer *child_attribs)
 }
 
 static gboolean show_gitMenus(RFM_FileAttributes *fileAttributes) {
-  return SearchResultViewInsteadOfDirectoryView ^ 1 && git_root;
+  return (SearchResultViewInsteadOfDirectoryView ^ 1) && git_root;
 }
 
 static gboolean show_gitColumns(RFM_FileAttributes * fileAttributes) {
@@ -3326,7 +3326,7 @@ static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer user_d
       struct inotify_event *event=(struct inotify_event *) (buffer+i);
 
       if (SearchResultViewInsteadOfDirectoryView) {
-	g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"Inotify event unhandled in search result view.");
+	g_debug("Inotify event unhandled in search result view.");
 	return TRUE;
       }
       
