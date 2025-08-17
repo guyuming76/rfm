@@ -145,6 +145,9 @@ github, gitee 等自带的issue列表是和商业网站绑定的，如果有一�
 
 # 一些TroubleShooting记录以及其他备注 #
 
+## rust 依赖 ##
+命令输入多行编辑功能使用rust库reedline.如果你的系统不支持rust,可以在config.mk里选择使用 GNU_readline 库.
+
 ## 显示调试信息 ##
 
 ```

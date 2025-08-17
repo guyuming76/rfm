@@ -12,6 +12,7 @@ GitIntegration = -DGitIntegration
 #GitIntegration =
 
 READLINE_LIB = -Dreedline
+# if you don't use rust on your system, comment out, reedline and use GNU_readline below. you will lose the multiline editting in command input.
 #READLINE_LIB = -DGNU_readline
 #READLINE_LIB = -DLINENOISE
 
