@@ -200,6 +200,7 @@ static void stdin_command_help(wordexp_t * parsed_msg, GString* readline_result_
 static void cmd_glog(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
 static void cmd_setenv(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
 #ifdef reedline
+static char **rfm_editor_completion_based_on_search_result(char *text);
 static void rfmEdit(gchar* filepath);
 static gboolean parse_rfmEdit(GString *readline_result_string_after_file_name_substitution,RFM_ChildAttribs *childAttribs);
 #endif
@@ -4158,6 +4159,17 @@ static void cmd_setenv(wordexp_t *parsed_msg, GString *readline_result_string_af
 }
 
 #ifdef reedline
+static char **rfm_editor_completion_based_on_search_result(char *text) {
+  char ** ret = calloc(TREEVIEW_COLUMNS_array_size + 1, sizeof(char*));
+  int j = 0;
+  if (!ItemSelected && SearchResultViewInsteadOfDirectoryView && (text==NULL || g_strcmp0(text, "")==0)){ //没有选中文件，查询结果视图，并且输入上下文为空时，把查询结果列名作为补全内容
+    	    for(size_t i=0;i<TREEVIEW_COLUMNS_array_size;i++)
+	      if (TREEVIEW_COLUMNS[i].enumCol<NUM_COLS && TREEVIEW_COLUMNS[i].Show && TREEVIEW_COLUMNS[i].gtkCol)
+		ret[j++] = strdup(TREEVIEW_COLUMNS[i].title);
+  }
+  return ret;
+}
+
 static gboolean parse_rfmEdit(GString *readline_result_string_after_file_name_substitution ,RFM_ChildAttribs *childAttribs) {
   wordexp_t parsed_msg;
   int wordexp_retval = wordexp(readline_result_string_after_file_name_substitution->str,&parsed_msg,0);
@@ -4564,7 +4576,12 @@ static char** rfm_filename_completion(const char *text, int *count){
     *count = 1;//TODO:实现多个补全
     return ret;
 #ifdef reedline
-  }else return rl_filename_complete_wrapper(text);
+  }else {
+    char **ret = NULL;
+    ret = rfm_editor_completion_based_on_search_result(text);
+    if (ret==NULL) ret = rl_filename_complete_wrapper(text);
+    return ret;
+  }
 #else
   }else return NULL;
 #endif
