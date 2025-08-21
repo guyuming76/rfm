@@ -200,6 +200,7 @@ static void stdin_command_help(wordexp_t * parsed_msg, GString* readline_result_
 static void cmd_glog(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
 static void cmd_setenv(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
 #ifdef reedline
+static gboolean In_rfm_editor = FALSE;
 static char **rfm_editor_completion_based_on_search_result(char *text);
 static void rfmEdit(gchar* filepath);
 static gboolean parse_rfmEdit(GString *readline_result_string_after_file_name_substitution,RFM_ChildAttribs *childAttribs);
@@ -4162,7 +4163,7 @@ static void cmd_setenv(wordexp_t *parsed_msg, GString *readline_result_string_af
 static char **rfm_editor_completion_based_on_search_result(char *text) {
   char ** ret = calloc(TREEVIEW_COLUMNS_array_size + 1, sizeof(char*));
   int j = 0;
-  if (!ItemSelected && SearchResultViewInsteadOfDirectoryView && (text==NULL || g_strcmp0(text, "")==0)){ //没有选中文件，查询结果视图，并且输入上下文为空时，把查询结果列名作为补全内容
+  if (SearchResultViewInsteadOfDirectoryView && (text==NULL || g_strcmp0(text, "")==0)){ //查询结果视图，并且输入上下文为空时，把查询结果列名作为补全内容
     	    for(size_t i=0;i<TREEVIEW_COLUMNS_array_size;i++)
 	      if (TREEVIEW_COLUMNS[i].enumCol<NUM_COLS && TREEVIEW_COLUMNS[i].Show && TREEVIEW_COLUMNS[i].gtkCol)
 		ret[j++] = strdup(TREEVIEW_COLUMNS[i].title);
@@ -4183,7 +4184,9 @@ static gboolean parse_rfmEdit(GString *readline_result_string_after_file_name_su
 static void rfmEdit(gchar* filepath) {
     // 调用编辑器
     char *error_msg = NULL;
+    In_rfm_editor = TRUE;
     int result = rfm_editor_edit_file(rfm_filename_completion, filepath, &error_msg);
+    In_rfm_editor = FALSE;
 
     if (result==2) {
         g_message("文件保存成功: %s", filepath);
@@ -4578,7 +4581,7 @@ static char** rfm_filename_completion(const char *text, int *count){
 #ifdef reedline
   }else {
     char **ret = NULL;
-    ret = rfm_editor_completion_based_on_search_result(text);
+    if (In_rfm_editor) ret = rfm_editor_completion_based_on_search_result(text);
     if (ret==NULL) ret = rl_filename_complete_wrapper(text);
     return ret;
   }
