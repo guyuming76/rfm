@@ -4161,12 +4161,38 @@ static void cmd_setenv(wordexp_t *parsed_msg, GString *readline_result_string_af
 
 #ifdef reedline
 static char **rfm_editor_completion_based_on_search_result(char *text) {
-  char ** ret = calloc(TREEVIEW_COLUMNS_array_size + 1, sizeof(char*));
-  int j = 0;
-  if (SearchResultViewInsteadOfDirectoryView && (text==NULL || g_strcmp0(text, "")==0)){ //查询结果视图，并且输入上下文为空时，把查询结果列名作为补全内容
+  char ** ret = NULL;
+  int ExtColumnHashTable_column_index_as_ret_row_index = 0;
+  int ret_row_index=0;
+  if (SearchResultViewInsteadOfDirectoryView){
     	    for(size_t i=0;i<TREEVIEW_COLUMNS_array_size;i++)
-	      if (TREEVIEW_COLUMNS[i].enumCol<NUM_COLS && TREEVIEW_COLUMNS[i].Show && TREEVIEW_COLUMNS[i].gtkCol)
-		ret[j++] = strdup(TREEVIEW_COLUMNS[i].title);
+	      if (TREEVIEW_COLUMNS[i].enumCol<NUM_COLS && TREEVIEW_COLUMNS[i].Show && TREEVIEW_COLUMNS[i].gtkCol && TREEVIEW_COLUMNS[i].ValueFunc==getExtColumnValueFromHashTable){
+		if (text==NULL || g_strcmp0(text, "")==0){//输入上下文为空时，把查询结果列名作为补全内容
+		  if (ret==NULL) ret=calloc(TREEVIEW_COLUMNS_array_size + 1, sizeof(char*));
+		  ret[ExtColumnHashTable_column_index_as_ret_row_index] = strdup(TREEVIEW_COLUMNS[i].title);
+                }else if (strstr(text, TREEVIEW_COLUMNS[i].title) && ExtColumnHashTable[ExtColumnHashTable_column_index_as_ret_row_index]){ //否则，从列名包含在输入上下文内容中的列对应的ExtColumnHashTable中取值
+		  if (ret==NULL) ret=calloc(PageSize_SearchResultView + 1, sizeof(char*));
+		  //if (ItemSelected==1){ //TODO: 如果是选中某行，从此行结果中选ret,而不是从整个column中选.
+		  //}else{
+		    	    GHashTableIter ht_iter;
+			    gchar *key;
+	                    gchar *value;
+	                    g_hash_table_iter_init(&ht_iter, ExtColumnHashTable[ExtColumnHashTable_column_index_as_ret_row_index]);
+	                    while (g_hash_table_iter_next(&ht_iter, &key, &value)){
+			      if (first_line_column_title && strcmp(key,"1")==0) continue;
+			      gboolean already_in_ret = FALSE;
+                              for(int i=ret_row_index-1;i>=0;i--){
+				gchar* text_and_value = g_strdup_printf("%s%s", text,value);
+				if (strcmp(ret[i], text_and_value)==0) already_in_ret=TRUE;
+				g_free(text_and_value);
+				if (already_in_ret) break;
+			      }
+			      if (!already_in_ret) ret[ret_row_index++]=g_strdup_printf("%s%s",text,value);
+			    }
+		  //}
+		}
+		ExtColumnHashTable_column_index_as_ret_row_index++;
+	      }
   }
   return ret;
 }
