@@ -4182,12 +4182,9 @@ static char **rfm_editor_completion_based_on_search_result(char *text) {
 			      if (first_line_column_title && strcmp(key,"1")==0) continue;
 			      gboolean already_in_ret = FALSE;
                               for(int i=ret_row_index-1;i>=0;i--){
-				gchar* text_and_value = g_strdup_printf("%s%s", text,value);
-				if (strcmp(ret[i], text_and_value)==0) already_in_ret=TRUE;
-				g_free(text_and_value);
-				if (already_in_ret) break;
+				if (strcmp(ret[i], value)==0) { already_in_ret=TRUE;break; }
 			      }
-			      if (!already_in_ret) ret[ret_row_index++]=g_strdup_printf("%s%s",text,value);
+			      if (!already_in_ret) ret[ret_row_index++]=strdup(value);
 			    }
 		  //}
 		}
