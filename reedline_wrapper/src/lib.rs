@@ -104,38 +104,37 @@ impl Completer for CCompleter {
                 if let Ok(result) = c_str.to_str() {
                     if !result.is_empty() {
                         if result.starts_with('/') {
-                        
-                        let final_path = match &self.use_relative_path {
-                            Some(file_path) => {
-                                let abs_path = Path::new(result);
-                                // 获取文件所在目录作为基准路径
-                                let base_dir = Path::new(file_path).parent()
-                                    .unwrap_or_else(|| Path::new(".")); // 如果无法获取目录则使用当前目录
+                            let final_path = match &self.use_relative_path {
+                                Some(file_path) => {
+                                    let abs_path = Path::new(result);
+                                    // 获取文件所在目录作为基准路径
+                                    let base_dir = Path::new(file_path).parent()
+                                        .unwrap_or_else(|| Path::new(".")); // 如果无法获取目录则使用当前目录
                                 
-                                match pathdiff::diff_paths(abs_path, base_dir) {
-                                    Some(rel_path) => rel_path.to_string_lossy().into_owned(),
-                                    None => result.to_string(),
+                                    match pathdiff::diff_paths(abs_path, base_dir) {
+                                        Some(rel_path) => rel_path.to_string_lossy().into_owned(),
+                                        None => result.to_string(),
+                                    }
                                 }
-                            }
-                            None => result.to_string(),
-                        };
-                        suggestions.push(Suggestion {
-                            value: final_path,
-                            description: None,
-                            style: None,
-                            extra: None,
-                            span: Span::new(start_pos, pos),
-                            append_whitespace: false,
-                        });
+                                None => result.to_string(),
+                            };
+                            suggestions.push(Suggestion {
+                                value: final_path,
+                                description: None,
+                                style: None,
+                                extra: None,
+                                span: Span::new(start_pos, pos),
+                                append_whitespace: false,
+                            });
                         }else{ //对于上面的文件路径补全，context包含的是文件名前缀，补全的返回内容result是完整的路径，所以start_pos 等于0; 而下面的非路径补全，目前用于rfm_editor_completion_based_on_search_result, 补全的返回内容不包含context,suggestion 应该是 context 合并上 result
-                        suggestions.push(Suggestion {
-                            value: result.to_string(),
-                            description: None,
-                            style: None,
-                            extra: None,
-                            span: Span::new(pos, pos),
-                            append_whitespace: false,
-                        });
+                            suggestions.push(Suggestion {
+                                value: result.to_string(),
+                                description: None,
+                                style: None,
+                                extra: None,
+                                span: Span::new(pos, pos),
+                                append_whitespace: false,
+                            });
                         };
                     }
                 }
