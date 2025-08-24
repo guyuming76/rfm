@@ -103,7 +103,7 @@ impl Completer for CCompleter {
                 let c_str = CStr::from_ptr(*result_ptr.wrapping_add(i));
                 if let Ok(result) = c_str.to_str() {
                     if !result.is_empty() {
-                        if result.starts_with('/') {
+                        if !result.starts_with('|') {//在c语言的rfm_editor_completion_based_on_search_result函数，非路径返回结果以|开头
                             let final_path = match &self.use_relative_path {
                                 Some(file_path) => {
                                     let abs_path = Path::new(result);
@@ -128,7 +128,7 @@ impl Completer for CCompleter {
                             });
                         }else{ //对于上面的文件路径补全，context包含的是文件名前缀，补全的返回内容result是完整的路径，所以start_pos 等于0; 而下面的非路径补全，目前用于rfm_editor_completion_based_on_search_result, 补全的返回内容不包含context,suggestion 应该是 context 合并上 result
                             suggestions.push(Suggestion {
-                                value: result.to_string(),
+                                value: result.chars().skip(1).collect(), //去掉开头的|字符
                                 description: None,
                                 style: None,
                                 extra: None,
