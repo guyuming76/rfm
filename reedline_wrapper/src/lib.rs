@@ -228,7 +228,7 @@ pub extern "C" fn reedline_create(get_completion_fn: GetCompletionFn) -> *mut Re
             path.push(".rfm_reedline_history.txt");
             path
         })
-        .unwrap_or_else(|| "rfm_reedline_history.txt".into());
+        .unwrap_or_else(|| ".rfm_reedline_history.txt".into());
 
     let history_result = FileBackedHistory::with_file(1000, history_path.clone());
 
