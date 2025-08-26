@@ -151,6 +151,10 @@ ifeq ($(READLINE_LIB),-Dreedline)
 	# deepseek说 先cp 再mv 可以让正在运行的rfm继续使用现有libreedline_wrapper,防止crash，这叫 原子替换
 	@cp -f reedline_wrapper/target/debug/libreedline_wrapper.so ${DESTDIR}${PREFIX}/lib64/libreedline_wrapper.so.new
 	@mv -f ${DESTDIR}${PREFIX}/lib64/libreedline_wrapper.so.new ${DESTDIR}${PREFIX}/lib64/libreedline_wrapper.so
+	@cp -f rfmReedline/target/debug/rfmReedline ${DESTDIR}${PREFIX}/bin
+	@cp -f scripts/rfmReedlineWithSpecificHistoryFile.sh ${DESTDIR}${PREFIX}/bin/rfmReadlineWithSpecificHistoryFile.sh
+else
+	@cp -f scripts/rfmReadlineWithSpecificHistoryFile.sh ${DESTDIR}${PREFIX}/bin
 endif
 ifneq (${CmarkTools},)
 	@cp -f extractKeyValuePairFromMarkdown ${DESTDIR}${PREFIX}/bin
@@ -161,7 +165,6 @@ endif
 	@cp -f scripts/rfm.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmRefreshImage.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmVTforCMD.sh ${DESTDIR}${PREFIX}/bin
-	@cp -f scripts/rfmReadlineWithSpecificHistoryFile.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmCopyMove_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmCopyMove.sh
 	@cp -f scripts/rfmRemove_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmRemove.sh
 	@cp -f scripts/rfmProperties.sh ${DESTDIR}${PREFIX}/bin
@@ -298,10 +301,11 @@ ifneq ($(CalledByEbuild),YES)
 	ldconfig
 endif
 
-
 build_reedline:
 	@echo "Building reedline_wrapper..."
 	@cd reedline_wrapper && cargo build && cd ..
 	@echo "reedline_wrapper built successfully."
+	@cd rfmReedline && cargo build && cd ..
+	@echo "rfmReedline built successfully."
 
 .PHONY: all options clean install uninstall build_reedline
