@@ -7,7 +7,7 @@ export namedpipe="/tmp/rfmReedline_$$"
 if [[ ! -p $namedpipe ]];then
 	mkfifo $namedpipe
 	rfmReedline $namedpipe "$2" &
-	read -r input_destination<$namedpipe
+	read -r $1<$namedpipe
 	rm -f $namedpipe
 else
         echo "$namedpipe already exists" >&2
