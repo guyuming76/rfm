@@ -174,6 +174,7 @@ endif
 	@cp -f scripts/rfmTextEdit.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmShareDir.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmCopyMoveToCurPath_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmCopyMoveToCurPath.sh
+	@cp -f scripts/rfmCreateSoftLink_DoAfterUserInput_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmCreateSoftLink_DoAfterUserInput.sh
 	@cp -f scripts/rfmCreateSoftLink_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmCreateSoftLink.sh
 	@cp -f scripts/rfmFindLinksToTheSameFile_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmFindLinksToTheSameFile.sh
 #	@cp -f scripts/rfmGitShowPictures_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmGitShowPictures.sh
@@ -223,6 +224,7 @@ endif
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmTextEdit.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmShareDir.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmCopyMoveToCurPath.sh
+	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmCreateSoftLink_DoAfterUserInput.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmCreateSoftLink.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmFindLinksToTheSameFile.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmGitCommit.sh
@@ -276,6 +278,7 @@ endif
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmShareDir.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmCopyMoveToCurPath.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmCreateSoftLink.sh
+	@rm -f ${DESTDIR}${PREFIX}/bin/rfmCreateSoftLink_DoAfterUserInput.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmFindLinksToTheSameFile.sh
 #	@rm -f ${DESTDIR}${PREFIX}/bin/rfmGitShowPictures.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmGitCommit.sh
