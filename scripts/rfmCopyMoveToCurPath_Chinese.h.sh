@@ -35,7 +35,7 @@ else
 	echo -e "\e[0m"
 fi
 
-source="$(rfmReadlineWithSpecificHistoryFile.sh ~/.rfm_history_directory)"
+source rfmReadlineWithSpecificHistoryFile.sh "source" ~/.rfm_history_directory
 #https://forums.gentoo.org/viewtopic-p-8851216.html#8851216
 #https://bbs.deepin.org/post/283321
 source=${source/#~/${HOME}}

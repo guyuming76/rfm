@@ -30,7 +30,7 @@ else
 	echo -e "\e[0m"
 fi
 
-source="$(rfmReadlineWithSpecificHistoryFile.sh ~/.rfm_history_directory)"
+source rfmReadlineWithSpecificHistoryFile.sh "source" ~/.rfm_history_directory
 source=${source/#~/${HOME}}
 
 if [[ ! -z "$source" ]];then
