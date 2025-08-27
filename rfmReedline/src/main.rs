@@ -110,7 +110,7 @@ fn main() {
                 //println!("{}", line);
                 // 打开命名管道并写入内容
                 //Custom { kind: Other, error: "The cursor position could not be read within a normal duration" }
-                match OpenOptions::new().write(true).custom_flags(libc::O_NONBLOCK).open(named_pipe_path) {
+                match OpenOptions::new().write(true).open(named_pipe_path) {
                     Ok(mut pipe) => {
                         if let Err(e) = writeln!(pipe, "{}", line) {
                             eprintln!("写入命名管道失败: {}", e);
