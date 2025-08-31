@@ -22,6 +22,7 @@ int currently_in_matched_header = 0;
 int current_heading_finished_testing_HeadersToMatch = 0;
 int currently_matched_header_finished_printing = 0;
 int skip = 0;
+char *value_str = NULL;
 
 JsonObject *json_object = NULL;
 char *current_key = NULL;
@@ -72,6 +73,7 @@ void print_node(cmark_node *node, cmark_event_type ev_type) {
                     if (strcmp(literal, HeadersToMatch[i]) == 0) {
                         currently_in_matched_header = 1;
                         currently_matched_header_finished_printing = 0;
+            		if (current_key) json_object_set_string_member(json_object, current_key, value_str);
                         if (current_key) g_free(current_key);
                         current_key = g_strdup(HeadersToMatch[i]);
                     }
@@ -79,21 +81,23 @@ void print_node(cmark_node *node, cmark_event_type ev_type) {
             } else {
                 currently_in_matched_header = 1;
                 currently_matched_header_finished_printing = 0;
+		if (current_key) json_object_set_string_member(json_object, current_key, value_str);
                 if (current_key) g_free(current_key);
                 current_key = g_strdup(literal);
             }
+	    if (value_str) g_free(value_str);
+	    value_str = NULL;
             current_heading_finished_testing_HeadersToMatch = 1;
         } else if (currently_in_matched_header && !currently_matched_header_finished_printing) {
-            const char *value_str;
+	    char *new_value_str;
             if (strcmp(typestring, "code_block") == 0) {
-                value_str = "code_block";
-            } else {
-                value_str = literal;
+                new_value_str = value_str? g_strdup_printf("%s\n%s",value_str,"code_block") : g_strdup("code_block");
+            } else {//append literal to value_str
+		new_value_str = value_str? g_strdup_printf("%s\n%s",value_str,literal) : g_strdup(literal);
             }
-            if (current_key) {
-                json_object_set_string_member(json_object, current_key, value_str);
-            }
-            currently_matched_header_finished_printing = 1;
+	    g_free(value_str);
+	    value_str = new_value_str;
+            //currently_matched_header_finished_printing = 1;
         }
     }
 }
