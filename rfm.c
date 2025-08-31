@@ -1779,7 +1779,15 @@ static void load_ExtColumns_and_iconview_markup_tooltip(RFM_FileAttributes* file
 	      //TODO: 列表视图里自定义列的ValueCmd目前还只是用 bash 解析，将来也许可以考虑扩展成指定 cmd_interpretor , 比如用 AI 来执行
 	      g_spawn_wrapper(ExtColumn_cmd_template, NULL, G_SPAWN_DEFAULT, NULL, NULL, FALSE, Update_Store_ExtColumns, &cell, TRUE);
 	    }else if (TREEVIEW_COLUMNS[i].ValueFunc==getExtColumnValueFromHashTable){
-	      gtk_list_store_set(store,cell->iter, cell->store_column, TREEVIEW_COLUMNS[i].ValueFunc(fileAttributes->id,TREEVIEW_COLUMNS[i].enumCol-COL_Ext1), -1);
+	      //ExtColumnValueInHashTable 可能包含多行字符串，\n分割，这里，用第一行更新store. TODO:也序定制 gtkCellRenderer或实现一个自定义的Renderer更好。
+	      gchar *ExtColumnValueInHashTable=TREEVIEW_COLUMNS[i].ValueFunc(fileAttributes->id,TREEVIEW_COLUMNS[i].enumCol-COL_Ext1);
+	      if (ExtColumnValueInHashTable){
+		ExtColumnValueInHashTable = strdup(ExtColumnValueInHashTable);
+		char *firstline = strtok(ExtColumnValueInHashTable, "\n");
+		if (firstline) gtk_list_store_set(store,cell->iter, cell->store_column, firstline, -1);
+		else gtk_list_store_set(store,cell->iter, cell->store_column, ExtColumnValueInHashTable, -1);
+		g_free(ExtColumnValueInHashTable);
+	      }
 	    }else if (TREEVIEW_COLUMNS[i].ValueFunc!=NULL){
 	      gtk_list_store_set(store,cell->iter, cell->store_column, TREEVIEW_COLUMNS[i].ValueFunc(fileAttributes->id), -1);
 	      //for grepMatch column, fileAttributes->file_name is added as key into grepMatch_hash, however, we suppose grep output absoluteaddr, so filenamne equals fileattributes->path here
@@ -5259,6 +5267,9 @@ static char* get_json_str_value(JsonObject *obj, const gchar *key) {
             return g_strdup_printf("%f", json_node_get_double(node));
         case G_TYPE_BOOLEAN:
             return g_strdup_printf("%s", json_node_get_boolean(node) ? "true" : "false");
+        case G_TYPE_INVALID:
+        case G_TYPE_NONE:
+            return NULL;
         default:
             return g_strdup_printf("Unhandled type");
     }
@@ -5289,7 +5300,7 @@ static int ProcessJsonStr(CALLER_OWN gchar* json_data){
 	while (key){
 	  gchar* value = get_json_str_value(root_obj,key->data);
 	  if (value) ProcessKeyValuePair(key->data, value, currentColumnOriginalTitle);
-	  else g_warning("ProcessJsonStr. value for key %s not found:", key->data);
+	  //else g_warning("ProcessJsonStr. value for key %s not found:", key->data);
 	  key = g_list_next(key);
 	}
 	g_list_free(keys);
