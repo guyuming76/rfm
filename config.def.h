@@ -359,7 +359,7 @@ static RFM_treeviewColumn treeviewColumns[G_N_ELEMENTS(treeviewColumns_init) + N
 static char SearchResultColumnSeperator[32]={':', 0}; //this is the default value and can be override by specific searchresulttype and can also be set manually with builtin cmd
 
 #ifdef CmarkTools
-static gchar* MD_parsing_cmdTemplate[] = { stdin_cmd_interpretors[0].name, "extractKeyValuePairFromMarkdown 0 %s", NULL };
+static gchar* MD_parsing_cmdTemplate[] = { stdin_cmd_interpretors[0].name, "extractJsonFromMarkdown 0 %s", NULL };
 static gchar* TODO_MD_parsing_cmdTemplate[] = { stdin_cmd_interpretors[0].name, "extractKeyValuePairFromMarkdown 0 %s 简述 问题状态", NULL };
 #endif
 #ifdef RFM_AddOn
@@ -371,7 +371,7 @@ static RFM_SearchResultType searchresultTypes[] = {
   {SrchRsltType_multitype,CallMatchingProcessorForSearchResultLine,NULL,      NULL, NULL,                            SearchResultType_multitype },
   {"gkeyfile", ProcessKeyValuePairInFilesFromSearchResult,     NULL,          NULL, NULL,                            SearchResultType_gkeyfile},
 #ifdef CmarkTools
-  {".md",      ProcessKeyValuePairInCmdOutputFromSearchResult, NULL,          NULL, MD_parsing_cmdTemplate,          SearchResultType_markdown1 },
+  {".md",      ProcessJsonInCmdOutputFromSearchResult,         NULL,          NULL, MD_parsing_cmdTemplate,          SearchResultType_markdown1 },
   {"TODO.md",  ProcessKeyValuePairInCmdOutputFromSearchResult, NULL,          NULL, TODO_MD_parsing_cmdTemplate,     SearchResultType_TODO_md },
 #endif
   {"withTitle",ProcessOnelineForSearchResult_with_title,       NULL,          NULL, NULL,                            SearchResultType_default_with_title },

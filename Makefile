@@ -70,7 +70,7 @@ all: options rfm cmark_tools
 endif
 
 ifneq (${CmarkTools},)
-cmark_tools: extractKeyValuePairFromMarkdown extractContentFromMarkdownRecursive
+cmark_tools: extractKeyValuePairFromMarkdown extractContentFromMarkdownRecursive extractJsonFromMarkdown
 else
 cmark_tools:
 endif
@@ -120,6 +120,10 @@ extractKeyValuePairFromMarkdown: extractKeyValuePairFromMarkdown.o
 extractContentFromMarkdownRecursive: extractContentFromMarkdownRecursive.o
 	@echo CC -o $@
 	@${CC} -o $@ extractContentFromMarkdownRecursive.o ${LDFLAGS}
+
+extractJsonFromMarkdown: extractJsonFromMarkdown.o
+	@echo CC -o $@
+	@${CC} -o $@ extractJsonFromMarkdown.o ${LDFLAGS}
 endif
 
 clean:
@@ -130,7 +134,7 @@ else
 	@rm -f rfm rfm.o
 endif
 ifneq (${CmarkTools},)
-	@rm -f extractKeyValuePairFromMarkdown extractKeyValuePairFromMarkdown.o extractContentFromMarkdownRecursive extractContentFromMarkdownRecursive.o
+	@rm -f extractKeyValuePairFromMarkdown extractKeyValuePairFromMarkdown.o extractContentFromMarkdownRecursive extractContentFromMarkdownRecursive.o extractJsonFromMarkdown extractJsonFromMarkdown.o
 endif
 ifeq ($(READLINE_LIB),-Dreedline)
 	@echo "Cleaning reedline_wrapper..."
@@ -159,6 +163,7 @@ endif
 ifneq (${CmarkTools},)
 	@cp -f extractKeyValuePairFromMarkdown ${DESTDIR}${PREFIX}/bin
 	@cp -f extractContentFromMarkdownRecursive ${DESTDIR}${PREFIX}/bin
+	@cp -f extractJsonFromMarkdown ${DESTDIR}${PREFIX}/bin
 endif
 	@cp -f rfm_addon.h /usr/include
 	@cp -f rfm ${DESTDIR}${PREFIX}/bin
@@ -208,6 +213,7 @@ endif
 ifneq (${CmarkTools},)
 	@chmod +x ${DESTDIR}${PREFIX}/bin/extractKeyValuePairFromMarkdown
 	@chmod +x ${DESTDIR}${PREFIX}/bin/extractContentFromMarkdownRecursive
+	@chmod +x ${DESTDIR}${PREFIX}/bin/extractJsonFromMarkdown
 endif
 	@chmod 755 ${DESTDIR}${PREFIX}/bin/rfm
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfm.sh
@@ -259,6 +265,7 @@ endif
 ifneq (${CmarkTools},)
 	@rm -f ${DESTDIR}${PREFIX}/bin/extractKeyValuePairFromMarkdown
 	@rm -f ${DESTDIR}${PREFIX}/bin/extractContentFromMarkdownRecursive
+	@rm -f ${DESTDIR}${PREFIX}/bin/extractJsonFromMarkdown
 endif
 	@rm -f /usr/include/rfm_addon.h
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfm

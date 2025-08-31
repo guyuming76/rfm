@@ -581,6 +581,7 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
 static void refresh_toolbar();
 static gboolean view_key_press(GtkWidget *widget, GdkEvent *event,RFM_ctx *rfmCtx);
 static gboolean view_button_press(GtkWidget *widget, GdkEvent *event,RFM_ctx *rfmCtx);
+static gboolean on_query_tooltip(GtkWidget *widget, gint x, gint y, gboolean keyboard_mode, GtkTooltip *tooltip, gpointer user_data);
 static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointer user_data);
 static void row_activated(GtkTreeView *tree_view, GtkTreePath *tree_path,GtkTreeViewColumn *col, gpointer user_data);
 
@@ -3033,6 +3034,38 @@ static gboolean view_key_press(GtkWidget *widget, GdkEvent *event,RFM_ctx *rfmCt
   return FALSE;
 }
 
+static gboolean on_query_tooltip(GtkWidget *widget, gint x, gint y, gboolean keyboard_mode, GtkTooltip *tooltip, gpointer user_data) {
+    if (keyboard_mode) return FALSE; // 忽略键盘模式
+
+    GtkTreeView *tree_view = GTK_TREE_VIEW(widget);
+    GtkTreePath *path=NULL;
+    GtkTreeViewColumn *column=NULL;
+    RFM_treeviewColumn * col=NULL;
+
+    gint bx,by;
+    gtk_tree_view_convert_widget_to_bin_window_coords(tree_view, x, y, &bx, &by);
+    // 获取鼠标位置对应的路径和列
+    if (gtk_tree_view_get_path_at_pos(tree_view, bx, by, &path, &column, NULL, NULL)) {
+        GtkTreeIter iter;
+        GtkTreeModel *model = gtk_tree_view_get_model(tree_view);
+
+        if (path && gtk_tree_model_get_iter(model, &iter, path)) {
+	    if (column) col = get_treeviewcolumnByGtkTreeviewcolumn(column);
+	    if (col==NULL || col->ValueFunc!=getExtColumnValueFromHashTable) return FALSE;
+	    RFM_FileAttributes *fileAttributes;
+            gtk_tree_model_get(model, &iter, COL_ATTR, &fileAttributes, -1);
+	    gchar *cell_text = getExtColumnValueFromHashTable(fileAttributes->id, col->enumCol-COL_Ext1);
+            if (cell_text && cell_text[0] != '\0') {
+                // 设置Tooltip文本
+                gtk_tooltip_set_text(tooltip, cell_text);
+                gtk_tree_path_free(path);
+                return TRUE;
+            }
+        }
+        if (path) gtk_tree_path_free(path);
+    }
+    return FALSE; // 未处理Tooltip
+}
 
 static gboolean view_button_press(GtkWidget *widget, GdkEvent *event, RFM_ctx *rfmCtx)
 {
@@ -3182,7 +3215,8 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
        gtk_tree_view_column_set_sort_column_id(TREEVIEW_COLUMNS[i].gtkCol, TREEVIEW_COLUMNS[i].enumSortCol==NUM_COLS? TREEVIEW_COLUMNS[i].enumCol: TREEVIEW_COLUMNS[i].enumSortCol);
        g_signal_connect(gtk_tree_view_column_get_button(TREEVIEW_COLUMNS[i].gtkCol), "button-press-event", G_CALLBACK(view_column_header_clicked),TREEVIEW_COLUMNS[i].gtkCol);
      }
-
+     gtk_widget_set_has_tooltip(GTK_WIDGET(_view), TRUE);
+     g_signal_connect(_view, "query-tooltip", G_CALLBACK(on_query_tooltip), NULL);
    } else {
      _view = gtk_icon_view_new_with_model(GTK_TREE_MODEL(store));
      gtk_icon_view_set_selection_mode(GTK_ICON_VIEW(_view),GTK_SELECTION_MULTIPLE);
