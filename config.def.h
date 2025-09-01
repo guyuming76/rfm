@@ -360,7 +360,7 @@ static char SearchResultColumnSeperator[32]={':', 0}; //this is the default valu
 
 #ifdef CmarkTools
 static gchar* MD_parsing_cmdTemplate[] = { stdin_cmd_interpretors[0].name, "extractJsonFromMarkdown 0 %s", NULL };
-static gchar* TODO_MD_parsing_cmdTemplate[] = { stdin_cmd_interpretors[0].name, "extractKeyValuePairFromMarkdown 0 %s 简述 问题状态", NULL };
+static gchar* TODO_MD_parsing_cmdTemplate[] = { stdin_cmd_interpretors[0].name, "extractJsonFromMarkdown 0 %s", NULL };
 #endif
 #ifdef RFM_AddOn
 static gchar* AddOnStatusColumns[] = { fld_AddOnStatus,NULL };
@@ -372,7 +372,7 @@ static RFM_SearchResultType searchresultTypes[] = {
   {"gkeyfile", ProcessKeyValuePairInFilesFromSearchResult,     NULL,          NULL, NULL,                            SearchResultType_gkeyfile},
 #ifdef CmarkTools
   {".md",      ProcessJsonInCmdOutputFromSearchResult,         NULL,          NULL, MD_parsing_cmdTemplate,          SearchResultType_markdown1 },
-  {"TODO.md",  ProcessKeyValuePairInCmdOutputFromSearchResult, NULL,          NULL, TODO_MD_parsing_cmdTemplate,     SearchResultType_TODO_md },
+  {"TODO.md",  ProcessJsonInCmdOutputFromSearchResult,         NULL,          NULL, TODO_MD_parsing_cmdTemplate,     SearchResultType_TODO_md },
 #endif
   {"withTitle",ProcessOnelineForSearchResult_with_title,       NULL,          NULL, NULL,                            SearchResultType_default_with_title },
   {".json",    ProcessJsonFileFromSearchResult,                NULL,          NULL, NULL,                            "json key value"},
