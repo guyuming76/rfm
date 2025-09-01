@@ -125,8 +125,7 @@ int main(int argc, char *argv[]) {
     HeadersToMatch = argv + 3;
     HeadersToMatch_Count = argc - 3;
 
-    JsonNode *json_node = json_node_new(JSON_NODE_OBJECT);
-    json_object = json_node_get_object(json_node);
+    json_object = json_object_new();
 
     cmark_event_type ev_type;
     cmark_iter *iter = cmark_iter_new(root);
@@ -134,6 +133,9 @@ int main(int argc, char *argv[]) {
         cmark_node *cur = cmark_iter_get_node(iter);
         print_node(cur, ev_type);
     }
+
+    JsonNode *json_node = json_node_new(JSON_NODE_OBJECT);
+    json_node_set_object(json_node, json_object);
 
     JsonGenerator *generator = json_generator_new();
     json_generator_set_root(generator, json_node);
