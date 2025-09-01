@@ -73,7 +73,6 @@ void print_node(cmark_node *node, cmark_event_type ev_type) {
                     if (strcmp(literal, HeadersToMatch[i]) == 0) {
                         currently_in_matched_header = 1;
                         currently_matched_header_finished_printing = 0;
-            		if (current_key) json_object_set_string_member(json_object, current_key, value_str);
                         if (current_key) g_free(current_key);
                         current_key = g_strdup(HeadersToMatch[i]);
                     }
@@ -81,7 +80,6 @@ void print_node(cmark_node *node, cmark_event_type ev_type) {
             } else {
                 currently_in_matched_header = 1;
                 currently_matched_header_finished_printing = 0;
-		if (current_key) json_object_set_string_member(json_object, current_key, value_str);
                 if (current_key) g_free(current_key);
                 current_key = g_strdup(literal);
             }
@@ -97,6 +95,7 @@ void print_node(cmark_node *node, cmark_event_type ev_type) {
             }
 	    g_free(value_str);
 	    value_str = new_value_str;
+	    if (current_key) json_object_set_string_member(json_object, current_key, value_str);
             //currently_matched_header_finished_printing = 1;
         }
     }
