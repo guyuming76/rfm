@@ -40,6 +40,7 @@
 #define PRESS_ENTER_TO_CLOSE_WINDOW   "Press Enter to close current window"
 
 #define fld_FileName "file name"
+#define fld_thumbnail "thumbnail"
 #define fld_gitCommitID "git commit ID"
 #define fld_gitCommitAuthor "git commit author"
 #define fld_gitCommitDate "git commit date"

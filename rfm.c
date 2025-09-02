@@ -1367,7 +1367,7 @@ static gboolean mkThumb()
    thumbData=(RFM_ThumbQueueData*)rfm_thumbQueue->data;
 
    if (thumbnailers[thumbData->t_idx].thumbCmd==NULL){
-      thumb=gdk_pixbuf_new_from_file_at_scale(thumbData->path, thumbData->thumb_size, thumbData->thumb_size, TRUE, &pixbufErr);
+     thumb=gdk_pixbuf_new_from_file_at_scale(thumbData->path, thumbData->thumb_size, thumbData->thumb_size, TRUE, &pixbufErr);
       if (thumb!=NULL) {
 	rfm_saveThumbnail(thumb, thumbData);
 	g_log(RFM_LOG_DATA_THUMBNAIL,G_LOG_LEVEL_DEBUG, "thumbnail saved for %s",thumbData->thumb_name);
@@ -3207,6 +3207,7 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
    if (treeview) {
      _view = gtk_tree_view_new_with_model(GTK_TREE_MODEL(store));
      GtkCellRenderer  * renderer  =  gtk_cell_renderer_text_new();
+     GtkCellRendererPixbuf *pixbuf_renderer = gtk_cell_renderer_pixbuf_new();
      gtk_tree_selection_set_mode(gtk_tree_view_get_selection(GTK_TREE_VIEW(_view)),GTK_SELECTION_MULTIPLE);
      gtk_tree_view_set_headers_clickable(_view, TRUE);
      
@@ -3216,7 +3217,7 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
 	 continue;
        }
        g_assert(TREEVIEW_COLUMNS[i].enumCol!=NUM_COLS);
-       TREEVIEW_COLUMNS[i].gtkCol = gtk_tree_view_column_new_with_attributes(TREEVIEW_COLUMNS[i].title , renderer,"text" ,  TREEVIEW_COLUMNS[i].enumCol , NULL);
+       TREEVIEW_COLUMNS[i].gtkCol = gtk_tree_view_column_new_with_attributes(TREEVIEW_COLUMNS[i].title , (TREEVIEW_COLUMNS[i].enumCol == COL_PIXBUF ? pixbuf_renderer : renderer),(TREEVIEW_COLUMNS[i].enumCol == COL_PIXBUF ? "pixbuf" : "text") ,  TREEVIEW_COLUMNS[i].enumCol , NULL);
        gtk_tree_view_column_set_resizable(TREEVIEW_COLUMNS[i].gtkCol,TRUE);
        gtk_tree_view_append_column(GTK_TREE_VIEW(_view),TREEVIEW_COLUMNS[i].gtkCol);
        gtk_tree_view_column_set_visible(TREEVIEW_COLUMNS[i].gtkCol, TREEVIEW_COLUMNS[i].Show && ((TREEVIEW_COLUMNS[i].showCondition==NULL) ? TRUE: TREEVIEW_COLUMNS[i].showCondition(NULL)));

@@ -321,6 +321,7 @@ static RFM_treeviewColumn treeviewColumns_init[] = {
 #ifdef GitIntegration
   {"Git",                     COL_GIT_STATUS_STR,         TRUE,   NULL, show_gitColumns,      COL_GIT_STATUS_STR ,      NULL,            NULL,     "*",         "*",     FALSE,FALSE,NULL},
 #endif
+  {fld_thumbnail,             COL_PIXBUF,                 FALSE,  NULL, NULL,                 NUM_COLS,                 NULL,            NULL,     "*",         "*",     FALSE,FALSE,NULL},
   {"Mode",                    COL_MODE_STR,               TRUE,   NULL, NULL,                 COL_MODE_STR,             NULL,            NULL,     "*",         "*",     FALSE,FALSE,NULL},
   //  COL_DISPLAY_NAME,
   {fld_FileName,              COL_FILENAME,               TRUE,   NULL, NULL,                 COL_FILENAME,             NULL,            NULL,     "*",         "*",     FALSE,FALSE,NULL},

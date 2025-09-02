@@ -42,6 +42,7 @@
 #define PRESS_ENTER_TO_CLOSE_WINDOW "按回车键关闭当前窗口"
 
 #define fld_FileName "文件名"
+#define fld_thumbnail "缩略图"
 #define fld_gitCommitID "git提交ID"
 #define fld_gitCommitAuthor "git提交作者"
 #define fld_gitCommitDate "git提交日期"
