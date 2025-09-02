@@ -38,9 +38,6 @@ char **rl_filename_complete_wrapper(char *text) {
   return rl_completion_matches(text, rl_filename_completion_function);
 }
 #endif
-#ifdef LINENOISE
-#include <linenoise.h>
-#endif
 #include <wordexp.h>
 #include <stdarg.h>
 #include <regex.h>
@@ -170,9 +167,6 @@ static char **rfm_filename_completion(const char *text, int *count);
 #ifdef GNU_readline
 static char** gnu_readline_completion(const char *text, int start, int end);
 static char** (*OLD_rl_attempted_completion_function)(const char *text, int start, int end);
-#endif
-#ifdef LINENOISE
-void linenoise_completion(const char *buf, linenoiseCompletions *lc);
 #endif
 void handle_commandline_argument(char* arg);
 int readlink_proc_self_fd_pipefd_and_confirm_pipefd_is_used_by_pipeline();
@@ -2448,9 +2442,6 @@ static void set_rfm_curPath(CALLER_OWN gchar* path)
    add_history(g_strconcat("cd ", path, NULL));
    add_history_timestamp();
 #endif
-#ifdef LINENOISE
-   linenoiseHistoryAdd(g_strconcat("cd ", path, NULL));
-#endif
    history_entry_added++;
    //TODO: i want to add this path into ~/.rfm_historyDirectory file as well as current history list, so that it can be use by 'read -e' in bash scripts. How?
    //TODO: in future if we need some directory specific history file, we may check that if the directory contains .rfm_history file, it will use this local history, otherwise, use the default global history file.
@@ -3546,9 +3537,6 @@ void save_current_history() {
 	  }
 	}
 #endif
-#ifdef LINENOISE
-        if (linenoiseHistorySave(rfm_historyFileLocation)==-1) g_warning("linenoiseHistorySave(%s) failed", rfm_historyFileLocation);
-#endif
         g_debug("save command history to: %s",rfm_historyFileLocation);
     }
 #ifdef reedline
@@ -3563,9 +3551,6 @@ void load_history_for_prompt() {
     int e = read_history(rfm_historyFileLocation);
     if (e!=0) g_warning("failed to read_history(%s) error code:%d.",rfm_historyFileLocation,e);
 #endif
-#ifdef LINENOISE
-    if (linenoiseHistoryLoad(rfm_historyFileLocation)==-1); g_warning("failed to read_history(%s)",rfm_historyFileLocation);
-#endif
     g_debug("read command history from: %s",rfm_historyFileLocation);
     history_entry_added = 0;
 }
@@ -3575,17 +3560,11 @@ static void add_history_after_stdin_command_execution(GString * readlineResultSt
           add_history(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str);
 	  add_history_timestamp();
 #endif
-#ifdef LINENOISE
-          linenoiseHistoryAdd(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str);
-#endif
           history_entry_added++;
 	  if (OriginalReadlineResult!=NULL && g_strcmp0(OriginalReadlineResult, readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str)!=0){ //with rfm -x , Originalreadlineresult can be null here
 #ifdef GNU_readline
 	    add_history(OriginalReadlineResult);
 	    add_history_timestamp();
-#endif
-#ifdef LINENOISE
-            linenoiseHistoryAdd(OriginalReadlineResult);
 #endif
             history_entry_added++;
 	  }
@@ -3765,9 +3744,6 @@ static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs) {
     while ((OriginalReadlineResult = 
 #ifdef GNU_readline
       readline(prompt)
-#endif
-#ifdef LINENOISE
-      linenoise(prompt)
 #endif
 #ifdef reedline
       reedline_readline(reedline_handle, prompt)
@@ -4094,9 +4070,6 @@ static void print_columns_status(wordexp_t * parsed_msg){
 #ifdef GNU_readline
 	    add_history(cmd);
 	    add_history_timestamp();
-#endif
-#ifdef LINENOISE
-            linenoiseHistoryAdd(cmd);
 #endif
             history_entry_added++;
 	    g_free(cmd);  
@@ -4671,13 +4644,6 @@ static char** gnu_readline_completion(const char *text, int start, int end){
   }else return NULL;
 }
 #endif
-#ifdef LINENOISE
-void linenoise_completion(const char *buf, linenoiseCompletions *lc) {
-  int count=0;
-  char** ret = rfm_filename_completion(buf,&count);
-  if (ret) linenoiseAddCompletion(lc, ret[0]);
-}
-#endif
 
 static int setup(RFM_ctx *rfmCtx)
 {
@@ -4816,11 +4782,6 @@ static int setup(RFM_ctx *rfmCtx)
 #ifdef reedline
   reedline_handle = reedline_create(rfm_filename_completion);
   if (!reedline_handle) g_error("reedline_create return NULL handle");
-#endif
-#ifdef LINENOISE
-   linenoiseHistorySetMaxLen(RFM_HISTORY_SIZE);
-   if (linenoiseHistoryLoad(rfm_historyFileLocation)==-1); g_warning("failed to read_history(%s)",rfm_historyFileLocation);
-   linenoiseSetCompletionCallback(linenoise_completion);
 #endif
 
    rfm_prePath= getenv("OLDPWD");

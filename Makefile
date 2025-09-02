@@ -40,9 +40,6 @@ LIBS += `pkg-config --libs readline`
 ifeq (${READLINE_LIB},-Dreedline)
 LIBS += -L./reedline_wrapper/target/debug -lreedline_wrapper
 endif
-ifeq (${READLINE_LIB},-DLINENOISE)
-LIBS += -I/usr/local/include -L/usr/local/lib -llinenoise
-endif
 ifneq (${CmarkTools},)
 LIBS += `pkg-config --libs libcmark`
 endif
