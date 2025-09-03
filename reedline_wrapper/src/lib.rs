@@ -1,12 +1,11 @@
-use reedline::{ DefaultPrompt, DefaultPromptSegment, EditCommand, Emacs, Keybindings, KeyCode, KeyModifiers,Reedline, Signal, ValidationResult, Validator, ReedlineEvent, FileBackedHistory, default_emacs_keybindings, Completer ,Suggestion, Span, ReedlineMenu, ColumnarMenu, MenuBuilder, CwdAwareHinter, DefaultCompleter, Result, ReedlineError, LineBuffer, UndoBehavior };
+use reedline::{ DefaultPrompt, DefaultPromptSegment, EditCommand, Emacs, KeyCode, KeyModifiers,Reedline, Signal, ValidationResult, Validator, ReedlineEvent, FileBackedHistory, default_emacs_keybindings, Completer ,Suggestion, Span, ReedlineMenu, ColumnarMenu, MenuBuilder, CwdAwareHinter, DefaultCompleter, Result, LineBuffer, UndoBehavior };
 use nu_ansi_term::{Color, Style};
 use libc::c_char;
 use std::ffi::{CStr, CString};
 use std::ptr;
 use std::path::{PathBuf, Path};
 use dirs::home_dir;
-use log::{error, warn, debug}; // 导入日志宏
-use std::io::Write;
+use log::{warn, debug}; // 导入日志宏
 
 
 // deepwiki 回答说 line 只包含光标前的字符串，光标及其后面字符都不包含，输入abcd,然后光标向左一道c下，则line只包含ab. 也就是说代码里检查cursor_and_after后面的部分貌似目前都没有用，但还是留着。
@@ -84,7 +83,7 @@ impl Completer for CCompleter {
     fn complete(&mut self, line: &str, pos: usize) -> Vec<Suggestion> {
         let mut count: i32 = 0;
         let before_cursor = &line[..pos];
-        let last_space_pos = before_cursor.rfind(' ').map(|p| p + 1).unwrap_or(0);
+        let _last_space_pos = before_cursor.rfind(' ').map(|p| p + 1).unwrap_or(0);
         
         unsafe {
             let mut start_pos: usize = 0;
@@ -152,14 +151,14 @@ impl Completer for CCompleter {
 // 定义组合补全器
 pub struct CombinedCompleter {
     c_completer: CCompleter,
-    reedline_DefaultCompleter: DefaultCompleter
+    reedline_default_completer: DefaultCompleter
 }
 
 impl CombinedCompleter {
     pub fn new(c_completer: CCompleter) -> Self {
         Self {
             c_completer,
-	    reedline_DefaultCompleter: DefaultCompleter::default(),
+	    reedline_default_completer: DefaultCompleter::default(),
         }
     }
 }
@@ -173,7 +172,7 @@ impl Completer for CombinedCompleter {
             return c_suggestions;
         }else{
 	    // 调用 reedline DefaultCompleter
-	    return self.reedline_DefaultCompleter.complete(line,pos);
+	    return self.reedline_default_completer.complete(line,pos);
 	}
     }
 }
@@ -305,7 +304,7 @@ pub extern "C" fn string_free(s: *mut c_char) {
 #[no_mangle]
 pub extern "C" fn reedline_free(handle: *mut ReedlineHandle) {
     if !handle.is_null() {
-       unsafe { Box::from_raw(handle) };
+        unsafe { let _ = Box::from_raw(handle); };
     }
 }
 
@@ -380,7 +379,7 @@ impl RfmEditor {
 	} else {
             String::new() // 新文件
 	};
-        let mut line_buffer = LineBuffer::from(content.as_str());
+        let line_buffer = LineBuffer::from(content.as_str());
         //line_buffer.move_to_start();
 
 	// 2. 设置当前文件和修改状态

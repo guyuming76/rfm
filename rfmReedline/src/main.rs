@@ -1,10 +1,9 @@
-use reedline::{Completer, Reedline, Signal, Suggestion, Span, MenuBuilder, ColumnarMenu, ReedlineMenu, CwdAwareHinter, DefaultPrompt, DefaultPromptSegment, Keybindings, KeyCode, KeyModifiers, ReedlineEvent,default_emacs_keybindings,Emacs, FileBackedHistory};
+use reedline::{Completer, Reedline, Signal, Suggestion, Span, MenuBuilder, ColumnarMenu, ReedlineMenu, DefaultPrompt, DefaultPromptSegment, KeyCode, KeyModifiers, ReedlineEvent,default_emacs_keybindings,Emacs, FileBackedHistory};
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 use std::env;
 use std::fs::OpenOptions;
 use std::io::Write;
-use std::os::unix::fs::OpenOptionsExt;
 
 // 定义外部函数来调用 GNU Readline 的补全功能
 #[link(name = "readline")]
