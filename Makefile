@@ -83,7 +83,9 @@ options:
 	@${CC} -c ${CFLAGS} $<
 
 ifeq (${READLINE_LIB},-Dreedline)
+ifneq ($(CalledByEbuild),YES)
 rfm.o: build_reedline
+endif
 endif
 
 ifneq ($(RFM_FILE_CHOOSER),)
@@ -162,7 +164,6 @@ ifneq (${CmarkTools},)
 	@cp -f extractContentFromMarkdownRecursive ${DESTDIR}${PREFIX}/bin
 	@cp -f extractJsonFromMarkdown ${DESTDIR}${PREFIX}/bin
 endif
-	@cp -f rfm_addon.h /usr/include
 	@cp -f rfm ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfm.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmRefreshImage.sh ${DESTDIR}${PREFIX}/bin
@@ -196,6 +197,7 @@ endif
 ifneq ($(CalledByEbuild),YES)
 # the CalledByEbuild variable is exported in rfm ebuild
 # there will be sandbox error in gentoo ebuild run
+	@cp -f rfm_addon.h /usr/include
 	-cp -f rfm.svg /usr/share/icons/hicolor/scalable/apps/rfm.svg
 	-gtk-update-icon-cache -f /usr/share/icons/hicolor
 	-cp -f rfm.desktop /usr/share/applications/rfm.desktop
@@ -264,7 +266,6 @@ ifneq (${CmarkTools},)
 	@rm -f ${DESTDIR}${PREFIX}/bin/extractContentFromMarkdownRecursive
 	@rm -f ${DESTDIR}${PREFIX}/bin/extractJsonFromMarkdown
 endif
-	@rm -f /usr/include/rfm_addon.h
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfm
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfm.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmRefreshImage.sh
@@ -297,6 +298,7 @@ endif
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmLocateGlobalAddons.sh
 
 ifneq ($(CalledByEbuild),YES)
+	@rm -f /usr/include/rfm_addon.h
 	-xdg-desktop-menu uninstall rfm.desktop
 	-rm -f /usr/share/applications/rfm.desktop
 	-rm -f /usr/share/icons/hicolor/scalable/apps/rfm.svg
