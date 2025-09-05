@@ -180,6 +180,7 @@ typedef struct RFM_ChildAttributes{
    gchar *cmd_interpretor_addon_dir;
    GString *readlineResultString;
    gchar *rfmEditFilePath;
+   gboolean setsid;
 } RFM_ChildAttribs;
 
 

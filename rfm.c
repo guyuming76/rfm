@@ -1109,7 +1109,9 @@ static void GSpawnChildSetupFunc_setenv(gpointer user_data) {
       RFM_ChildAttribs* child_attribs=(RFM_ChildAttribs*) user_data;
       //if (rfm_curPath!=NULL) setenv("PWD",rfm_curPath,TRUE);
       //working_directory won't update child process PWD env, which inherits parents PWD env,why?
-      if (child_attribs->runOpts & G_SPAWN_STDIN_FROM_DEV_NULL) setsid();//创建单独的， 防止子进程和readline线程争夺终端控制权，产生SIGTTIN 信号，导致readline所在进程组被放入后台。目前，我们把设置 G_SPAWN_STDIN_FROM_DEV_NULL 作为标志，如有不妥，再考虑使用其他标志，比如在child_attribs 里面建立专门的标志
+      //if (child_attribs->runOpts & G_SPAWN_STDIN_FROM_DEV_NULL) setsid();//创建单独的， 防止子进程和readline线程争夺终端控制权，产生SIGTTIN 信号，导致readline所在进程组被放入后台。目前，我们把设置 G_SPAWN_STDIN_FROM_DEV_NULL 作为标志，如有不妥，再考虑使用其他标志，比如在child_attribs 里面建立专门的标志
+      //if ((child_attribs->runOpts & G_SPAWN_STDIN_FROM_DEV_NULL) || (child_attribs->output_read_by_program && child_attribs->g_idle_add_once_to_run_CallBackFunc && child_attribs->no_free)) setsid();
+      if (child_attribs->setsid) setsid();
 }
 
 static void check_wait_status_and_set_exit_code(CALLER_OWN RFM_ChildAttribs *child_attribs) {
@@ -1165,7 +1167,19 @@ gboolean g_spawn_wrapper_(CALLER_OWN GList *file_list, CALLER_OWN const char *de
 	       } else {
 		    //如果是output_read_by_program, 则stdErr和stdOut都在Callback里处理。为啥不在这里显示 stdout 呢？因为如果 stdErr 和 stdout同时不为空，show_child_output 就把stdout也消耗了，callback 就没得 stdout 读了。
    		    if (child_attribs->output_read_by_program){
-		      if (child_attribs->stdErr && strlen(child_attribs->stdErr)>0) g_debug("g_spawn_wrapper_ sync branch, with output_read_by_program: %s",child_attribs->stdErr);
+		      if (child_attribs->stdErr && strlen(child_attribs->stdErr)>0){
+			g_debug("g_spawn_wrapper_ sync branch, with output_read_by_program: %s",child_attribs->stdErr);
+			if (child_attribs->setsid && strstr(child_attribs->stdErr, "inappropriate ioctl for device")){
+			  g_free(child_attribs->stdErr); child_attribs->stdErr=NULL;
+			  if (child_attribs->stdOut) {g_free(child_attribs->stdOut); child_attribs->stdOut=NULL;};
+			  child_attribs->status=-1;
+			  child_attribs->setsid=FALSE;
+			  child_attribs->runOpts = (child_attribs->runOpts | G_SPAWN_CHILD_INHERITS_STDIN) & (~G_SPAWN_STDIN_FROM_DEV_NULL);
+			  g_debug("g_spawn_wrapper_, re-run g_spawn_wrapper with setsid false for child that requires stdin");
+			  // fzf>0 这样的命令需要读取标准输入， setsid 要设为FALSE, 而 locate AI 对话工具栏命令等后台长时间运行的命令需要setsid为TRUE，参见commit ba793c2c82166dca837b6e72c5f63a72476b8243. TODO:如何才能区分这两种命令呢？ 目前我没法事前区分，只有在报错后改变 setsid及runOpts 的值，然后重新执行一下命令。
+			  return g_spawn_wrapper_(file_list, dest_path, child_attribs);
+			}
+		      }
 	            }else if ((child_attribs->stdOut && strlen(child_attribs->stdOut)>0) || (child_attribs->stdErr && strlen(child_attribs->stdErr)>0)) show_child_output(child_attribs);
 
 		    check_wait_status_and_set_exit_code(child_attribs);
@@ -3599,6 +3613,7 @@ static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousRea
 	    childAttribs->output_read_by_program = TRUE;
 	    childAttribs->customCallBackFunc = update_SearchResultFileNameList_and_refresh_store;
 	    childAttribs->runOpts = G_SPAWN_SEARCH_PATH|G_SPAWN_STDIN_FROM_DEV_NULL;
+	    childAttribs->setsid = TRUE;
 	    childAttribs->no_free = TRUE; //update_SearchResultFileNameList_and_refresh_store 要多次调用SearchResultTypeProcessingFunc, 可能会重复使用这个childAttribs,多次穿过 g_spawn_wrapper调用, 在update_SearchResultFileNameList_and_refresh_store 调用的最后置为 FALSE.
 	    ret = g_spawn_wrapper_(NULL, NULL, childAttribs);
 	    childAttribs->name = strdup(SearchResultTypePointer->name);
@@ -5335,6 +5350,7 @@ static int ProcessCmdOutputFromSearchResultWithFunction(CALLER_OWN char *oneline
    childAttribs->RunCmd = cmd;
    childAttribs->spawn_async = FALSE;
    childAttribs->output_read_by_program=TRUE;
+   childAttribs->setsid = child_attribs->setsid;
    if (!no_window) childAttribs->runOpts = G_SPAWN_STDIN_FROM_DEV_NULL; //如果在no_window模式下设置STDIN_FROM_DEV_NULL, 就会报错：无法设定终端进程组 (-1): 对设备不适当的 ioctl 操作。bash: 此 shell 中无任务控制
    if (child_attribs->toolbar_button_or_filemenu_addon_dir) childAttribs->toolbar_button_or_filemenu_addon_dir = strdup(child_attribs->toolbar_button_or_filemenu_addon_dir);
    if (child_attribs->searchresulttype_addon_dir) childAttribs->searchresulttype_addon_dir = strdup(child_attribs->searchresulttype_addon_dir);
