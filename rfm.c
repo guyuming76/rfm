@@ -384,6 +384,7 @@ static void cmd_cd(wordexp_t *parsed_msg, GString *readline_result_string_after_
 // value "??" for untracked
 // the same as git status --porcelain
 static GHashTable *gitTrackedFiles;
+static GHashTable *gitDeletedDirs;
 static gchar * git_root = NULL;//git_root non-NULL means current path is in git repository
 static gchar * curPathRelativeToGitRoot = NULL;
 static gchar * git_current_branch = NULL;
@@ -394,6 +395,7 @@ static gboolean show_gitColumns(RFM_FileAttributes * fileAttributes);
 static gboolean show_gitMenus(RFM_FileAttributes * fileAttributes);
 static void readLatestGitLogForFileAndUpdateStore(RFM_ChildAttribs * childAttribs);
 static void GitStatusForDirectory(gchar * filename, const char* status);
+static void insert_deleted_for_git(gchar *fullpath, gchar *filename, gchar *status);
 static void read_git_ls_files_cmd_output_into_hashtable(gpointer *child_attribs);
 static void read_git_status_porcelain_cmd_output_into_hashtable(gpointer *child_attribs);
 static void load_gitTrackedFiles_HashTable();
@@ -1966,7 +1968,12 @@ static void GitStatusForDirectory(gchar * filename, const char* status) {
           }
 	  g_hash_table_replace(gitTrackedFiles, dir_fullpath, status_);
         }else g_hash_table_insert(gitTrackedFiles, dir_fullpath, status_);
-        g_log(RFM_LOG_DATA_GIT,G_LOG_LEVEL_DEBUG,"gitTrackedFile dir status:%s,%s",status_,dir_fullpath);
+	
+	if (!g_hash_table_lookup(gitDeletedDirs, dir_fullpath)){
+	  g_hash_table_insert(gitDeletedDirs, dir_fullpath, "");
+	  insert_deleted_for_git(dir_fullpath, dirname, status);
+	}
+        g_log(RFM_LOG_DATA_GIT,G_LOG_LEVEL_DEBUG,"gitTrackedFile dir status:%s,%s,%s",dirname, status_,dir_fullpath);
       }
 }
 
@@ -2047,6 +2054,16 @@ static void read_git_status_porcelain_cmd_output_into_hashtable(gpointer *child_
 	//TODO: can there be something like "A "+" D"="AD"?
       }else g_hash_table_insert(gitTrackedFiles,g_strdup(fullpath),status);
 
+      insert_deleted_for_git(fullpath, filenames[i], status);
+      GitStatusForDirectory(curPathRelativeToGitRoot?(filenames[i]+strlen(curPathRelativeToGitRoot)):filenames[i], status);//git status --porcelain 输出的文件名格式同git ls-files --full-name， 所以这里要去掉curPathRelativeToGitRoot前缀。并且上面代码已经过滤掉了输出里面不包含curPathRelativeToGitRoot前缀的路径了
+      }
+      
+      g_strfreev(filenames);
+      oneline=strtok_r(NULL, "\n",&savedptr);
+    }
+}
+
+static void insert_deleted_for_git(gchar *fullpath, gchar *filename, gchar *status) {
       struct stat statbuff;
       if ((SearchResultViewInsteadOfDirectoryView^1)
 	  && (status[1]=='D' || status[0]=='D')
@@ -2056,7 +2073,7 @@ static void read_git_status_porcelain_cmd_output_into_hashtable(gpointer *child_
 	RFM_FileAttributes *fileAttributes=malloc_fileAttributes();
 	if (fileAttributes!=NULL){//if the file is rfm ignord file, we still add it into display here,but this may be changed.
 	  fileAttributes->pixbuf=g_object_ref(defaultPixbufs->broken);
-	  fileAttributes->file_name=g_strdup(filenames[i]);
+	  fileAttributes->file_name=g_strdup(filename);
 	  //fileAttributes->display_name=g_strdup(filename);
 	  fileAttributes->path=fullpath;
 	  fileAttributes->mime_root=g_strdup("na");
@@ -2070,12 +2087,6 @@ static void read_git_status_porcelain_cmd_output_into_hashtable(gpointer *child_
 	  //Furthur, think about we need to load extended attribs for files, such as those in email, shall we consider general multiple pass fileattributes loading framework?
 	}
       }
-      GitStatusForDirectory(curPathRelativeToGitRoot?(filenames[i]+strlen(curPathRelativeToGitRoot)):filenames[i], status);//git status --porcelain 输出的文件名格式同git ls-files --full-name， 所以这里要去掉curPathRelativeToGitRoot前缀。并且上面代码已经过滤掉了输出里面不包含curPathRelativeToGitRoot前缀的路径了
-      }
-      
-      g_strfreev(filenames);
-      oneline=strtok_r(NULL, "\n",&savedptr);
-    }
 }
 #endif
 
@@ -2214,7 +2225,8 @@ static void clear_store(void)
    ItemSelected=0;
 #ifdef GitIntegration
    g_hash_table_remove_all(gitTrackedFiles);
-   //g_hash_table_remove_all(gitCommitMsg);
+   g_hash_table_remove_all(gitDeletedDirs);
+  //g_hash_table_remove_all(gitCommitMsg);
 #endif
    g_list_free_full(rfm_fileAttributeList, (GDestroyNotify)free_fileAttributes);
    rfm_fileAttributeList=NULL;
@@ -4696,7 +4708,8 @@ static int setup(RFM_ctx *rfmCtx)
 #endif
 #ifdef GitIntegration
    gitTrackedFiles=g_hash_table_new_full(g_str_hash, g_str_equal,g_free, g_free);
-   //gitCommitMsg=g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
+   gitDeletedDirs=g_hash_table_new_full(g_str_hash, g_str_equal,g_free, g_free);
+  //gitCommitMsg=g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
 #endif 
 
    if (rfm_do_thumbs==1 && !g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR)) {
