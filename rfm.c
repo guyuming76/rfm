@@ -395,7 +395,7 @@ static gboolean show_gitColumns(RFM_FileAttributes * fileAttributes);
 static gboolean show_gitMenus(RFM_FileAttributes * fileAttributes);
 static void readLatestGitLogForFileAndUpdateStore(RFM_ChildAttribs * childAttribs);
 static void GitStatusForDirectory(gchar * filename, const char* status);
-static void insert_deleted_for_git(gchar *fullpath, gchar *filename, gchar *status);
+static void insert_deleted_for_git(gchar *fullpath, gchar *filename, gchar *status, gchar *mime_root, gchar *mime_sub);
 static void read_git_ls_files_cmd_output_into_hashtable(gpointer *child_attribs);
 static void read_git_status_porcelain_cmd_output_into_hashtable(gpointer *child_attribs);
 static void load_gitTrackedFiles_HashTable();
@@ -1968,12 +1968,9 @@ static void GitStatusForDirectory(gchar * filename, const char* status) {
           }
 	  g_hash_table_replace(gitTrackedFiles, dir_fullpath, status_);
         }else g_hash_table_insert(gitTrackedFiles, dir_fullpath, status_);
-	
-	if (!g_hash_table_lookup(gitDeletedDirs, dir_fullpath)){
-	  g_hash_table_insert(gitDeletedDirs, dir_fullpath, "");
-	  insert_deleted_for_git(dir_fullpath, dirname, status);
-	}
-        g_log(RFM_LOG_DATA_GIT,G_LOG_LEVEL_DEBUG,"gitTrackedFile dir status:%s,%s,%s",dirname, status_,dir_fullpath);
+
+	insert_deleted_for_git(g_strdup(dir_fullpath), dirname, status, "inode", "directory");
+        g_log(RFM_LOG_DATA_GIT,G_LOG_LEVEL_DEBUG,"gitTrackedFile dir:%s, status:%s, status_:%s,%s",dirname, status, status_,dir_fullpath);
       }
 }
 
@@ -2054,7 +2051,7 @@ static void read_git_status_porcelain_cmd_output_into_hashtable(gpointer *child_
 	//TODO: can there be something like "A "+" D"="AD"?
       }else g_hash_table_insert(gitTrackedFiles,g_strdup(fullpath),status);
 
-      insert_deleted_for_git(fullpath, filenames[i], status);
+      insert_deleted_for_git(fullpath, filenames[i], status, "na", "na");
       GitStatusForDirectory(curPathRelativeToGitRoot?(filenames[i]+strlen(curPathRelativeToGitRoot)):filenames[i], status);//git status --porcelain 输出的文件名格式同git ls-files --full-name， 所以这里要去掉curPathRelativeToGitRoot前缀。并且上面代码已经过滤掉了输出里面不包含curPathRelativeToGitRoot前缀的路径了
       }
       
@@ -2063,7 +2060,7 @@ static void read_git_status_porcelain_cmd_output_into_hashtable(gpointer *child_
     }
 }
 
-static void insert_deleted_for_git(gchar *fullpath, gchar *filename, gchar *status) {
+static void insert_deleted_for_git(gchar *fullpath, gchar *filename, gchar *status, gchar *mime_root, gchar *mime_sub) {
       struct stat statbuff;
       if ((SearchResultViewInsteadOfDirectoryView^1)
 	  && (status[1]=='D' || status[0]=='D')
@@ -2076,8 +2073,18 @@ static void insert_deleted_for_git(gchar *fullpath, gchar *filename, gchar *stat
 	  fileAttributes->file_name=g_strdup(filename);
 	  //fileAttributes->display_name=g_strdup(filename);
 	  fileAttributes->path=fullpath;
-	  fileAttributes->mime_root=g_strdup("na");
-	  fileAttributes->mime_sub_type=g_strdup("na");
+	  fileAttributes->mime_root=g_strdup(mime_root);
+	  fileAttributes->mime_sub_type=g_strdup(mime_sub);
+	  fileAttributes->is_dir=(strcmp(fileAttributes->mime_root, "inode")==0 && strcmp(fileAttributes->mime_sub_type, "directory")==0);
+
+	  if (fileAttributes->is_dir){
+	    if (g_hash_table_lookup(gitDeletedDirs, fullpath)){
+	      g_hash_table_replace(gitDeletedDirs, g_strdup(fullpath), g_strdup(status));
+	      return; //防止下面重复往 rfm_fileAttributelist 里插入
+	    }else{
+	      g_hash_table_insert(gitDeletedDirs, g_strdup(fullpath), g_strdup(status));
+	    }
+	  }
 	  //rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
 	  if (insert_fileAttributes_into_store_one_by_one) Insert_fileAttributes_into_store_with_thumbnail_and_more(fileAttributes);
 	  else rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
