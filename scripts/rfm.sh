@@ -66,4 +66,5 @@ if [ $exit_status -eq 139 ]; then
     echo "sudo updatedb"
     echo "locate rfm_local.so"
     echo "locate rfm_local.so|xargs rm"
+    echo "sudo updatedb"
 fi
