@@ -3736,12 +3736,16 @@ static void writeSearchResultIntoFD_in_gtk_thread(gint fd){
     }else g_warning("no column shown in view!");
 
     }else{//icon view
+      GValue val = G_VALUE_INIT;
+      gtk_tree_model_get_value(GTK_TREE_MODEL(store), &iter, COL_ICONVIEW_MARKUP, &val);
+      dprintf(fd, "%s\n", g_value_get_string(&val));
+      g_value_unset(&val);
     }
 
     }while (stdin_cmd_selection_list?
 	      ((selectedListElement=g_list_next(selectedListElement)) && gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, selectedListElement->data))
 	      :gtk_tree_model_iter_next(GTK_TREE_MODEL(store), &iter));
-    dprintf(fd, "\n");
+    if (treeview) dprintf(fd, "\n");
 
     if (stdin_cmd_selection_list) g_list_free_full(stdin_cmd_selection_list, (GDestroyNotify)gtk_tree_path_free);
     if (treeview && columns) g_list_free(columns);
