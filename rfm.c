@@ -999,22 +999,10 @@ static RFM_defaultPixbufs *load_default_pixbufs(void)
 
 static void show_msgbox(gchar *msg, gchar *title, gint type)
 {
-   GtkWidget *dialog;
-   gchar *utf8_string=g_locale_to_utf8(msg, -1, NULL, NULL, NULL);
-
-   if (utf8_string==NULL)
-      dialog=gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_DESTROY_WITH_PARENT, GTK_MESSAGE_WARNING, GTK_BUTTONS_OK, "%s", "Can't convert message text to UTF8!");
-   else {
-      dialog=gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_DESTROY_WITH_PARENT, type, GTK_BUTTONS_OK, NULL);
-      gtk_message_dialog_set_markup(GTK_MESSAGE_DIALOG(dialog), utf8_string);
-   }
-
-   gtk_window_set_title(GTK_WINDOW(dialog), title);
+   GtkWidget *dialog=gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_DESTROY_WITH_PARENT, type, GTK_BUTTONS_OK, "%s", msg);
+   //gtk_window_set_title(GTK_WINDOW(dialog), title);
    g_signal_connect_swapped (dialog, "response", G_CALLBACK(gtk_widget_destroy), dialog);
-   gtk_widget_show_all(dialog);
-   if (type==GTK_MESSAGE_ERROR)
-      gtk_dialog_run(GTK_DIALOG(dialog)); /* Show a modal dialog for errors/warnings */
-   g_free(utf8_string);
+   gtk_dialog_run(GTK_DIALOG(dialog)); /* Show a modal dialog for errors/warnings */
 }
 
 
