@@ -1,5 +1,7 @@
 #define rfmLANGUAGE "rfmEnglish"
 
+#define MSG_cannot_enter_directory "%s:\n\nCan't enter directory!"
+#define MSG_cannot_enter_deleted_directory "%s:\n\nPlease show content of deleted directory with the 'git ls-files' in toolbar"
 #define PageUp  "PageUp"
 #define PageDown  "PageDown"
 #define Up "Up"

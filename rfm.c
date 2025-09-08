@@ -2488,7 +2488,11 @@ static void set_rfm_curPath(CALLER_OWN gchar* path)
      rfm_new_wd=inotify_add_watch(rfm_inotify_fd, realpath, INOTIFY_MASK);
      if (rfm_new_wd < 0) {
        g_warning("set_rfm_curPath(): inotify_add_watch() failed for %s",realpath);
-       msg=g_strdup_printf("%s:\n\nCan't enter directory!", realpath);
+#ifdef GitIntegration
+       if (g_hash_table_lookup(gitDeletedDirs, path)) msg=g_strdup_printf(MSG_cannot_enter_deleted_directory, realpath);
+       else
+#endif
+	 msg=g_strdup_printf(MSG_cannot_enter_directory, realpath);
        show_msgbox(msg, "Warning", GTK_MESSAGE_WARNING);
        g_free(msg);
      } else {
