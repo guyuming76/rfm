@@ -3642,6 +3642,11 @@ static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousRea
 
 //this runs in gtk main thread
 static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, gboolean from_stdin_readline, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *childAttribs){
+            if (readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution==NULL){
+	      readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);
+	      return;
+	    }
+
 	    childAttribs->RunCmd = cmd_interpretor_pointer->cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE);
 	    childAttribs->stdIn_fd = -1; //set to non-zero, and will be set to a valid fd by g_spawn_async_with_pipes
 	    childAttribs->customCallBackFunc = from_stdin_readline ? g_spawn_async_callback_to_new_readline_thread : ( SearchResultTypePointer? update_SearchResultFileNameList_and_refresh_store : NULL); //如果不是从readline获取的命令，callback里面就不能包含new readline，否则会超过一个readline线程在运行.
