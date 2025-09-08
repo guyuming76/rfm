@@ -72,7 +72,7 @@
 #define BuiltInCmd_toggleInotifyHandler_Description  "关/开自动刷新,比如当你浏览/dev目录时"
 #define BuiltInCmd_pagesize                    "pagesize"
 #define BuiltInCmd_pagesize_Description        "设置文件搜素结果视图每葉文件数, 如 pagesize 100"
-#define BuiltInCmd_sort                        "sort"
+#define BuiltInCmd_sort                        "sortby"
 #define BuiltInCmd_sort_Description            "设置排序列,效果等同点击列标题"
 #define BuiltInCmd_glog                        "glog"
 #define BuiltInCmd_glog_Description            "开/关glib log在命令行窗口的显示,命令glog off关闭日志输出,glog on打开. 作用主要是日志输出有时会干扰编辑器如nano的显示"

@@ -70,7 +70,7 @@
 #define BuiltInCmd_toggleInotifyHandler_Description  "stop/start auto refresh, when you are view /dev directory for example"
 #define BuiltInCmd_pagesize                    "pagesize"
 #define BuiltInCmd_pagesize_Description        "set files shown per page in search result view. for example, pagesize 100"
-#define BuiltInCmd_sort                        "sort"
+#define BuiltInCmd_sort                        "sortby"
 #define BuiltInCmd_sort_Description            "show or set sorting column"
 #define BuiltInCmd_glog                        "glog"
 #define BuiltInCmd_glog_Description            "turn on/off displaying of glib log in command window. command glog off turn off log, glog on turns on. interactive command such as nano won't be affected by gtk log if turned off."
