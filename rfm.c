@@ -3686,8 +3686,14 @@ static void g_spawn_async_callback_to_new_readline_thread(RFM_ChildAttribs *chil
 static void writeSearchResultIntoFD_in_gtk_thread(gint fd){
   g_debug("writeSearchResultIntoFD(%d)",fd);
   if (SearchResultViewInsteadOfDirectoryView){
-    gboolean firstColumn=TRUE;
     GList* columns=NULL;
+    GtkTreeIter iter;
+    GList *selectedListElement=NULL;
+    GList *stdin_cmd_selection_list = get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
+    if (stdin_cmd_selection_list) selectedListElement=g_list_first(stdin_cmd_selection_list);
+
+    if (treeview){
+    gboolean firstColumn=TRUE;
     for (size_t i=0; i<TREEVIEW_COLUMNS_array_size;i++){
       if (TREEVIEW_COLUMNS[i].Show && TREEVIEW_COLUMNS[i].enumCol!=NUM_COLS && (TREEVIEW_COLUMNS[i].gtkCol||no_window)){
 	if (firstColumn){
@@ -3698,16 +3704,14 @@ static void writeSearchResultIntoFD_in_gtk_thread(gint fd){
       }
     }
     columns=g_list_reverse(columns);
+    }
 
-    GtkTreeIter iter;
-    GList *selectedListElement=NULL;
-    GList *stdin_cmd_selection_list = get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
-    if (stdin_cmd_selection_list) selectedListElement=g_list_first(stdin_cmd_selection_list);
-        
     if (stdin_cmd_selection_list?
 	gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, selectedListElement->data)
-	:gtk_tree_model_get_iter_first (GTK_TREE_MODEL(store), &iter) && columns){
-      do{
+	:gtk_tree_model_get_iter_first (GTK_TREE_MODEL(store), &iter)){
+    do{
+    if (treeview){
+        if (columns){
 	GList* c=columns;
 	do{
 	  GValue val = G_VALUE_INIT;
@@ -3729,14 +3733,19 @@ static void writeSearchResultIntoFD_in_gtk_thread(gint fd){
 	  }
 	  //g_value_unset(&val);
 	}while((c=g_list_next(c)));
+    }else g_warning("no column shown in view!");
 
-      }while (stdin_cmd_selection_list?
+    }else{//icon view
+    }
+
+    }while (stdin_cmd_selection_list?
 	      ((selectedListElement=g_list_next(selectedListElement)) && gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, selectedListElement->data))
 	      :gtk_tree_model_iter_next(GTK_TREE_MODEL(store), &iter));
-      dprintf(fd, "\n");
-    }else g_warning("empty search result view or list view has not been opened, switch to list view if search result is not empty!");
-    g_list_free(columns);
+    dprintf(fd, "\n");
+
     if (stdin_cmd_selection_list) g_list_free_full(stdin_cmd_selection_list, (GDestroyNotify)gtk_tree_path_free);
+    if (treeview && columns) g_list_free(columns);
+    }else g_warning("empty search result view!");
   }else g_warning("currently not in search result view!");
   close(fd);
 }
