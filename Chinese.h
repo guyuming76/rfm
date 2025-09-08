@@ -1,7 +1,7 @@
 #define rfmLANGUAGE "rfmChinese"
 
-#define MSG_cannot_enter_directory "%s:\n\n不能进入目录!"
-#define MSG_cannot_enter_deleted_directory "%s:\n\n请使用工具栏上'git ls-files'命令查看已删除的目录内容"
+#define MSG_cannot_enter_directory "\n\n不能进入目录!"
+#define MSG_cannot_enter_deleted_directory "\n\n请使用工具栏上'git ls-files'命令查看已删除的目录内容"
 #define PageUp  "上葉"
 #define PageDown  "下葉"
 #define Up "父"
