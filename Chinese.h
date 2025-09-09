@@ -16,6 +16,8 @@
 #define RunActionFindSL "查找(Find)指向同一文件的链接"
 #define RunActionGitStage "git 暂存"
 #define RunActionRefreshThumb "刷新缩略图"
+#define ToSearchResult "文件集合操作:目录内容->查询结果"
+#define IntersectWithSearchResult  "文件集合操作:目录内容 && 当前查询结果->新查询结果"
 #define Paste "粘帖"
 #define MoveTo "移至此"
 #define LinkTo "软链接"

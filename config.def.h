@@ -74,8 +74,8 @@ static const gchar *rfm_local_c_compile_cmd_template = "gcc -O0 -g -shared -fPIC
 static const gchar *locate_addons[] = { stdin_cmd_interpretors[0].name, "locate " RFM_LOCAL_C_FILE "|xargs grep 'const enum RFM_ADDON_TYPE addon_type ='" RFM_SearchResultTypeNamePrefix RFM_LOCAL_C_FILE };
 #endif
 
-
-
+static const char *Intersect_With_SearchResult[] = { stdin_cmd_interpretors[0].name, RFM_SEARCH_RESULT_AS_INPUT_PREFIX "sort|comm -12 - <(find -L %s -exec readlink -f {} \\;|sort) "RFM_SearchResultTypeNamePrefix"0 ",NULL };
+static const char *To_SearchResult[] = { stdin_cmd_interpretors[0].name, "find -L %s -exec readlink -f {} \\; "RFM_SearchResultTypeNamePrefix"0 ", NULL};
 static const char *find_same_name[] = { stdin_cmd_interpretors[0].name, rfmBinPath "rfmFindFilesWithTheSameName.sh "RFM_SearchResultTypeNamePrefix"multitype ", NULL };
 static const char *cd_in_searchresult[] = { stdin_cmd_interpretors[0].name, "cd ", NULL };
 static const char *start_menu[] = { stdin_cmd_interpretors[0].name, "cd /usr/share/applications", NULL };
@@ -240,6 +240,8 @@ static RFM_MenuItem run_actions[] = {
    { "stats",        "audio",          "*",                    NULL,			NULL,			NULL,		audioSpect,       		NULL },
    { "count",        "inode",          "directory",            NULL,			NULL,			NULL,		du,               		NULL },
    { "archive",      "inode",          "directory",            NULL,			NULL,			NULL,		create_archive,   		NULL },
+   { ToSearchResult, "inode",          "directory",            NULL,			NULL,			NULL,		To_SearchResult,   		NULL },
+   { IntersectWithSearchResult,"inode","directory",            NULL,			NULL,			NULL,		Intersect_With_SearchResult,   	NULL },
    { "mount",        "inode",          "mount-point",          NULL,			NULL,			NULL,		mount,            		mountpoint_unmounted },
    { "unmount",      "inode",          "mount-point",          NULL,			NULL,			NULL,		umount,           		mountpoint_mounted },
    { "mount",        "inode",          "blockdevice",          NULL,			NULL,			NULL,		mount,            		NULL },

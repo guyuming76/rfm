@@ -16,6 +16,8 @@
 #define RunActionFindSL "Find all links to the same file"
 #define RunActionGitStage "git stage"
 #define RunActionRefreshThumb "Refresh Thumbnail"
+#define ToSearchResult "File Set Operation: To SearchResult"
+#define IntersectWithSearchResult  "File Set Operation: Intersect With SearchResult"
 #define Paste "Paste"
 #define MoveTo "MoveHere"
 #define LinkTo "SoftLink"

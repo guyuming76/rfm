@@ -67,7 +67,6 @@ static char cwd[PATH_MAX];
 static struct sigaction ignore_SIGINT;
 
 static GtkWidget *icon_or_tree_view = NULL; //this should be in the gtk ui section, however, it does not compile if moved there
-static gboolean treeview=FALSE;
 static void show_msgbox(gchar *msg, gchar *title, gint type);
 static void die(const char *errstr, ...);
 static int setup(RFM_ctx *rfmCtx);
@@ -519,6 +518,7 @@ static gchar** rfmFileChooser_CMD(enum rfmTerminal startWithVT, gchar* search_cm
 /******FileChooser related definitions end***********/
 /********************************************************************/
 /**************gtk UI, filemenu, toolbar*****************************/
+static gboolean treeview=FALSE;
 static gboolean no_window=FALSE;    // for the --no-gui command line parameter
 static GtkWidget *window=NULL;      /* Main window */
 static GtkWidget *rfm_main_box;
@@ -542,6 +542,7 @@ static void info_clicked(gpointer user_data);
 static void copy_curPath_to_clipboard(GtkWidget *menuitem, gpointer user_data);
 static void refresh_view(RFM_ctx *rfmCtx, gboolean switch_view);
 static void switch_iconview_treeview(RFM_ctx *rfmCtx);
+static gboolean InIconView(){ return !treeview; }
 static void Switch_SearchResultView_DirectoryView(GtkToolItem *item,RFM_ctx *rfmCtx);
 /* callback function for toolbar buttons. Its possible to make function such as home_clicked as callback directly, instead of use toolbar_button_exec as a wrapper. However,i would add GtkToolItems as first parameter for so many different callback functions then. */
 /* since g_spawn_wrapper will free child_attribs, and we don't want the childAttribs object associated with UI interface item to be freed, we duplicate childAttribs here. */
@@ -4601,7 +4602,7 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 #endif
             childAttribs->readlineResultString=g_string_new(strdup(readlineResult));
 
-            if (!SearchResultAsInput) combine_command_with_selected_files_and_setenv(childAttribs->readlineResultString, stdin_cmd_ending_space,&(childAttribs->env));
+            if (!SearchResultAsInput || (SearchResultAsInput && !treeview)) combine_command_with_selected_files_and_setenv(childAttribs->readlineResultString, stdin_cmd_ending_space,&(childAttribs->env));
             
 #ifdef RFM_AddOn
 	    if (!execStdinCmdInNewVT && !(!from_stdin_readline && execCmdInNewVT) || Addon_Prompt){ //Addon_Prompt不为空实际上就相当于 current_stdin_cmd_interpretor_pointer == AI_Model
