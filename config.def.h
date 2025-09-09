@@ -195,8 +195,6 @@ static RFM_MenuItem run_actions[] = {
    { RunActionCopy,  "*",              "*",                    NULL,			NULL,			NULL,		f_cp,             		NULL },
    { RunActionMove,  "*",              "*",                    NULL,			NULL,	refresh_store_on_searchresult,  f_mv,             		NULL },
    { RunActionDelete, "*",             "*",                    NULL,			NULL,   refresh_store_on_searchresult,	f_rm,             		NULL },
-   { RunActionSL,    "*",              "*",                    NULL,			NULL,			NULL,		create_softlink,                NULL },
-   { RunActionFindSL,"*",              "*",                    NULL,			NULL,			NULL,		find_softlink,                  NULL },
    { RunActionFindSameFile, "*",       "*",                    NULL,			NULL,			NULL,		find_same_name,                 NULL },
    { RunActionCD,    "*",              "*",                    NULL,                    NULL,                   NULL,           cd_in_searchresult,             InSearchResultView },
 #ifdef GitIntegration
@@ -244,6 +242,8 @@ static RFM_MenuItem run_actions[] = {
    { ToSearchResult, "inode",          "directory",            NULL,			NULL,			NULL,		To_SearchResult,   		InIconView },
    { IntersectWithSearchResult,"inode","directory",            NULL,			NULL,			NULL,		Intersect_With_SearchResult,   	InIconView },
    { RunActionFindSoftLink,"*",        "*",                    NULL,			NULL,			NULL,		ShowSoftLinkToFileInSearchResult,NULL },
+   { RunActionFindSL,"*",              "*",                    NULL,			NULL,			NULL,		find_softlink,                  NULL },
+   { RunActionSL,    "*",              "*",                    NULL,			NULL,			NULL,		create_softlink,                NULL },
    { "mount",        "inode",          "mount-point",          NULL,			NULL,			NULL,		mount,            		mountpoint_unmounted },
    { "unmount",      "inode",          "mount-point",          NULL,			NULL,			NULL,		umount,           		mountpoint_mounted },
    { "mount",        "inode",          "blockdevice",          NULL,			NULL,			NULL,		mount,            		NULL },
