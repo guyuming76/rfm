@@ -3648,7 +3648,7 @@ static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResult
 	      return;
 	    }
 
-            if (!SearchResultViewInsteadOfDirectoryView) Switch_SearchResultView_DirectoryView(NULL, rfmCtx);
+            if (!SearchResultViewInsteadOfDirectoryView) Switch_SearchResultView_DirectoryView(NULL, childAttribs->customCallbackUserData);
 
 	    childAttribs->RunCmd = cmd_interpretor_pointer->cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE);
 	    childAttribs->stdIn_fd = -1; //set to non-zero, and will be set to a valid fd by g_spawn_async_with_pipes
@@ -4642,11 +4642,13 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 
 static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult){
   RFM_ChildAttribs *childAttribs = calloc(1, sizeof(RFM_ChildAttribs));
+  childAttribs->customCallbackUserData = rfmCtx;
   parse_and_exec_command_in_gtk_thread(readlineResult, TRUE, current_stdin_cmd_interpretor_pointer, childAttribs);
 }
 
 static void parse_and_exec_cmd_in_gtk_thread (gchar * cmd){
   RFM_ChildAttribs *childAttribs = calloc(1, sizeof(RFM_ChildAttribs));
+  childAttribs->customCallbackUserData = rfmCtx;
   // 在创建子进程前暂停readline
   //rl_callback_handler_remove();
   parse_and_exec_command_in_gtk_thread(cmd, FALSE, current_stdin_cmd_interpretor_pointer, childAttribs);
