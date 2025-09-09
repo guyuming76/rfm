@@ -4962,6 +4962,7 @@ int main(int argc, char *argv[])
    gchar *auto_execution_command_after_rfm_start = NULL;
    g_log_set_handler (G_LOG_DOMAIN, G_LOG_LEVEL_MASK | G_LOG_FLAG_FATAL| G_LOG_FLAG_RECURSION, g_log_default_handler, NULL);
 
+   setenv("RFM_GIT_ROOT","/",1);
    addons = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
    rfmCtx=calloc(1,sizeof(RFM_ctx));
    if (rfmCtx==NULL) return 1;
