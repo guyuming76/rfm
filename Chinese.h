@@ -18,6 +18,7 @@
 #define RunActionRefreshThumb "刷新缩略图"
 #define ToSearchResult "文件集合操作:目录内容->查询结果"
 #define IntersectWithSearchResult  "文件集合操作:目录内容 && 当前查询结果->新查询结果"
+#define RunActionFindSoftLink "文件集合操作:以环境变量RFM_GIT_ROOT值为范围查找指向此文件的软链接"
 #define Paste "粘帖"
 #define MoveTo "移至此"
 #define LinkTo "软链接"

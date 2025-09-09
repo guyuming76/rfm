@@ -99,6 +99,7 @@ static const char *mv_clipboard_to_curPath[] = { "$RFM_TERM",rfmBinPath "rfmCopy
 static const char *ln_clipboard_to_curPath[] = { "$RFM_TERM",rfmBinPath "rfmCopyMoveToCurPath.sh","sl",NULL };
 static const char *create_softlink[] = { stdin_cmd_interpretors[0].name, "rfmCreateSoftLink.sh "RFM_NEW_TERM_SUFFIX" ",NULL };
 static const char *find_softlink[] = { "$RFM_TERM",rfmBinPath "rfmFindLinksToTheSameFile.sh",NULL };
+static const char *ShowSoftLinkToFileInSearchResult[] = { stdin_cmd_interpretors[0].name, "find \"$RFM_GIT_ROOT\" -exec test %s  -ef {} \\; -print"RFM_SearchResultTypeNamePrefix"0 ",NULL};
 static const char *change_owner[] = { "$RFM_TERM", rfmBinPath "rfmChangeOwner.sh",NULL };
 static const char *play_video[] = { "/usr/bin/xdg-open", NULL };
 static const char *play_audio[] = { "/usr/bin/xdg-open", NULL };
@@ -242,6 +243,7 @@ static RFM_MenuItem run_actions[] = {
    { "archive",      "inode",          "directory",            NULL,			NULL,			NULL,		create_archive,   		NULL },
    { ToSearchResult, "inode",          "directory",            NULL,			NULL,			NULL,		To_SearchResult,   		InIconView },
    { IntersectWithSearchResult,"inode","directory",            NULL,			NULL,			NULL,		Intersect_With_SearchResult,   	InIconView },
+   { RunActionFindSoftLink,"*",        "*",                    NULL,			NULL,			NULL,		ShowSoftLinkToFileInSearchResult,NULL },
    { "mount",        "inode",          "mount-point",          NULL,			NULL,			NULL,		mount,            		mountpoint_unmounted },
    { "unmount",      "inode",          "mount-point",          NULL,			NULL,			NULL,		umount,           		mountpoint_mounted },
    { "mount",        "inode",          "blockdevice",          NULL,			NULL,			NULL,		mount,            		NULL },

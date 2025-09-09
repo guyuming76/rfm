@@ -18,6 +18,7 @@
 #define RunActionRefreshThumb "Refresh Thumbnail"
 #define ToSearchResult "File Set Operation: To SearchResult"
 #define IntersectWithSearchResult  "File Set Operation: Intersect With SearchResult"
+#define RunActionFindSoftLink "File Set Operation:find soft link within RFM_GIT_ROOT(env variable) directory"
 #define Paste "Paste"
 #define MoveTo "MoveHere"
 #define LinkTo "SoftLink"

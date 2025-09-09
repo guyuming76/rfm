@@ -2369,7 +2369,7 @@ static void set_terminal_window_title(CALLER_OWN const char * title)
 //TODO:strtok命令会跳过连续的\n,也就是说，如果 git rev-parse --is-inside-work-tree --show-toplevel --abbrev-ref HEAD --show-prefix 4行结果中倒数第三行如果是空行得话数据就会出错，所以要确认 --abbrev-ref HEAD 不返回空
 static void get_git_root_with_rev_parse(gpointer *child_attribs)
 {
-  if (git_root) { g_free(git_root); git_root=NULL; }
+  if (git_root) { g_free(git_root); git_root=NULL; setenv("RFM_GIT_ROOT","/",1);} //RFM_GIT_ROOT 作为find命令的scope使用，当前不是git仓库时，就全系统从根查找
   if (curPathRelativeToGitRoot) {g_free(curPathRelativeToGitRoot); curPathRelativeToGitRoot=NULL;}
   if (git_current_branch) {g_free(git_current_branch); git_current_branch=NULL; }
   char *child_StdOut=((RFM_ChildAttribs *)child_attribs)->stdOut;
@@ -2380,6 +2380,7 @@ static void get_git_root_with_rev_parse(gpointer *child_attribs)
       char *secondline=strtok_r(NULL,"\n",&savedptr);
       if (secondline!=NULL) {
 	git_root=g_strdup(secondline);
+	setenv("RFM_GIT_ROOT",git_root,1);
 	char *thirdline=strtok_r(NULL,"\n",&savedptr);
 	git_current_branch = thirdline? g_strdup(thirdline):NULL;
 	char *fourthline=strtok_r(NULL,"\n",&savedptr);
