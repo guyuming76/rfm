@@ -17,6 +17,7 @@
 #define RunActionGitStage "git stage"
 #define RunActionRefreshThumb "Refresh Thumbnail"
 #define ToSearchResult "File Set Operation: To SearchResult"
+#define UnionSearchResult  "File Set Operation: Union SearchResult"
 #define IntersectWithSearchResult  "File Set Operation: Intersect With SearchResult"
 #define SubtractSearchResult  "File Set Operation: Subtract SearchResult"
 #define RunActionFindSoftLink "File Set Operation:find soft links within RFM_GIT_ROOT(env variable) directory"

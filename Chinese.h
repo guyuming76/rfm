@@ -17,6 +17,7 @@
 #define RunActionGitStage "git 暂存"
 #define RunActionRefreshThumb "刷新缩略图"
 #define ToSearchResult "文件集合操作:单选内容(包含目录子项)->查询结果"
+#define UnionSearchResult  "文件集合操作:单选内容 合并 当前查询结果->新查询结果"
 #define IntersectWithSearchResult  "文件集合操作:单选内容 交 当前查询结果->新查询结果"
 #define SubtractSearchResult  "文件集合操作:当前查询结果 减去 单选内容->新查询结果"
 #define RunActionFindSoftLink "文件集合操作:以环境变量RFM_GIT_ROOT值为范围,查找指向此文件的软链接"

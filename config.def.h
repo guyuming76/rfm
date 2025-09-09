@@ -74,6 +74,8 @@ static const gchar *rfm_local_c_compile_cmd_template = "gcc -O0 -g -shared -fPIC
 static const gchar *locate_addons[] = { stdin_cmd_interpretors[0].name, "locate " RFM_LOCAL_C_FILE "|xargs grep 'const enum RFM_ADDON_TYPE addon_type ='" RFM_SearchResultTypeNamePrefix RFM_LOCAL_C_FILE };
 #endif
 
+//注意，下面命令中rfm选中文件占位符 %s 要配合结尾空格使用
+static const char *Union_SearchResult[] = { stdin_cmd_interpretors[0].name, RFM_SEARCH_RESULT_AS_INPUT_PREFIX "(tee;find -L %s -exec readlink -f {} \\;)|sort|uniq " RFM_SearchResultTypeNamePrefix"0 ",NULL };
 static const char *Subtract_SearchResult[] = { stdin_cmd_interpretors[0].name, RFM_SEARCH_RESULT_AS_INPUT_PREFIX "sort|comm -23 - <(find -L %s -exec readlink -f {} \\;|sort) "RFM_SearchResultTypeNamePrefix"0 ",NULL };
 static const char *Intersect_With_SearchResult[] = { stdin_cmd_interpretors[0].name, RFM_SEARCH_RESULT_AS_INPUT_PREFIX "sort|comm -12 - <(find -L %s -exec readlink -f {} \\;|sort) "RFM_SearchResultTypeNamePrefix"0 ",NULL };
 static const char *To_SearchResult[] = { stdin_cmd_interpretors[0].name, "find -L %s -exec readlink -f {} \\; "RFM_SearchResultTypeNamePrefix"0 ", NULL};
@@ -241,6 +243,7 @@ static RFM_MenuItem run_actions[] = {
    { "count",        "inode",          "directory",            NULL,			NULL,			NULL,		du,               		NULL },
    { "archive",      "inode",          "directory",            NULL,			NULL,			NULL,		create_archive,   		NULL },
    { ToSearchResult, "*",              "*",                    NULL,			NULL,			NULL,		To_SearchResult,   		InIconView },
+   { UnionSearchResult,"*",            "*",                    NULL,			NULL,			NULL,		Union_SearchResult,   	        InIconView },
    { IntersectWithSearchResult,"*",    "*",                    NULL,			NULL,			NULL,		Intersect_With_SearchResult,   	InIconView },
    { SubtractSearchResult,"*",         "*",                    NULL,			NULL,			NULL,		Subtract_SearchResult,   	InIconView },
    { RunActionFindSoftLink,"*",        "*",                    NULL,			NULL,			NULL,		ShowSoftLinkToFileInSearchResult,NULL },
