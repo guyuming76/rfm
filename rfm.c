@@ -4104,7 +4104,7 @@ static void sort_on_column(wordexp_t * parsed_msg){
 }
 
 static void print_columns_status(wordexp_t * parsed_msg){
-	    printf(CURRENT_COLUMN_STATUS);
+            printf(CURRENT_COLUMN_STATUS,current_sort_column_id,current_sorttype);
 	    for(size_t i=0;i<TREEVIEW_COLUMNS_array_size;i++)
 	      if (TREEVIEW_COLUMNS[i].enumCol<NUM_COLS)
 		printf("%4d: %s%s\n", TREEVIEW_COLUMNS[i].Show? TREEVIEW_COLUMNS[i].enumCol : (-1)*TREEVIEW_COLUMNS[i].enumCol,TREEVIEW_COLUMNS[i].title, (current_sort_column_id==TREEVIEW_COLUMNS[i].enumCol?(current_sorttype==GTK_SORT_ASCENDING?"{v}":"{^}"):""));
