@@ -2304,6 +2304,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
      if (!no_window) gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
    } else {
      icon_or_tree_view = add_view(rfmCtx);//call add_view earlier for directory view so that user won't see a blank window for long.
+     if (current_sort_column_id == GTK_TREE_SORTABLE_UNSORTED_SORT_COLUMN_ID) current_sort_column_id = GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID;
      gtk_tree_sortable_set_default_sort_func(GTK_TREE_SORTABLE(store), sort_func, NULL, NULL);
      gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(store), current_sort_column_id, current_sorttype);
      fileAttributeID=1;
