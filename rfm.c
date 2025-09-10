@@ -4450,6 +4450,7 @@ static void combine_command_with_selected_files_and_setenv(CALLER_OWN GString* r
 		    //if file path contains space, wrap path inside ''
 		    if (strstr(listElement->data," ") != NULL) g_string_replace(readlineResultString, RFM_selected_filename_placeholder, selected_filename_placeholder_in_quotation, 1);
 		    g_string_replace(readlineResultString, RFM_selected_filename_placeholder,listElement->data, 1);
+		    printf("%s\r\n",listElement->data);
 		  }
 
 		  if (env_rfm_selected_files != NULL) {
