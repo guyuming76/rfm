@@ -20,12 +20,22 @@ if [[ ! -z "$rfmInput" ]]; then
 fi
 
 for i in "$@";do
-	read -p "是否(y/n)输出结果至剪贴板?默认是(n)" -r outputToClipBoard
+	read -p "是否(y/n)输出结果至剪贴板?默认否(n)" -r outputToClipBoard
+	read -p "查找过程中间节点是否(y/n)包含软链接(即find命令是否带-L参数)?默认包含(y)" includeSL
+
 	echo ""
 	if [[ "$outputToClipBoard" == "y" || "$outputToClipBoard" == "Y" ]];then
-		find "$rfmFindScope" -exec test "$i" -ef {} \; -print | tee /dev/tty | xargs rfmToClipboard.sh
+		if [[ "${includeSL,,}" == "n" ]]; then
+			find "$rfmFindScope" -exec test "$i" -ef {} \; -print | tee /dev/tty | xargs rfmToClipboard.sh
+		else
+			find -L "$rfmFindScope" -exec test "$i" -ef {} \; -print | tee /dev/tty | xargs rfmToClipboard.sh
+		fi
 	else
-		find "$rfmFindScope" -exec test "$i" -ef {} \; -print
+		if [[ "${includeSL,,}" == "n" ]]; then
+			find "$rfmFindScope" -exec test "$i" -ef {} \; -print
+		else
+			find -L "$rfmFindScope" -exec test "$i" -ef {} \; -print
+		fi
 	fi
 	echo ""
 done
