@@ -435,7 +435,7 @@ static int ProcessOnelineForSearchResult(CALLER_OWN gchar *oneline, gboolean new
 static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboolean new_search, gboolean first_line_column_title);
 static int ProcessOnelineForSearchResult_with_title(CALLER_OWN char* oneline, gboolean new_search);
 static void CallDefaultSearchResultFunctionForNewSearch(CALLER_OWN char *one_line_in_search_result);
-static int ProcessKeyValuePairInFilesFromSearchResult(CALLER_OWN char *oneline, gboolean new_search);
+int ProcessKeyValuePairInFilesFromSearchResult(CALLER_OWN char *oneline, gboolean new_search);
 int ProcessKeyValuePairInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char **cmdtemplate, RFM_FileAttributes* fileAttributes,RFM_ChildAttribs *childAttribs);
 int ProcessJsonInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate, RFM_FileAttributes* fileAttributes,RFM_ChildAttribs* child_attribs);
 static int ProcessCmdOutputFromSearchResultWithFunction(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate, RFM_ChildAttribs* child_attribs, int (*func)(RFM_ChildAttribs*));
@@ -5215,7 +5215,7 @@ static void CallDefaultSearchResultFunctionForNewSearch(CALLER_OWN char *one_lin
 // 处理存储键值对文件(类似INI)数据,每行一个文件,每个文件可包含不同的键
 // 搜索结果除了包含文件名,还可以包含其他类似csv行数据,也就是先用 ProcessOnelineForSearchResult 处理
 // if new_search, oneline contains leading filename plus optional columns, otherwise, oneline contains only filename
-static int ProcessKeyValuePairInFilesFromSearchResult(CALLER_OWN char *oneline, gboolean new_search){
+int ProcessKeyValuePairInFilesFromSearchResult(CALLER_OWN char *oneline, gboolean new_search){
    if (new_search){
      CallDefaultSearchResultFunctionForNewSearch(oneline);
      return 0;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
