@@ -65,6 +65,11 @@ const stdin_cmd_interpretor stdin_cmd_interpretors[] = {
 #define RFM_LOCAL_LEAVE_FUNC "rfm_local_leave"
 #define RFM_ADDON_RESOURCE_STRUCT "addon_resource"
 #define RFM_ADDON_TYPE_VAR_NAME "addon_type"
+//TODO:下面变量名可能在完成init_addon_resource函数TODO项时会用到。
+//#define RFM_ADDON_LOCAL_TOOLBAR_ITEMS_VAR_NAME "tool_buttons_local"
+//#define RFM_ADDON_LOCAL_FILEMENU_ITEMS_VAR_NAME "file_menus_local"
+//#define RFM_ADDON_LOCAL_TREEVIEW_COLUMNS_VAR_NAME "treeviewColumns"
+
 // 上面这组定义对应的是rfm_local.c里面的变量和方法名，如果把这些定义放在rfm_local.h里面得话，可以实现
 // rfm.c 和 rfm_local.c
 // 的命名同步。但我觉得命名同步意义不大，写死不变代码其实更简练易读
