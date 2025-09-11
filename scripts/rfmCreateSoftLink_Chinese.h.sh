@@ -3,7 +3,11 @@
 
 #set -x
 
-echo "输入为选中文件创建软链接的目录路径,可以是绝对路径或相对与当前路径($(pwd)),可用上下箭头方向键从历史输入中选择:"
+create_next="y"
+while [[ "${create_next,,}" =~ "y" ]]; do
+
+
+echo "输入目录路径,在其中创建指向选中文件的软链接。可以输入绝对路径或相对与当前路径($(pwd)),可用上下箭头方向键从历史输入中选择:"
 
 source rfmReadlineWithSpecificHistoryFile.sh "input_destination" ~/.rfm_history_directory
 input_destination=${input_destination/#~/${HOME}}
@@ -40,3 +44,7 @@ if [[ -d "$input_destination" ]]; then
 		sl_list+=" $input_destination/$sl_basename"
 	done
 fi
+
+
+read -p "是否(y/n)继续创建下一个指向此选中文件的软链接?默认否(n):" create_next
+done
