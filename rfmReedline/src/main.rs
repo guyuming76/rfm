@@ -7,7 +7,7 @@ use std::io::Write;
 
 // 定义外部函数来调用 GNU Readline 的补全功能
 #[link(name = "readline")]
-unsafe extern "C" {
+extern "C" {
     fn rl_completion_matches(text: *const c_char, entry_func: unsafe extern "C" fn(*const c_char, i32) -> *mut c_char) -> *mut *mut c_char;
     fn rl_filename_completion_function(text: *const c_char, state: i32) -> *mut c_char;
     fn free(ptr: *mut c_char);
