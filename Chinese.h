@@ -222,3 +222,12 @@ BuiltInCmd_SearchResultColumnSeperator \
 
 #define SearchResultType_default_with_title "类似0号default查询结果类型,区别仅在于首行包含的是列标题,而不是实际数据.举例,过滤出当前查询结果第一行，参数-n2是因为title占一行，加上一行数据：\n" \
 "      SearchResult|head -n2>withTitle\n"
+
+
+
+#define RFM_DIMENSION_PROPERTIES_FILE_NAME "rfm维度属性"
+#define RFM_DIMENSION_ID "唯一标识"
+//原则上，名称就等于文件所在本层目录名，文件路径冲突时可以改目录名
+#define RFM_DIMENSION_NAME "名称"
+//当维度没有被跨仓库使用时，远程地址不必有。
+#define RFM_DIMENSION_LOCAL_PATH "远程地址"

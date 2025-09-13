@@ -218,3 +218,10 @@ BuiltInCmd_SearchResultColumnSeperator \
 "      SearchResult|head -n2>withTitle"
 
 #define RunActionFindSameFile "Find and parse files with the same name"
+
+
+
+#define RFM_DIMENSION_PROPERTIES_FILE_NAME "rfmDimensionProperties"
+#define RFM_DIMENSION_ID "UniqueID"
+#define RFM_DIMENSION_NAME "Name"
+#define RFM_DIMENSION_LOCAL_PATH "RemoteAddress"

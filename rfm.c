@@ -314,6 +314,12 @@ typedef struct {
   gboolean iconview_markup;
   gboolean iconview_tooltip;
 } RFM_store_cell;
+typedef struct {
+  gchar *ID;
+  gchar *name;
+  gchar *RemoteAddress;
+  gchar *localAddress;
+} DimensionProperties;
 
 static GtkListStore *store=NULL;
 static GtkTreeModel *treemodel=NULL;
@@ -321,6 +327,8 @@ static GtkTreeModel *treemodel=NULL;
 // in searchresultview, this list only contains files on current view page.
 // The SearchResultViewFileNameList contains files for the whole result.
 static GList *rfm_fileAttributeList=NULL;
+static GHashTable* DimensionPropertiesHashTable_name_asKey;// Key:ExtColumn Name. Value:struct DimensionProperties
+static GHashTable* DimensionPropertiesHashTable_localAddress_asKey;// Key:ExtColumn localAddress. Value:struct DimensionProperties
 //hash table to store string shown in search result, with fileAttributeid as key
 static GHashTable* ExtColumnHashTable[NUM_Ext_Columns + 1];
 // For ExtColumn value from pipeline stdin, the total result batch is kept in
@@ -407,7 +415,9 @@ static gboolean iterate_through_store_to_load_latest_git_log_one_by_one_when_idl
 static void set_terminal_window_title(CALLER_OWN const char* title);
 static void set_Titles(CALLER_OWN const gchar * title);
 static void cmdToggleInotifyHandler(wordexp_t *parsed_msg,GString *readline_result_string_after_file_name_substitution);
-
+static void refresh_DimensionPropertiesHashTable();
+static void load_DimensionPropertiesHashTable_Callback(RFM_ChildAttribs* child_attribs);
+static void free_DimensionProperties(DimensionProperties *dimProp);
 /******GtkListStore and refresh definitions end******/
 /****************************************************/
 /******Search Result related definitions*************/
@@ -5244,6 +5254,7 @@ int ProcessKeyValuePairInFilesFromSearchResult(CALLER_OWN char *oneline, gboolea
    g_free(absolute_address);
 }
 
+//根据key,找到合适的列，合适的currentExtColumnHashTableIndex, 执行g_hash_table_insert(ExtColumnHashTable[currentExtColumnHashTableIndex], strFileAttributeID, currentExtColumnValue);
 static void ProcessKeyValuePair(CALLER_OWN gchar *key, OWNER_CHANGE gchar* currentExtColumnValue, CALLER_OWN char* currentColumnOriginalTitle){
 	  RFM_treeviewColumn * col;
 	  enum RFM_treeviewCol current_Ext_Column;
@@ -5862,7 +5873,46 @@ gboolean str_regex_replace(char **str, const regex_t * restrict pattern_compiled
       return ret;
 }
 
+static void load_DimensionPropertiesHashTable_Callback(RFM_ChildAttribs* child_attribs) {
+  char *child_stdout=(char*)(child_attribs->stdOut);
+  gchar * savedptr=NULL;
+  gchar * oneline=strtok_r(child_stdout,"\n",&savedptr);
+  while (oneline!=NULL){
+    gchar * fullpath = g_path_get_dirname(oneline);
+    GKeyFile *gkeyfile = g_key_file_new();
+    GError *error=NULL;
+    if (g_key_file_load_from_file(gkeyfile, fullpath, G_KEY_FILE_NONE, &error)){
+      DimensionProperties * dimProps = calloc(1, sizeof(DimensionProperties));
+      dimProps->ID = g_key_file_get_string(gkeyfile, dumb_keyfile_groupname, RFM_DIMENSION_ID, &error);
+      if (error) { g_debug("load_DimensionPropertiesHashTable_Callback. error loading key value pair from file %s, error code: %d, message:%s",fullpath, error->code, error->message); g_error_free(error); error=NULL;}
+      dimProps->name = g_key_file_get_string(gkeyfile, dumb_keyfile_groupname, RFM_DIMENSION_NAME, &error);
+      if (error) { g_debug("load_DimensionPropertiesHashTable_Callback. error loading key value pair from file %s, error code: %d, message:%s",fullpath, error->code, error->message); g_error_free(error); error=NULL;}
+      dimProps->localAddress = g_path_get_dirname(fullpath);
+      g_hash_table_insert(DimensionPropertiesHashTable_name_asKey, dimProps->name ? g_strdup(dimProps->name):g_path_get_basename(fullpath), dimProps);
+      g_hash_table_insert(DimensionPropertiesHashTable_localAddress_asKey, g_strdup(dimProps->localAddress), dimProps);
+      g_key_file_free(gkeyfile);
+    }else{
+      g_warning("load_DimensionPropertiesHashTable_Callback. error loading key value pair from file %s, error code: %d, message:%s",fullpath, error==NULL?0:error->code, error==NULL?"":error->message);
+      g_error_free(error);
+    }
+    g_free(fullpath);
+    //if (git_root && g_str_has_prefix(fullpath, git_root)){ //维度位于当前git仓库
+    // }
+    oneline=strtok_r(NULL, "\n",&savedptr);
+  }
+}
 
+static void refresh_DimensionPropertiesHashTable() {
+  if (DimensionPropertiesHashTable_localAddress_asKey) { g_hash_table_destroy(DimensionPropertiesHashTable_localAddress_asKey);}
+  if (DimensionPropertiesHashTable_name_asKey) { g_hash_table_destroy(DimensionPropertiesHashTable_name_asKey);}
+  DimensionPropertiesHashTable_name_asKey = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)free_DimensionProperties);
+  DimensionPropertiesHashTable_localAddress_asKey = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);//正反两个hashtable共享一个DimensionProperties结构，只要free一次就可以了
+  g_spawn_wrapper(global_dimension_properties_files_locating_cmd, NULL, G_SPAWN_DEFAULT, NULL, NULL, FALSE, load_DimensionPropertiesHashTable_Callback, NULL, TRUE);
+}
+
+static void free_DimensionProperties(DimensionProperties *dimProp) {
+  free(dimProp->ID); free(dimProp->RemoteAddress); free(dimProp->name); free(dimProp->localAddress);
+}
 #ifdef RFM_AddOn
 
 // Helper function to calculate MD5 hash of a file

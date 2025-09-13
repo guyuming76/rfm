@@ -79,6 +79,7 @@ static const gchar *rfm_local_c_compile_cmd_template = "gcc -O0 -g -shared -fPIC
 static const gchar *locate_addons[] = { stdin_cmd_interpretors[0].name, "locate " RFM_LOCAL_C_FILE "|xargs grep 'const enum RFM_ADDON_TYPE addon_type ='" RFM_SearchResultTypeNamePrefix RFM_LOCAL_C_FILE };
 #endif
 
+static const gchar *global_dimension_properties_files_locating_cmd[] = { stdin_cmd_interpretors[0].name, "locate "RFM_DIMENSION_PROPERTIES_FILE_NAME,NULL};
 
 #ifdef CmarkTools
 static gchar* MD_parsing_cmdTemplate[] = { stdin_cmd_interpretors[0].name, "extractJsonFromMarkdown 0 %s", NULL };
@@ -102,6 +103,7 @@ static RFM_SearchResultType searchresultTypes[] = {
   {RFM_LOCAL_C_FILE,ProcessOnelineForSearchResult,        AddOnStatusColumns, NULL, NULL,                            "rfm addon status"},
 #endif
 };
+
 
 //注意，下面命令中rfm选中文件占位符 RFM_selected_filename_placeholde 要配合结尾空格使用
 static const char *Union_SearchResult[] = { stdin_cmd_interpretors[0].name, RFM_SEARCH_RESULT_AS_INPUT_PREFIX "(tee;find -L "RFM_selected_filename_placeholder" -exec readlink -f {} \\;)|sort|uniq " RFM_SearchResultTypeNamePrefix SrchRsltType_multitype" ",NULL };
