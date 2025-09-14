@@ -624,7 +624,6 @@ static void free_addon(RFM_ADDON *addon);
 static GHashTable* addons; // RFM_ADDON as value
 static void load_global_addons_callback(RFM_ChildAttribs* child_attribs);
 static void load_addon(CALLER_OWN char* filepath);
-static void init_addon_resource(CALLER_OWN RFM_ADDON *addon);
 static void append_addon_treeviewColumns(RFM_ADDON *addon,gboolean searchresultview, gboolean dirview);
 static void remove_addon_treeviewColumns(RFM_ADDON *addon);
 static void unload_local_extension(RFM_ADDON *addon);
@@ -6021,15 +6020,6 @@ static void append_addon_treeviewColumns(RFM_ADDON *addon, gboolean searchresult
   }
 }
 
-static void init_addon_resource(CALLER_OWN RFM_ADDON *addon){
-  addon->resource_managed_by_addon->file_menuitem_definitions_local=NULL;
-  addon->resource_managed_by_addon->file_menuitem_definitions_local_array_size=0;
-  addon->resource_managed_by_addon->toolbar_button_definitions_local=NULL;
-  addon->resource_managed_by_addon->toolbar_button_definitions_local_array_size=0;
-  addon->resource_managed_by_addon->treeviewColumns=NULL;
-  addon->resource_managed_by_addon->treeviewColumns_array_size=0;
-}
-
 static void load_addon(CALLER_OWN char* addon_directory){
     assert(addon_directory[0]=='/');//检查是绝对路径
     char *dlsym_error = NULL; //The message returned by dlerror() may reside in a statically allocated buffer that is overwritten by subsequent dlerror()calls. https://www.man7.org/linux/man-pages/man3/dlerror.3.html
@@ -6134,14 +6124,13 @@ static void load_addon(CALLER_OWN char* addon_directory){
 	    goto cleanup;
 	}
 
-        // Find enter function, init addon resource, and call enter func
+        // Find and call enter function
         addon->local_enter_func = dlsym(addon->rfm_local_so_handle, RFM_LOCAL_ENTER_FUNC);
         dlsym_error = dlerror();
         if (dlsym_error) {
             g_warning("dlsym failed for %s in %s: %s", RFM_LOCAL_ENTER_FUNC, addon->local_so_path, dlsym_error);
             goto cleanup;
         } else if (addon->local_enter_func){
-	    init_addon_resource(addon);
             g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Calling %s from %s", RFM_LOCAL_ENTER_FUNC, addon->local_so_path);
             (*(addon->local_enter_func))(addon_directory); //call enter function
 	    g_hash_table_insert(addons, strdup(addon->local_c_path), addon);
