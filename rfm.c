@@ -6021,15 +6021,13 @@ static void append_addon_treeviewColumns(RFM_ADDON *addon, gboolean searchresult
   }
 }
 
-//TODO: 使用libelf或libdwarf,使用调试信息获取addon中定义的静态数组大小
 static void init_addon_resource(CALLER_OWN RFM_ADDON *addon){
-  RFM_ADDON_RESOURCE_TYPE *resource = addon->resource_managed_by_addon;
-  resource->file_menuitem_definitions_local=NULL; //dlsym(addon->rfm_local_so_handle, RFM_ADDON_LOCAL_FILEMENU_ITEMS_VAR_NAME);
-  resource->file_menuitem_definitions_local_array_size=0;
-  resource->toolbar_button_definitions_local=NULL;
-  resource->toolbar_button_definitions_local_array_size=0;
-  resource->treeviewColumns=NULL;
-  resource->treeviewColumns_array_size=0;
+  addon->resource_managed_by_addon->file_menuitem_definitions_local=NULL;
+  addon->resource_managed_by_addon->file_menuitem_definitions_local_array_size=0;
+  addon->resource_managed_by_addon->toolbar_button_definitions_local=NULL;
+  addon->resource_managed_by_addon->toolbar_button_definitions_local_array_size=0;
+  addon->resource_managed_by_addon->treeviewColumns=NULL;
+  addon->resource_managed_by_addon->treeviewColumns_array_size=0;
 }
 
 static void load_addon(CALLER_OWN char* addon_directory){
