@@ -34,9 +34,6 @@
 #endif
 #ifdef reedline
 #include "reedline_wrapper.h"
-char **rl_filename_complete_wrapper(char *text) {
-  return rl_completion_matches(text, rl_filename_completion_function);
-}
 #endif
 #include <wordexp.h>
 #include <stdarg.h>
@@ -4692,7 +4689,7 @@ static char** rfm_filename_completion(const char *text, int *count){
   }else {
     char **ret = NULL;
     if (In_rfm_editor) ret = rfm_editor_completion_based_on_search_result(text);
-    if (ret==NULL) ret = rl_filename_complete_wrapper(text);
+    if (ret==NULL) ret = rl_completion_matches(text, rl_filename_completion_function);
     return ret;
   }
 #else
