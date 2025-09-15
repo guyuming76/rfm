@@ -448,7 +448,7 @@ pub extern "C" fn rfm_editor_edit_file(
     error: *mut *mut libc::c_char,
 ) -> libc::c_int {
     let filename_str = unsafe { CStr::from_ptr(filename).to_string_lossy().into_owned() };
-    let mut editor = Box::new(RfmEditor::new(get_completion_fn, filename_str));
+    let mut editor = Box::new(RfmEditor::new(get_completion_fn, filename_str)); //rfm执行程序在调用rfmEditor‘内部命令‘时通过 get_completion_fn传 入static char** rfm_filename_completion(const char *text, int *count). 这里是static函数，没问题？
     let filename = unsafe { CStr::from_ptr(filename).to_string_lossy().into_owned() };
 
     match editor.edit_file(&filename) {
