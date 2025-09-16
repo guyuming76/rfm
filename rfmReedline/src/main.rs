@@ -1,3 +1,6 @@
+//GPL-3 许可by guyuming
+
+//这个程序用于rfm(通过命令结尾&)打开的新的终端模拟器窗口内补全
 use reedline::{Completer, Reedline, Signal, Suggestion, Span, MenuBuilder, ColumnarMenu, ReedlineMenu, DefaultPrompt, DefaultPromptSegment, KeyCode, KeyModifiers, ReedlineEvent,default_emacs_keybindings,Emacs, FileBackedHistory};
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
@@ -12,6 +15,10 @@ extern "C" {
     fn rl_filename_completion_function(text: *const c_char, state: i32) -> *mut c_char;
     fn free(ptr: *mut c_char);
 }
+
+// extern "C" {
+//     fn DimensionCompletion(text: *const c_char, start: i32, end: i32) -> *mut *mut c_char;
+// }
 
 struct ReadlineCompleter;
 
@@ -48,6 +55,8 @@ impl Completer for ReadlineCompleter {
         suggestions
     }
 }
+
+//struct DimensionCompleter;
 
 fn main() {
     // 获取命令行参数
@@ -142,3 +151,47 @@ fn main() {
         }
     //}
 }
+
+
+
+// ## `rl_completion_matches` 函数的作用
+
+// `rl_completion_matches` 是一个核心的补全匹配生成函数，它接受一个生成器函数作为参数来产生补全匹配列表。 [1](#1-0) 
+
+// 该函数的签名为：
+// ```c
+// char **rl_completion_matches (const char *text, rl_compentry_func_t *entry_function)
+// ```
+
+// ## 与 `rl_completion_matches` 配合的补全函数签名
+
+// 与 `rl_completion_matches` 配合使用的自定义补全函数类型是 `rl_compentry_func_t`，其签名为： [2](#1-1) 
+
+// ```c
+// typedef char *rl_compentry_func_t (const char *, int);
+// ```
+
+// 具体来说，这种函数接受两个参数：
+// - `text`: 要补全的部分文本
+// - `state`: 状态参数，首次调用时为0，后续调用为非零值
+
+// 函数返回一个 `char *`，表示一个匹配项，当没有更多匹配时返回 `NULL`。 [3](#1-2) 
+
+// ## 两种补全函数类型的区别
+
+// ### `rl_compentry_func_t` (生成器函数)
+// - **签名**: `char *function(const char *text, int state)`
+// - **用途**: 逐个生成补全匹配项
+// - **调用方式**: 被 `rl_completion_matches` 反复调用直到返回 `NULL`
+// - **返回值**: 单个匹配字符串
+
+// ### `rl_completion_func_t` (高级补全函数)  
+// - **签名**: `char **function(const char *text, int start, int end)` [4](#1-3) 
+// - **用途**: 直接返回完整的补全匹配数组
+// - **调用方式**: 被补全系统直接调用一次
+// - **返回值**: 完整的匹配字符串数组
+
+// rl_completion_matches函数使用state参数的迭代器模式是为了支持增量式匹配生成，这种设计有几个重要优势
+//     内存效率: 不需要一次性生成所有可能的匹配项
+//     响应性: 可以在生成过程中响应信号中断
+//     灵活性: 支持动态数据源（如目录遍历、数据库查询等）

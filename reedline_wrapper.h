@@ -1,3 +1,7 @@
+//GPL-3 by guyuming
+
+// 这个文件被 rfm.c 引用，作为调用rust写的reedline_wrapper库接口
+
 #ifndef REEDLINE_WRAPPER_H
 #define REEDLINE_WRAPPER_H
 typedef void ReedlineHandle;

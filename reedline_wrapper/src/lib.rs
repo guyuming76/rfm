@@ -1,3 +1,7 @@
+//GPL-3许可 by guyuming
+
+//这个程序做为库被rfm执行文件加载，接受rfm传入的补全函数指针，并调用
+
 use reedline::{ DefaultPrompt, DefaultPromptSegment, EditCommand, Emacs, KeyCode, KeyModifiers,Reedline, Signal, ValidationResult, Validator, ReedlineEvent, FileBackedHistory, default_emacs_keybindings, Completer ,Suggestion, Span, ReedlineMenu, ColumnarMenu, MenuBuilder, CwdAwareHinter, DefaultCompleter, Result, LineBuffer, UndoBehavior };
 use nu_ansi_term::{Color, Style};
 use libc::c_char;
@@ -463,4 +467,3 @@ pub extern "C" fn rfm_editor_edit_file(
         }
     }
 }
-
