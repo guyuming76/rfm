@@ -67,6 +67,7 @@ static char cwd[PATH_MAX];
 static struct sigaction ignore_SIGINT;
 
 static GtkWidget *icon_or_tree_view = NULL; //this should be in the gtk ui section, however, it does not compile if moved there
+static gboolean treeview=FALSE; //在commit 4960886ed663d74170940ea2ff299ba5ba0199cc 里，可能就是为了代码好看，把这一行随手挪下面去了，结果rfmFileChooser.h就编译不了了
 static void show_msgbox(gchar *msg, gchar *title, gint type);
 static void die(const char *errstr, ...);
 static int setup(RFM_ctx *rfmCtx);
@@ -518,7 +519,6 @@ static gchar** rfmFileChooser_CMD(enum rfmTerminal startWithVT, gchar* search_cm
 /******FileChooser related definitions end***********/
 /********************************************************************/
 /**************gtk UI, filemenu, toolbar*****************************/
-static gboolean treeview=FALSE;
 static gboolean no_window=FALSE;    // for the --no-gui command line parameter
 static GtkWidget *window=NULL;      /* Main window */
 static GtkWidget *rfm_main_box;
