@@ -18,8 +18,9 @@ READLINE_LIB = -Dreedline
 PythonEmbedded = -DPythonEmbedded
 #PythonEmbedded =
 
-#RFM_FILE_CHOOSER = -DRFM_FILE_CHOOSER
-RFM_FILE_CHOOSER =
+#RFM_FILE_CHOOSER 实际上起的作用是生成librfm.so,最初只有rfm用作文件选择器时才有需要，现在reedline_wrapper Cargo build也需要
+RFM_FILE_CHOOSER = -DRFM_FILE_CHOOSER
+#RFM_FILE_CHOOSER =
 
 CmarkTools = -DCmarkTools
 #CmarkTools =
