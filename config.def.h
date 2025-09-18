@@ -79,12 +79,37 @@ static const gchar *rfm_local_c_compile_cmd_template = "gcc -O0 -g -shared -fPIC
 static const gchar *locate_addons[] = { stdin_cmd_interpretors[0].name, "locate " RFM_LOCAL_C_FILE "|xargs grep 'const enum RFM_ADDON_TYPE addon_type ='" RFM_SearchResultTypeNamePrefix RFM_LOCAL_C_FILE };
 #endif
 
+
+#ifdef CmarkTools
+static gchar* MD_parsing_cmdTemplate[] = { stdin_cmd_interpretors[0].name, "extractJsonFromMarkdown 0 %s", NULL };
+static gchar* TODO_MD_parsing_cmdTemplate[] = { stdin_cmd_interpretors[0].name, "extractJsonFromMarkdown 0 %s", NULL };
+#endif
+#ifdef RFM_AddOn
+static gchar* AddOnStatusColumns[] = { fld_AddOnStatus,NULL };
+#endif
+static RFM_SearchResultType searchresultTypes[] = {
+//name	       SearchResultLineProcessingFunc                  showcolumn     SearchResultColumnSeperator  cmdTemplate Description
+  {"default",  ProcessOnelineForSearchResult,                  NULL,          NULL, NULL,                            SearchResultType_default }, //default searchresult, contain only filename list such as returned by locate, or filename followed by additional info such as returned by grep
+  {SrchRsltType_multitype,CallMatchingProcessorForSearchResultLine,NULL,      NULL, NULL,                            SearchResultType_multitype },
+  {"gkeyfile", ProcessKeyValuePairInFilesFromSearchResult,     NULL,          NULL, NULL,                            SearchResultType_gkeyfile},
+#ifdef CmarkTools
+  {".md",      ProcessJsonInCmdOutputFromSearchResult,         NULL,          NULL, MD_parsing_cmdTemplate,          SearchResultType_markdown1 },
+  {"TODO.md",  ProcessJsonInCmdOutputFromSearchResult,         NULL,          NULL, TODO_MD_parsing_cmdTemplate,     SearchResultType_TODO_md },
+#endif
+  {"withTitle",ProcessOnelineForSearchResult_with_title,       NULL,          NULL, NULL,                            SearchResultType_default_with_title },
+  {".json",    ProcessJsonFileFromSearchResult,                NULL,          NULL, NULL,                            "json key value"},
+#ifdef RFM_AddOn
+  {RFM_LOCAL_C_FILE,ProcessOnelineForSearchResult,        AddOnStatusColumns, NULL, NULL,                            "rfm addon status"},
+#endif
+};
+
 //注意，下面命令中rfm选中文件占位符 RFM_selected_filename_placeholde 要配合结尾空格使用
-static const char *Union_SearchResult[] = { stdin_cmd_interpretors[0].name, RFM_SEARCH_RESULT_AS_INPUT_PREFIX "(tee;find -L "RFM_selected_filename_placeholder" -exec readlink -f {} \\;)|sort|uniq " RFM_SearchResultTypeNamePrefix"0 ",NULL };
-static const char *Subtract_SearchResult[] = { stdin_cmd_interpretors[0].name, RFM_SEARCH_RESULT_AS_INPUT_PREFIX "sort|comm -23 - <(find -L "RFM_selected_filename_placeholder" -exec readlink -f {} \\;|sort) "RFM_SearchResultTypeNamePrefix"0 ",NULL };
-static const char *Intersect_With_SearchResult[] = { stdin_cmd_interpretors[0].name, RFM_SEARCH_RESULT_AS_INPUT_PREFIX "sort|comm -12 - <(find -L "RFM_selected_filename_placeholder" -exec readlink -f {} \\;|sort) "RFM_SearchResultTypeNamePrefix"0 ",NULL };
-static const char *To_SearchResult[] = { stdin_cmd_interpretors[0].name, "find -L "RFM_selected_filename_placeholder" -exec readlink -f {} \\; "RFM_SearchResultTypeNamePrefix"0 ", NULL};
-static const char *find_same_name[] = { stdin_cmd_interpretors[0].name, rfmBinPath "rfmFindFilesWithTheSameName.sh "RFM_SearchResultTypeNamePrefix"multitype ", NULL };
+static const char *Union_SearchResult[] = { stdin_cmd_interpretors[0].name, RFM_SEARCH_RESULT_AS_INPUT_PREFIX "(tee;find -L "RFM_selected_filename_placeholder" -exec readlink -f {} \\;)|sort|uniq " RFM_SearchResultTypeNamePrefix SrchRsltType_multitype" ",NULL };
+static const char *Subtract_SearchResult[] = { stdin_cmd_interpretors[0].name, RFM_SEARCH_RESULT_AS_INPUT_PREFIX "sort|comm -23 - <(find -L "RFM_selected_filename_placeholder" -exec readlink -f {} \\;|sort) "RFM_SearchResultTypeNamePrefix SrchRsltType_multitype" ",NULL };
+static const char *Intersect_With_SearchResult[] = { stdin_cmd_interpretors[0].name, RFM_SEARCH_RESULT_AS_INPUT_PREFIX "sort|comm -12 - <(find -L "RFM_selected_filename_placeholder" -exec readlink -f {} \\;|sort) "RFM_SearchResultTypeNamePrefix SrchRsltType_multitype" ",NULL };
+static const char *To_SearchResult[] = { stdin_cmd_interpretors[0].name, "find -L "RFM_selected_filename_placeholder" -exec readlink -f {} \\; "RFM_SearchResultTypeNamePrefix SrchRsltType_multitype" ", NULL};
+static const char *find_same_name[] = { stdin_cmd_interpretors[0].name, rfmBinPath "rfmFindFilesWithTheSameName.sh "RFM_SearchResultTypeNamePrefix SrchRsltType_multitype" ", NULL };
+
 static const char *cd_in_searchresult[] = { stdin_cmd_interpretors[0].name, "cd ", NULL };
 static const char *start_menu[] = { stdin_cmd_interpretors[0].name, "cd /usr/share/applications", NULL };
 static const char *find_files[] = { stdin_cmd_interpretors[0].name,"find . -follow"RFM_SearchResultTypeNamePrefix"0", NULL };
@@ -247,7 +272,7 @@ static RFM_MenuItem run_actions[] = {
    { "stats",        "audio",          "*",                    NULL,			NULL,			NULL,		audioSpect,       		NULL },
    { "count",        "inode",          "directory",            NULL,			NULL,			NULL,		du,               		NULL },
    { "archive",      "inode",          "directory",            NULL,			NULL,			NULL,		create_archive,   		NULL },
-   { ToSearchResult, "*",              "*",                    NULL,			NULL,			NULL,		To_SearchResult,   		InIconView },
+   { ToSearchResult, "*",              "*",                    NULL,			NULL,			NULL,		To_SearchResult,   		NULL },
    { UnionSearchResult,"*",            "*",                    NULL,			NULL,			NULL,		Union_SearchResult,   	        InIconView },
    { IntersectWithSearchResult,"*",    "*",                    NULL,			NULL,			NULL,		Intersect_With_SearchResult,   	InIconView },
    { SubtractSearchResult,"*",         "*",                    NULL,			NULL,			NULL,		Subtract_SearchResult,   	InIconView },
@@ -373,28 +398,7 @@ static RFM_treeviewColumn treeviewColumns[G_N_ELEMENTS(treeviewColumns_init) + N
 
 static char SearchResultColumnSeperator[32]={':', 0}; //this is the default value and can be override by specific searchresulttype and can also be set manually with builtin cmd
 
-#ifdef CmarkTools
-static gchar* MD_parsing_cmdTemplate[] = { stdin_cmd_interpretors[0].name, "extractJsonFromMarkdown 0 %s", NULL };
-static gchar* TODO_MD_parsing_cmdTemplate[] = { stdin_cmd_interpretors[0].name, "extractJsonFromMarkdown 0 %s", NULL };
-#endif
-#ifdef RFM_AddOn
-static gchar* AddOnStatusColumns[] = { fld_AddOnStatus,NULL };
-#endif
-static RFM_SearchResultType searchresultTypes[] = {
-//name	       SearchResultLineProcessingFunc                  showcolumn     SearchResultColumnSeperator  cmdTemplate Description
-  {"default",  ProcessOnelineForSearchResult,                  NULL,          NULL, NULL,                            SearchResultType_default }, //default searchresult, contain only filename list such as returned by locate, or filename followed by additional info such as returned by grep
-  {SrchRsltType_multitype,CallMatchingProcessorForSearchResultLine,NULL,      NULL, NULL,                            SearchResultType_multitype },
-  {"gkeyfile", ProcessKeyValuePairInFilesFromSearchResult,     NULL,          NULL, NULL,                            SearchResultType_gkeyfile},
-#ifdef CmarkTools
-  {".md",      ProcessJsonInCmdOutputFromSearchResult,         NULL,          NULL, MD_parsing_cmdTemplate,          SearchResultType_markdown1 },
-  {"TODO.md",  ProcessJsonInCmdOutputFromSearchResult,         NULL,          NULL, TODO_MD_parsing_cmdTemplate,     SearchResultType_TODO_md },
-#endif
-  {"withTitle",ProcessOnelineForSearchResult_with_title,       NULL,          NULL, NULL,                            SearchResultType_default_with_title },
-  {".json",    ProcessJsonFileFromSearchResult,                NULL,          NULL, NULL,                            "json key value"},
-#ifdef RFM_AddOn
-  {RFM_LOCAL_C_FILE,ProcessOnelineForSearchResult,        AddOnStatusColumns, NULL, NULL,                            "rfm addon status"},
-#endif
-};
+
 
 /* Thumbnailers
  * There must be at least one entry in the thumbnailers array.
