@@ -453,7 +453,7 @@ static void cmdSearchResultColumnSeperator(wordexp_t * parsed_msg, GString* read
 static RFM_SearchResultType* MatchSearchResultType(gchar *readlineResult, RFM_ChildAttribs *childattribs);
 static void set_pagesize_for_searchresultview(const char *pagesize);
 static void cmdPagesize(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
-static void writeSearchResultIntoFD_in_gtk_thread(gint fd);
+static void writeSearchResultIntoFD_in_gtk_thread(gint fd, gboolean exportFilePathOnly);
 static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, gboolean from_stdin_readline, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *childAttribs);
 /******Search Result related definitions end*********/
 /****************************************************/
@@ -3655,6 +3655,9 @@ static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResult
 
 	    childAttribs->RunCmd = cmd_interpretor_pointer->cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE);
 	    childAttribs->stdIn_fd = -1; //set to non-zero, and will be set to a valid fd by g_spawn_async_with_pipes
+
+            gboolean export_filepath_only = (childAttribs->customCallBackFunc == InIconView);
+            //InIconview 本来是作为showCondition函数，用来控制文件集合操作上下文菜单项只在IconView显示的，以便在导出当前查询结果的时候只导出文件路径列。但用下来发觉总是要切换到Iconview操作麻烦，又不想在config.h定义里面为文件菜单定义扩展出额外的属性列，就把InIconView函数放在func列作为标志使用，func列在file_menu_exec 函数中会被赋值给childAttribs->customCallBackFunc. 下面一句覆盖掉前先把标志转移到 export_filepath_only. 也许把这个InIconView函数名改为export_filepath_only函数更好，保留InIconview名字是考虑到也许将来别的地方会用到这个函数 
 	    childAttribs->customCallBackFunc = from_stdin_readline ? g_spawn_async_callback_to_new_readline_thread : ( SearchResultTypePointer? update_SearchResultFileNameList_and_refresh_store : NULL); //如果不是从readline获取的命令，callback里面就不能包含new readline，否则会超过一个readline线程在运行.
 	    if (SearchResultTypePointer) {
               childAttribs->g_idle_add_once_to_run_CallBackFunc = TRUE; //TODO：目前函数是在 gtk main thread 运行的，所以这一行应该可以不要，加一下避免以后改动当前函数运行环境导致出错
@@ -3670,7 +3673,7 @@ static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResult
 		}
 		readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);//SearchResultAsInput情况下，g_spawn 失败,（命令根本就没执行，比如命令没找到），从这里新建readline
 	    } else {
-		writeSearchResultIntoFD_in_gtk_thread(childAttribs->stdIn_fd);
+	        writeSearchResultIntoFD_in_gtk_thread(childAttribs->stdIn_fd,export_filepath_only);
 		add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
 	    }
 }
@@ -3687,7 +3690,7 @@ static void g_spawn_async_callback_to_new_readline_thread(RFM_ChildAttribs *chil
   readlineThread=g_thread_new("readline", readlineInSeperateThread, NULL);// SearchResultAsInput情况下，命令执行成功，从这里新建 readline;  这种情况下,新的readlineThread下不会再运行exec_stdin_command, 所以命令参数直接传NULL过去就可以了
 }
 
-static void writeSearchResultIntoFD_in_gtk_thread(gint fd){
+static void writeSearchResultIntoFD_in_gtk_thread(gint fd,gboolean exportFilePathOnly){
   g_debug("writeSearchResultIntoFD(%d)",fd);
   if (SearchResultViewInsteadOfDirectoryView){
     GList* columns=NULL;
@@ -3696,7 +3699,7 @@ static void writeSearchResultIntoFD_in_gtk_thread(gint fd){
     GList *stdin_cmd_selection_list = get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
     if (stdin_cmd_selection_list) selectedListElement=g_list_first(stdin_cmd_selection_list);
 
-    if (treeview){
+    if (treeview && !exportFilePathOnly){
     gboolean firstColumn=TRUE;
     for (size_t i=0; i<TREEVIEW_COLUMNS_array_size;i++){
       if (TREEVIEW_COLUMNS[i].Show && TREEVIEW_COLUMNS[i].enumCol!=NUM_COLS && (TREEVIEW_COLUMNS[i].gtkCol||no_window)){
@@ -3714,7 +3717,7 @@ static void writeSearchResultIntoFD_in_gtk_thread(gint fd){
 	gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, selectedListElement->data)
 	:gtk_tree_model_get_iter_first (GTK_TREE_MODEL(store), &iter)){
     do{
-    if (treeview){
+    if (treeview && !exportFilePathOnly){
         if (columns){
 	GList* c=columns;
 	do{
@@ -3739,9 +3742,10 @@ static void writeSearchResultIntoFD_in_gtk_thread(gint fd){
 	}while((c=g_list_next(c)));
     }else g_warning("no column shown in view!");
 
-    }else{//icon view
+    }else{//exportFilePathOnly
       GValue val = G_VALUE_INIT;
-      gtk_tree_model_get_value(GTK_TREE_MODEL(store), &iter, COL_ICONVIEW_MARKUP, &val);
+      if (treeview || exportFilePathOnly) gtk_tree_model_get_value(GTK_TREE_MODEL(store), &iter, COL_FULL_PATH, &val);
+      else gtk_tree_model_get_value(GTK_TREE_MODEL(store), &iter, COL_ICONVIEW_MARKUP, &val);
       dprintf(fd, "%s\n", g_value_get_string(&val));
       g_value_unset(&val);
     }
@@ -4606,7 +4610,7 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 #endif
             childAttribs->readlineResultString=g_string_new(strdup(readlineResult));
 
-            if (!SearchResultAsInput || (SearchResultAsInput && !treeview)) combine_command_with_selected_files_and_setenv(childAttribs->readlineResultString, stdin_cmd_ending_space,&(childAttribs->env));
+            combine_command_with_selected_files_and_setenv(childAttribs->readlineResultString, stdin_cmd_ending_space,&(childAttribs->env));
             
 #ifdef RFM_AddOn
 	    if (!execStdinCmdInNewVT && !(!from_stdin_readline && execCmdInNewVT) || Addon_Prompt){ //Addon_Prompt不为空实际上就相当于 current_stdin_cmd_interpretor_pointer == AI_Model
@@ -4859,7 +4863,7 @@ static int setup(RFM_ctx *rfmCtx)
    set_rfm_curPath(initDir);
 
    ReadFromPipeStdinIfAny(pipefd);
-   if (no_window) writeSearchResultIntoFD_in_gtk_thread(STDOUT_FILENO);
+   if (no_window) writeSearchResultIntoFD_in_gtk_thread(STDOUT_FILENO, FALSE);
   
    if (!no_window && showHelpOnStart && startWithTerm() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)) stdin_command_help(NULL,NULL);
    refresh_store(rfmCtx);
