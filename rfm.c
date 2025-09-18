@@ -3719,6 +3719,7 @@ static void writeSearchResultIntoFD_in_gtk_thread(gint fd,gboolean exportFilePat
 	gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, selectedListElement->data)
 	:gtk_tree_model_get_iter_first (GTK_TREE_MODEL(store), &iter)){
     do{
+
     if (treeview && !exportFilePathOnly){
         if (columns){
 	GList* c=columns;
@@ -3744,10 +3745,12 @@ static void writeSearchResultIntoFD_in_gtk_thread(gint fd,gboolean exportFilePat
 	}while((c=g_list_next(c)));
     }else g_warning("no column shown in view!");
 
+
     }else{// !treeview || exportFilePathOnly
       GValue val = G_VALUE_INIT;
       if (treeview || exportFilePathOnly) gtk_tree_model_get_value(GTK_TREE_MODEL(store), &iter, COL_FULL_PATH, &val);
       else gtk_tree_model_get_value(GTK_TREE_MODEL(store), &iter, COL_ICONVIEW_MARKUP, &val);
+
       dprintf(fd, "%s\n", g_value_get_string(&val));
       g_value_unset(&val);
     }
