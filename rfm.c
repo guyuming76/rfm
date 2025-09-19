@@ -1,4 +1,4 @@
-/* RFM - Rod's File Manager,  enhancements made by guyuming
+/* RFM - Rod's File Manager,  enhancements made by guyuming, and license changed from MIT to GPL-v3 by guyuming
  *
  * See LICENSE file for copyright and license details.
  *
