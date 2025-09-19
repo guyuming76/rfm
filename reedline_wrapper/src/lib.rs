@@ -66,13 +66,11 @@ fn context_for_cursor(line: &str, pos: usize, completion_start_pos: &mut usize) 
 
 // 定义 C 函数指针类型  
 type GetCompletionFn = extern "C" fn(*const i8, *mut i32) -> *mut *mut i8;
-type EscHandler = extern "C" fn();
 //type GNUFileCompleteWrapperFn = extern "C" fn(*const i8) -> *mut *mut i8;
 // 添加 repr(C) 确保内存布局与C兼容
 #[repr(C)]
 pub struct rfmFunctions {
     pub get_completion_fn:GetCompletionFn,
-    pub esc_handler:EscHandler,
     // 其他函数...
 }
 
@@ -306,20 +304,13 @@ pub extern "C" fn reedline_readline(
    assert!(!handle.is_null());
    let handle = unsafe { &mut *handle };
    let prompt_str = unsafe { CStr::from_ptr(prompt).to_string_lossy() };
-   let rfm_functions = unsafe { &*rfm_functions };
+   //let rfm_functions = unsafe { &*rfm_functions };
    // 创建符合 Prompt trait 的 DefaultPrompt 对象
    let left_prompt = DefaultPromptSegment::Basic(prompt_str.to_string());
    let prompt_obj = DefaultPrompt::new(left_prompt, DefaultPromptSegment::Empty);
 
    match handle.inner.read_line(&prompt_obj) {
-        Ok(Signal::Success(line)) => {
-            if line.to_lowercase() == "esc" || line.to_lowercase() == "e" { //这个其实也可以用一个rfm builtin command 来实现的
-                ((*rfm_functions).esc_handler)();
-                CString::new("").unwrap().into_raw()
-            }else{
-                CString::new(line).unwrap().into_raw()
-            }
-        }
+        Ok(Signal::Success(line)) => CString::new(line).unwrap().into_raw(),
         Ok(Signal::CtrlD | Signal::CtrlC) => ptr::null_mut(), // 处理Ctrl-C/Ctrl-D
         Err(e) => {
             warn!("Reedline error: {}", e);

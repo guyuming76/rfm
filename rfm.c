@@ -576,6 +576,7 @@ static void show_hide_file_menu_item(GtkWidget ***menuitems, RFM_MenuItem menuit
 
 static gboolean mountpoint_mounted(RFM_FileAttributes *fileAttributes);
 static gboolean mountpoint_unmounted(RFM_FileAttributes *fileAttributes);
+static void handle_escape_key();
 
 #include "config.h"
 
@@ -586,8 +587,6 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx);
 void add_toolbar_buttons(GtkWidget ***buttons, const RFM_ToolButton button_definitions[], const size_t size);
 static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixbufs, RFM_ctx *rfmCtx);
 static void refresh_toolbar();
-static void handle_escape_key();
-static void g_idle_add_once_escape_key(){ g_idle_add_once(handle_escape_key,NULL); }
 static gboolean view_key_press(GtkWidget *widget, GdkEvent *event,RFM_ctx *rfmCtx);
 static gboolean view_button_press(GtkWidget *widget, GdkEvent *event,RFM_ctx *rfmCtx);
 static gboolean on_query_tooltip(GtkWidget *widget, gint x, gint y, gboolean keyboard_mode, GtkTooltip *tooltip, gpointer user_data);
@@ -4852,10 +4851,11 @@ static int setup(RFM_ctx *rfmCtx)
    rl_variable_bind("mark-directories", "on");
    rl_bind_keyseq("\e[A", rl_history_search_backward);
    rl_bind_keyseq("\e[B", rl_history_search_forward);
+   // 绑定Alt+E（Meta-E）到自定义函数
+   rl_bind_keyseq("\M-e", handle_escape_key);
 #endif
 #ifdef reedline
   functionPointersForReedlineWrapper.get_completion_fn = rfm_filename_completion;
-  functionPointersForReedlineWrapper.esc_handler = g_idle_add_once_escape_key;
   reedline_handle = reedline_create(&functionPointersForReedlineWrapper);
   if (!reedline_handle) g_error("reedline_create return NULL handle");
 #endif

@@ -94,6 +94,7 @@
 "    cd不加空格  单独cd命令不接参数或空格输出当前所在目录,注意和pwd命令区别\n"
 #define BuiltInCmd_help                        "help"
 #define BuiltInCmd_help_Description            "显示命令帮助,加命令名参数则仅显示这条命令的帮助"
+#define BuiltInCmd_ESC_Description	       "取消当前文件选中;或在命令窗口使用组合键 Alt + e ;效果相当于在图形界面使用ESC键"
 
 #ifdef reedline
 	#define reedline_specific_help "    提示符后的'〉'表示当前用reedline库读取命令输入，支持多行编辑，ALT+Enter可以用来换行.\n"

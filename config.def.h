@@ -207,6 +207,7 @@ static RFM_builtinCMD builtinCMD[] = {
 	{BuiltInCmd_glog,                       cmd_glog,                               BuiltInCmd_glog_Description},
 	{BuiltInCmd_showcolumn,                 cmd_showcolumn,                         BuiltInCmd_showcolumn_Description},
 	{BuiltInCmd_setenv,                     cmd_setenv,                             BuiltInCmd_setenv_Description},
+	{"esc",                                 handle_escape_key,                      BuiltInCmd_ESC_Description},
 };
 
 /* Menu Items
@@ -428,12 +429,14 @@ static gboolean ignored_filename(const gchar *name){
 
 static RFM_cmd_regex_rule regex_rules[] = {
 // pattern                          replacement                          action                           pattern_compiled
-  { "^ \\+",                        "",                                  set_stdin_cmd_leading_space_true,NULL},
+  { "^ \\+",                        "",                                  set_stdin_cmd_leading_space_true,NULL}, //这条规则会删除开始的空格
   { "^[S|s]earch[R|r]esult \\+|",   RFM_SEARCH_RESULT_AS_INPUT_PREFIX,   NULL,NULL },// \\+ 中第一个\是字符串里面用来escape第二个\的,\+是basic regular expression 要求的,相当于extended regular express 里面的+,表示一个或多个
   { "^[S|s]how[C|c]olumns* ",       "showcolumn ",                       NULL,NULL },
   { "^[S|s]how[C|c]olumns*$",       "showcolumn",                        NULL,NULL },
   { "^[E|e]build[S|s]amples*$",     "locate .ebuild|xargs grep inherit|grep cmake|cut -d: -f1 |xargs grep CMAKE_CXX_FLAGS", NULL,NULL},
   { "fzf",                          "fzf --multi --bind ctrl-a:select-all,ctrl-d:deselect-all",NULL,NULL },
+  { "^[E|e][S|s][C|c]$",            "esc",                               NULL,NULL},
+  { "^[E|e]$",                      "esc",                               NULL,NULL},
 };
 
 //TODO: 增加一个类似前面定义 alias 的功能，或直接在 alias 功能里扩展， 看能不能结合 readline 库，输入一个alias, 直接替换成一个常用命令，可以编辑再执行，而不是向前面直接就给执行了但不显示真实命令

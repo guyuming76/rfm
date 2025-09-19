@@ -92,6 +92,7 @@
 "                cd without parameter or space just output current directory, which can be different from the output of pwd command.\n"
 #define BuiltInCmd_help                        "help"
 #define BuiltInCmd_help_Description            "show this command help, add command name as parameter to show help for that command only"
+#define BuiltInCmd_ESC_Description             "Unselect currently selected files; or press Alt + e in term window; the same effect as ESC in GUI"
 
 #ifdef reedline
 	#define reedline_specific_help "    The '〉' after the prompt shows that input is read with the reedline library，which supports multiline edit，and ALT+Enter can be used for new line.\n"

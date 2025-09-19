@@ -10,7 +10,6 @@ typedef const char** (*GetCompletionFn)(const char* input, int *count);
 // 定义与Rust中RfmFunctions匹配的结构体
 typedef struct {
     GetCompletionFn get_completion_fn;
-    void (*esc_handler)();
     // 其他函数指针可以在这里添加
 } rfmFunctions;
 
