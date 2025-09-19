@@ -309,7 +309,10 @@ endif
 
 build_reedline: ${LIBNAME}
 	@echo "Building reedline_wrapper..."
-	@cd reedline_wrapper && RFM_VERSION=${VERSION} && cargo build && cd ..
+	@echo "Creating symbolic link for librfm.so..."
+	# 在项目根目录创建 librfm.so 指向实际文件
+	# 之前报错了,链接器在编译 Rust 项目时找不到 `librfm.so` 库文件，尽管 `librfm.so.2.80.0` 文件存在于上级目录中。这是因为链接器默认查找 `librfm.so`（不带版本号），但实际文件带有版本号。解决方案是在编译 Rust 项目前，在上级目录中创建符号链接 `librfm.so` 指向 `librfm.so.2.80.0`。
+	@cd reedline_wrapper && ln -sf ${LIBNAME} librfm.so && cargo build && cd ..
 	@echo "reedline_wrapper built successfully."
 	@cd rfmReedline && cargo build && cd ..
 	@echo "rfmReedline built successfully."
