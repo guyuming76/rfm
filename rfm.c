@@ -152,7 +152,8 @@ static char *rfm_historyDirectory_FileLocation;//used by script rfmReadlineWithS
 static gboolean showHelpOnStart = TRUE;
 static char* InheritedPrompt = "";
 #ifdef reedline
-static ReedlineHandle* reedline_handle = NULL;
+static ReedlineHandle *reedline_handle = NULL;
+static rfmFunctions functionPointersForReedlineWrapper;
 #endif
 
 #ifdef RFM_AddOn
@@ -4849,7 +4850,8 @@ static int setup(RFM_ctx *rfmCtx)
    rl_bind_keyseq("\e[B", rl_history_search_forward);
 #endif
 #ifdef reedline
-  reedline_handle = reedline_create(rfm_filename_completion);
+  functionPointersForReedlineWrapper.get_completion_fn = rfm_filename_completion;
+  reedline_handle = reedline_create(&functionPointersForReedlineWrapper);
   if (!reedline_handle) g_error("reedline_create return NULL handle");
 #endif
 

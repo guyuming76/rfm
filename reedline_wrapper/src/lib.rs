@@ -67,6 +67,12 @@ fn context_for_cursor(line: &str, pos: usize, completion_start_pos: &mut usize) 
 // 定义 C 函数指针类型  
 type GetCompletionFn = extern "C" fn(*const i8, *mut i32) -> *mut *mut i8;
 //type GNUFileCompleteWrapperFn = extern "C" fn(*const i8) -> *mut *mut i8;
+// 添加 repr(C) 确保内存布局与C兼容
+#[repr(C)]
+pub struct rfmFunctions {
+    pub get_completion_fn:GetCompletionFn,
+    // 其他函数...
+}
 
 // c 语言tab补全器，补全rfm当前选中文件
 pub struct CCompleter {
@@ -196,7 +202,7 @@ pub struct ReedlineHandle {
 }
 
 #[no_mangle]
-pub extern "C" fn reedline_create(get_completion_fn: GetCompletionFn) -> *mut ReedlineHandle {
+pub extern "C" fn reedline_create(rfm_functions: *const rfmFunctions) -> *mut ReedlineHandle {
     // 只需初始化一次
     static INIT: std::sync::Once = std::sync::Once::new();
     INIT.call_once(|| {
@@ -208,6 +214,17 @@ pub extern "C" fn reedline_create(get_completion_fn: GetCompletionFn) -> *mut Re
         // 如果觉得debug!输出的内容显示效果像是只包含换行符，不包含回车符，可以用上面代码定制
         env_logger::init();
     });
+
+    // 检查指针是否为空
+    if rfm_functions.is_null() {
+        return ptr::null_mut();
+    }
+    let rfm_functions = unsafe { &*rfm_functions };
+// 这段代码let f = unsafe { &*f };在Rust中用于解引用从C语言传入的原始指针并创建安全引用，具体解析如下：
+//     ‌*f‌：首先解引用原始指针f（假设f是*const T或*mut T类型），这会访问指针指向的内存数据。由于Rust无法保证原始指针的安全性（可能为空或悬垂），此操作必须包裹在unsafe块中。
+//     ‌&*f‌：解引用后，通过&获取数据的不可变引用（类型为&T）。此时Rust会将其视为安全引用，后续使用时受借用检查器保护。
+//     ‌unsafe块‌：整个操作需在unsafe上下文中执行，因为直接解引用原始指针可能引发未定义行为（如指针无效或数据竞争）。开发者需自行确保指针有效性
+    
     // 创建自定义键绑定
     let mut keybindings = default_emacs_keybindings();
     
@@ -252,7 +269,7 @@ pub extern "C" fn reedline_create(get_completion_fn: GetCompletionFn) -> *mut Re
     // 创建 Reedline 引擎并配置
     let engine = match history_result {
         Ok(history) => Reedline::create().use_bracketed_paste(true)
-					.with_completer(Box::new(CombinedCompleter::new(CCompleter::new(get_completion_fn, None)))) // 使用组合补全器
+	    .with_completer(Box::new(CombinedCompleter::new(CCompleter::new((*rfm_functions).get_completion_fn, None)))) // 使用组合补全器
 					.with_menu(ReedlineMenu::EngineCompleter(completion_menu))
 					.with_history(Box::new(history))
         				.with_validator(Box::new(AlwaysIncompleteValidator)) // 使用自定义验证器
@@ -261,7 +278,7 @@ pub extern "C" fn reedline_create(get_completion_fn: GetCompletionFn) -> *mut Re
 					.with_hinter(Box::new(CwdAwareHinter::default().with_style(Style::new().italic().fg(Color::LightGray)).with_min_chars(2))),
         Err(e) => {
             warn!("History load error: {}", e);
-            Reedline::create().with_completer(Box::new(CombinedCompleter::new(CCompleter::new(get_completion_fn, None)))) // 使用组合补全器
+            Reedline::create().with_completer(Box::new(CombinedCompleter::new(CCompleter::new((*rfm_functions).get_completion_fn, None)))) // 使用组合补全器
 					.with_menu(ReedlineMenu::EngineCompleter(completion_menu))
         				.with_validator(Box::new(AlwaysIncompleteValidator)) // 使用自定义验证器
         				.with_edit_mode(Box::new(Emacs::new(keybindings)))  // 使用自定义键绑定
