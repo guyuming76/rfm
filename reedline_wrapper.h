@@ -10,13 +10,14 @@ typedef const char** (*GetCompletionFn)(const char* input, int *count);
 // 定义与Rust中RfmFunctions匹配的结构体
 typedef struct {
     GetCompletionFn get_completion_fn;
+    void (*esc_handler)();
     // 其他函数指针可以在这里添加
 } rfmFunctions;
 
 // 创建Reedline实例
 ReedlineHandle* reedline_create(const rfmFunctions *);
 // 读取一行输入 (返回的字符串需用 string_free 释放)
-char* reedline_readline(ReedlineHandle* handle, const char* prompt);
+char* reedline_readline(ReedlineHandle* handle, const char* prompt, const rfmFunctions *);
 // 释放字符串内存
 void string_free(char* s);
 // 销毁Reedline实例
