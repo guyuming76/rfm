@@ -334,6 +334,7 @@ static gboolean ExtColumnHashTable_keep_during_refresh[NUM_Ext_Columns + 1];
 // , instead of from a directory
 static unsigned int SearchResultViewInsteadOfDirectoryView=0;
 static gboolean InSearchResultView(){ return SearchResultViewInsteadOfDirectoryView; }//c 语言有没有啥办法把变量当作函数调用或把函数当变量引用?这样我就用不着为了在ShowCondition里应用变量定义一个函数了
+static gboolean InDirectoryView(){return SearchResultViewInsteadOfDirectoryView^1;}
 static gboolean In_refresh_store=FALSE;
 static gboolean insert_fileAttributes_into_store_one_by_one=FALSE;
 static guint rfm_readDirSheduler=0;
@@ -543,6 +544,7 @@ static void copy_curPath_to_clipboard(GtkWidget *menuitem, gpointer user_data);
 static void refresh_view(RFM_ctx *rfmCtx, gboolean switch_view);
 static void switch_iconview_treeview(RFM_ctx *rfmCtx);
 static gboolean InIconView(){ return !treeview; }
+static gboolean InTreeView(){ return treeview; }
 static void Switch_SearchResultView_DirectoryView(GtkToolItem *item,RFM_ctx *rfmCtx);
 /* callback function for toolbar buttons. Its possible to make function such as home_clicked as callback directly, instead of use toolbar_button_exec as a wrapper. However,i would add GtkToolItems as first parameter for so many different callback functions then. */
 /* since g_spawn_wrapper will free child_attribs, and we don't want the childAttribs object associated with UI interface item to be freed, we duplicate childAttribs here. */
@@ -3742,7 +3744,7 @@ static void writeSearchResultIntoFD_in_gtk_thread(gint fd,gboolean exportFilePat
 	}while((c=g_list_next(c)));
     }else g_warning("no column shown in view!");
 
-    }else{//exportFilePathOnly
+    }else{// !treeview || exportFilePathOnly
       GValue val = G_VALUE_INIT;
       if (treeview || exportFilePathOnly) gtk_tree_model_get_value(GTK_TREE_MODEL(store), &iter, COL_FULL_PATH, &val);
       else gtk_tree_model_get_value(GTK_TREE_MODEL(store), &iter, COL_ICONVIEW_MARKUP, &val);
