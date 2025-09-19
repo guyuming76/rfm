@@ -61,7 +61,7 @@ endif
 CC = gcc
 
 ifneq ($(RFM_FILE_CHOOSER),)
-all: options ${LIBNAME} rfm cmark_tools
+all: options rfm ${LIBNAME} cmark_tools
 else
 all: options rfm cmark_tools
 endif
@@ -84,7 +84,7 @@ options:
 
 ifeq (${READLINE_LIB},-Dreedline)
 ifneq ($(CalledByEbuild),YES)
-rfm: build_reedline
+rfm.o: build_reedline
 endif
 endif
 
@@ -105,7 +105,7 @@ rfm: rfm.o
 ifneq ($(RFM_FILE_CHOOSER),)
 ${LIBNAME}: rfm.o
 	@echo CC -o $@
-	@${CC} -o $@ rfm.o ${LDFLAGS} -shared -Wl,-soname=${SONAME},-E,--export-dynamic
+	@${CC} -o $@ rfm.o ${LDFLAGS} -shared -Wl,-soname=${SONAME},-E
 #	@${CC} -o $@ ${OBJ} ${LDFLAGS} -shared -Wl,-E,-e,main
 # i tried to use librfm.so as both lib and exec and set entry point for librfm.so, however, i got segfault after launching librfm.so
 # https://unix.stackexchange.com/questions/223385/why-and-how-are-some-shared-libraries-runnable-as-though-they-are-executables
@@ -307,12 +307,9 @@ ifneq ($(CalledByEbuild),YES)
 	ldconfig
 endif
 
-build_reedline: ${LIBNAME}
+build_reedline:
 	@echo "Building reedline_wrapper..."
-	@echo "Creating symbolic link for librfm.so..."
-	# 在项目根目录创建 librfm.so 指向实际文件
-	# 之前报错了,链接器在编译 Rust 项目时找不到 `librfm.so` 库文件，尽管 `librfm.so.2.80.0` 文件存在于上级目录中。这是因为链接器默认查找 `librfm.so`（不带版本号），但实际文件带有版本号。解决方案是在编译 Rust 项目前，在上级目录中创建符号链接 `librfm.so` 指向 `librfm.so.2.80.0`。
-	@cd reedline_wrapper && ln -sf ${LIBNAME} librfm.so && cargo build && cd ..
+	@cd reedline_wrapper && cargo build && cd ..
 	@echo "reedline_wrapper built successfully."
 	@cd rfmReedline && cargo build && cd ..
 	@echo "rfmReedline built successfully."

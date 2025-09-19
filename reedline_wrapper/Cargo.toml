@@ -6,9 +6,6 @@ edition = "2021"
 [lib]
 crate-type = ["cdylib"]  # 编译为C兼容的动态库
 
-[build-dependencies]
-cc = "1.0"  # 用于编译 C 代码（如果需要），但这里主要用于链接
-
 [dependencies]
 reedline = { git = "https://gitee.com/guyuming76/reedline.git", branch = "guyuming", features = ["bashisms"] }   #使用最新版本，bash兼容扩展
 libc = "0.2"            # 提供C类型支持
