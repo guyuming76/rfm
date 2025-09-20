@@ -4853,6 +4853,8 @@ static int setup(RFM_ctx *rfmCtx)
    rl_bind_keyseq("\e[B", rl_history_search_forward);
    // 绑定Alt+E（Meta-E）到自定义函数
    rl_bind_keyseq("\M-e", handle_escape_key);
+   // 绑定Alt+向上箭头
+   rl_bind_keyseq("\e[1;3A", up_clicked);
 #endif
 #ifdef reedline
   functionPointersForReedlineWrapper.get_completion_fn = rfm_filename_completion;

@@ -4,7 +4,6 @@
 #define MSG_cannot_enter_deleted_directory "\n\nPlease show content of deleted directory with the 'git ls-files' in toolbar"
 #define PageUp  "PageUp"
 #define PageDown  "PageDown"
-#define Up "Up"
 #define Previous "Back"
 #define Next "Forward"
 #define SwitchView "List/Icon"
@@ -93,6 +92,8 @@
 #define BuiltInCmd_help                        "help"
 #define BuiltInCmd_help_Description            "show this command help, add command name as parameter to show help for that command only"
 #define BuiltInCmd_ESC_Description             "Unselect currently selected files; or press Alt + e in term window; the same effect as ESC in GUI"
+#define Up "Up"
+#define BuiltInCmd_Up_Description              "go to parent directory，short cut key: ALT + Up arrow（MOD1 usually is ALT）"
 
 #ifdef reedline
 	#define reedline_specific_help "    The '〉' after the prompt shows that input is read with the reedline library，which supports multiline edit，and ALT+Enter can be used for new line.\n"

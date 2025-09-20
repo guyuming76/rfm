@@ -4,7 +4,6 @@
 #define MSG_cannot_enter_deleted_directory "\n\n请使用工具栏上'git ls-files'命令查看已删除的目录内容"
 #define PageUp  "上葉"
 #define PageDown  "下葉"
-#define Up "父"
 #define Previous "后退"
 #define Next "前进"
 #define SwitchView "表/图"
@@ -95,6 +94,8 @@
 #define BuiltInCmd_help                        "help"
 #define BuiltInCmd_help_Description            "显示命令帮助,加命令名参数则仅显示这条命令的帮助"
 #define BuiltInCmd_ESC_Description	       "取消当前文件选中;或在命令窗口使用组合键 Alt + e ;效果相当于在图形界面使用ESC键"
+#define Up "父"
+#define BuiltInCmd_Up_Description              "进入上级目录，可使用组合键 ALT+向上箭头（MOD1通常就是ALT键）"
 
 #ifdef reedline
 	#define reedline_specific_help "    提示符后的'〉'表示当前用reedline库读取命令输入，支持多行编辑，ALT+Enter可以用来换行.\n"
