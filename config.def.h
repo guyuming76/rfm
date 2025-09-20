@@ -209,6 +209,8 @@ static RFM_builtinCMD builtinCMD[] = {
 	{BuiltInCmd_setenv,                     cmd_setenv,                             BuiltInCmd_setenv_Description},
 	{"esc",                                 handle_escape_key,                      BuiltInCmd_ESC_Description},
 	{ Up,					up_clicked,				BuiltInCmd_Up_Description},
+        {Previous,                             prev_path_clicked,                       BuiltInCmd_Previous_Description},
+        {Next,                                 next_path_clicked,                       BuiltInCmd_Next_Description},
 };
 
 /* Menu Items
@@ -325,8 +327,8 @@ static RFM_ToolButton tool_buttons[] = {
    { "git ls-files", NULL,                      NULL,                   git_ls_files,      TRUE,           TRUE,      0,                      NULL,                   show_gitMenus },
 #endif
    { Up,             "go-up",                   up_clicked,             NULL,              FALSE,          TRUE,      GDK_KEY_Up,            BuiltInCmd_Up_Description,NULL},
-   { Previous,       "go-previous",             prev_path_clicked,      NULL,              FALSE,          TRUE,      GDK_KEY_Left,          "MOD1(usually ALT)+Left",NULL},
-   { Next,           "go-next",                 next_path_clicked,      NULL,              FALSE,          TRUE,      GDK_KEY_Right,         "MOD1(usually ALT)+Right",NULL},
+   { Previous,       "go-previous",             prev_path_clicked,      NULL,              FALSE,          TRUE,      GDK_KEY_Left,          BuiltInCmd_Previous_Description,NULL},
+   { Next,           "go-next",                 next_path_clicked,      NULL,              FALSE,          TRUE,      GDK_KEY_Right,         BuiltInCmd_Next_Description,NULL},
    { "Refresh",      "view-refresh",            refresh_store,          NULL,              TRUE,           TRUE,      0,                      NULL,                   NULL},
    { FIND_FILES,     NULL,                      NULL,                   find_files,        FALSE,          TRUE,      0,                      NULL,                   NULL},
    { "Share",        NULL,                      NULL,                   share_dir,         FALSE,          TRUE,      0,                      "share directory",      NULL},
@@ -439,6 +441,8 @@ static RFM_cmd_regex_rule regex_rules[] = {
   { "^[E|e][S|s][C|c]$",            "esc",                               NULL,NULL},
   { "^[E|e]$",                      "esc",                               NULL,NULL},
   { "^[U|u]$",			    Up,                                  NULL,NULL},
+  { "^[L|l]$",                      Previous,                            NULL,NULL },
+  { "^[R|r]$",                      Next,                                NULL,NULL },
 };
 
 //TODO: 增加一个类似前面定义 alias 的功能，或直接在 alias 功能里扩展， 看能不能结合 readline 库，输入一个alias, 直接替换成一个常用命令，可以编辑再执行，而不是向前面直接就给执行了但不显示真实命令

@@ -96,7 +96,8 @@
 #define BuiltInCmd_ESC_Description	       "取消当前文件选中;或在命令窗口使用组合键 Alt + e ;效果相当于在图形界面使用ESC键"
 #define Up "父"
 #define BuiltInCmd_Up_Description              "进入上级目录，可使用组合键 ALT+向上箭头（MOD1通常就是ALT键）"
-
+#define BuiltInCmd_Previous_Description        "后退到历史路径，快捷键：ALT+左箭头"
+#define BuiltInCmd_Next_Description            "前进到历史路径，快捷键：ALT+右箭头"
 #ifdef reedline
 	#define reedline_specific_help "    提示符后的'〉'表示当前用reedline库读取命令输入，支持多行编辑，ALT+Enter可以用来换行.\n"
 #else

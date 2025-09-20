@@ -94,6 +94,8 @@
 #define BuiltInCmd_ESC_Description             "Unselect currently selected files; or press Alt + e in term window; the same effect as ESC in GUI"
 #define Up "Up"
 #define BuiltInCmd_Up_Description              "go to parent directory，short cut key: ALT + Up arrow（MOD1 usually is ALT）"
+#define BuiltInCmd_Previous_Description        "Navigate to previous path，shortcut: ALT+Left arrow"
+#define BuiltInCmd_Next_Description            "Navigate to next path，shortcut: ALT+Right arrow"
 
 #ifdef reedline
 	#define reedline_specific_help "    The '〉' after the prompt shows that input is read with the reedline library，which supports multiline edit，and ALT+Enter can be used for new line.\n"
