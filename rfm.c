@@ -4851,12 +4851,6 @@ static int setup(RFM_ctx *rfmCtx)
    rl_variable_bind("mark-directories", "on");
    rl_bind_keyseq("\e[A", rl_history_search_backward);
    rl_bind_keyseq("\e[B", rl_history_search_forward);
-   // 绑定Alt+E（Meta-E）到自定义函数
-   rl_bind_keyseq("\M-e", handle_escape_key);
-   // 绑定Alt+向上箭头
-   rl_bind_keyseq("\e[1;3A", up_clicked);
-   rl_bind_keyseq("\e[1;3D", prev_path_clicked);  // ALT+Left
-   rl_bind_keyseq("\e[1;3C", next_path_clicked);  // ALT+Right
 #endif
 #ifdef reedline
   functionPointersForReedlineWrapper.get_completion_fn = rfm_filename_completion;
