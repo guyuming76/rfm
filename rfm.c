@@ -161,8 +161,11 @@ static gchar* Addon_Prompt = NULL;
 static NO_FREE char *AddOnStatus(guint fileAttributeId);
 static void unload_addon_filemenu_func();
 #endif
-static char **rfm_filename_completion(const char *text, int *count);
+#ifdef reedline
+static GPtrArray *rfm_filename_completion(const char *text, int *count);
+#endif
 #ifdef GNU_readline
+static char **rfm_filename_completion(const char *text, int *count);
 static char** gnu_readline_completion(const char *text, int start, int end);
 static char** (*OLD_rl_attempted_completion_function)(const char *text, int start, int end);
 #endif
@@ -193,7 +196,7 @@ static void cmd_glog(wordexp_t *parsed_msg, GString *readline_result_string_afte
 static void cmd_setenv(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
 #ifdef reedline
 static gboolean In_rfm_editor = FALSE;
-static char **rfm_editor_completion_based_on_search_result(char *text);
+static GPtrArray* rfm_editor_completion_based_on_search_result(char *text);
 static GPtrArray* rfm_completion_based_on_dimensions(char* text);
 static void rfmEdit(gchar* filepath);
 static gboolean parse_rfmEdit(GString *readline_result_string_after_file_name_substitution,RFM_ChildAttribs *childAttribs);
@@ -2355,6 +2358,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
    if(!no_window){
    gtk_widget_show_all(window);
    refresh_toolbar();
+   g_idle_add_once(refresh_DimensionPropertiesHashTable, NULL);
    }
 }
 
@@ -4246,18 +4250,16 @@ static void cmd_setenv(wordexp_t *parsed_msg, GString *readline_result_string_af
 }
 
 #ifdef reedline
-static char **rfm_editor_completion_based_on_search_result(char *text) {
-  char ** ret = NULL;
+static GPtrArray* rfm_editor_completion_based_on_search_result(char *text) {
+  GPtrArray* ret = g_ptr_array_new();
   int ExtColumnHashTable_column_index_as_ret_row_index = 0;
   int ret_row_index=0;
   if (SearchResultViewInsteadOfDirectoryView){
     	    for(size_t i=0;i<TREEVIEW_COLUMNS_array_size;i++)
 	      if (TREEVIEW_COLUMNS[i].enumCol<NUM_COLS && TREEVIEW_COLUMNS[i].Show && TREEVIEW_COLUMNS[i].gtkCol && TREEVIEW_COLUMNS[i].ValueFunc==getExtColumnValueFromHashTable){
 		if (text==NULL || g_strcmp0(text, "")==0){//输入上下文为空时，把查询结果列名作为补全内容
-		  if (ret==NULL) ret=calloc(TREEVIEW_COLUMNS_array_size + 1, sizeof(char*));
-		  ret[ExtColumnHashTable_column_index_as_ret_row_index] = g_strdup_printf("|%s",TREEVIEW_COLUMNS[i].title);//因为linux文件名路径中不可以出现|字符，所以返回项中加|前缀以便和路径补全的结果区分，下同
+		  g_ptr_array_add(ret, g_strdup_printf("|%s",TREEVIEW_COLUMNS[i].title));//因为linux文件名路径中不可以出现|字符，所以返回项中加|前缀以便和路径补全的结果区分，下同
                 }else if (strstr(text, TREEVIEW_COLUMNS[i].title) && ExtColumnHashTable[ExtColumnHashTable_column_index_as_ret_row_index]){ //否则，从列名包含在输入上下文内容中的列对应的ExtColumnHashTable中取值
-		  if (ret==NULL) ret=calloc(PageSize_SearchResultView + 1, sizeof(char*));
 		  //if (ItemSelected==1){ //TODO: 如果是选中某行，从此行结果中选ret,而不是从整个column中选.
 		  //}else{
 		    	    GHashTableIter ht_iter;
@@ -4267,10 +4269,10 @@ static char **rfm_editor_completion_based_on_search_result(char *text) {
 	                    while (g_hash_table_iter_next(&ht_iter, &key, &value)){
 			      if (first_line_column_title && strcmp(key,"1")==0) continue;
 			      gboolean already_in_ret = FALSE;
-                              for(int i=ret_row_index-1;i>=0;i--){
-				if (strcmp(ret[i], value)==0) { already_in_ret=TRUE;break; }
+                              for(int i=ret->len-1;i>=0;i--){
+				if (strcmp(g_ptr_array_index(ret, i), value)==0) { already_in_ret=TRUE;break; }
 			      }
-			      if (!already_in_ret) ret[ret_row_index++]=g_strdup_printf("|%s",value);
+			      if (!already_in_ret) g_ptr_array_add(ret,g_strdup_printf("|%s",value));
 			    }
 		  //}
 		}
@@ -4287,7 +4289,7 @@ static GPtrArray* rfm_completion_based_on_dimensions(char* text) {
   gchar *value;
   g_hash_table_iter_init(&ht_iter, DimensionPropertiesHashTable_name_asKey);
   while (g_hash_table_iter_next(&ht_iter, &key, &value)) {
-    if (g_str_has_prefix(key, text)) { g_ptr_array_add(ret, g_str_printf("}%s",key)); }
+    if (strstr(key, text)) { g_ptr_array_add(ret, g_strdup_printf("}%s",key)); }
   }
   return ret;
 }
@@ -4692,7 +4694,12 @@ static void parse_and_exec_cmd_in_gtk_thread (gchar * cmd){
   //rl_callback_handler_install(prompt, readline_callback);
 }
 
+#ifdef GNU_readline
 static char** rfm_filename_completion(const char *text, int *count){
+#endif
+#ifdef reedline
+static GPtrArray* rfm_filename_completion(const char *text, int *count){
+#endif
   if (ItemSelected && (text==NULL || g_strcmp0(text, "")==0)) { //有文件被选中 且 当前光标上下文为空
     char** ret = calloc(2,sizeof(char*));
     g_mutex_lock(&rfm_selection_completion_lock);
@@ -4701,12 +4708,21 @@ static char** rfm_filename_completion(const char *text, int *count){
     g_mutex_unlock(&rfm_selection_completion_lock);
     g_log(RFM_LOG_READLINE,G_LOG_LEVEL_DEBUG,"rfm_filename_completion return %s",ret[0]);
     *count = 1;//TODO:实现多个补全
+#ifdef GNU_readline
     return ret;
+#endif
 #ifdef reedline
+    return g_ptr_array_new_from_array(ret, g_strv_length(ret),NULL,NULL,(GDestroyNotify)g_free); // -1 means ret end with null
   }else { //没有文件被选中，或光标前有非空字符
-    char **ret = NULL;
-    if (In_rfm_editor) ret = rfm_editor_completion_based_on_search_result(text);
-    if (ret==NULL) ret = rl_completion_matches(text, rl_filename_completion_function);
+    GPtrArray* ret = NULL;
+    if (In_rfm_editor) {
+      ret = rfm_editor_completion_based_on_search_result(text);
+      g_ptr_array_extend(ret, rfm_completion_based_on_dimensions(text),NULL,NULL);
+    }
+    if (ret==NULL) {
+      char** tmp=rl_completion_matches(text, rl_filename_completion_function);
+      ret = g_ptr_array_new_from_array(tmp,g_strv_length(tmp),NULL,NULL,(GDestroyNotify)g_free);
+    }
     return ret;
   }
 #else
@@ -5892,24 +5908,25 @@ static void load_DimensionPropertiesHashTable_Callback(RFM_ChildAttribs* child_a
   gchar * savedptr=NULL;
   gchar * oneline=strtok_r(child_stdout,"\n",&savedptr);
   while (oneline!=NULL){
-    gchar * fullpath = g_path_get_dirname(oneline);
     GKeyFile *gkeyfile = g_key_file_new();
     GError *error=NULL;
-    if (g_key_file_load_from_file(gkeyfile, fullpath, G_KEY_FILE_NONE, &error)){
+    if (g_key_file_load_from_file(gkeyfile,oneline, G_KEY_FILE_NONE, &error)){
       DimensionProperties * dimProps = calloc(1, sizeof(DimensionProperties));
-      dimProps->ID = g_key_file_get_string(gkeyfile, dumb_keyfile_groupname, RFM_DIMENSION_ID, &error);
-      if (error) { g_debug("load_DimensionPropertiesHashTable_Callback. error loading key value pair from file %s, error code: %d, message:%s",fullpath, error->code, error->message); g_error_free(error); error=NULL;}
-      dimProps->name = g_key_file_get_string(gkeyfile, dumb_keyfile_groupname, RFM_DIMENSION_NAME, &error);
-      if (error) { g_debug("load_DimensionPropertiesHashTable_Callback. error loading key value pair from file %s, error code: %d, message:%s",fullpath, error->code, error->message); g_error_free(error); error=NULL;}
-      dimProps->localAddress = g_path_get_dirname(fullpath);
-      g_hash_table_insert(DimensionPropertiesHashTable_name_asKey, dimProps->name ? g_strdup(dimProps->name):g_path_get_basename(fullpath), dimProps);
+      dimProps->ID = g_strstrip(g_key_file_get_string(gkeyfile, dumb_keyfile_groupname, RFM_DIMENSION_ID, &error));
+      if (error) { g_debug("load_DimensionPropertiesHashTable_Callback. error loading key value pair from file %s, error code: %d, message:%s",oneline, error->code, error->message); g_error_free(error); error=NULL;}
+      dimProps->name = g_strstrip(g_key_file_get_string(gkeyfile, dumb_keyfile_groupname, RFM_DIMENSION_NAME, &error));
+      if (error) { g_debug("load_DimensionPropertiesHashTable_Callback. error loading key value pair from file %s, error code: %d, message:%s",oneline, error->code, error->message); g_error_free(error); error=NULL;}
+      dimProps->localAddress = g_path_get_dirname(oneline);
+      if (dimProps->name==NULL || dimProps->name[0]=='\0') dimProps->name = g_path_get_basename(dimProps->localAddress);
+      g_log(RFM_LOG_DIMENSION,G_LOG_LEVEL_DEBUG,"add dimension name:%s, localAddress:%s, ID:%s, into hashtable", dimProps->name,dimProps->localAddress, dimProps->ID);
+      g_hash_table_insert(DimensionPropertiesHashTable_name_asKey, g_strdup(dimProps->name), dimProps);
       g_hash_table_insert(DimensionPropertiesHashTable_localAddress_asKey, g_strdup(dimProps->localAddress), dimProps);
       g_key_file_free(gkeyfile);
     }else{
-      g_warning("load_DimensionPropertiesHashTable_Callback. error loading key value pair from file %s, error code: %d, message:%s",fullpath, error==NULL?0:error->code, error==NULL?"":error->message);
+      g_warning("load_DimensionPropertiesHashTable_Callback. error loading key value pair from file %s, error code: %d, message:%s",oneline, error==NULL?0:error->code, error==NULL?"":error->message);
       g_error_free(error);
     }
-    g_free(fullpath);
+
     //if (git_root && g_str_has_prefix(fullpath, git_root)){ //维度位于当前git仓库
     // }
     oneline=strtok_r(NULL, "\n",&savedptr);

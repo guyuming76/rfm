@@ -6,7 +6,7 @@
 #define REEDLINE_WRAPPER_H
 typedef void ReedlineHandle;
 // 函数指针类型定义，对应函数 rfm_filename_completion
-typedef const char** (*GetCompletionFn)(const char* input, int *count);
+typedef const GPtrArray* (*GetCompletionFn)(const char* input, int *count);
 // 定义与Rust中RfmFunctions匹配的结构体
 typedef struct {
     GetCompletionFn get_completion_fn;

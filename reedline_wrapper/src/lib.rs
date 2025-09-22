@@ -10,7 +10,7 @@ use std::ptr;
 use std::path::{PathBuf, Path};
 use dirs::home_dir;
 use log::{warn, debug}; // 导入日志宏
-
+use glib_sys::{GPtrArray};
 
 // deepwiki 回答说 line 只包含光标前的字符串，光标及其后面字符都不包含，输入abcd,然后光标向左一道c下，则line只包含ab. 也就是说代码里检查cursor_and_after后面的部分貌似目前都没有用，但还是留着。
 fn context_for_cursor(line: &str, pos: usize, completion_start_pos: &mut usize) -> CString {
@@ -65,7 +65,7 @@ fn context_for_cursor(line: &str, pos: usize, completion_start_pos: &mut usize) 
 }
 
 // 定义 C 函数指针类型  
-type GetCompletionFn = extern "C" fn(*const i8, *mut i32) -> *mut *mut i8;
+type GetCompletionFn = extern "C" fn(*const i8, *mut i32) -> *const GPtrArray;
 //type GNUFileCompleteWrapperFn = extern "C" fn(*const i8) -> *mut *mut i8;
 // 添加 repr(C) 确保内存布局与C兼容
 #[repr(C)]
@@ -94,7 +94,7 @@ impl Completer for CCompleter {
         let mut count: i32 = 0;
         let before_cursor = &line[..pos];
         let _last_space_pos = before_cursor.rfind(' ').map(|p| p + 1).unwrap_or(0);
-        
+
         unsafe {
             let mut start_pos: usize = 0;
             let context = context_for_cursor(line, pos, &mut start_pos);
@@ -104,15 +104,38 @@ impl Completer for CCompleter {
                 return vec![];
             }
 
+            let result_array = &*result_ptr;
+            let len = result_array.len as usize;
             let mut suggestions = Vec::new();
-            let mut i = 0;
-            
-            // 遍历所有补全建议直到遇到空指针
-            while !result_ptr.wrapping_add(i).is_null() && !(*result_ptr.wrapping_add(i)).is_null() {
-                let c_str = CStr::from_ptr(*result_ptr.wrapping_add(i));
+
+            // 遍历所有补全建议
+            for i in 0..len {
+                let item_ptr = *result_array.pdata.add(i) as *const c_char;
+                if item_ptr.is_null() { continue; }
+
+                let c_str = CStr::from_ptr(item_ptr);
                 if let Ok(result) = c_str.to_str() {
                     if !result.is_empty() {
-                        if !result.starts_with('|') {//在c语言的rfm_editor_completion_based_on_search_result函数，非路径返回结果以|开头
+                        if result.starts_with('|') {//在c语言的rfm_editor_completion_based_on_search_result函数，非路径返回结果以|开头
+                            suggestions.push(Suggestion {
+                                value: result.chars().skip(1).collect(), //去掉开头的|字符
+                                description: None,
+                                style: Some(Style::new().fg(Color::Red)),
+                                extra: None,
+                                span: Span::new(pos, pos),
+                                append_whitespace: false,
+                            });
+                        }else if result.starts_with('}') {
+                            suggestions.push(Suggestion {
+                                value: result.chars().skip(1).collect(), //去掉开头的|字符
+                                description: None,
+                                style: Some(Style::new().fg(Color::Yellow)),
+                                extra: None,
+                                span: Span::new(pos, pos),
+                                append_whitespace: false,
+                            });
+                        }else{
+                            //对于文件路径补全，context包含的是文件名前缀，补全的返回内容result是完整的路径，所以start_pos 等于0; 而非路径补全，目前用于rfm_editor_completion_based_on_search_result, 补全的返回内容不包含context,suggestion 应该是 context 合并上 result
                             let final_path = match &self.use_relative_path {
                                 Some(file_path) => {
                                     let abs_path = Path::new(result);
@@ -130,28 +153,15 @@ impl Completer for CCompleter {
                             suggestions.push(Suggestion {
                                 value: final_path,
                                 description: None,
-                                style: None,
+                                style: Some(Style::new().fg(Color::Green)),
                                 extra: None,
                                 span: Span::new(start_pos, pos),
                                 append_whitespace: false,
                             });
-                        }else{ //对于上面的文件路径补全，context包含的是文件名前缀，补全的返回内容result是完整的路径，所以start_pos 等于0; 而下面的非路径补全，目前用于rfm_editor_completion_based_on_search_result, 补全的返回内容不包含context,suggestion 应该是 context 合并上 result
-                            suggestions.push(Suggestion {
-                                value: result.chars().skip(1).collect(), //去掉开头的|字符
-                                description: None,
-                                style: None,
-                                extra: None,
-                                span: Span::new(pos, pos),
-                                append_whitespace: false,
-                            });
-                        };
+                        }
                     }
                 }
-                i += 1;
             }
-
-            // 释放C端分配的内存
-            libc::free(result_ptr as *mut libc::c_void);
 
             suggestions
         }
