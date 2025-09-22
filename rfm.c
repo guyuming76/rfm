@@ -194,6 +194,7 @@ static void cmd_setenv(wordexp_t *parsed_msg, GString *readline_result_string_af
 #ifdef reedline
 static gboolean In_rfm_editor = FALSE;
 static char **rfm_editor_completion_based_on_search_result(char *text);
+static GPtrArray* rfm_completion_based_on_dimensions(char* text);
 static void rfmEdit(gchar* filepath);
 static gboolean parse_rfmEdit(GString *readline_result_string_after_file_name_substitution,RFM_ChildAttribs *childAttribs);
 #endif
@@ -4279,6 +4280,18 @@ static char **rfm_editor_completion_based_on_search_result(char *text) {
   return ret;
 }
 
+static GPtrArray* rfm_completion_based_on_dimensions(char* text) {
+  GPtrArray * ret = g_ptr_array_new();
+  GHashTableIter ht_iter;
+  gchar *key;
+  gchar *value;
+  g_hash_table_iter_init(&ht_iter, DimensionPropertiesHashTable_name_asKey);
+  while (g_hash_table_iter_next(&ht_iter, &key, &value)) {
+    if (g_str_has_prefix(key, text)) { g_ptr_array_add(ret, g_str_printf("}%s",key)); }
+  }
+  return ret;
+}
+
 static gboolean parse_rfmEdit(GString *readline_result_string_after_file_name_substitution ,RFM_ChildAttribs *childAttribs) {
   wordexp_t parsed_msg;
   int wordexp_retval = wordexp(readline_result_string_after_file_name_substitution->str,&parsed_msg,0);
@@ -4690,7 +4703,7 @@ static char** rfm_filename_completion(const char *text, int *count){
     *count = 1;//TODO:实现多个补全
     return ret;
 #ifdef reedline
-  }else {
+  }else { //没有文件被选中，或光标前有非空字符
     char **ret = NULL;
     if (In_rfm_editor) ret = rfm_editor_completion_based_on_search_result(text);
     if (ret==NULL) ret = rl_completion_matches(text, rl_filename_completion_function);
