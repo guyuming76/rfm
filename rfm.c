@@ -164,6 +164,8 @@ static void unload_addon_filemenu_func();
 #ifdef reedline
 static GPtrArray *rfm_filename_completion(const char *text, int *count);
 #endif
+static char *base_address_for_filename_completion_with_relative_address = NULL;  // 全局变量存储基地址
+static char *filename_completion_with_relative_address(const char *text, int state);
 #ifdef GNU_readline
 static char **rfm_filename_completion(const char *text, int *count);
 static char** gnu_readline_completion(const char *text, int start, int end);
@@ -4249,6 +4251,43 @@ static void cmd_setenv(wordexp_t *parsed_msg, GString *readline_result_string_af
   }else printf(SETENV_USAGE);
 }
 
+//text参数表示相对路径，但不支持linux相对路径".", "..", 生成绝对路径只是使用 snprintf(full_path, sizeof(full_path), "%s/%s", base_address_for_filename_completion_with_relative_address, text)
+static char *filename_completion_with_relative_address(const char *text, int state) {
+    static char *saved_path = NULL;
+    static int base_address_length = 0;
+    static int list_index = 0;
+    char *result = NULL;
+    
+    if (state == 0) {  // 第一次调用
+        if (saved_path) free(saved_path);
+        
+        // 构建完整路径：基地址 + 相对地址
+        char full_path[PATH_MAX];
+        if (base_address_for_filename_completion_with_relative_address && text) {
+            snprintf(full_path, sizeof(full_path), "%s/%s", base_address_for_filename_completion_with_relative_address, text);
+            saved_path = strdup(full_path);
+        } else {
+            saved_path = strdup(text ? text : "");
+        }
+        base_address_length = strlen(base_address_for_filename_completion_with_relative_address);
+        list_index = 0;
+    }
+    
+    // 使用完整路径进行补全
+    result = rl_filename_completion_function(saved_path, list_index);
+    char * relative_result = result? strdup(result + base_address_length + 1):NULL;//去除基地址前缀和"/"
+    free(result);
+    list_index++;
+    
+    // 如果补全完成，清理资源
+    if (result == NULL && saved_path) {
+        free(saved_path);
+        saved_path = NULL;
+    }
+    
+    return relative_result;
+}
+
 #ifdef reedline
 static GPtrArray* rfm_editor_completion_based_on_search_result(char *text) {
   GPtrArray* ret = g_ptr_array_new();
@@ -4286,10 +4325,17 @@ static GPtrArray* rfm_completion_based_on_dimensions(char* text) {
   GPtrArray * ret = g_ptr_array_new();
   GHashTableIter ht_iter;
   gchar *key;
-  gchar *value;
+  DimensionProperties* value;
   g_hash_table_iter_init(&ht_iter, DimensionPropertiesHashTable_name_asKey);
   while (g_hash_table_iter_next(&ht_iter, &key, &value)) {
-    if (strstr(key, text)) { g_ptr_array_add(ret, g_strdup_printf("}%s",key)); }
+    if (text==NULL || g_strcmp0(text, "")==0){//输入上下文为空
+      g_ptr_array_add(ret, g_strdup_printf("}%s",key));
+    }else if (g_strcmp0(text,key)==0){//输入上下文非空,且等于维度名
+      base_address_for_filename_completion_with_relative_address = value->localAddress;
+      char** candidate_file_path = rl_completion_matches("", filename_completion_with_relative_address);
+      g_ptr_array_free(ret,FALSE);
+      return g_ptr_array_new_from_null_terminated_array(candidate_file_path, NULL, NULL, (GDestroyNotify)g_free);
+    }
   }
   return ret;
 }
