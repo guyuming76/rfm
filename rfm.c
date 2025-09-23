@@ -164,8 +164,6 @@ static void unload_addon_filemenu_func();
 #ifdef reedline
 static GPtrArray *rfm_filename_completion(const char *text, int *count);
 #endif
-static char *base_address_for_filename_completion_with_relative_address = NULL;  // 全局变量存储基地址
-static char *filename_completion_with_relative_address(const char *text, int state);
 #ifdef GNU_readline
 static char **rfm_filename_completion(const char *text, int *count);
 static char** gnu_readline_completion(const char *text, int start, int end);
@@ -4251,43 +4249,6 @@ static void cmd_setenv(wordexp_t *parsed_msg, GString *readline_result_string_af
   }else printf(SETENV_USAGE);
 }
 
-//text参数表示相对路径，但不支持linux相对路径".", "..", 生成绝对路径只是使用 snprintf(full_path, sizeof(full_path), "%s/%s", base_address_for_filename_completion_with_relative_address, text)
-static char *filename_completion_with_relative_address(const char *text, int state) {
-    static char *saved_path = NULL;
-    static int base_address_length = 0;
-    static int list_index = 0;
-    char *result = NULL;
-    
-    if (state == 0) {  // 第一次调用
-        if (saved_path) free(saved_path);
-        
-        // 构建完整路径：基地址 + 相对地址
-        char full_path[PATH_MAX];
-        if (base_address_for_filename_completion_with_relative_address && text) {
-            snprintf(full_path, sizeof(full_path), "%s/%s", base_address_for_filename_completion_with_relative_address, text);
-            saved_path = strdup(full_path);
-        } else {
-            saved_path = strdup(text ? text : "");
-        }
-        base_address_length = strlen(base_address_for_filename_completion_with_relative_address);
-        list_index = 0;
-    }
-    
-    // 使用完整路径进行补全
-    result = rl_filename_completion_function(saved_path, list_index);
-    char * relative_result = result? strdup(result + base_address_length + 1):NULL;//去除基地址前缀和"/"
-    free(result);
-    list_index++;
-    
-    // 如果补全完成，清理资源
-    if (result == NULL && saved_path) {
-        free(saved_path);
-        saved_path = NULL;
-    }
-    
-    return relative_result;
-}
-
 #ifdef reedline
 static GPtrArray* rfm_editor_completion_based_on_search_result(char *text) {
   GPtrArray* ret = g_ptr_array_new();
@@ -4331,10 +4292,20 @@ static GPtrArray* rfm_completion_based_on_dimensions(char* text) {
     if (text==NULL || g_strcmp0(text, "")==0){//输入上下文为空
       g_ptr_array_add(ret, g_strdup_printf("}%s",key));
     }else if (g_strcmp0(text,key)==0){//输入上下文非空,且等于维度名
-      base_address_for_filename_completion_with_relative_address = value->localAddress;
-      char** candidate_file_path = rl_completion_matches("", filename_completion_with_relative_address);
-      g_ptr_array_free(ret,FALSE);
-      return g_ptr_array_new_from_null_terminated_array(candidate_file_path, NULL, NULL, (GDestroyNotify)g_free);
+      g_log(RFM_LOG_DIMENSION,G_LOG_LEVEL_DEBUG,"rfm_completion_based_on_dimensions(%s) dimension localAddress:%s",text,value->localAddress);
+      gchar* localAddress_with_slash = g_strdup_printf("%s/",value->localAddress); //localAddress结尾是不带/的，补全的时候，要加上/才能得到候选项
+      int localAddress_with_slash_len = strlen(localAddress_with_slash);
+      char** file_paths = rl_completion_matches(localAddress_with_slash, rl_filename_completion_function);
+      int i=0;
+      while(file_paths && file_paths[i]){
+	if (g_file_test(file_paths[i],G_FILE_TEST_IS_DIR)) {//只有目录才能作为维度成员，文件不行，这是因为维度和事实的关系是通过在维度成员目录下建立指向事实文件的符号链接实现的
+	  g_ptr_array_add(ret, g_strdup_printf("}%s",file_paths[i] + localAddress_with_slash_len));//去除localAddress前缀及/号
+	  g_log(RFM_LOG_DIMENSION,G_LOG_LEVEL_DEBUG,"rfm_completion_based_on_dimensions(%s) return %s",text,(file_paths[i] + localAddress_with_slash_len));
+	}
+	i++;
+      }
+      g_strfreev(file_paths);
+      g_free(localAddress_with_slash);
     }
   }
   return ret;
