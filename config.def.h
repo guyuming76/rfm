@@ -207,7 +207,7 @@ static RFM_builtinCMD builtinCMD[] = {
 	{BuiltInCmd_glog,                       cmd_glog,                               BuiltInCmd_glog_Description},
 	{BuiltInCmd_showcolumn,                 cmd_showcolumn,                         BuiltInCmd_showcolumn_Description},
 	{BuiltInCmd_setenv,                     cmd_setenv,                             BuiltInCmd_setenv_Description},
-	{"esc",                                 handle_escape_key,                      BuiltInCmd_ESC_Description},
+	{"esc",                                 cmd_handle_escape_key,                  BuiltInCmd_ESC_Description},
 	{ Up,					up_clicked,				BuiltInCmd_Up_Description},
         {Previous,                             prev_path_clicked,                       BuiltInCmd_Previous_Description},
         {Next,                                 next_path_clicked,                       BuiltInCmd_Next_Description},

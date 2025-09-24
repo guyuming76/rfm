@@ -580,7 +580,8 @@ static void show_hide_file_menu_item(GtkWidget ***menuitems, RFM_MenuItem menuit
 
 static gboolean mountpoint_mounted(RFM_FileAttributes *fileAttributes);
 static gboolean mountpoint_unmounted(RFM_FileAttributes *fileAttributes);
-static void handle_escape_key();
+static void cmd_handle_escape_key();
+static void g_idle_add_once_handle_escape_key(){ g_idle_add_once(cmd_handle_escape_key,NULL);}
 
 #include "config.h"
 
@@ -3047,7 +3048,7 @@ static gboolean view_column_header_clicked(GtkButton* column_header, GdkEvent *e
   return FALSE;
 }
 
-static void handle_escape_key() {
+static void cmd_handle_escape_key() {
     if(treeview) gtk_tree_selection_unselect_all(gtk_tree_view_get_selection(GTK_TREE_VIEW(icon_or_tree_view)));
     else gtk_icon_view_unselect_all(GTK_ICON_VIEW(icon_or_tree_view));
 }
@@ -3060,7 +3061,7 @@ static gboolean view_key_press(GtkWidget *widget, GdkEvent *event,RFM_ctx *rfmCt
     cleanup();
     return TRUE;
   } else if (ek->keyval == GDK_KEY_Escape) {
-    handle_escape_key();
+    cmd_handle_escape_key();
     return TRUE;
   } else if (ek->keyval == GDK_KEY_Tab){
     g_message("This is the command window");
@@ -4325,7 +4326,7 @@ static void rfmEdit(gchar* filepath) {
     // 调用编辑器
     char *error_msg = NULL;
     In_rfm_editor = TRUE;
-    int result = rfm_editor_edit_file(rfm_filename_completion, filepath, &error_msg);
+    int result = rfm_editor_edit_file(&functionPointersForReedlineWrapper, filepath, &error_msg);
     In_rfm_editor = FALSE;
 
     if (result==2) {
@@ -4900,6 +4901,7 @@ static int setup(RFM_ctx *rfmCtx)
 #endif
 #ifdef reedline
   functionPointersForReedlineWrapper.get_completion_fn = rfm_filename_completion;
+  functionPointersForReedlineWrapper.g_idle_add_once_handle_escape = g_idle_add_once_handle_escape_key;
   reedline_handle = reedline_create(&functionPointersForReedlineWrapper);
   if (!reedline_handle) g_error("reedline_create return NULL handle");
 #endif

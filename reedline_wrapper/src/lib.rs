@@ -66,12 +66,14 @@ fn context_for_cursor(line: &str, pos: usize, completion_start_pos: &mut usize) 
 
 // 定义 C 函数指针类型  
 type GetCompletionFn = extern "C" fn(*const i8, *mut i32) -> *const GPtrArray;
+type EscapeHandler = extern "C" fn();
 //type GNUFileCompleteWrapperFn = extern "C" fn(*const i8) -> *mut *mut i8;
 // 添加 repr(C) 确保内存布局与C兼容
 #[repr(C)]
 pub struct rfmFunctions {
     pub get_completion_fn:GetCompletionFn,
     // 其他函数...
+    pub g_idle_add_once_handle_escape:EscapeHandler,
 }
 
 // c 语言tab补全器，补全rfm当前选中文件
@@ -81,10 +83,11 @@ pub struct CCompleter {
 }
 
 impl CCompleter {
-    pub fn new(get_completion_fn: GetCompletionFn, use_relative_path: Option<String>) -> Self {
-        Self { 
-            get_completion_fn,
-            use_relative_path 
+    pub fn new(boxed_functions: &Box<rfmFunctions>, use_relative_path: Option<String>) -> Self {
+        //let functions = unsafe { std::ptr::read_unaligned(rfm_functions) };
+        Self {
+            get_completion_fn: (*boxed_functions).get_completion_fn,
+            use_relative_path
         }
     }
 }
@@ -105,12 +108,16 @@ impl Completer for CCompleter {
             }
 
             let result_array = &*result_ptr;
+            // 确保指针对齐：将指针内容复制到对齐的内存中
+            //let result_array = std::ptr::read_unaligned(result_ptr);
             let len = result_array.len as usize;
             let mut suggestions = Vec::new();
 
             // 遍历所有补全建议
             for i in 0..len {
                 let item_ptr = *result_array.pdata.add(i) as *const c_char;
+                // 使用未对齐读取来安全访问指针数组
+                //let item_ptr = std::ptr::read_unaligned(result_array.pdata.add(i)) as *const c_char;
                 if item_ptr.is_null() { continue; }
 
                 let c_str = CStr::from_ptr(item_ptr);
@@ -229,7 +236,9 @@ pub extern "C" fn reedline_create(rfm_functions: *const rfmFunctions) -> *mut Re
     if rfm_functions.is_null() {
         return ptr::null_mut();
     }
-    let rfm_functions = unsafe { &*rfm_functions };
+    let functions = unsafe { std::ptr::read_unaligned(rfm_functions) };
+    let boxed_functions = Box::new(functions);
+    //let rfm_functions = unsafe { &*rfm_functions };
 // 这段代码let f = unsafe { &*f };在Rust中用于解引用从C语言传入的原始指针并创建安全引用，具体解析如下：
 //     ‌*f‌：首先解引用原始指针f（假设f是*const T或*mut T类型），这会访问指针指向的内存数据。由于Rust无法保证原始指针的安全性（可能为空或悬垂），此操作必须包裹在unsafe块中。
 //     ‌&*f‌：解引用后，通过&获取数据的不可变引用（类型为&T）。此时Rust会将其视为安全引用，后续使用时受借用检查器保护。
@@ -285,7 +294,7 @@ pub extern "C" fn reedline_create(rfm_functions: *const rfmFunctions) -> *mut Re
     // 创建 Reedline 引擎并配置
     let engine = match history_result {
         Ok(history) => Reedline::create().use_bracketed_paste(true)
-	    .with_completer(Box::new(CombinedCompleter::new(CCompleter::new((*rfm_functions).get_completion_fn, None)))) // 使用组合补全器
+	    .with_completer(Box::new(CombinedCompleter::new(CCompleter::new(&boxed_functions, None)))) // 使用组合补全器
 					.with_menu(ReedlineMenu::EngineCompleter(completion_menu))
 					.with_history(Box::new(history))
         				.with_validator(Box::new(AlwaysIncompleteValidator)) // 使用自定义验证器
@@ -294,7 +303,7 @@ pub extern "C" fn reedline_create(rfm_functions: *const rfmFunctions) -> *mut Re
 					.with_hinter(Box::new(CwdAwareHinter::default().with_style(Style::new().italic().fg(Color::LightGray)).with_min_chars(2))),
         Err(e) => {
             warn!("History load error: {}", e);
-            Reedline::create().with_completer(Box::new(CombinedCompleter::new(CCompleter::new((*rfm_functions).get_completion_fn, None)))) // 使用组合补全器
+            Reedline::create().with_completer(Box::new(CombinedCompleter::new(CCompleter::new(&boxed_functions, None)))) // 使用组合补全器
 					.with_menu(ReedlineMenu::EngineCompleter(completion_menu))
         				.with_validator(Box::new(AlwaysIncompleteValidator)) // 使用自定义验证器
         				.with_edit_mode(Box::new(Emacs::new(keybindings)))  // 使用自定义键绑定
@@ -370,13 +379,16 @@ struct RfmEditor {
     line_editor: Reedline,
     current_file: Option<PathBuf>,
     modified: bool,
+    rfm_functions: Box<rfmFunctions>
 }
 
 impl RfmEditor {
-    fn new(get_completion_fn: GetCompletionFn, filename: String) -> Self {
+    fn new(rfm_functions: *const rfmFunctions, filename: String) -> Self {
         let mut keybindings = default_emacs_keybindings();
         // 配置菜单（即使您不想显示菜单，也需要配置）
         let completion_menu = Box::new(ColumnarMenu::default().with_name("completion_menu"));
+        let functions = unsafe { std::ptr::read_unaligned(rfm_functions) };
+        let boxed_functions = Box::new(functions);
 
         // 配置 Tab 键绑定
         keybindings.add_binding(
@@ -393,18 +405,21 @@ impl RfmEditor {
                                ReedlineEvent::ExecuteHostCommand("save".to_string()));
         keybindings.add_binding(KeyModifiers::CONTROL, KeyCode::Char('x'),
                                ReedlineEvent::ExecuteHostCommand("exit".to_string()));
+        keybindings.add_binding(KeyModifiers::ALT, KeyCode::Char('e'), ReedlineEvent::ExecuteHostCommand("esc".to_string()));
         let edit_mode = Box::new(Emacs::new(keybindings));
         let line_editor = Reedline::create()
             .with_validator(Box::new(AlwaysIncompleteValidator)) // 缺少这行，在编辑多行文本时就没法中中间插入行，新行会被加到最后
             .with_edit_mode(edit_mode)
             .use_bracketed_paste(true)
             .with_menu(ReedlineMenu::EngineCompleter(completion_menu))
-	    .with_completer(Box::new(CombinedCompleter::new(CCompleter::new(get_completion_fn, Some(filename))))) // 使用组合补全器;
+	    .with_completer(Box::new(CombinedCompleter::new(CCompleter::new(&boxed_functions, Some(filename))))) // 使用组合补全器;
             .with_quick_completions(true);  // 启用快速补全,只有一个补全选项时，系统会自动选择该选项而不显示菜单
+        //let functions = unsafe { std::ptr::read_unaligned(rfm_functions) };
         Self {
             line_editor,
             current_file: None,
             modified: false,
+            rfm_functions: boxed_functions,
         }
     }
 
@@ -450,6 +465,10 @@ impl RfmEditor {
                             }
                             break;
 			}
+                        "esc" => {
+                            ((*self.rfm_functions).g_idle_add_once_handle_escape)();
+                            continue;
+                        }
 			_ => {
                             // 处理其他编辑命令  
                             self.modified = true;
@@ -481,12 +500,12 @@ impl RfmEditor {
 
 #[no_mangle]
 pub extern "C" fn rfm_editor_edit_file(
-    get_completion_fn: GetCompletionFn,
+    rfm_functions: *const rfmFunctions,
     filename: *const libc::c_char,
     error: *mut *mut libc::c_char,
 ) -> libc::c_int {
     let filename_str = unsafe { CStr::from_ptr(filename).to_string_lossy().into_owned() };
-    let mut editor = Box::new(RfmEditor::new(get_completion_fn, filename_str)); //rfm执行程序在调用rfmEditor‘内部命令‘时通过 get_completion_fn传 入static char** rfm_filename_completion(const char *text, int *count). 这里是static函数，没问题？
+    let mut editor = Box::new(RfmEditor::new(rfm_functions, filename_str)); //rfm执行程序在调用rfmEditor‘内部命令‘时通过 get_completion_fn传 入static char** rfm_filename_completion(const char *text, int *count). 这里是static函数，没问题？
     let filename = unsafe { CStr::from_ptr(filename).to_string_lossy().into_owned() };
 
     match editor.edit_file(&filename) {
