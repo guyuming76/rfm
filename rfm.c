@@ -194,6 +194,8 @@ void save_current_history();
 static void stdin_command_help(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
 static void cmd_glog(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
 static void cmd_setenv(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
+static void find_dirs(GSList **list, const char *base, const char *path);
+static char **dimension_completion_function(const char *dimension_localAddress, int start, int end);
 #ifdef reedline
 static gboolean In_rfm_editor = FALSE;
 static GPtrArray* rfm_editor_completion_based_on_search_result(char *text);
@@ -4250,6 +4252,51 @@ static void cmd_setenv(wordexp_t *parsed_msg, GString *readline_result_string_af
   }else printf(SETENV_USAGE);
 }
 
+
+static void find_dirs(GSList **list, const char *base, const char *path) {
+    gchar *full = g_build_filename(base, path, NULL);
+    GDir *dir = g_dir_open(full, 0, NULL);
+    
+    if (dir) {
+        g_log(RFM_LOG_DIMENSION, G_LOG_LEVEL_DEBUG, "g_dir_open %s return not null",full);
+        const gchar *name;
+        while ((name = g_dir_read_name(dir))) {
+            if (name[0] != '.') {
+                gchar *new_path = path[0] ? g_build_filename(path, name, NULL) : g_strdup(name);
+                gchar *test = g_build_filename(base, new_path, NULL);
+                if (g_file_test(test, G_FILE_TEST_IS_DIR)) {
+		    g_log(RFM_LOG_DIMENSION, G_LOG_LEVEL_DEBUG, "g_file_test %s is dir",test);
+                    *list = g_slist_append(*list, new_path);
+                    find_dirs(list, base, new_path);
+                } else {
+                    g_free(new_path);
+                }
+                g_free(test);
+            }
+        }
+        g_dir_close(dir);
+    }
+    g_free(full);
+}
+
+static char **dimension_completion_function(const char *dimension_localAddress, int start, int end) {
+    //if (start && rl_line_buffer[start-1] != ' ') return NULL;
+    GSList *list = NULL;
+    find_dirs(&list, dimension_localAddress, "");
+    
+    int count = g_slist_length(list);
+    if (count > 0) {
+        char **matches = malloc(sizeof(char *) * (count + 1));
+        GSList *iter = list;
+        for (int i = 0; iter; iter = iter->next, i++) {
+          matches[i] = g_strdup_printf("}%s",(char *)iter->data);
+        }
+        matches[count] = NULL;
+        g_slist_free_full(list,g_free);
+        return matches;
+    }else return NULL;
+}
+
 #ifdef reedline
 static GPtrArray* rfm_editor_completion_based_on_search_result(char *text) {
   GPtrArray* ret = g_ptr_array_new();
@@ -4294,19 +4341,11 @@ static GPtrArray* rfm_completion_based_on_dimensions(char* text) {
       g_ptr_array_add(ret, g_strdup_printf("}%s",key));
     }else if (g_strcmp0(text,key)==0){//输入上下文非空,且等于维度名
       g_log(RFM_LOG_DIMENSION,G_LOG_LEVEL_DEBUG,"rfm_completion_based_on_dimensions(%s) dimension localAddress:%s",text,value->localAddress);
-      gchar* localAddress_with_slash = g_strdup_printf("%s/",value->localAddress); //localAddress结尾是不带/的，补全的时候，要加上/才能得到候选项
-      int localAddress_with_slash_len = strlen(localAddress_with_slash);
-      char** file_paths = rl_completion_matches(localAddress_with_slash, rl_filename_completion_function);
-      int i=0;
-      while(file_paths && file_paths[i]){
-	if (g_file_test(file_paths[i],G_FILE_TEST_IS_DIR)) {//只有目录才能作为维度成员，文件不行，这是因为维度和事实的关系是通过在维度成员目录下建立指向事实文件的符号链接实现的
-	  g_ptr_array_add(ret, g_strdup_printf("}%s",file_paths[i] + localAddress_with_slash_len));//去除localAddress前缀及/号
-	  g_log(RFM_LOG_DIMENSION,G_LOG_LEVEL_DEBUG,"rfm_completion_based_on_dimensions(%s) return %s",text,(file_paths[i] + localAddress_with_slash_len));
-	}
-	i++;
-      }
-      g_strfreev(file_paths);
-      g_free(localAddress_with_slash);
+      int len = strlen(value->localAddress);
+      g_ptr_array_free(ret,FALSE);
+      char** ret_= dimension_completion_function(value->localAddress,len,len+1);
+      ret = g_ptr_array_new_from_array(ret_, g_strv_length(ret_),NULL,NULL,(GDestroyNotify)g_free);
+      g_free(ret_);
     }
   }
   return ret;
