@@ -4289,7 +4289,7 @@ static char **dimension_completion_function(const char *dimension_localAddress, 
         char **matches = malloc(sizeof(char *) * (count + 1));
         GSList *iter = list;
         for (int i = 0; iter; iter = iter->next, i++) {
-          matches[i] = g_strdup_printf("}%s",(char *)iter->data);
+          matches[i] = g_strdup_printf("=%s",(char *)iter->data); //维度值加前缀=
         }
         matches[count] = NULL;
         g_slist_free_full(list,g_free);
@@ -4338,7 +4338,7 @@ static GPtrArray* rfm_completion_based_on_dimensions(char* text) {
   g_hash_table_iter_init(&ht_iter, DimensionPropertiesHashTable_name_asKey);
   while (g_hash_table_iter_next(&ht_iter, &key, &value)) {
     if (text==NULL || g_strcmp0(text, "")==0){//输入上下文为空
-      g_ptr_array_add(ret, g_strdup_printf("}%s",key));
+      g_ptr_array_add(ret, g_strdup_printf("}%s",key));  //维度名加前缀}
     }else if (g_strcmp0(text,key)==0){//输入上下文非空,且等于维度名
       g_log(RFM_LOG_DIMENSION,G_LOG_LEVEL_DEBUG,"rfm_completion_based_on_dimensions(%s) dimension localAddress:%s",text,value->localAddress);
       int len = strlen(value->localAddress);

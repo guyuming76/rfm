@@ -127,9 +127,18 @@ impl Completer for CCompleter {
                                 span: Span::new(pos, pos),
                                 append_whitespace: false,
                             });
-                        }else if result.starts_with('}') {
+                        }else if result.starts_with('}') { //这个是维度名
                             suggestions.push(Suggestion {
-                                value: result.chars().skip(1).collect(), //去掉开头的|字符
+                                value: result.chars().skip(1).collect(),
+                                description: None,
+                                style: Some(Style::new().fg(Color::Yellow)),
+                                extra: None,
+                                span: Span::new(pos, pos),
+                                append_whitespace: false,
+                            });
+                        }else if result.starts_with('=') { //这个是维度值
+                            suggestions.push(Suggestion {
+                                value: result.to_string(),
                                 description: None,
                                 style: Some(Style::new().fg(Color::Yellow)),
                                 extra: None,
