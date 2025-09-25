@@ -481,6 +481,7 @@ static RFM_treeviewColumn* get_treeviewcolumnByGtkTreeviewcolumn(GtkTreeViewColu
 static RFM_treeviewColumn* get_treeviewColumnByEnum(enum RFM_treeviewCol col);
 static RFM_treeviewColumn* get_treeviewColumnByTitle(char* title);
 static enum RFM_treeviewCol get_available_ExtColumn(enum RFM_treeviewCol col);
+static enum RFM_treeviewCol get_available_ExtColumn_from_end(enum RFM_treeviewCol col);
 static MEM_ALLOC gchar* get_current_column_layout(gboolean title);
 static MEM_ALLOC gchar* get_showcolumn_cmd_from_currently_displaying_columns();
 static void show_hide_treeview_columns_in_order(CALLER_OWN gchar *order_sequence);
@@ -3921,6 +3922,17 @@ static enum RFM_treeviewCol get_available_ExtColumn(enum RFM_treeviewCol col){
   return col;
 }
 
+//ProcessOnelineForSearchResult_internel 里假设查询处理开始时C1是可用的，但现在要把Dimension对应到扩展列，就从后往前依次获取，通常col参数设成 NUM_COLS-1
+static enum RFM_treeviewCol get_available_ExtColumn_from_end(enum RFM_treeviewCol col){
+  g_assert(col>=COL_Ext1 && col<NUM_COLS);
+  enum RFM_treeviewCol start = col;
+  while (col >= COL_Ext1 && get_treeviewColumnsIndexByEnum(col)>=0) col--;
+  if(col < COL_Ext1){
+    g_warning("no available extended column searching from column enum %d backward", start);
+    return NUM_COLS;
+  }else return col;
+}
+
 static RFM_treeviewColumn* get_treeviewColumnByEnum(enum RFM_treeviewCol col){
   int i = get_treeviewColumnsIndexByEnum(col);
   return i<0 ? NULL : &(TREEVIEW_COLUMNS[i]);
@@ -5258,7 +5270,7 @@ static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboo
 	       // current_Ext_Column 对应的COL_ExtX,中X下标总是等于 currentExtColumnHashTableIndex + 1
 
 	       if (fileAttributeID==1){ //bind to available extended column for the first line.
-		    g_assert(col->enumCol==NUM_COLS);
+		    g_assert(col->enumCol==NUM_COLS);//这里假设C1是空的
 		    current_Ext_Column = get_available_ExtColumn(current_Ext_Column); //This function is called for new search result, COL_Ext1 will be available, so i don't check current_Ext_column < NUM_COLS here
 	       } else {
 		    current_Ext_Column = col->enumCol;
@@ -5981,6 +5993,28 @@ static void load_DimensionPropertiesHashTable_Callback(RFM_ChildAttribs* child_a
       g_hash_table_insert(DimensionPropertiesHashTable_name_asKey, g_strdup(dimProps->name), dimProps);
       g_hash_table_insert(DimensionPropertiesHashTable_localAddress_asKey, g_strdup(dimProps->localAddress), dimProps);
       g_key_file_free(gkeyfile);
+
+      RFM_treeviewColumn * col;
+      enum RFM_treeviewCol current_Ext_Column;
+      if ((col=get_treeviewColumnByTitle(dimProps->name))){ //已经有同名列了, TODO:注意 ColumnTitleMaxLen
+	    current_Ext_Column=col->enumCol;
+      }else{//新列名
+	    current_Ext_Column=get_available_ExtColumn_from_end(NUM_COLS-1);
+	    if (current_Ext_Column==NUM_COLS) {
+	      g_warning("Not enough COL_Exts for dimension %s",dimProps->name);
+	    }else{
+	      char current_Ext_Column_Original_Title[10];
+	      snprintf(current_Ext_Column_Original_Title,10,"C%d", current_Ext_Column-COL_Ext1+1);
+	      col = get_treeviewColumnByTitle(current_Ext_Column_Original_Title);
+	      col->enumCol=current_Ext_Column;
+	      snprintf(col->title,ColumnTitleMaxLen,"%s",dimProps->name);
+	      col->ValueFunc=getExtColumnValueFromHashTable;
+
+	      uint currentExtColumnHashTableIndex = current_Ext_Column - COL_Ext1;
+	      if (ExtColumnHashTable[currentExtColumnHashTableIndex]==NULL) ExtColumnHashTable[currentExtColumnHashTableIndex] = g_hash_table_new_full(g_str_hash, g_str_equal,g_free, g_free);
+	    }
+      }
+
     }else{
       g_warning("load_DimensionPropertiesHashTable_Callback. error loading key value pair from file %s, error code: %d, message:%s",oneline, error==NULL?0:error->code, error==NULL?"":error->message);
       g_error_free(error);
