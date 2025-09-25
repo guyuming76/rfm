@@ -2304,6 +2304,8 @@ static void refresh_store(RFM_ctx *rfmCtx)
    if (git_root) load_gitTrackedFiles_HashTable();
 #endif
 
+   refresh_DimensionPropertiesHashTable();
+
    gchar * title;
    if (SearchResultViewInsteadOfDirectoryView) {
      if (SearchResultTypePointerForCurrentExistingSearchResult){
@@ -2361,7 +2363,6 @@ static void refresh_store(RFM_ctx *rfmCtx)
    if(!no_window){
    gtk_widget_show_all(window);
    refresh_toolbar();
-   g_idle_add_once(refresh_DimensionPropertiesHashTable, NULL);
    }
 }
 
