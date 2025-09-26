@@ -4289,7 +4289,7 @@ static void find_dirs(GSList **list, const char *base, const char *path) {
             if (name[0] != '.') {
                 gchar *new_path = path[0] ? g_build_filename(path, name, NULL) : g_strdup(name);
                 gchar *test = g_build_filename(base, new_path, NULL);
-                if (g_file_test(test, G_FILE_TEST_IS_DIR)) {
+                if (g_file_test(test, G_FILE_TEST_IS_DIR) && !g_file_test(test, G_FILE_TEST_IS_SYMLINK)) {
 		    g_log(RFM_LOG_DIMENSION, G_LOG_LEVEL_DEBUG, "g_file_test %s is dir",test);
                     *list = g_slist_append(*list, new_path);
                     find_dirs(list, base, new_path);
