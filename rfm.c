@@ -194,12 +194,9 @@ void save_current_history();
 static void stdin_command_help(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
 static void cmd_glog(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
 static void cmd_setenv(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
-static void find_dirs(GSList **list, const char *base, const char *path);
-static char **dimension_completion_function(const char *dimension_localAddress, int start, int end);
 #ifdef reedline
 static gboolean In_rfm_editor = FALSE;
 static GPtrArray* rfm_editor_completion_based_on_search_result(char *text);
-static GPtrArray* rfm_completion_based_on_dimensions(char* text);
 static void rfmEdit(gchar* filepath);
 static gboolean parse_rfmEdit(GString *readline_result_string_after_file_name_substitution,RFM_ChildAttribs *childAttribs);
 #endif
@@ -325,6 +322,11 @@ static void load_DimensionPropertiesHashTable_Callback(RFM_ChildAttribs* child_a
 static void load_DimensionValueHashTable_Callback(RFM_ChildAttribs* child_attribs);
 static void load_DimensionValueHashTables(GtkTreeIter* iter);
 static void free_DimensionProperties(DimensionProperties *dimProp);
+static void find_dirs(GSList **list, const char *base, const char *path);
+static char **dimension_completion_function(const char *dimension_localAddress, int start, int end);
+#ifdef reedline
+static GPtrArray *rfm_completion_based_on_dimensions(char *text);
+#endif
 /******Dimension related definitions end******/
 /****************************************************/
 /******GtkListStore and refresh definitions**********/
