@@ -5978,7 +5978,7 @@ gboolean str_regex_replace(char **str, const regex_t * restrict pattern_compiled
 static void SetViewColumnForDimension(gchar* dimName){
       RFM_treeviewColumn * col;
       enum RFM_treeviewCol current_Ext_Column;
-      if ((col=get_treeviewColumnByTitle(dimName))){ //已经有同名列了, TODO:注意 ColumnTitleMaxLen
+      if ((col=get_treeviewColumnByTitle(dimName))){ //已经有同名列了
 	    current_Ext_Column=col->enumCol;
       }else{//新列名
 	    current_Ext_Column=get_available_ExtColumn_from_end(NUM_COLS-1);
@@ -6013,6 +6013,10 @@ static void load_DimensionPropertiesHashTable_Callback(RFM_ChildAttribs* child_a
       if (error) { g_debug("load_DimensionPropertiesHashTable_Callback. error loading key value pair from file %s, error code: %d, message:%s",oneline, error->code, error->message); g_error_free(error); error=NULL;}
       dimProps->localAddress = g_path_get_dirname(oneline);
       if (dimProps->name==NULL || dimProps->name[0]=='\0') dimProps->name = g_path_get_basename(dimProps->localAddress);
+      if (strlen(dimProps->name)>ColumnTitleMaxLen){
+	g_warning("Dimension name shall be no more than %d chars",ColumnTitleMaxLen);
+	dimProps->name[ColumnTitleMaxLen]='\0';
+      }
       g_log(RFM_LOG_DIMENSION,G_LOG_LEVEL_DEBUG,"add dimension name:%s, localAddress:%s, ID:%s, into hashtable", dimProps->name,dimProps->localAddress, dimProps->ID);
       g_hash_table_insert(DimensionPropertiesHashTable_name_asKey, g_strdup(dimProps->name), dimProps);
       g_hash_table_insert(DimensionPropertiesHashTable_localAddress_asKey, g_strdup(dimProps->localAddress), dimProps);
