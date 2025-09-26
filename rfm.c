@@ -420,6 +420,7 @@ static void set_terminal_window_title(CALLER_OWN const char* title);
 static void set_Titles(CALLER_OWN const gchar * title);
 static void cmdToggleInotifyHandler(wordexp_t *parsed_msg,GString *readline_result_string_after_file_name_substitution);
 static void refresh_DimensionPropertiesHashTable();
+static void SetViewColumnForDimension(gchar* dimName);
 static void load_DimensionPropertiesHashTable_Callback(RFM_ChildAttribs* child_attribs);
 static void free_DimensionProperties(DimensionProperties *dimProp);
 /******GtkListStore and refresh definitions end******/
@@ -5974,6 +5975,29 @@ gboolean str_regex_replace(char **str, const regex_t * restrict pattern_compiled
       return ret;
 }
 
+static void SetViewColumnForDimension(gchar* dimName){
+      RFM_treeviewColumn * col;
+      enum RFM_treeviewCol current_Ext_Column;
+      if ((col=get_treeviewColumnByTitle(dimName))){ //已经有同名列了, TODO:注意 ColumnTitleMaxLen
+	    current_Ext_Column=col->enumCol;
+      }else{//新列名
+	    current_Ext_Column=get_available_ExtColumn_from_end(NUM_COLS-1);
+	    if (current_Ext_Column==NUM_COLS) {
+	      g_warning("Not enough COL_Exts for dimension %s",dimName);
+	    }else{
+	      char current_Ext_Column_Original_Title[10];
+	      snprintf(current_Ext_Column_Original_Title,10,"C%d", current_Ext_Column-COL_Ext1+1);
+	      col = get_treeviewColumnByTitle(current_Ext_Column_Original_Title);
+	      col->enumCol=current_Ext_Column;
+	      snprintf(col->title,ColumnTitleMaxLen,"%s",dimName);
+	      col->ValueFunc=getExtColumnValueFromHashTable;
+
+	      uint currentExtColumnHashTableIndex = current_Ext_Column - COL_Ext1;
+	      if (ExtColumnHashTable[currentExtColumnHashTableIndex]==NULL) ExtColumnHashTable[currentExtColumnHashTableIndex] = g_hash_table_new_full(g_str_hash, g_str_equal,g_free, g_free);
+	    }
+      }
+}
+
 static void load_DimensionPropertiesHashTable_Callback(RFM_ChildAttribs* child_attribs) {
   char *child_stdout=(char*)(child_attribs->stdOut);
   gchar * savedptr=NULL;
@@ -5993,28 +6017,7 @@ static void load_DimensionPropertiesHashTable_Callback(RFM_ChildAttribs* child_a
       g_hash_table_insert(DimensionPropertiesHashTable_name_asKey, g_strdup(dimProps->name), dimProps);
       g_hash_table_insert(DimensionPropertiesHashTable_localAddress_asKey, g_strdup(dimProps->localAddress), dimProps);
       g_key_file_free(gkeyfile);
-
-      RFM_treeviewColumn * col;
-      enum RFM_treeviewCol current_Ext_Column;
-      if ((col=get_treeviewColumnByTitle(dimProps->name))){ //已经有同名列了, TODO:注意 ColumnTitleMaxLen
-	    current_Ext_Column=col->enumCol;
-      }else{//新列名
-	    current_Ext_Column=get_available_ExtColumn_from_end(NUM_COLS-1);
-	    if (current_Ext_Column==NUM_COLS) {
-	      g_warning("Not enough COL_Exts for dimension %s",dimProps->name);
-	    }else{
-	      char current_Ext_Column_Original_Title[10];
-	      snprintf(current_Ext_Column_Original_Title,10,"C%d", current_Ext_Column-COL_Ext1+1);
-	      col = get_treeviewColumnByTitle(current_Ext_Column_Original_Title);
-	      col->enumCol=current_Ext_Column;
-	      snprintf(col->title,ColumnTitleMaxLen,"%s",dimProps->name);
-	      col->ValueFunc=getExtColumnValueFromHashTable;
-
-	      uint currentExtColumnHashTableIndex = current_Ext_Column - COL_Ext1;
-	      if (ExtColumnHashTable[currentExtColumnHashTableIndex]==NULL) ExtColumnHashTable[currentExtColumnHashTableIndex] = g_hash_table_new_full(g_str_hash, g_str_equal,g_free, g_free);
-	    }
-      }
-
+      SetViewColumnForDimension(dimProps->name);
     }else{
       g_warning("load_DimensionPropertiesHashTable_Callback. error loading key value pair from file %s, error code: %d, message:%s",oneline, error==NULL?0:error->code, error==NULL?"":error->message);
       g_error_free(error);
