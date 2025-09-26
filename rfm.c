@@ -373,11 +373,11 @@ static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store_if
 static void toggle_insert_fileAttributes_into_store_one_by_one();
 static void Iterate_through_fileAttribute_list_to_insert_into_store();
 static void Insert_fileAttributes_into_store(RFM_FileAttributes *fileAttributes,GtkTreeIter *iter);
-static void Insert_fileAttributes_into_store_with_thumbnail_and_more(RFM_FileAttributes* fileAttributes);
+static void DirectoryView_onebyon_On_Insert_fileAttributes_into_store_with_thumbnail_and_more(RFM_FileAttributes* fileAttributes);
 //called in dir view when onebyone off
 static gboolean iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_one_by_one_when_idle(GtkTreeIter *iter);
 //called in search result view
-static void iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_and_load_gitCommitMsg_ifdef_GitIntegration(void);
+static void SearchResultView_iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_and_load_gitCommitMsg_ifdef_GitIntegration(void);
 static GHashTable *get_mount_points(void);
 static gboolean mounts_handler(GUnixMountMonitor *monitor, gpointer rfmCtx);
 static gboolean init_inotify(RFM_ctx *rfmCtx);
@@ -414,7 +414,7 @@ static void read_git_status_porcelain_cmd_output_into_hashtable(gpointer *child_
 static void load_gitTrackedFiles_HashTable();
 static void load_latest_git_log_for_store_row(GtkTreeIter *iter);
 //called in dir view when onebyone off
-static gboolean iterate_through_store_to_load_latest_git_log_one_by_one_when_idle(GtkTreeIter *iter);
+static gboolean DirectoryView_onebyone_Off_iterate_through_store_to_load_latest_git_log_one_by_one_when_idle(GtkTreeIter *iter);
 #endif
 static void set_terminal_window_title(CALLER_OWN const char* title);
 static void set_Titles(CALLER_OWN const gchar * title);
@@ -1667,7 +1667,7 @@ static gboolean iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_o
 }
 
 #ifdef GitIntegration
-static gboolean iterate_through_store_to_load_latest_git_log_one_by_one_when_idle(GtkTreeIter *iter)
+static gboolean DirectoryView_onebyone_Off_iterate_through_store_to_load_latest_git_log_one_by_one_when_idle(GtkTreeIter *iter)
 {
      load_latest_git_log_for_store_row(iter);
      if ((get_treeviewColumnByEnum(COL_GIT_COMMIT_MSG)->Show ||get_treeviewColumnByEnum(COL_GIT_COMMIT_ID)->Show || get_treeviewColumnByEnum(COL_GIT_COMMIT_DATE)->Show || get_treeviewColumnByEnum(COL_GIT_AUTHOR)->Show) && gtk_tree_model_iter_next(treemodel, iter)) return G_SOURCE_CONTINUE;
@@ -1682,7 +1682,8 @@ static gboolean iterate_through_store_to_load_latest_git_log_one_by_one_when_idl
 }
 #endif
 
-static void iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_and_load_gitCommitMsg_ifdef_GitIntegration(void)
+
+static void SearchResultView_iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_and_load_gitCommitMsg_ifdef_GitIntegration(void)
 {
    GtkTreeIter iter;
    gboolean valid;
@@ -1741,7 +1742,6 @@ static void load_thumbnail_or_enqueue_thumbQueue_for_store_row(GtkTreeIter *iter
 #ifdef GitIntegration
 static void load_latest_git_log_for_store_row(GtkTreeIter *iter){
       if (git_root){
-	//gchar* fullpath=calloc(PATH_MAX, sizeof(gchar));
 	GValue full_path=G_VALUE_INIT;
 	gtk_tree_model_get_value(treemodel, iter, COL_FULL_PATH, &full_path);
 	GList *file_list = NULL;
@@ -2095,7 +2095,7 @@ static void insert_deleted_for_git(gchar *fullpath, gchar *filename, gchar *stat
 	    }
 	  }
 	  //rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
-	  if (insert_fileAttributes_into_store_one_by_one) Insert_fileAttributes_into_store_with_thumbnail_and_more(fileAttributes);
+	  if (insert_fileAttributes_into_store_one_by_one) DirectoryView_onebyon_On_Insert_fileAttributes_into_store_with_thumbnail_and_more(fileAttributes);
 	  else rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
 	  //TODO: after i run `git rm -r --cached video`, rfm will show video subdir as shown on devPicAndVideo/20231210_15h14m08s_grim.png
 	  //so we should not insert fileattributes if the file is still in directory, and it is just removed from git track, not deleted
@@ -2106,8 +2106,7 @@ static void insert_deleted_for_git(gchar *fullpath, gchar *filename, gchar *stat
 }
 #endif
 
-// call in dir view when onebyone on
-static void Insert_fileAttributes_into_store_with_thumbnail_and_more(RFM_FileAttributes* fileAttributes){
+static void DirectoryView_onebyon_On_Insert_fileAttributes_into_store_with_thumbnail_and_more(RFM_FileAttributes* fileAttributes){
 	    GtkTreeIter iter;
             rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
 	    Insert_fileAttributes_into_store(fileAttributes,&iter);
@@ -2133,7 +2132,7 @@ static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store_if
          fileAttributes=get_fileAttributes_for_a_file(name, mtimeThreshold, mount_hash);
 	 fileAttributeID++;//fileAttributeID 目的是为了应对查询结果里面同一个文件返回多条记录的情况,如不同行,在当前目录视图里面是没多大用的,但我们还是累加下
          if (fileAttributes!=NULL){
-	   if (insert_fileAttributes_into_store_one_by_one) Insert_fileAttributes_into_store_with_thumbnail_and_more(fileAttributes);
+	   if (insert_fileAttributes_into_store_one_by_one) DirectoryView_onebyon_On_Insert_fileAttributes_into_store_with_thumbnail_and_more(fileAttributes);
 	   else rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
 	 }
       }
@@ -2227,7 +2226,7 @@ static gboolean fill_fileAttributeList_with_filenames_from_search_result_and_the
   //We can load thumbnail and gitCommitMsg one by one right after one row of store inserted, as we do in read_one_DirItem_into_fileAttributeList_and_insert_into_store_in_each_cal. But since for pipeline, we have the paging mechanism, we won't have too much rows loaded in a batch, so, we keep the old way of loading thumbnails and gitCommitMsg in batch here. 
   Iterate_through_fileAttribute_list_to_insert_into_store();
   if (rfm_do_thumbs == 1 && g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR))
-    iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_and_load_gitCommitMsg_ifdef_GitIntegration();
+    SearchResultView_iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_and_load_gitCommitMsg_ifdef_GitIntegration();
 
   g_hash_table_destroy(mount_hash);
   return TRUE;
@@ -2349,7 +2348,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
 
 #ifdef GitIntegration
        if ((get_treeviewColumnByEnum(COL_GIT_COMMIT_MSG)->Show ||get_treeviewColumnByEnum(COL_GIT_COMMIT_ID)->Show || get_treeviewColumnByEnum(COL_GIT_COMMIT_DATE)->Show || get_treeviewColumnByEnum(COL_GIT_AUTHOR)->Show)
-	   && gtk_tree_model_get_iter_first(treemodel, &gitMsg_load_iter)) rfm_gitCommitMsgScheduler=g_idle_add((GSourceFunc)iterate_through_store_to_load_latest_git_log_one_by_one_when_idle, &gitMsg_load_iter);
+	   && gtk_tree_model_get_iter_first(treemodel, &gitMsg_load_iter)) rfm_gitCommitMsgScheduler=g_idle_add((GSourceFunc)DirectoryView_onebyone_Off_iterate_through_store_to_load_latest_git_log_one_by_one_when_idle, &gitMsg_load_iter);
 #endif
 
        if (rfm_do_thumbs == 1 && g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR) && gtk_tree_model_get_iter_first(treemodel, &thumbnail_load_iter)){
