@@ -322,7 +322,7 @@ static void load_DimensionPropertiesHashTable_Callback(RFM_ChildAttribs* child_a
 static void load_DimensionValueHashTable_Callback(RFM_ChildAttribs* child_attribs);
 static void load_DimensionValueHashTables(GtkTreeIter* iter);
 static void free_DimensionProperties(DimensionProperties *dimProp);
-static void find_dirs(GSList **list, const char *base, const char *path);
+static void find_dirs_as_dimension_values(GSList **list, const char *base, const char *path);
 static char **dimension_completion_function(const char *dimension_localAddress, int start, int end);
 #ifdef reedline
 static GPtrArray *rfm_completion_based_on_dimensions(char *text);
@@ -4278,7 +4278,7 @@ static void cmd_setenv(wordexp_t *parsed_msg, GString *readline_result_string_af
 }
 
 
-static void find_dirs(GSList **list, const char *base, const char *path) {
+static void find_dirs_as_dimension_values(GSList **list, const char *base, const char *path) {
     gchar *full = g_build_filename(base, path, NULL);
     GDir *dir = g_dir_open(full, 0, NULL);
     
@@ -4292,7 +4292,7 @@ static void find_dirs(GSList **list, const char *base, const char *path) {
                 if (g_file_test(test, G_FILE_TEST_IS_DIR) && !g_file_test(test, G_FILE_TEST_IS_SYMLINK)) {
 		    g_log(RFM_LOG_DIMENSION, G_LOG_LEVEL_DEBUG, "g_file_test %s is dir",test);
                     *list = g_slist_append(*list, new_path);
-                    find_dirs(list, base, new_path);
+                    find_dirs_as_dimension_values(list, base, new_path);
                 } else {
                     g_free(new_path);
                 }
@@ -4307,7 +4307,7 @@ static void find_dirs(GSList **list, const char *base, const char *path) {
 static char **dimension_completion_function(const char *dimension_localAddress, int start, int end) {
     //if (start && rl_line_buffer[start-1] != ' ') return NULL;
     GSList *list = NULL;
-    find_dirs(&list, dimension_localAddress, "");
+    find_dirs_as_dimension_values(&list, dimension_localAddress, "");
     
     int count = g_slist_length(list);
     if (count > 0) {
