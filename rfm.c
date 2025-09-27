@@ -5991,6 +5991,7 @@ static void SetViewColumnForDimension(gchar* dimName){
       enum RFM_treeviewCol current_Ext_Column;
       if ((col=get_treeviewColumnByTitle(dimName))){ //已经有同名列了
 	    current_Ext_Column=col->enumCol;
+	    g_log(RFM_LOG_DIMENSION,G_LOG_LEVEL_DEBUG,"SetViewColumnForDimension(%s), RFM_treeviewCol:%d already exist",dimName, current_Ext_Column);
       }else{//新列名
 	    current_Ext_Column=get_available_ExtColumn_from_end(NUM_COLS-1);
 	    if (current_Ext_Column==NUM_COLS) {
@@ -6004,7 +6005,10 @@ static void SetViewColumnForDimension(gchar* dimName){
 	      col->ValueFunc=getExtColumnValueFromHashTable;
 
 	      uint currentExtColumnHashTableIndex = current_Ext_Column - COL_Ext1;
-	      if (ExtColumnHashTable[currentExtColumnHashTableIndex]==NULL) ExtColumnHashTable[currentExtColumnHashTableIndex] = g_hash_table_new_full(g_str_hash, g_str_equal,g_free, g_free);
+	      if (ExtColumnHashTable[currentExtColumnHashTableIndex]==NULL) {
+		ExtColumnHashTable[currentExtColumnHashTableIndex] = g_hash_table_new_full(g_str_hash, g_str_equal,g_free, g_free);
+		g_log(RFM_LOG_DIMENSION,G_LOG_LEVEL_DEBUG,"SetViewColumnForDimension(%s), g_hash_table_new_full called for ExtColumnHashTable[%d], RFM_treeviewCol:%d", dimName, currentExtColumnHashTableIndex, current_Ext_Column);
+	      }
 	    }
       }
 }
