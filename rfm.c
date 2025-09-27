@@ -5996,6 +5996,7 @@ static void SetViewColumnForDimension(gchar* dimName){
 	    current_Ext_Column=get_available_ExtColumn_from_end(NUM_COLS-1);
 	    if (current_Ext_Column==NUM_COLS) {
 	      g_warning("Not enough COL_Exts for dimension %s",dimName);
+	      return;
 	    }else{
 	      char current_Ext_Column_Original_Title[10];
 	      snprintf(current_Ext_Column_Original_Title,10,"C%d", current_Ext_Column-COL_Ext1+1);
@@ -6003,13 +6004,13 @@ static void SetViewColumnForDimension(gchar* dimName){
 	      col->enumCol=current_Ext_Column;
 	      snprintf(col->title,ColumnTitleMaxLen,"%s",dimName);
 	      col->ValueFunc=getExtColumnValueFromHashTable;
-
-	      uint currentExtColumnHashTableIndex = current_Ext_Column - COL_Ext1;
-	      if (ExtColumnHashTable[currentExtColumnHashTableIndex]==NULL) {
-		ExtColumnHashTable[currentExtColumnHashTableIndex] = g_hash_table_new_full(g_str_hash, g_str_equal,g_free, g_free);
-		g_log(RFM_LOG_DIMENSION,G_LOG_LEVEL_DEBUG,"SetViewColumnForDimension(%s), g_hash_table_new_full called for ExtColumnHashTable[%d], RFM_treeviewCol:%d", dimName, currentExtColumnHashTableIndex, current_Ext_Column);
-	      }
 	    }
+      }
+      uint currentExtColumnHashTableIndex = current_Ext_Column - COL_Ext1;
+      if (ExtColumnHashTable[currentExtColumnHashTableIndex]==NULL) {
+	      ExtColumnHashTable[currentExtColumnHashTableIndex] = g_hash_table_new_full(g_str_hash, g_str_equal,g_free, g_free);
+	      if (SearchResultViewInsteadOfDirectoryView && col->Show) ExtColumnHashTable_keep_during_refresh[currentExtColumnHashTableIndex]=TRUE;
+              g_log(RFM_LOG_DIMENSION,G_LOG_LEVEL_DEBUG,"SetViewColumnForDimension(%s), g_hash_table_new_full called for ExtColumnHashTable[%d], RFM_treeviewCol:%d", dimName, currentExtColumnHashTableIndex, current_Ext_Column);
       }
 }
 
