@@ -5986,6 +5986,11 @@ gboolean str_regex_replace(char **str, const regex_t * restrict pattern_compiled
       return ret;
 }
 
+//这里回顾一下，到目前为止，treeviewcolumns静态数组里有4种列：
+//1.文件系统自带的，比如文件名，大小，这种的Title和enumCol在静态数组初始模板里写死的
+//2.如图片尺寸这种预定义的扩展列，Title是写死的，所以总是会出现在showcolumn命令输出里，enumCol 需要在显示的时候使用get_available_ExtColumn 分配
+//3.从查询结果里读出的列，列名事先不知道，没法写死在静态数组初始模板里，处理查询结果时按顺序在列名C1,C2,C3中使用get_available_ExtColumn 分配enumCol，如果查询结果首行是列名，则用首行列名替换Cx
+//4.本函数处理的维度对应列，列名同维度名，而维度名也可以认为是动态的
 static void SetViewColumnForDimension(gchar* dimName){
       RFM_treeviewColumn * col;
       enum RFM_treeviewCol current_Ext_Column;
@@ -6021,7 +6026,7 @@ static void load_DimensionValueHashTable_Callback(RFM_ChildAttribs* child_attrib
   RFM_FileAttributes *fileAttributes=NULL;
   gtk_tree_model_get (GTK_TREE_MODEL(store), cell->iter, COL_ATTR, &fileAttributes, -1);
   g_hash_table_insert(ExtColumnHashTable[col->enumCol - COL_Ext1], g_strdup_printf("%d",fileAttributes->id), strdup(child_stdout));
-  
+  g_log(RFM_LOG_DIMENSION,G_LOG_LEVEL_DEBUG,"load_DimensionValueHashTable_Callback, g_hash_table_insert called for ExtColumnHashTable[%d], RFM_treeviewCol:%d,%s", col->enumCol - COL_Ext1, col->enumCol,col->title);
   g_free(cell);
 }
 
