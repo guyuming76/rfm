@@ -4037,6 +4037,9 @@ static void show_hide_treeview_columns_in_order(CALLER_OWN gchar* order_sequence
 			  }
 			  col->enumCol=col_enum_with_sign;
 			  pending_refresh_store = TRUE;
+			}else if (g_hash_table_lookup(DimensionPropertiesHashTable_name_asKey,col->title)){//参见SetViewColumnForDimension. TODO:这个当时就拍脑袋决定 Dimension 设置 enumCol 使用独特的方式，现在看似是work的。 这里上面几行有 get_available_ExtColumn(COL_Ext1)，貌似是在显示列的时候才设置enumCol,维度列能不能也走那条路？
+			  col_enum_with_sign = col->enumCol;
+			  pending_refresh_store = TRUE;
 			}else col_enum_with_sign = col->enumCol;
 		      }else if (col->enumCol==NUM_COLS) {
 			g_warning("no need to hide column %s, because its enumCol==NUM_COLS", col->title);
