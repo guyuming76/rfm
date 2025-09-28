@@ -6029,7 +6029,7 @@ static void load_DimensionValueHashTable_Callback(RFM_ChildAttribs* child_attrib
   RFM_FileAttributes *fileAttributes=NULL;
   gtk_tree_model_get (GTK_TREE_MODEL(store), cell->iter, COL_ATTR, &fileAttributes, -1);
   g_hash_table_insert(ExtColumnHashTable[col->enumCol - COL_Ext1], g_strdup_printf("%d",fileAttributes->id), strdup(child_stdout));
-  g_log(RFM_LOG_DIMENSION,G_LOG_LEVEL_DEBUG,"load_DimensionValueHashTable_Callback, g_hash_table_insert called for ExtColumnHashTable[%d], RFM_treeviewCol:%d,%s", col->enumCol - COL_Ext1, col->enumCol,col->title);
+  g_log(RFM_LOG_DIMENSION,G_LOG_LEVEL_DEBUG,"load_DimensionValueHashTable_Callback, g_hash_table_insert called for ExtColumnHashTable[%d], RFM_treeviewCol:%d,%s, fileAttributes->id:%d, fileAttributes->file_name:%s", col->enumCol - COL_Ext1, col->enumCol,col->title, fileAttributes->id, fileAttributes->file_name);
   g_free(cell);
 }
 
