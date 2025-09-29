@@ -1,6 +1,8 @@
 # 视频链接 #
 https://www.bilibili.com/video/BV1vM411d7pu/?share_source=copy_web&vd_source=69ac2f08a55f7029fc7026bcf6b55e11
 
+https://www.zhihu.com/zvideo/1955927362811201135
+
 # 一些截屏 #
 
 ![这个是运行两个rfm实例,我电脑上接了两个显示器](20230920_12h20m21s_grim.png)
