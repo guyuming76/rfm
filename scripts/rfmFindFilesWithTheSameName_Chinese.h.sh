@@ -22,7 +22,7 @@ for file in "${selected_files[@]}"; do
     	repo_root=$(git -C "$parent_dir" rev-parse --show-toplevel)
     	echo "文件'$filename'位于git仓库内,系统使用find命令在仓库内查找" >&2
     	# 使用find命令查找同名文件
-    	find "$repo_root" -name "$filename" 2>/dev/null | while read found_file; do
+    	find "$repo_root" -not -path '*/.git/*' -name "$filename" 2>/dev/null | while read found_file; do
         	echo "$found_file"
     	done
     else
