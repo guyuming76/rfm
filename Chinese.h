@@ -24,7 +24,7 @@
 #define MoveTo "移至此"
 #define LinkTo "软链接"
 #define RunActionChangeOwner "更改所有者"
-#define RunActionFindSameFile "查找同名文件并解析"
+#define RunActionFindSameFile "文件集合操作:以环境变量RFM_GIT_ROOT值为范围,查找同名文件(不含链接)并解析"
 #define RunActionCD "进入选中文件所在目录"
 #define RunActionMkdirMoveFiles "新建目录并把选中文件移入其中"
 #define SwitchPipeDir  "管道/目录"

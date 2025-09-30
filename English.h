@@ -19,7 +19,8 @@
 #define UnionSearchResult  "File Set Operation: Union SearchResult"
 #define IntersectWithSearchResult  "File Set Operation: Intersect With SearchResult"
 #define SubtractSearchResult  "File Set Operation: Subtract SearchResult"
-#define RunActionFindSoftLink "File Set Operation:find soft links to file within RFM_GIT_ROOT(env variable) directory"
+#define RunActionFindSoftLink "File Set Operation: find soft links to file within RFM_GIT_ROOT(env variable) directory"
+#define RunActionFindSameFile "File Set Operation: Find and parse files with the same name (exclude links) within RFM_GIT_ROOT directory"
 #define Paste "Paste"
 #define MoveTo "MoveHere"
 #define LinkTo "SoftLink"
@@ -221,7 +222,6 @@ BuiltInCmd_SearchResultColumnSeperator \
 #define SearchResultType_default_with_title "The same as the default search result type, except that the first row in command output contains column title.for example, to filter out the first row in current search result:\n" \ 
 "      SearchResult|head -n2>withTitle"
 
-#define RunActionFindSameFile "Find and parse files with the same name"
 
 
 
