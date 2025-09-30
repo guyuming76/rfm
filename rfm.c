@@ -319,8 +319,8 @@ static GHashTable* DimensionPropertiesHashTable_localAddress_asKey;// Key:ExtCol
 static void refresh_DimensionPropertiesHashTable();
 static void SetViewColumnForDimension(gchar* dimName);
 static void load_DimensionPropertiesHashTable_Callback(RFM_ChildAttribs* child_attribs);
-static void load_DimensionValueHashTable_Callback(RFM_ChildAttribs* child_attribs);
-static void load_DimensionValueHashTables(GtkTreeIter* iter);
+static void load_ExtColumnHashTable_for_Dimension_for_file(RFM_ChildAttribs* child_attribs);
+static void load_ExtColumnHashTables_for_all_Dimensions_for_file(GtkTreeIter* iter_for_file_in_store);
 static void free_DimensionProperties(DimensionProperties *dimProp);
 static void find_dirs_as_dimension_values(GSList **list, const char *base, const char *path);
 static char **dimension_completion_function(const char *dimension_localAddress, int start, int end);
@@ -1848,7 +1848,7 @@ static void Iterate_through_fileAttribute_list_to_insert_into_store()
    while (listElement != NULL) {
       fileAttributes=(RFM_FileAttributes*)listElement->data;
       Insert_fileAttributes_into_store(fileAttributes, &iter);
-      load_DimensionValueHashTables(&iter);
+      load_ExtColumnHashTables_for_all_Dimensions_for_file(&iter);
       load_ExtColumns_and_iconview_markup_tooltip(fileAttributes, &iter);
    listElement=g_list_next(listElement);
    }
@@ -2121,7 +2121,7 @@ static void DirectoryView_onebyon_On_Insert_fileAttributes_into_store_with_thumb
 	    GtkTreeIter iter;
             rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
 	    Insert_fileAttributes_into_store(fileAttributes,&iter);
-	    load_DimensionValueHashTables(&iter);
+	    load_ExtColumnHashTables_for_all_Dimensions_for_file(&iter);
 	    load_ExtColumns_and_iconview_markup_tooltip(fileAttributes, &iter);
 	    if (rfm_do_thumbs==1 && g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR)){
 	      load_thumbnail_or_enqueue_thumbQueue_for_store_row(&iter);
@@ -6022,35 +6022,35 @@ static void SetViewColumnForDimension(gchar* dimName){
       }
 }
 
-static void load_DimensionValueHashTable_Callback(RFM_ChildAttribs* child_attribs) {
+static void load_ExtColumnHashTable_for_Dimension_for_file(RFM_ChildAttribs* child_attribs) {
   RFM_store_cell *cell = child_attribs->customCallbackUserData;
   RFM_treeviewColumn *col = get_treeviewColumnByTitle(cell->dimProperties->name);
   char *child_stdout=(char*)(child_attribs->stdOut);
   RFM_FileAttributes *fileAttributes=NULL;
   gtk_tree_model_get (GTK_TREE_MODEL(store), cell->iter, COL_ATTR, &fileAttributes, -1);
   g_hash_table_insert(ExtColumnHashTable[col->enumCol - COL_Ext1], g_strdup_printf("%d",fileAttributes->id), strdup(child_stdout));
-  g_log(RFM_LOG_DIMENSION,G_LOG_LEVEL_DEBUG,"load_DimensionValueHashTable_Callback, g_hash_table_insert called for ExtColumnHashTable[%d], RFM_treeviewCol:%d,%s, fileAttributes->id:%d, fileAttributes->file_name:%s", col->enumCol - COL_Ext1, col->enumCol,col->title, fileAttributes->id, fileAttributes->file_name);
+  g_log(RFM_LOG_DIMENSION,G_LOG_LEVEL_DEBUG,"load_ExtColumnHashTable_for_Dimension_for_file, g_hash_table_insert called for ExtColumnHashTable[%d], RFM_treeviewCol:%d,%s, fileAttributes->id:%d, fileAttributes->file_name:%s", col->enumCol - COL_Ext1, col->enumCol,col->title, fileAttributes->id, fileAttributes->file_name);
   g_free(cell);
 }
 
-static void load_DimensionValueHashTables(GtkTreeIter* iter){
+static void load_ExtColumnHashTables_for_all_Dimensions_for_file(GtkTreeIter* iter_for_file_in_store){
 	GValue full_path=G_VALUE_INIT;
-	gtk_tree_model_get_value(treemodel, iter, COL_FULL_PATH, &full_path);
+	gtk_tree_model_get_value(treemodel, iter_for_file_in_store, COL_FULL_PATH, &full_path);
 	GList *args_for_cmd_findDimensionValueForFile = NULL;
 	args_for_cmd_findDimensionValueForFile = g_list_append(args_for_cmd_findDimensionValueForFile,g_value_get_string(&full_path));
 
-        GHashTableIter ht_iter;
+        GHashTableIter iter_for_DimensionPropertiesHashTable;
         gchar *key;
         DimensionProperties *value;
-        g_hash_table_iter_init(&ht_iter,DimensionPropertiesHashTable_name_asKey);
-        while (g_hash_table_iter_next(&ht_iter, &key, &value)) {
+        g_hash_table_iter_init(&iter_for_DimensionPropertiesHashTable,DimensionPropertiesHashTable_name_asKey);
+        while (g_hash_table_iter_next(&iter_for_DimensionPropertiesHashTable, &key, &value)) {
 	        RFM_treeviewColumn *col = get_treeviewColumnByTitle(value->name);
                 if (!col->Show) continue;
 	        args_for_cmd_findDimensionValueForFile = g_list_prepend(args_for_cmd_findDimensionValueForFile,value->localAddress);
 		RFM_store_cell* cell=malloc(sizeof(RFM_store_cell));
-	        cell->iter = iter;
+	        cell->iter = iter_for_file_in_store;
 	        cell->dimProperties = value;
-	  	g_spawn_wrapper(findDimensionValueForFile, args_for_cmd_findDimensionValueForFile, G_SPAWN_DEFAULT, NULL, NULL, FALSE, load_DimensionValueHashTable_Callback,cell,TRUE);
+	  	g_spawn_wrapper(findDimensionValueForFile, args_for_cmd_findDimensionValueForFile, G_SPAWN_DEFAULT, NULL, NULL, FALSE, load_ExtColumnHashTable_for_Dimension_for_file,cell,TRUE);
 	        args_for_cmd_findDimensionValueForFile = g_list_delete_link(args_for_cmd_findDimensionValueForFile,args_for_cmd_findDimensionValueForFile);
         }
 
