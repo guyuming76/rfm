@@ -92,6 +92,8 @@
 "                cd without parameter or space just output current directory, which can be different from the output of pwd command.\n"
 #define BuiltInCmd_help                        "help"
 #define BuiltInCmd_help_Description            "show this command help, add command name as parameter to show help for that command only"
+#define BuiltInCmd_dimension                   "dimension"
+#define BuiltInCmd_set_dimension_value_description  "set dimension value for selected files,i.e.,create symbolic link to selected files under specific dimension value directory。argument(can work with TAB completion）: dimension name=dimension value"
 #define BuiltInCmd_ESC_Description             "Unselect currently selected files; or press Alt + e in term window; the same effect as ESC in GUI"
 #define Up "Up"
 #define BuiltInCmd_Up_Description              "go to parent directory，short cut key: ALT + Up arrow（MOD1 usually is ALT）"

@@ -127,6 +127,7 @@ static const char *f_mv[]   = { "$RFM_TERM",rfmBinPath "rfmCopyMove.sh", "mv",NU
 static const char *cp_clipboard_to_curPath[] = { "$RFM_TERM",rfmBinPath "rfmCopyMoveToCurPath.sh","cp",NULL };
 static const char *mv_clipboard_to_curPath[] = { "$RFM_TERM",rfmBinPath "rfmCopyMoveToCurPath.sh","mv",NULL };
 static const char *ln_clipboard_to_curPath[] = { "$RFM_TERM",rfmBinPath "rfmCopyMoveToCurPath.sh","sl",NULL };
+static const char *create_softlink_for_dimension[] = { "ln", "-srt",NULL};
 static const char *create_softlink[] = { stdin_cmd_interpretors[0].name, "rfmCreateSoftLink.sh "RFM_NEW_TERM_SUFFIX" ",NULL };
 static const char *find_softlink[] = { "$RFM_TERM",rfmBinPath "rfmFindLinksToTheSameFile.sh",NULL };
 static const char *ShowSoftLinkToFileInSearchResult[] = { stdin_cmd_interpretors[0].name, "find -L \"$RFM_GIT_ROOT\" -not -path '*/.git/*' -exec test %s  -ef {} \\; -print"RFM_SearchResultTypeNamePrefix"0 ",NULL};
@@ -208,6 +209,7 @@ static RFM_builtinCMD builtinCMD[] = {
 	{BuiltInCmd_glog,                       cmd_glog,                               BuiltInCmd_glog_Description},
 	{BuiltInCmd_showcolumn,                 cmd_showcolumn,                         BuiltInCmd_showcolumn_Description},
 	{BuiltInCmd_setenv,                     cmd_setenv,                             BuiltInCmd_setenv_Description},
+	{BuiltInCmd_dimension,                  cmd_set_dimension_value_for_selected_files, BuiltInCmd_set_dimension_value_description},
 	{"esc",                                 cmd_handle_escape_key,                  BuiltInCmd_ESC_Description},
 	{ Up,					up_clicked,				BuiltInCmd_Up_Description},
         {Previous,                             prev_path_clicked,                       BuiltInCmd_Previous_Description},
@@ -230,7 +232,6 @@ static RFM_MenuItem run_actions[] = {
    { RunActionCopy,  "*",              "*",                    NULL,			NULL,			NULL,		f_cp,             		NULL },
    { RunActionMove,  "*",              "*",                    NULL,			NULL,	refresh_store_on_searchresult,  f_mv,             		NULL },
    { RunActionDelete, "*",             "*",                    NULL,			NULL,   refresh_store_on_searchresult,	f_rm,             		NULL },
-   { RunActionFindSameFile, "*",       "*",                    NULL,			NULL,			NULL,		find_same_name,                 NULL },
    { RunActionCD,    "*",              "*",                    NULL,                    NULL,                   NULL,           cd_in_searchresult,             InSearchResultView },
 #ifdef GitIntegration
    { RunActionGitStage,  "*",          "*",                    NULL,			NULL,			refresh_store,  git_stage_cmd,    		show_gitMenus },
@@ -281,6 +282,7 @@ static RFM_MenuItem run_actions[] = {
    { RunActionFindSoftLink,"*",        "*",                    NULL,			NULL,			NULL,		ShowSoftLinkToFileInSearchResult,NULL },
    { RunActionFindSL,"*",              "*",                    NULL,			NULL,			NULL,		find_softlink,                  NULL },
    { RunActionSL,    "*",              "*",                    NULL,			NULL,			NULL,		create_softlink,                NULL },
+   { RunActionFindSameFile, "*",       "*",                    NULL,			NULL,			NULL,		find_same_name,                 NULL },
    { "mount",        "inode",          "mount-point",          NULL,			NULL,			NULL,		mount,            		mountpoint_unmounted },
    { "unmount",      "inode",          "mount-point",          NULL,			NULL,			NULL,		umount,           		mountpoint_mounted },
    { "mount",        "inode",          "blockdevice",          NULL,			NULL,			NULL,		mount,            		NULL },

@@ -93,6 +93,8 @@
 "    cd不加空格  单独cd命令不接参数或空格输出当前所在目录,注意和pwd命令区别\n"
 #define BuiltInCmd_help                        "help"
 #define BuiltInCmd_help_Description            "显示命令帮助,加命令名参数则仅显示这条命令的帮助"
+#define BuiltInCmd_dimension                   "维度"
+#define BuiltInCmd_set_dimension_value_description  "为选中文件设置维度值，也就是在相应维度值目录下创建指向选中文件的符号链接。命令参数（可通过TAB补全输入）: 维度名=维度值"
 #define BuiltInCmd_ESC_Description	       "取消当前文件选中;或在命令窗口使用组合键 Alt + e ;效果相当于在图形界面使用ESC键"
 #define Up "父"
 #define BuiltInCmd_Up_Description              "进入上级目录，可使用组合键 ALT+向上箭头（MOD1通常就是ALT键）"

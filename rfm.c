@@ -324,6 +324,7 @@ static void load_ExtColumnHashTables_for_all_Dimensions_for_file(GtkTreeIter* it
 static void free_DimensionProperties(DimensionProperties *dimProp);
 static void find_dirs_as_dimension_values(GSList **list, const char *base, const char *path);
 static char **dimension_completion_function(const char *dimension_localAddress, int start, int end);
+static void cmd_set_dimension_value_for_selected_files(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
 #ifdef reedline
 static GPtrArray *rfm_completion_based_on_dimensions(char *text);
 #endif
@@ -4799,15 +4800,10 @@ static GPtrArray* rfm_filename_completion(const char *text, int *count){
 #ifdef reedline
     return g_ptr_array_new_from_array(ret, g_strv_length(ret),NULL,NULL,(GDestroyNotify)g_free); // -1 means ret end with null
   }else { //没有文件被选中，或光标前有非空字符
-    GPtrArray* ret = NULL;
-    if (In_rfm_editor) {
-      ret = rfm_editor_completion_based_on_search_result(text);
-      g_ptr_array_extend(ret, rfm_completion_based_on_dimensions(text),NULL,NULL);
-    }
-    if (ret==NULL) {
-      char** tmp=rl_completion_matches(text, rl_filename_completion_function);
-      ret = g_ptr_array_new_from_array(tmp,g_strv_length(tmp),NULL,NULL,(GDestroyNotify)g_free);
-    }
+    GPtrArray* ret = rfm_editor_completion_based_on_search_result(text);
+    g_ptr_array_extend(ret, rfm_completion_based_on_dimensions(text),NULL,NULL);
+    char** tmp=rl_completion_matches(text, rl_filename_completion_function);
+    g_ptr_array_extend(ret, g_ptr_array_new_from_array(tmp,g_strv_length(tmp),NULL,NULL,(GDestroyNotify)g_free), NULL,NULL);
     return ret;
   }
 #else
@@ -6090,6 +6086,29 @@ static void load_DimensionPropertiesHashTable_Callback(RFM_ChildAttribs* child_a
     //if (git_root && g_str_has_prefix(fullpath, git_root)){ //维度位于当前git仓库
     // }
     oneline=strtok_r(NULL, "\n",&savedptr);
+  }
+}
+
+static void cmd_set_dimension_value_for_selected_files(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution){
+  if (parsed_msg->we_wordc == 2){
+    gchar** dimNameAndValue = g_strsplit(parsed_msg->we_wordv[1],"=",2);
+    DimensionProperties* dimProps = g_hash_table_lookup(DimensionPropertiesHashTable_name_asKey,dimNameAndValue[0]);
+    if (dimProps){
+      g_log(RFM_LOG_DIMENSION, G_LOG_LEVEL_DEBUG, "cmd_set_dimension_value_for_selected_files: dim %s, value:%s", dimNameAndValue[0],dimNameAndValue[1]);
+      gchar* softlink_dir = g_build_filename(dimProps->localAddress, dimNameAndValue[1],NULL);
+      GList* softlink_dir_for_g_spawn = NULL;
+      softlink_dir_for_g_spawn = g_list_prepend(softlink_dir_for_g_spawn, softlink_dir);
+      if (filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView]!=NULL) {
+	GList *filepath_list_for_selection_on_view_clone = g_list_first(g_list_copy_deep(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView],g_strdup,NULL));
+	while (filepath_list_for_selection_on_view_clone){
+	  g_spawn_wrapper(create_softlink_for_dimension, softlink_dir_for_g_spawn, G_SPAWN_DEFAULT, NULL, filepath_list_for_selection_on_view_clone->data, FALSE, NULL, NULL, TRUE);
+	  filepath_list_for_selection_on_view_clone = g_list_next(filepath_list_for_selection_on_view_clone);
+	}
+	g_list_free_full(filepath_list_for_selection_on_view_clone,g_free);
+      }else g_warning("no files selected");
+      g_list_free_full(softlink_dir_for_g_spawn,g_free);
+    }
+    g_strfreev(dimNameAndValue);
   }
 }
 
