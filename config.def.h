@@ -101,6 +101,7 @@ static RFM_SearchResultType searchresultTypes[] = {
 
 
 //注意，下面命令中rfm选中文件占位符 RFM_selected_filename_placeholde 要配合结尾空格使用
+static const char *parse_searchresult_with_multitype[] = { stdin_cmd_interpretors[0].name, RFM_SEARCH_RESULT_AS_INPUT_PREFIX "tee" RFM_SearchResultTypeNamePrefix SrchRsltType_multitype };
 static const char *Union_SearchResult[] = { stdin_cmd_interpretors[0].name, RFM_SEARCH_RESULT_AS_INPUT_PREFIX "(tee;find -L "RFM_selected_filename_placeholder" -exec readlink -f {} \\;)|sort|uniq " RFM_SearchResultTypeNamePrefix "0 ",NULL };
 static const char *Subtract_SearchResult[] = { stdin_cmd_interpretors[0].name, RFM_SEARCH_RESULT_AS_INPUT_PREFIX "sort|comm -23 - <(find -L "RFM_selected_filename_placeholder" -exec readlink -f {} \\;|sort) "RFM_SearchResultTypeNamePrefix "0 ",NULL };
 static const char *Intersect_With_SearchResult[] = { stdin_cmd_interpretors[0].name, RFM_SEARCH_RESULT_AS_INPUT_PREFIX "sort|comm -12 - <(find -L "RFM_selected_filename_placeholder" -exec readlink -f {} \\;|sort) "RFM_SearchResultTypeNamePrefix "0 ",NULL };
@@ -344,6 +345,7 @@ static RFM_ToolButton tool_buttons[] = {
    { SAVESEARCHRESULT,NULL,                     NULL,                   save_searchresult_to_file,TRUE,    FALSE,     0,                      NULL,                   NULL },
    { FILTERSEARCHRESULT,NULL,                   NULL,                filter_selected_searchresult,TRUE,    FALSE,     0,                      NULL,                   InTreeView },
    { START_MENU,     NULL,                      NULL,                   start_menu,        FALSE,          TRUE,      0,                      NULL,                  NULL},
+   { PARSE_SEARCH_RESULT, NULL,                 InIconView,        parse_searchresult_with_multitype, TRUE,FALSE,     0,                      NULL,                  NULL},
 #ifdef RFM_AddOn
    { "addons",       NULL,                      NULL,                   locate_addons,     TRUE,           TRUE,      0,                      NULL,                  NULL},
 #endif

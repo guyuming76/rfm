@@ -1,5 +1,6 @@
 #define rfmLANGUAGE "rfmEnglish"
 
+#define SrchRsltType_multitype "multitype"
 #define MSG_cannot_enter_directory "\n\nCan't enter directory!"
 #define MSG_cannot_enter_deleted_directory "\n\nPlease show content of deleted directory with the 'git ls-files' in toolbar"
 #define PageUp  "PageUp"
@@ -37,6 +38,7 @@
 #define FIND_FILES "find ."
 #define LS_AI_DIALOG "ls AI dialog"
 #define FILTERSEARCHRESULT "filter selected searchresult"
+#define PARSE_SEARCH_RESULT "parse current search result with the " SrchRsltType_multitype " search result type"
 #define SearchResult_contains_ColumnSeperator "查询结果内容包含当前设置的列分隔符 %s , 请使用SearchResultColumnSeperator命令设置一个和当前内容不冲突的列分割符，可使用多个连续字符以避免冲突.冲突内容:\n%s"
 
 #define PipeTitle "Current:%d/Total:%d, PageSize:%d"
@@ -216,7 +218,6 @@ BuiltInCmd_SearchResultColumnSeperator \
 #define SearchResultType_TODO_md "work in the same way as .md search result type except that only level one title '简述' and '问题状态' will be queried. For example:\n" \
 "      locate .rfmTODO.md>TODO.md"
 
-#define SrchRsltType_multitype "multitype"
 #define SearchResultType_multitype "default search result type will be called first to get command output, MIME type and filename suffix will be used to match search result type, and matched search result type will be called to process this row of search result. With this type, we can display content of different file formats in same view. For example:\n" \
 "      locate .rfmTODO.>"SrchRsltType_multitype"\n" \
 "      by the way, select one file in search result view and run rfm builtin cd command ending with space, we can go into the directory containning this selected file."

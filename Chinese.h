@@ -1,5 +1,6 @@
 #define rfmLANGUAGE "rfmChinese"
 
+#define SrchRsltType_multitype "multitype"
 #define MSG_cannot_enter_directory "\n\n不能进入目录!"
 #define MSG_cannot_enter_deleted_directory "\n\n请使用工具栏上'git ls-files'命令查看已删除的目录内容"
 #define PageUp  "上葉"
@@ -37,6 +38,7 @@
 #define FIND_FILES "find ."
 #define LS_AI_DIALOG "ls AI对话"
 #define FILTERSEARCHRESULT "过滤出选中查询结果"
+#define PARSE_SEARCH_RESULT "用" SrchRsltType_multitype "查询结果类型解析当前查询结果"
 #define SearchResult_contains_ColumnSeperator "查询结果内容包含当前设置的列分隔符 %s , 请使用SearchResultColumnSeperator命令设置一个和当前内容不冲突的列分割符，可使用多个连续字符以避免冲突. 冲突内容:\n%s"
 
 #define PipeTitle "当前:%d/总数:%d, 每葉:%d"
@@ -220,7 +222,6 @@ BuiltInCmd_SearchResultColumnSeperator \
 "      locate .rfmTODO.md>TODO.md"
 
 
-#define SrchRsltType_multitype "multitype"
 #define SearchResultType_multitype "首先调用default结果类型,然后使用首列文件的MIME类型和文件名后缀去匹配同名的查询结果类型,调用匹配到的查询结果类型去处理此行,以达到在同一个结果页面显示多种文件格式内容的目的.命令举例:\n" \
 "      locate .rfmTODO.>"SrchRsltType_multitype"\n" \
 "    最后,在查询结果视图选中一条文件, 执行前述rfm内置的cd后接空格命令,就可以直接切换到包含此文件的目录.上面例子里文件是一条rfm TODO 事项描述文件,目录可以是为此事项专门建立,用以保存此事项相关图片等文档. 对比常见的关系数据库应用,查询结果里的扩展列相当于表字段; 我们用来在locate命令里匹配文件路径名的字符串起着关系数据库名及表名的作用; 两条不同表的记录的关联可以通过多种方式实现,最简单直观的就是两个文件位于同一文件目录下面. 上面例子若是在电子邮件系统里实现, rfmTODO 事项描述文件内容通常放在邮件正文里, 而事项相关文档都需要通过附件形式打包到邮件内, 也不如在rfm里面简单放在一个文件目录下方便."
