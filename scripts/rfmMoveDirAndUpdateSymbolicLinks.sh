@@ -48,7 +48,13 @@ fi
 	# 下面 SpecificDir 实际指的是 Source
 	# 因为 $rfmFindScope 是绝对路径形式, find 的输出也是绝对路径形式
 #find命令在遇到目录权限不够的情况会导致返回值非0，不能因此退出脚本
-find "$rfmFindScope" -type l -exec rfm_Update_affected_SymbolicLinks_for_move_or_copy.sh "$Destination" "$Source" {} \;
+if [ "$rfmFindScope" = "/" ]; then
+  find "$rfmFindScope" \
+    \( -path "/proc" -o -path "/sys" -o -path "/dev" -o -path "/run" -o -path "/var/run" -o -path "/var/lock" -o -path "/tmp" -o -path "/var/tmp" -o -path "/lost+found" \) -prune -o \
+    -type l -exec rfm_Update_affected_SymbolicLinks_for_move_or_copy.sh "$Destination" "$Source" {} \;
+else
+  find "$rfmFindScope" -type l -exec rfm_Update_affected_SymbolicLinks_for_move_or_copy.sh "$Destination" "$Source" {} \;
+fi
 
 if [[ "$rfm_overwrite_destination" == "y" || "$rfm_overwrite_destination" == "Y" ]]; then
         mv -T -f "$Source" "$Destination" || { echo "强制移动失败" >&2; exit 5; }
