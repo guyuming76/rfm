@@ -41,10 +41,18 @@ if [[ -L "$SymbolicLink" ]]; then
 	#在mineral 仓库里,用的是相对路径
 	link_target=$(readlink "$SymbolicLink")
 	if [[ -d "$SymbolicLink" ]]; then
-		link_target_fullpath=$(cd $(dirname "$SymbolicLink"); cd "$link_target"; pwd)
+    		link_target_fullpath=$(cd "$(dirname "$SymbolicLink")" && cd "$link_target" && pwd)
 	else
-		link_target_fullpath=$(cd $(dirname "$SymbolicLink"); cd $(dirname "$link_target"); pwd)/$(basename "$link_target")
+    		link_target_fullpath="$(cd "$(dirname "$SymbolicLink")" && cd "$(dirname "$link_target")" && pwd)/$(basename "$link_target")"
 	fi
+# 下为什么在嵌套的命令替换中**不需要**转义内层的双引号。
+# 在Bash中，命令替换 `$()` 创建了一个**新的解析上下文**。当Bash解析：
+# $(cd "$(dirname "$SymbolicLink")" && cd "$link_target" && pwd)
+# 解析过程是这样的：
+# 1. **外层命令替换**：`$(...)` 开始一个新的解析上下文
+# 2. **内层命令替换**：`$(dirname "$SymbolicLink")` 中的 `"$SymbolicLink"` 是在内层上下文中，所以双引号不需要转义
+# 3. **变量扩展**：`"$link_target"` 也是在外层命令替换的上下文中，所以也不需要转义
+
 	#link_target_fullpath=$(realpath --relative-base=$(dirname "$SymbolicLink") "$link_target")
 
 	if [[ "$NewAddress" =~ ":" || "$OldAddress" =~ ":" ]]; then
