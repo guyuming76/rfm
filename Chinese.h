@@ -16,6 +16,8 @@
 #define RunActionFindSL "文件集合操作:在新窗口查找(find)指向选中文件的链接"
 #define RunActionGitStage "git 暂存"
 #define RunActionRefreshThumb "刷新缩略图"
+#define RunActionMount "挂载(mount)"
+#define RunActionUmount "取消挂载(umount)"
 #define ToSearchResult "文件集合操作:单选内容(包含目录子项)->查询结果"
 #define UnionSearchResult  "文件集合操作:单选内容 合并 当前查询结果->新查询结果"
 #define IntersectWithSearchResult  "文件集合操作:单选内容 交 当前查询结果->新查询结果"

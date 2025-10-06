@@ -194,6 +194,7 @@ endif
 	@cp -f scripts/rfmSaveSearchResultToFile_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmSaveSearchResultToFile.sh
 	@cp -f scripts/rfmLocateGlobalAddons.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmFindDimensionValueForFile.sh ${DESTDIR}${PREFIX}/bin
+	@cp -f scripts/rfmMount_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmMount.sh
 
 ifneq ($(CalledByEbuild),YES)
 # the CalledByEbuild variable is exported in rfm ebuild
@@ -246,6 +247,7 @@ endif
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmSaveSearchResultToFile.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmLocateGlobalAddons.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmFindDimensionValueForFile.sh
+	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmMount.sh
 
 ifneq ($(RFM_AddOn),)
 	@echo
@@ -299,6 +301,7 @@ endif
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmSaveSearchResultToFile.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmLocateGlobalAddons.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmFindDimensionValueForFile.sh
+	@rm -f ${DESTDIR}${PREFIX}/bin/rfmMount.sh
 
 ifneq ($(CalledByEbuild),YES)
 	@rm -f /usr/include/rfm_addon.h

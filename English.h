@@ -16,6 +16,8 @@
 #define RunActionFindSL "File Set Operation: Find soft links to files in new term"
 #define RunActionGitStage "git stage"
 #define RunActionRefreshThumb "Refresh Thumbnail"
+#define RunActionMount "mount"
+#define RunActionUmount "umount"
 #define ToSearchResult "File Set Operation: To SearchResult"
 #define UnionSearchResult  "File Set Operation: Union SearchResult"
 #define IntersectWithSearchResult  "File Set Operation: Intersect With SearchResult"
