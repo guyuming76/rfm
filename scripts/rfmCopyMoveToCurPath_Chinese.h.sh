@@ -20,11 +20,15 @@ fi
 
 sourcefiles=$(rfmFromClipboard.sh)
 
+# 将剪贴板内容按行分割为数组，正确处理带空格的文件名
+IFS=$'\n' read -d '' -r -a file_array <<< "$sourcefiles"
+
 clipboardContent=0
-for src in $sourcefiles;do
-	echo "$src"
-	((clipboardContent++))
+for src in "${file_array[@]}"; do
+    echo "$src"
+    ((clipboardContent++))
 done
+
 
 if [[ $clipboardContent -eq 0 || -z "$sourcefiles" ]];then
 	echo "请输入源路径(键盘上下箭头选取历史输入):"
@@ -94,7 +98,7 @@ if [[ ! -z "$source" ]];then
 		exit 3
 	fi
 else
-	for sourcefile in $sourcefiles;do
+	for sourcefile in "${file_array[@]}"; do
 		if [[ "$1" == "cp" ]];then
 			cp -i -v -r "$sourcefile" "$target"
 		elif [[ "$1" == "mv" ]];then
