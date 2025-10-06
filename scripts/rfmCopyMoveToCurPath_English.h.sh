@@ -1,42 +1,61 @@
 #!/bin/bash
 #set -x
 
-target=$(pwd)
+# may also debug with bashdb, but https://forums.gentoo.org/viewtopic-p-8850991.html#8850991
+# find the command and argument first in htop when script launched by clicking "粘贴" in toolbar
+# note that the _Chinese.h suffix in script name will be removed when package installation
+# select the script, and press e in htop to check environment variable, pay attention to variable name with rfm prefix, since sometimes env variables are used to passing parameters
 
+target=$(pwd)
+# rfm使用g_spawn执行脚本时,第一个参数working directory会传入 rfm_curPath, 我的理解这里 pwd 就会得到 rfm_curPath 的值
 if [[ -z "$target" ]]; then
-	echo "pwd return empty" >2
+	echo "pwd return empty" >&2
 	exit 2
 fi
 
-if [[ "$1" != "cp" && "$1" != "mv" ]]; then
-	echo "parameter 1 should be either cp or mv" >2
+if [[ "$1" != "cp" && "$1" != "mv" && "$1" != "sl" ]]; then
+	echo "parameter 1 should be either cp or mv or sl(soft link)" >&2
 	exit 5
 fi
 
 sourcefiles=$(rfmFromClipboard.sh)
 
+# 将剪贴板内容按行分割为数组，正确处理带空格的文件名
+IFS=$'\n' read -d '' -r -a file_array <<< "$sourcefiles"
+
 clipboardContent=0
-for src in $sourcefiles;do
-	echo $src
-	clipboardContent+=1
+for src in "${file_array[@]}"; do
+    echo "$src"
+    ((clipboardContent++))
 done
 
-if [[ $clipboardContent -eq 0 ]];then
-	echo "Please input source path(use up and down arrow key to choose from input history):"
+
+if [[ $clipboardContent -eq 0 || -z "$sourcefiles" ]];then
+	echo "请输入源路径(键盘上下箭头选取历史输入):"
 else
 	echo -e "\e[1;33m"
-	echo "Press enter to read source from clipboard content shown above;"
-	echo "or input source path(use up and down arrow key to choose from input history):"
+	echo "直接回车从上面显示剪贴板内容读取源文件名;"
+	echo "或输入源路径(键盘上下箭头选取历史输入):"
 	echo -e "\e[0m"
 fi
 
 source rfmReadlineWithSpecificHistoryFile.sh "source" ~/.rfm_history_directory
+#https://forums.gentoo.org/viewtopic-p-8851216.html#8851216
+#https://bbs.deepin.org/post/283321
 source=${source/#~/${HOME}}
+
+if [[ "$1" == "sl" ]];then
+	read -p "是否(y/n)使用相对路径创建软链接?默认是(y)" -r useRelativeInSL
+fi
+
+read -p "是否(y/n)检查移动或复制造成的符号链接破坏并修复?默认是(y)" -r check_and_update_symbolic_link
+
+cp_mv_ln_return0=true
 
 if [[ ! -z "$source" ]];then
 
 	if [[ -d $source ]];then
-		read -p "Path inputted is a directory, press enter to launch new rfm window to choose source from this directory(press q to close the new rfm window after selection); or press n to use the directory as source" -r new_rfm
+		read -p "输入路径是个目录,按回车或y，则为此目录新开rfm窗口以便从中选择源文件（选完按q键关闭此新开窗口）; 或按n，复制整个目录." -r new_rfm
 	fi
 
 	if [[ -d $source && ( -z "$new_rfm" || "$new_rfm" == "Y" || "$new_rfm" == "y" ) ]];then
@@ -47,33 +66,70 @@ if [[ ! -z "$source" ]];then
 			while read line ;do \
 				if [[ "$1" == "cp" ]];then \
 					cp -v -r $line $target; \
-				else \
+				elif [[ "$1" == "mv" ]];then \
 					mv -v $line $target; \
-				fi \
+				elif [[ -z "$useRelativeInSL" || "$useRelativeInSL" == "y" || "$useRelativeInSL" == "Y" ]];then \
+					ln -sr $line $(echo $target/$(basename $line)); \
+				else \
+					ln -s $line $(echo $target/$(basename $line)); \
+				fi; \
+				[[ $? -ne 0 ]] && cp_mv_ln_return0=false; \
 			done <$namedpipe &
 			rfm -n -d $source -r $namedpipe
 			wait
 			rm -f $namedpipe
 		else
-			echo "$namedpipe already exists" >2
+			echo "$namedpipe already exists" >&2
 			exit 4
 		fi
 	elif [[ -f $source || "$new_rfm" == "n" ]];then
 		if [[ "$1" == "cp" ]];then
 			cp -i -v -r $source $target
-		else
+		elif [[ "$1" == "mv" ]];then
 			mv -i -v $source $target
+		elif [[ -z "$useRelativeInSL" || "$useRelativeInSL" == "y" || "$useRelativeInSL" == "Y" ]];then
+			ln -sr $source $(echo $target/$(basename $source))
+		else
+			ln -s $source $(echo $target/$(basename $source))
 		fi
+		[[ $? -ne 0 ]] && cp_mv_ln_return0=false
 	else
-		echo "$source not directory or file" >2
+		echo "$source not directory or file" >&2
 		exit 3
 	fi
 else
-	for sourcefile in $sourcefiles;do
+	for sourcefile in "${file_array[@]}"; do
 		if [[ "$1" == "cp" ]];then
-			cp -i -v -r $sourcefile $target
+			cp -i -v -r "$sourcefile" "$target"
+		elif [[ "$1" == "mv" ]];then
+		        if [[ -z "$check_and_update_symbolic_link" || "$check_and_update_symbolic_link" == "y" || "$check_and_update_symbolic_link" == "Y" ]];then
+		                if ! rfmMoveDirAndUpdateSymbolicLinks.sh "$sourcefile" "$target"; then
+					cp_mv_ln_return0=false
+				fi
+			else
+			        mv -i -v "$sourcefile" "$target"
+			fi
+		elif [[ -z "$useRelativeInSL" || "$useRelativeInSL" == "y" || "$useRelativeInSL" == "Y" ]];then
+			ln -sr $sourcefile $(echo $target/$(basename $sourcefile))
 		else
-			mv -i -v $sourcefile $target
+			ln -s $sourcefile $(echo $target/$(basename $sourcefile))
 		fi
+		[[ $? -ne 0 ]] && cp_mv_ln_return0=false
 	done
+fi
+
+if [[ -z "$check_and_update_symbolic_link" || "$check_and_update_symbolic_link" == "y" || "$check_and_update_symbolic_link" == "Y" ]];then
+        if [ -n "$G_MESSAGES_DEBUG" ];then
+                cp_mv_ln_return0=true
+	        #防止重复等待回车
+	        echo
+	        echo -e "\e[1;33m 按回车关闭窗口 \e[0m"
+	        read
+	fi
+fi
+
+if ! $cp_mv_ln_return0 ;then
+	        echo
+	        echo -e "\e[1;33m 按回车关闭窗口 \e[0m"
+	        read
 fi
