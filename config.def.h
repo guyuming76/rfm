@@ -151,10 +151,8 @@ static const char *create_archive[]  = { rfmBinPath "createArchive.sh", NULL };
 static const char *list_archive[] = { rfmBinPath "rfmVTforCMD.sh", "tar","--list","--file", NULL};
 static const char *metaflac[] = { "/usr/bin/metaflac", "--list", "--block-type=VORBIS_COMMENT", NULL };
 static const char *du[]       = { "/usr/bin/du", "-s", "-h", NULL };
-static const char *mount[]    = { rfmBinPath "suMount.sh", NULL };
-static const char *umount[]   = { rfmBinPath "suMount.sh", "-u", NULL };
-/* static const char *udisks_mount[]   = { "/usr/bin/udisksctl", "mount", "--no-user-interaction", "-b", NULL }; */
-/* static const char *udisks_unmount[] = { "/usr/bin/udisksctl", "unmount", "--no-user-interaction", "-b", NULL }; */
+static const char *mount[]    = { "$RFM_TERM", rfmBinPath "rfmMount.sh", NULL };
+static const char *umount[]   = { "$RFM_TERM", "sudo","umount", NULL };
 static const char *properties[]     = { "$RFM_TERM", rfmBinPath "rfmProperties.sh", NULL };
 static const char *www[]        = { "/usr/bin/xdg-open", NULL };
 static const char *man[]        = { "/usr/bin/groff", "-man", "-Tutf8", NULL };
@@ -284,10 +282,8 @@ static RFM_MenuItem run_actions[] = {
    { RunActionFindSL,"*",              "*",                    NULL,			NULL,			NULL,		find_softlink,                  NULL },
    { RunActionSL,    "*",              "*",                    NULL,			NULL,			NULL,		create_softlink,                NULL },
    { RunActionFindSameFile, "*",       "*",                    NULL,			NULL,			NULL,		find_same_name,                 NULL },
-   { "mount",        "inode",          "mount-point",          NULL,			NULL,			NULL,		mount,            		mountpoint_unmounted },
-   { "unmount",      "inode",          "mount-point",          NULL,			NULL,			NULL,		umount,           		mountpoint_mounted },
-   { "mount",        "inode",          "blockdevice",          NULL,			NULL,			NULL,		mount,            		NULL },
-   { "unmount",      "inode",          "blockdevice",          NULL,			NULL,			NULL,		umount,           		NULL },
+   { RunActionMount, "inode",          "directory",            NULL,			NULL,			NULL,		mount,            		NULL },
+   { RunActionUmount,"inode",          "mount-point",          NULL,			NULL,			NULL,		umount,           		NULL },
    { "edit",         "text",           "*",                    NULL,			NULL,			NULL,		textEdit,         		NULL },
    { "Open",         "text",           "html",                 NULL,			NULL,			NULL,		www,              		NULL },
    { "Play",         "video",          "*",                    NULL,			NULL,			NULL,		play_video,       		NULL },
