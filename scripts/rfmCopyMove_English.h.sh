@@ -14,10 +14,10 @@ input_destination=${input_destination/#~/${HOME}}
 # Test shows cp -i will ignore existing files without prompting.
 
 if [[ -z "$input_destination" ]]; then
-	if [ -n "$G_MESSAGES_DEBUG" ]; then
-		echo "${@:2}" >/tmp/test_rfmToClipboard.sh.txt
-	fi
-	echo "${@:2}" | xargs rfmToClipboard.sh
+       	if [ -n "$G_MESSAGES_DEBUG" ]; then
+               	printf '%s\n' "${@:2}" >/tmp/test_rfmToClipboard.sh.txt
+       	fi
+	printf '%s\n' "${@:2}" | rfmToClipboard.sh
 else
 	read -p "Check and repair broken symbolic links after operation? (y/n, default y): " -r check_and_update_symbolic_link
 

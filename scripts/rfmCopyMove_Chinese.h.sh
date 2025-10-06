@@ -12,10 +12,10 @@ input_destination=${input_destination/#~/${HOME}}
 # 用户很有可能是在查询结果视图里面选中文件,然后复制到当前目录的,所以目的地默认为当前目录还是很有必要,虽然会遇到来源文件也是当前目录的情况, 我测试的结果是cp -i 会直接忽略这个文件,并不提示
 
 if [[ -z "$input_destination" ]]; then
-	if [ -n "$G_MESSAGES_DEBUG" ]; then
-		echo "${@:2}" >/tmp/test_rfmToClipboard.sh.txt
-	fi
-	echo "${@:2}" | xargs rfmToClipboard.sh
+    	if [ -n "$G_MESSAGES_DEBUG" ]; then
+        	printf '%s\n' "${@:2}" >/tmp/test_rfmToClipboard.sh.txt
+    	fi
+    	printf '%s\n' "${@:2}" | rfmToClipboard.sh
 else
 	read -p "是否(y/n)检查移动或复制造成的符号链接破坏并修复?默认是(y)" -r check_and_update_symbolic_link
 
