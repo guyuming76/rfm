@@ -138,6 +138,8 @@ endif
 ifeq ($(READLINE_LIB),-Dreedline)
 	@echo "Cleaning reedline_wrapper..."
 	@cd reedline_wrapper && cargo clean && cd ..
+	@echo "Cleaning rfmReedline..."
+	@cd rfmReedline && cargo clean && cd ..
 endif
 
 install:
