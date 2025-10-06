@@ -26,15 +26,17 @@ for i in "$@";do
 	echo ""
 	if [[ "$outputToClipBoard" == "y" || "$outputToClipBoard" == "Y" ]];then
 		if [[ "${includeSL,,}" == "n" ]]; then
-			find "$rfmFindScope" -exec test "$i" -ef {} \; -print | tee /dev/tty | xargs rfmToClipboard.sh
+			find "$rfmFindScope" -not -path '*/.git/*'  -exec test "$i" -ef {} \; -print | tee /dev/tty | rfmToClipboard.sh
 		else
-			find -L "$rfmFindScope" -exec test "$i" -ef {} \; -print | tee /dev/tty | xargs rfmToClipboard.sh
+			find -L "$rfmFindScope" -not -path '*/.git/*'  -exec test "$i" -ef {} \; -print | tee /dev/tty | rfmToClipboard.sh
 		fi
 	else
 		if [[ "${includeSL,,}" == "n" ]]; then
-			find "$rfmFindScope" -exec test "$i" -ef {} \; -print
+			find "$rfmFindScope" -not -path '*/.git/*'  -exec test "$i" -ef {} \; -print
+			#find "$rfmFindScope" -samefile "$i" 命令和上面命令结果不同
 		else
-			find -L "$rfmFindScope" -exec test "$i" -ef {} \; -print
+			find -L "$rfmFindScope" -not -path '*/.git/*'  -exec test "$i" -ef {} \; -print
+			#find -L "$rfmFindScope" -samefile "$i" 命令和上面命令得到同样的结果
 		fi
 	fi
 	echo ""

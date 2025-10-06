@@ -26,9 +26,9 @@ for i in "$@";do
 	echo ""
 	if [[ "$outputToClipBoard" == "y" || "$outputToClipBoard" == "Y" ]];then
 		if [[ "${includeSL,,}" == "n" ]]; then
-			find "$rfmFindScope" -not -path '*/.git/*'  -exec test "$i" -ef {} \; -print | tee /dev/tty | xargs rfmToClipboard.sh
+			find "$rfmFindScope" -not -path '*/.git/*'  -exec test "$i" -ef {} \; -print | tee /dev/tty | rfmToClipboard.sh
 		else
-			find -L "$rfmFindScope" -not -path '*/.git/*'  -exec test "$i" -ef {} \; -print | tee /dev/tty | xargs rfmToClipboard.sh
+			find -L "$rfmFindScope" -not -path '*/.git/*'  -exec test "$i" -ef {} \; -print | tee /dev/tty | rfmToClipboard.sh
 		fi
 	else
 		if [[ "${includeSL,,}" == "n" ]]; then
