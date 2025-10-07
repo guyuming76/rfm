@@ -325,6 +325,7 @@ static void free_DimensionProperties(DimensionProperties *dimProp);
 static void find_dirs_as_dimension_values(GSList **list, const char *base, const char *path);
 static char **dimension_completion_function(const char *dimension_localAddress, int start, int end);
 static void cmd_set_dimension_value_for_selected_files(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
+static void cmd_set_dimension_value_for_selected_files_internal(gchar* dimNameAndValue[2]);
 #ifdef reedline
 static GPtrArray *rfm_completion_based_on_dimensions(char *text);
 #endif
@@ -4431,7 +4432,24 @@ static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * p
 	}else if (g_strcmp0(parsed_msg->we_wordv[0],"//")==0) {
 	  Switch_SearchResultView_DirectoryView(NULL, rfmCtx);
 
-        }else return FALSE; // parsed_msg->we_wordv[0] does not match any build command
+        }else{
+	  gchar** dimNameAndValue = g_strsplit(parsed_msg->we_wordv[0],"=",2);
+	  if (g_strv_length(dimNameAndValue)==2){
+	    GHashTableIter iter_for_DimensionPropertiesHashTable;
+	    gchar *key;
+	    DimensionProperties *value;
+	    g_hash_table_iter_init(&iter_for_DimensionPropertiesHashTable,DimensionPropertiesHashTable_name_asKey);
+	    while (g_hash_table_iter_next(&iter_for_DimensionPropertiesHashTable, &key, &value)) {
+	      if (g_strcmp0(dimNameAndValue[0], key)==0) {
+		cmd_set_dimension_value_for_selected_files_internal(dimNameAndValue);
+		g_strfreev(dimNameAndValue);
+		g_string_free(readline_result_string_after_file_name_substitution,TRUE);
+		return TRUE;
+	      }
+	    }
+	  }
+	  return FALSE; // parsed_msg->we_wordv[0] does not match any build command
+	}
 	g_string_free(readline_result_string_after_file_name_substitution,TRUE);
 	return TRUE; //execution reaches here if parsed_msg->we_wordv[0] matchs any keyword, and have finished the corresponding logic
 }
@@ -6092,6 +6110,12 @@ static void load_DimensionPropertiesHashTable_Callback(RFM_ChildAttribs* child_a
 static void cmd_set_dimension_value_for_selected_files(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution){
   if (parsed_msg->we_wordc == 2){
     gchar** dimNameAndValue = g_strsplit(parsed_msg->we_wordv[1],"=",2);
+    cmd_set_dimension_value_for_selected_files_internal(dimNameAndValue);
+    g_strfreev(dimNameAndValue);
+  }
+}
+
+static void cmd_set_dimension_value_for_selected_files_internal(gchar* dimNameAndValue[2]){
     DimensionProperties* dimProps = g_hash_table_lookup(DimensionPropertiesHashTable_name_asKey,dimNameAndValue[0]);
     if (dimProps){
       g_log(RFM_LOG_DIMENSION, G_LOG_LEVEL_DEBUG, "cmd_set_dimension_value_for_selected_files: dim %s, value:%s", dimNameAndValue[0],dimNameAndValue[1]);
@@ -6102,8 +6126,6 @@ static void cmd_set_dimension_value_for_selected_files(wordexp_t *parsed_msg, GS
 	g_list_free_full(filepath_list_for_selection_on_view_clone,g_free);
       }else g_warning("no files selected");
     }
-    g_strfreev(dimNameAndValue);
-  }
 }
 
 static void refresh_DimensionPropertiesHashTable() {
