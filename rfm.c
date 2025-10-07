@@ -6096,17 +6096,11 @@ static void cmd_set_dimension_value_for_selected_files(wordexp_t *parsed_msg, GS
     if (dimProps){
       g_log(RFM_LOG_DIMENSION, G_LOG_LEVEL_DEBUG, "cmd_set_dimension_value_for_selected_files: dim %s, value:%s", dimNameAndValue[0],dimNameAndValue[1]);
       gchar* softlink_dir = g_build_filename(dimProps->localAddress, dimNameAndValue[1],NULL);
-      GList* softlink_dir_for_g_spawn = NULL;
-      softlink_dir_for_g_spawn = g_list_prepend(softlink_dir_for_g_spawn, softlink_dir);
       if (filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView]!=NULL) {
 	GList *filepath_list_for_selection_on_view_clone = g_list_first(g_list_copy_deep(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView],g_strdup,NULL));
-	while (filepath_list_for_selection_on_view_clone){
-	  g_spawn_wrapper(create_softlink_for_dimension, softlink_dir_for_g_spawn, G_SPAWN_DEFAULT, NULL, filepath_list_for_selection_on_view_clone->data, FALSE, NULL, NULL, TRUE);
-	  filepath_list_for_selection_on_view_clone = g_list_next(filepath_list_for_selection_on_view_clone);
-	}
+	g_spawn_wrapper(create_softlink_for_dimension,filepath_list_for_selection_on_view_clone , G_SPAWN_DEFAULT | G_SPAWN_STDIN_FROM_DEV_NULL, NULL,softlink_dir, FALSE, NULL, NULL, TRUE);
 	g_list_free_full(filepath_list_for_selection_on_view_clone,g_free);
       }else g_warning("no files selected");
-      g_list_free_full(softlink_dir_for_g_spawn,g_free);
     }
     g_strfreev(dimNameAndValue);
   }
