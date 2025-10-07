@@ -105,7 +105,7 @@ static const char *parse_searchresult_with_multitype[] = { stdin_cmd_interpretor
 static const char *Union_SearchResult[] = { stdin_cmd_interpretors[0].name, RFM_SEARCH_RESULT_AS_INPUT_PREFIX "(tee;find -L "RFM_selected_filename_placeholder" -exec readlink -f {} \\;)|sort|uniq " RFM_SearchResultTypeNamePrefix "0 ",NULL };
 static const char *Subtract_SearchResult[] = { stdin_cmd_interpretors[0].name, RFM_SEARCH_RESULT_AS_INPUT_PREFIX "sort|comm -23 - <(find -L "RFM_selected_filename_placeholder" -exec readlink -f {} \\;|sort) "RFM_SearchResultTypeNamePrefix "0 ",NULL };
 static const char *Intersect_With_SearchResult[] = { stdin_cmd_interpretors[0].name, RFM_SEARCH_RESULT_AS_INPUT_PREFIX "sort|comm -12 - <(find -L "RFM_selected_filename_placeholder" -exec readlink -f {} \\;|sort) "RFM_SearchResultTypeNamePrefix "0 ",NULL };
-static const char *To_SearchResult[] = { stdin_cmd_interpretors[0].name, "find -L "RFM_selected_filename_placeholder" -exec readlink -f {} \\; "RFM_SearchResultTypeNamePrefix "0 ", NULL};
+static const char *To_SearchResult[] = { stdin_cmd_interpretors[0].name, "find -L "RFM_selected_filename_placeholder" -exec readlink -f {} \\;|sort|uniq "RFM_SearchResultTypeNamePrefix "0 ", NULL};
 static const char *find_same_name[] = { stdin_cmd_interpretors[0].name, rfmBinPath "rfmFindFilesWithTheSameName.sh "RFM_SearchResultTypeNamePrefix SrchRsltType_multitype" ", NULL };
 
 static const char *cd_in_searchresult[] = { stdin_cmd_interpretors[0].name, "cd ", NULL };
