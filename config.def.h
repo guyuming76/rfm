@@ -71,7 +71,7 @@ const stdin_cmd_interpretor stdin_cmd_interpretors[] = {
 // 留在这里 rfm.c 可以访问但rfm_local.c 编译时不能访问，我觉得也许可以通过单方面改变这里的定义值实现一些比如本地的版本升级控制，安全控制等，区分不同的 rfm_local.c, 名称和这个不同的就不能顺利加载。我并不是推荐这种容易造成混乱的方法，我觉得只是在不得已的情况下提供一种可能性。
 static const gchar *global_addons_locating_cmd_template[] = { "rfmLocateGlobalAddons.sh",RFM_LOCAL_C_FILE,NULL };
 static const gchar *rfm_local_c_compile_cmd_template = "gcc -O0 -g -shared -fPIC $(pkg-config --cflags --libs gtk+-3.0 json-glib-1.0) %s %s -D%s -D'RFM_SearchResultTypeNamePrefix=\"%s\"' -D'RFM_NEW_TERM_SUFFIX=\"%s\"' -D'RFM_selected_filename_placeholder=\"%s\"' -D'RFM_SEARCH_RESULT_AS_INPUT_PREFIX=\"%s\"' -o %s %s %s";
-static const gchar *locate_addons[] = { stdin_cmd_interpretors[0].name, "locate " RFM_LOCAL_C_FILE "|xargs grep 'const enum RFM_ADDON_TYPE addon_type ='" RFM_SearchResultTypeNamePrefix RFM_LOCAL_C_FILE };
+static const gchar *locate_addons[] = { stdin_cmd_interpretors[0].name, "locate --regex /" RFM_LOCAL_C_FILE "$|xargs grep 'const enum RFM_ADDON_TYPE addon_type ='" RFM_SearchResultTypeNamePrefix RFM_LOCAL_C_FILE };
 #endif
 
 static const gchar *global_dimension_properties_files_locating_cmd[] = {"locate",RFM_DIMENSION_PROPERTIES_FILE_NAME,NULL};
