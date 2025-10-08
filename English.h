@@ -1,5 +1,11 @@
 #define rfmLANGUAGE "rfmEnglish"
 
+
+#define RFM_DIMENSION_PROPERTIES_FILE_NAME "rfmDimensionProperties"
+#define RFM_DIMENSION_ID "UniqueID"
+#define RFM_DIMENSION_NAME "Name"
+#define RFM_DIMENSION_LOCAL_PATH "RemoteAddress"
+
 #define SrchRsltType_multitype "multitype"
 #define MSG_cannot_enter_directory "\n\nCan't enter directory!"
 #define MSG_cannot_enter_deleted_directory "\n\nPlease show content of deleted directory with the 'git ls-files' in toolbar"
@@ -97,7 +103,7 @@
 #define BuiltInCmd_help                        "help"
 #define BuiltInCmd_help_Description            "show this command help, add command name as parameter to show help for that command only"
 #define BuiltInCmd_dimension                   "dimension"
-#define BuiltInCmd_set_dimension_value_description  "set dimension value for selected files,i.e.,create symbolic link to selected files under specific dimension value directory。argument(can work with TAB completion）: dimension name=dimension value"
+#define BuiltInCmd_set_dimension_value_description  "set dimension value for selected files,i.e.,create symbolic link to selected files under specific dimension value directory。argument(can work with TAB completion）: dimension name=dimension value . the name of this command can be omitted, i.e., 'dimension name=dimension value' can be inputted without the leading command name to create symbolic link for selected files"
 #define BuiltInCmd_ESC_Description             "Unselect currently selected files; or press Alt + e in term window; the same effect as ESC in GUI"
 #define Up "Up"
 #define BuiltInCmd_Up_Description              "go to parent directory，short cut key: ALT + Up arrow（MOD1 usually is ALT）"
@@ -124,13 +130,26 @@
 "    with difference in layout, there are also two types of view: icon view and list view, icons such as picture thumbnails are shown in icon view.\n" \
 "\n\033[32m command prompt: \033[0m\n" \
 "    b*> means there is selected file(s) in rfm view, and current command interpreter is Bash, which can be configured in config.h\n" \
-"        press TAB with empty prefix will insert the current selected file fullpath; otherwise, system TAB completion function such as filename completion will be called.\n" \
+"        press TAB with empty prefix will insert the current selected file fullpath; otherwise, see TAB completion section bellow for detail.\n" \
 "    b>  means no selected files\n" \
 "    b?> means in refreshing and file selection cannot be determined, try press enter after refresh.\n" \
 "    prompt won't update when selection changes in rfm view, press Enter to refresh\n" \
 "    prompt b*],b>,b?] differ with explanation above only in that commands inputted in stdin is started in gtk thread instead of readline thread. When ] is displayed instead of >, gtk window will not refresh and file selection cannot be changed when command is executing(such as when selected file is being editted).\n" \
 reedline_specific_help \
 "    ctrl-z in command window will send rfm.sh to background, and the command prompt will change to the shell prompt before rfm.sh launch. fg command can bring rfm.sh back to foreground the the command prompt will change to rfm prompt described above.\n" \
+"\n\033[32m TAB completion: \033[0m\n" \
+"    在config.mk中使用reedline库编译rfm,补全菜单交互较方便\n" \
+"    1. 基于当前选中文件\n" \
+"        当前有文件被选中，且光标前字符为空时，TAB不提示补全菜单，自动补全当前选中文件（若多选，只有一个有效）.\n" \
+"    2.\033[32m基于GNU readline 文件补全\033[0m\n" \
+"        若没有文件选中，使用gnu readline库函数 rl_filename_completion_function 获取TAB补全候选项，在补全菜单显示为\033[32m绿色\033[0m。同时补全菜单还会同时包含下面描述的黄色和红色内容\n" \
+"    3.\033[31m基于查询结果页面的列标题和值\033[0m\n" \
+"        当前为查询结果页面时，且包含config.h中定义的取值函数为getExtColumnValueFromHashTable的扩展列，当输入行光标前为空的时候，TAB补全菜单会出现\033[31m红色\033[0m内容的扩展标题列名。选中
+红色标题列名补全后，再继续TAB补全，则会出现红色的此列值的补全内容。在补全输入列标题名后，可以手工输入其他符号如等号(=),然后再按TAB补全列值。\n" \
+"    4.\033[33m基于维度定义\033[0m\n" \
+"        在文件目录内加入名为 " RFM_DIMENSION_PROPERTIES_FILE_NAME " 的文件，则此目录会被rfm定义唯一维度，其下子目录名都是此维度的成员。\n" \
+"        维度名和成员在TAB补全菜单中显示为\033[33m黄色\033[0m。\n" \
+"        TAB补全完成维度名输入后，接着按TAB键，会出现相应维度成员值补全内容，值前会自动加等号分隔，不要手工输入。\n" \
 "\n\033[32m command history: \033[0m\n" \
 "    command history is saved in file ~/.rfm_history. command history for current running rfm is kept in memory and saved into file on quit, and will be read into memory on next launch.\n" \
 "    commond in history will be shown with uppper/down arrow key. enter command prefix can narrow down the scope.\n" \
@@ -227,10 +246,3 @@ BuiltInCmd_SearchResultColumnSeperator \
 #define SearchResultType_default_with_title "The same as the default search result type, except that the first row in command output contains column title.for example, to filter out the first row in current search result:\n" \ 
 "      SearchResult|head -n2>withTitle"
 
-
-
-
-#define RFM_DIMENSION_PROPERTIES_FILE_NAME "rfmDimensionProperties"
-#define RFM_DIMENSION_ID "UniqueID"
-#define RFM_DIMENSION_NAME "Name"
-#define RFM_DIMENSION_LOCAL_PATH "RemoteAddress"

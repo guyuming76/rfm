@@ -1,5 +1,12 @@
 #define rfmLANGUAGE "rfmChinese"
 
+#define RFM_DIMENSION_PROPERTIES_FILE_NAME "rfm维度属性"
+#define RFM_DIMENSION_ID "唯一标识"
+//原则上，名称就等于文件所在本层目录名，文件路径冲突时可以改目录名
+#define RFM_DIMENSION_NAME "名称"
+//当维度没有被跨仓库使用时，远程地址不必有。
+#define RFM_DIMENSION_LOCAL_PATH "远程地址"
+
 #define SrchRsltType_multitype "multitype"
 #define MSG_cannot_enter_directory "\n\n不能进入目录!"
 #define MSG_cannot_enter_deleted_directory "\n\n请使用工具栏上'git ls-files'命令查看已删除的目录内容"
@@ -98,7 +105,7 @@
 #define BuiltInCmd_help                        "help"
 #define BuiltInCmd_help_Description            "显示命令帮助,加命令名参数则仅显示这条命令的帮助"
 #define BuiltInCmd_dimension                   "维度"
-#define BuiltInCmd_set_dimension_value_description  "为选中文件设置维度值，也就是在相应维度值目录下创建指向选中文件的符号链接。命令参数（可通过TAB补全输入）: 维度名=维度值"
+#define BuiltInCmd_set_dimension_value_description  "为选中文件设置维度值，也就是在相应维度值目录下创建指向选中文件的符号链接。命令参数（可通过TAB补全输入）: 维度名=维度值 .命令名可以省略,也就是说可以直接在命令行输入 维度名=维度值 ,就可以为选中文件创建符号链接"
 #define BuiltInCmd_ESC_Description	       "取消当前文件选中;或在命令窗口使用组合键 Alt + e ;效果相当于在图形界面使用ESC键"
 #define Up "父"
 #define BuiltInCmd_Up_Description              "进入上级目录，可使用组合键 ALT+向上箭头（MOD1通常就是ALT键）"
@@ -124,13 +131,25 @@
 "    按显示布局分为 图标 和 列表两种,图标视图显示文件缩略图\n" \
 "\n\033[32m 命令提示: \033[0m\n" \
 "    b*> 表示rfm视图有文件选中,且当前命令执行程序是Bash(命令执行程序在config.h里面可配置).\n" \
-"        此时按TAB键,且TAB键前没有(非空格)文本,则自动插入当前选中文件完整路径。否则调用系统原有补全功能，如文件名补全\n" \
+"        此时按TAB键,且TAB键前没有(非空格)文本,则自动插入当前选中文件完整路径,详见下面TAB补全一节.\n" \
 "    b>  表示没有文件选中\n" \
 "    b?> 表示正在刷新,无法确定选中文件数,刷新完成后回车重试\n" \
 "    命令提示不随文件选中或取消自动更新, 用户可按回车键刷新\n" \
 "    提示符 b*],b>,b?] 分别同上解释,区别在与,此时输入命令会由gtk窗口线程启动,而不是readline线程;也就是说,此时输入命令执行期间(比如编辑选中文件时),文件视图不会刷新,也不能更改选项\n" \
 reedline_specific_help \
 "    在命令输入窗口按ctrl-z会把rfm.sh进程放入后台运行，命令提示符会变成启动rfm.sh前的shell提示符。在此状态下，若运行htop等交互命令异常，可先运行reset重置终端模拟器。运行fg命令可将rfm.sh任务恢复到前台运行，命令提示符恢复成上述rfm提示符.\n" \
+"\n\033[32m TAB补全: \033[0m\n" \
+"    在config.mk中使用reedline库编译rfm,补全菜单交互较方便\n" \
+"    1. 基于当前选中文件\n" \
+"        当前有文件被选中，且光标前字符为空时，TAB不提示补全菜单，自动补全当前选中文件（若多选，只有一个有效）.\n" \
+"    2.\033[32m基于GNU readline 文件补全\033[0m\n" \
+"        若没有文件选中，使用gnu readline库函数 rl_filename_completion_function 获取TAB补全候选项，在补全菜单显示为\033[32m绿色\033[0m。同时补全菜单还会同时包含下面描述的黄色和红色内容\n" \
+"    3.\033[31m基于查询结果页面的列标题和值\033[0m\n" \
+"        当前为查询结果页面时，且包含config.h中定义的取值函数为getExtColumnValueFromHashTable的扩展列，当输入行光标前为空的时候，TAB补全菜单会出现\033[31m红色\033[0m内容的扩展标题列名。选中红色标题列名补全后，再继续TAB补全，则会出现红色的此列值的补全内容。在补全输入列标题名后，可以手工输入其他符号如等号(=),然后再按TAB补全列值。\n" \
+"    4.\033[33m基于维度定义\033[0m\n" \
+"        在文件目录内加入名为 " RFM_DIMENSION_PROPERTIES_FILE_NAME " 的文件，则此目录会被rfm定义唯一维度，其下子目录名都是此维度的成员。\n" \
+"        维度名和成员在TAB补全菜单中显示为\033[33m黄色\033[0m。\n" \
+"        TAB补全完成维度名输入后，接着按TAB键，会出现相应维度成员值补全内容，值前会自动加等号分隔，不要手工输入。\n" \
 "\n\033[32m 命令历史记录: \033[0m\n" \
 "    命令历史记录保存在~/.rfm_history文件,当前活动rfm进程输入的命令历史保持在内存中,退出rfm时才写入文件,下次启动rfm时再读入内存.\n" \
 "    在命令输入窗口使用上下箭头按键可以获取命令历史,也可以输入命令部分前缀缩小查找范围.\n" \
@@ -231,11 +250,3 @@ BuiltInCmd_SearchResultColumnSeperator \
 #define SearchResultType_default_with_title "类似0号default查询结果类型,区别仅在于首行包含的是列标题,而不是实际数据.举例,过滤出当前查询结果第一行，参数-n2是因为title占一行，加上一行数据：\n" \
 "      SearchResult|head -n2>withTitle\n"
 
-
-
-#define RFM_DIMENSION_PROPERTIES_FILE_NAME "rfm维度属性"
-#define RFM_DIMENSION_ID "唯一标识"
-//原则上，名称就等于文件所在本层目录名，文件路径冲突时可以改目录名
-#define RFM_DIMENSION_NAME "名称"
-//当维度没有被跨仓库使用时，远程地址不必有。
-#define RFM_DIMENSION_LOCAL_PATH "远程地址"
