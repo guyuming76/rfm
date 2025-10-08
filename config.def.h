@@ -74,7 +74,7 @@ static const gchar *rfm_local_c_compile_cmd_template = "gcc -O0 -g -shared -fPIC
 static const gchar *locate_addons[] = { stdin_cmd_interpretors[0].name, "locate --regex /" RFM_LOCAL_C_FILE "$|xargs grep 'const enum RFM_ADDON_TYPE addon_type ='" RFM_SearchResultTypeNamePrefix RFM_LOCAL_C_FILE };
 #endif
 
-static const gchar *global_dimension_properties_files_locating_cmd[] = {"locate",RFM_DIMENSION_PROPERTIES_FILE_NAME,NULL};
+static const gchar *global_dimension_properties_files_locating_cmd[] = {"rfmFind_DIMENSION_PROPERTIES_FILEs.sh",RFM_DIMENSION_PROPERTIES_FILE_NAME,NULL};
 
 #ifdef CmarkTools
 static gchar* MD_parsing_cmdTemplate[] = { stdin_cmd_interpretors[0].name, "extractJsonFromMarkdown 0 %s", NULL };
