@@ -1021,7 +1021,7 @@ static RFM_defaultPixbufs *load_default_pixbufs(void)
    defaultPixbufs->mounted=gdk_pixbuf_copy(defaultPixbufs->dir);
    gdk_pixbuf_composite(mount_pixbuf,defaultPixbufs->mounted,1,1,gdk_pixbuf_get_width(mount_pixbuf),gdk_pixbuf_get_height(mount_pixbuf),0,0,1,1,GDK_INTERP_NEAREST,100);
 
-   defaultPixbufs->dimensionDir = gdk_pixbuf_copy(defaultPixbufs->dir);// 创建 dimensionDir（目录中显示两个符号号链接，表示这是一个包含符号链接的目录，也就是dimension的直观表示）
+   defaultPixbufs->dimensionDir = gdk_pixbuf_copy(defaultPixbufs->dir);// 创建 dimensionDir（目录中显示符号号链接，表示这是一个包含符号链接的目录，也就是dimension的直观表示）
    g_log(RFM_LOG_GTK, G_LOG_LEVEL_DEBUG, "DimensionDir 尺寸: %dx%d, Symlink 尺寸: %dx%d", gdk_pixbuf_get_width(defaultPixbufs->dimensionDir), gdk_pixbuf_get_height(defaultPixbufs->dimensionDir), gdk_pixbuf_get_width(defaultPixbufs->symlink), gdk_pixbuf_get_height(defaultPixbufs->symlink));
     // 直接复制符号链接小图标到指定位置
    gdk_pixbuf_copy_area(defaultPixbufs->symlink,
@@ -1029,13 +1029,7 @@ static RFM_defaultPixbufs *load_default_pixbufs(void)
                         gdk_pixbuf_get_width(defaultPixbufs->symlink),
                         gdk_pixbuf_get_height(defaultPixbufs->symlink),
                         defaultPixbufs->dimensionDir,
-                        (gdk_pixbuf_get_height(defaultPixbufs->dimensionDir) - gdk_pixbuf_get_height(defaultPixbufs->symlink))/6 , (gdk_pixbuf_get_height(defaultPixbufs->dimensionDir) - gdk_pixbuf_get_height(defaultPixbufs->symlink))*2/3);  // 目标位置
-   gdk_pixbuf_copy_area(defaultPixbufs->symlink,
-                        0, 0,  // 源位置
-                        gdk_pixbuf_get_width(defaultPixbufs->symlink),
-                        gdk_pixbuf_get_height(defaultPixbufs->symlink),
-                        defaultPixbufs->dimensionDir,
-                        (gdk_pixbuf_get_width(defaultPixbufs->dimensionDir)-gdk_pixbuf_get_width(defaultPixbufs->symlink))*5/6, (gdk_pixbuf_get_height(defaultPixbufs->dimensionDir) - gdk_pixbuf_get_height(defaultPixbufs->symlink))*2/3);  // 目标位置
+                        (gdk_pixbuf_get_height(defaultPixbufs->dimensionDir) - gdk_pixbuf_get_height(defaultPixbufs->symlink))/2 , (gdk_pixbuf_get_height(defaultPixbufs->dimensionDir) - gdk_pixbuf_get_height(defaultPixbufs->symlink))*2/3);  // 目标位置
 
    defaultPixbufs->symlinkDimensionDir = gdk_pixbuf_copy(defaultPixbufs->dimensionDir);
    gdk_pixbuf_composite(defaultPixbufs->symlink,defaultPixbufs->symlinkDimensionDir,0,0,gdk_pixbuf_get_width(defaultPixbufs->symlink),gdk_pixbuf_get_height(defaultPixbufs->symlink),0,0,1,1,GDK_INTERP_NEAREST,200);// 在dimensionDir的左上角再加个symlink就表示这是指向dimensionDir的symlink
