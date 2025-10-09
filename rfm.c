@@ -1,11 +1,7 @@
 /* RFM - Rod's File Manager,  enhancements made by guyuming, and license changed from MIT to GPL-v3 by guyuming
- *
  * See LICENSE file for copyright and license details.
- *
  * Edit config.h to define run actions and set options
- *
- * Compile with: gcc -Wall -g rfm.c `pkg-config --libs --cflags gtk+-3.0` -o rfm
- *            OR use the supplied Makefile.
+ * Compile with the supplied Makefile.
  */
 
 #include "gdk/gdkkeysyms.h"
