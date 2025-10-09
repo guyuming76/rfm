@@ -270,6 +270,8 @@ typedef struct {
    GdkPixbuf *mounted;
    GdkPixbuf *symlink;
    GdkPixbuf *broken;
+   GdkPixbuf *dimensionDir;
+   GdkPixbuf *symlinkDimensionDir; //指向dimensionDir的符号链接
 } RFM_defaultPixbufs;
 
 static RFM_defaultPixbufs *defaultPixbufs=NULL;
@@ -1019,6 +1021,23 @@ static RFM_defaultPixbufs *load_default_pixbufs(void)
    defaultPixbufs->mounted=gdk_pixbuf_copy(defaultPixbufs->dir);
    gdk_pixbuf_composite(mount_pixbuf,defaultPixbufs->mounted,1,1,gdk_pixbuf_get_width(mount_pixbuf),gdk_pixbuf_get_height(mount_pixbuf),0,0,1,1,GDK_INTERP_NEAREST,100);
 
+   defaultPixbufs->dimensionDir = gdk_pixbuf_copy(defaultPixbufs->dir);// 创建 dimensionDir（符号链接居中版本,表示目录中包含符号链接，也可以改成显示两个以上符号链接）
+   g_log(RFM_LOG_GTK, G_LOG_LEVEL_DEBUG, "DimensionDir 尺寸: %dx%d, Symlink 尺寸: %dx%d", gdk_pixbuf_get_width(defaultPixbufs->dimensionDir), gdk_pixbuf_get_height(defaultPixbufs->dimensionDir), gdk_pixbuf_get_width(defaultPixbufs->symlink), gdk_pixbuf_get_height(defaultPixbufs->symlink));
+   gdk_pixbuf_composite(
+			defaultPixbufs->symlink,
+			defaultPixbufs->dimensionDir,
+			(gdk_pixbuf_get_width(defaultPixbufs->dimensionDir) - gdk_pixbuf_get_width(defaultPixbufs->symlink)) / 2, //TODO：这是gdk_pixbuf_composite的bug?dest_x,dest_y参数设成0,和symlinkDir一样就没问题; dest_x 设 0, dest_y设10, 能显示一些，但symlink小图片破碎了; dest_x, dest_y 都设成16,就看不见symlink了。16是根据上面log显示的尺寸计算出来的
+			(gdk_pixbuf_get_height(defaultPixbufs->dimensionDir) - gdk_pixbuf_get_height(defaultPixbufs->symlink)) / 2, 
+			gdk_pixbuf_get_width(defaultPixbufs->symlink),
+			gdk_pixbuf_get_height(defaultPixbufs->symlink),
+			0, 0, // 偏移量与目标位置一致时可忽略
+			1.0, 1.0,
+			GDK_INTERP_NEAREST,
+			255
+			);
+   defaultPixbufs->symlinkDimensionDir = gdk_pixbuf_copy(defaultPixbufs->dimensionDir);
+   gdk_pixbuf_composite(defaultPixbufs->symlink,defaultPixbufs->symlinkDimensionDir,0,0,gdk_pixbuf_get_width(defaultPixbufs->symlink),gdk_pixbuf_get_height(defaultPixbufs->symlink),0,0,1,1,GDK_INTERP_NEAREST,200);// 在dimensionDir的左上角再加个symlink就表示这是指向dimensionDir的symlink
+
    g_object_unref(umount_pixbuf);
    g_object_unref(mount_pixbuf);
   
@@ -1611,19 +1630,27 @@ static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guin
          if (fileAttributes->is_symlink) {
             fileAttributes->mime_sub_type=g_strdup("symlink");
             fileAttributes->pixbuf=g_object_ref(defaultPixbufs->symlinkDir);
-         }
-         else if (g_hash_table_lookup_extended(mount_hash, fileAttributes->path, NULL, (gpointer)&is_mounted)) {
+         }else if (g_hash_table_lookup_extended(mount_hash, fileAttributes->path, NULL, (gpointer)&is_mounted)) {
             fileAttributes->mime_sub_type=g_strdup("mount-point");
             fileAttributes->is_mountPoint=TRUE;
             if (is_mounted[0]=='0')
                fileAttributes->pixbuf=g_object_ref(defaultPixbufs->unmounted);
             else
                fileAttributes->pixbuf=g_object_ref(defaultPixbufs->mounted);
-         }
-         else {
+         }else {
             fileAttributes->mime_sub_type=g_strdup("directory");
             fileAttributes->pixbuf=g_object_ref(defaultPixbufs->dir);
          }
+	 // 指向dimension目录的symlink也应该显示为dimensionDir,所以下面不用else if
+	if (g_hash_table_lookup(DimensionPropertiesHashTable_localAddress_asKey, fileAttributes->path)) {
+	  if (fileAttributes->is_symlink) {
+	    fileAttributes->pixbuf = g_object_ref(defaultPixbufs->symlinkDimensionDir);
+	    g_log(RFM_LOG_DIMENSION,G_LOG_LEVEL_DEBUG,"pixbuf set to symlinkDimensionDir for %s", fileAttributes->path);
+	  }else{
+	    fileAttributes->pixbuf=g_object_ref(defaultPixbufs->dimensionDir);
+	    g_log(RFM_LOG_DIMENSION,G_LOG_LEVEL_DEBUG,"pixbuf set to dimensionDir for %s", fileAttributes->path);
+	  }
+	}
       break;
       case G_FILE_TYPE_SPECIAL: /* socket, fifo, block device, or character device */
       case G_FILE_TYPE_REGULAR:
@@ -3543,6 +3570,8 @@ static void free_default_pixbufs(RFM_defaultPixbufs *defaultPixbufs)
    g_object_unref(defaultPixbufs->unmounted);
    g_object_unref(defaultPixbufs->mounted);
    g_object_unref(defaultPixbufs->symlink);
+   g_object_unref(defaultPixbufs->dimensionDir);
+   g_object_unref(defaultPixbufs->symlinkDimensionDir);
    g_free(defaultPixbufs);
 }
 
