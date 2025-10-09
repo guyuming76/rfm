@@ -1010,7 +1010,7 @@ static RFM_defaultPixbufs *load_default_pixbufs(void)
    if (defaultPixbufs->broken==NULL) defaultPixbufs->symlink=gdk_pixbuf_new_from_xpm_data(RFM_icon_broken);
 
    /* Composite images */
-   defaultPixbufs->symlinkDir=gdk_pixbuf_copy(defaultPixbufs->dir);
+   defaultPixbufs->symlinkDir=gdk_pixbuf_copy(defaultPixbufs->dir);// 符号链接文件夹：在普通文件夹图标上叠加符号链接标志
    gdk_pixbuf_composite(defaultPixbufs->symlink,defaultPixbufs->symlinkDir,0,0,gdk_pixbuf_get_width(defaultPixbufs->symlink),gdk_pixbuf_get_height(defaultPixbufs->symlink),0,0,1,1,GDK_INTERP_NEAREST,200);
    defaultPixbufs->symlinkFile=gdk_pixbuf_copy(defaultPixbufs->file);
    gdk_pixbuf_composite(defaultPixbufs->symlink,defaultPixbufs->symlinkFile,0,0,gdk_pixbuf_get_width(defaultPixbufs->symlink),gdk_pixbuf_get_height(defaultPixbufs->symlink),0,0,1,1,GDK_INTERP_NEAREST,200);
