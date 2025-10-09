@@ -322,8 +322,8 @@ static void load_DimensionPropertiesHashTable_Callback(RFM_ChildAttribs* child_a
 static void load_ExtColumnHashTable_for_Dimension_for_file(RFM_ChildAttribs* child_attribs);
 static void load_ExtColumnHashTables_for_all_Dimensions_for_file(GtkTreeIter* iter_for_file_in_store);
 static void free_DimensionProperties(DimensionProperties *dimProp);
-static void find_dirs_as_dimension_values(GSList **list, const char *base, const char *path);
-static char **dimension_completion_function(const char *dimension_localAddress, int start, int end);
+static void call_g_dir_read_name_recursivly_to_get_dir_names_as_dimension_members(GSList **list, const char *base, const char *path);
+static char **get_rfm_dimension_members_for_one_dimension(const char *dimension_localAddress, int start, int end);
 static void cmd_set_dimension_value_for_selected_files(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
 static void cmd_set_dimension_value_for_selected_files_internal(gchar* dimNameAndValue[2]);
 #ifdef reedline
@@ -4283,7 +4283,7 @@ static void cmd_setenv(wordexp_t *parsed_msg, GString *readline_result_string_af
 }
 
 
-static void find_dirs_as_dimension_values(GSList **list, const char *base, const char *path) {
+static void call_g_dir_read_name_recursivly_to_get_dir_names_as_dimension_members(GSList **list, const char *base, const char *path) {
     gchar *full = g_build_filename(base, path, NULL);
     GDir *dir = g_dir_open(full, 0, NULL);
     
@@ -4297,7 +4297,7 @@ static void find_dirs_as_dimension_values(GSList **list, const char *base, const
                 if (g_file_test(test, G_FILE_TEST_IS_DIR) && !g_file_test(test, G_FILE_TEST_IS_SYMLINK)) {
 		    g_log(RFM_LOG_DIMENSION, G_LOG_LEVEL_DEBUG, "g_file_test %s is dir",test);
                     *list = g_slist_append(*list, new_path);
-                    find_dirs_as_dimension_values(list, base, new_path);
+                    call_g_dir_read_name_recursivly_to_get_dir_names_as_dimension_members(list, base, new_path);
                 } else {
                     g_free(new_path);
                 }
@@ -4309,10 +4309,10 @@ static void find_dirs_as_dimension_values(GSList **list, const char *base, const
     g_free(full);
 }
 
-static char **dimension_completion_function(const char *dimension_localAddress, int start, int end) {
+static char **get_rfm_dimension_members_for_one_dimension(const char *dimension_localAddress, int start, int end) {
     //if (start && rl_line_buffer[start-1] != ' ') return NULL;
     GSList *list = NULL;
-    find_dirs_as_dimension_values(&list, dimension_localAddress, "");
+    call_g_dir_read_name_recursivly_to_get_dir_names_as_dimension_members(&list, dimension_localAddress, "");
     
     int count = g_slist_length(list);
     if (count > 0) {
@@ -4373,7 +4373,7 @@ static GPtrArray* rfm_completion_based_on_dimensions(char* text) {
       g_log(RFM_LOG_DIMENSION,G_LOG_LEVEL_DEBUG,"rfm_completion_based_on_dimensions(%s) dimension localAddress:%s",text,value->localAddress);
       int len = strlen(value->localAddress);
       g_ptr_array_free(ret,FALSE);
-      char** ret_= dimension_completion_function(value->localAddress,len,len+1);
+      char** ret_= get_rfm_dimension_members_for_one_dimension(value->localAddress,len,len+1);
       ret = g_ptr_array_new_from_array(ret_, g_strv_length(ret_),NULL,NULL,(GDestroyNotify)g_free);
       g_free(ret_);
     }
