@@ -325,7 +325,7 @@ static void free_DimensionProperties(DimensionProperties *dimProp);
 static void call_g_dir_read_name_recursivly_to_get_dir_names_as_dimension_members(GSList **list, const char *base, const char *path);
 static char **get_rfm_dimension_members_for_one_dimension(const char *dimension_localAddress, int start, int end);
 static void cmd_set_dimension_value_for_selected_files(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
-static void cmd_set_dimension_value_for_selected_files_internal(gchar* dimNameAndValue[2]);
+static void set_dimension_value_by_creating_soft_links_to_selected_files(gchar* dimNameAndValue[2]);
 #ifdef reedline
 static GPtrArray *rfm_completion_based_on_dimensions(char *text);
 #endif
@@ -4441,7 +4441,7 @@ static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * p
 	    g_hash_table_iter_init(&iter_for_DimensionPropertiesHashTable,DimensionPropertiesHashTable_name_asKey);
 	    while (g_hash_table_iter_next(&iter_for_DimensionPropertiesHashTable, &key, &value)) {
 	      if (g_strcmp0(dimNameAndValue[0], key)==0) {
-		cmd_set_dimension_value_for_selected_files_internal(dimNameAndValue);
+		set_dimension_value_by_creating_soft_links_to_selected_files(dimNameAndValue);
 		g_strfreev(dimNameAndValue);
 		g_string_free(readline_result_string_after_file_name_substitution,TRUE);
 		return TRUE;
@@ -6110,12 +6110,12 @@ static void load_DimensionPropertiesHashTable_Callback(RFM_ChildAttribs* child_a
 static void cmd_set_dimension_value_for_selected_files(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution){
   if (parsed_msg->we_wordc == 2){
     gchar** dimNameAndValue = g_strsplit(parsed_msg->we_wordv[1],"=",2);
-    cmd_set_dimension_value_for_selected_files_internal(dimNameAndValue);
+    set_dimension_value_by_creating_soft_links_to_selected_files(dimNameAndValue);
     g_strfreev(dimNameAndValue);
   }
 }
 
-static void cmd_set_dimension_value_for_selected_files_internal(gchar* dimNameAndValue[2]){
+static void set_dimension_value_by_creating_soft_links_to_selected_files(gchar* dimNameAndValue[2]){
     DimensionProperties* dimProps = g_hash_table_lookup(DimensionPropertiesHashTable_name_asKey,dimNameAndValue[0]);
     if (dimProps){
       g_log(RFM_LOG_DIMENSION, G_LOG_LEVEL_DEBUG, "cmd_set_dimension_value_for_selected_files: dim %s, value:%s", dimNameAndValue[0],dimNameAndValue[1]);
