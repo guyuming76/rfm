@@ -6038,8 +6038,10 @@ static void load_ExtColumnHashTable_for_one_Dimension_for_GtkTreeIter(RFM_ChildA
   char *child_stdout=(char*)(child_attribs->stdOut);
   RFM_FileAttributes *fileAttributes=NULL;
   gtk_tree_model_get (GTK_TREE_MODEL(store), cell->iter, COL_ATTR, &fileAttributes, -1);
-  g_hash_table_insert(ExtColumnHashTable[col->enumCol - COL_Ext1], g_strdup_printf("%d",fileAttributes->id), strdup(child_stdout));
-  g_log(RFM_LOG_DIMENSION,G_LOG_LEVEL_DEBUG,"load_ExtColumnHashTable_for_Dimension_for_file, g_hash_table_insert called for ExtColumnHashTable[%d], RFM_treeviewCol:%d,%s, fileAttributes->id:%d, fileAttributes->file_name:%s", col->enumCol - COL_Ext1, col->enumCol,col->title, fileAttributes->id, fileAttributes->file_name);
+  if (g_hash_table_insert(ExtColumnHashTable[col->enumCol - COL_Ext1], g_strdup_printf("%d",fileAttributes->id), strdup(child_stdout)))
+    g_log(RFM_LOG_DIMENSION,G_LOG_LEVEL_DEBUG,"load_ExtColumnHashTable_for_Dimension_for_GtkTreeIter, g_hash_table_insert called for ExtColumnHashTable[%d], RFM_treeviewCol:%d,%s, fileAttributes->id:%d, fileAttributes->path:%s", col->enumCol - COL_Ext1, col->enumCol,col->title, fileAttributes->id, fileAttributes->path);
+  else
+    g_log(RFM_LOG_DIMENSION,G_LOG_LEVEL_DEBUG,"load_ExtColumnHashTable_for_Dimension_for_GtkTreeIter, g_hash_table_insert overwrite existing value for ExtColumnHashTable[%d], RFM_treeviewCol:%d,%s, fileAttributes->id:%d, fileAttributes->path:%s", col->enumCol - COL_Ext1, col->enumCol,col->title, fileAttributes->id, fileAttributes->path);
   g_free(cell);
 }
 
