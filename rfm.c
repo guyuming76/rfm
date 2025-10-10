@@ -6073,8 +6073,7 @@ static void load_ExtColumnHashTable_for_one_Dimension_for_GtkTreeIter(RFM_ChildA
 static void load_ExtColumnHashTables_for_all_Dimensions_for_GtkTreeIter(GtkTreeIter* iter_for_file_in_store){
 	GValue full_path=G_VALUE_INIT;
 	gtk_tree_model_get_value(treemodel, iter_for_file_in_store, COL_FULL_PATH, &full_path);
-	GList *dimension_localAddress_and_filepath_as_two_args_for_script = NULL;
-	dimension_localAddress_and_filepath_as_two_args_for_script = g_list_append(dimension_localAddress_and_filepath_as_two_args_for_script,g_value_get_string(&full_path));
+	GList *dimension_localAddress = NULL;
 
         GHashTableIter iter_for_DimensionPropertiesHashTable;
         gchar *key;
@@ -6083,15 +6082,13 @@ static void load_ExtColumnHashTables_for_all_Dimensions_for_GtkTreeIter(GtkTreeI
         while (g_hash_table_iter_next(&iter_for_DimensionPropertiesHashTable, &key, &value)) {
 	        RFM_treeviewColumn *col = get_treeviewColumnByTitle(value->name);
                 if (!col->Show) continue;
-	        dimension_localAddress_and_filepath_as_two_args_for_script = g_list_prepend(dimension_localAddress_and_filepath_as_two_args_for_script,value->localAddress);
+	        dimension_localAddress = g_list_prepend(dimension_localAddress,value->localAddress);
 		RFM_store_cell* cell=malloc(sizeof(RFM_store_cell));
 	        cell->iter = iter_for_file_in_store;
 	        cell->dimProperties = value;
-	  	g_spawn_wrapper(findDimensionValueForFile, dimension_localAddress_and_filepath_as_two_args_for_script, G_SPAWN_DEFAULT, NULL, NULL, FALSE, load_ExtColumnHashTable_for_one_Dimension_for_GtkTreeIter,cell,TRUE);
-	        dimension_localAddress_and_filepath_as_two_args_for_script = g_list_delete_link(dimension_localAddress_and_filepath_as_two_args_for_script,dimension_localAddress_and_filepath_as_two_args_for_script);//删除glist第一个元素，即dimension localAddress, 以便为下一个dimension调用脚本
+		g_spawn_wrapper(findDimensionValueForFile, dimension_localAddress, G_SPAWN_DEFAULT, NULL, g_value_get_string(&full_path), FALSE, load_ExtColumnHashTable_for_one_Dimension_for_GtkTreeIter,cell,TRUE);
+                g_list_free(dimension_localAddress);dimension_localAddress = NULL;
         }
-
-        g_list_free(dimension_localAddress_and_filepath_as_two_args_for_script);
         g_value_unset(&full_path);
 }
 
