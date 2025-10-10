@@ -4605,6 +4605,16 @@ static void combine_command_with_selected_files_and_setenv(CALLER_OWN GString* r
 	    GList *listElement;
 
 	    if (filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView]!=NULL) {
+	        if (strstr(readlineResultString->str, RFM_selected_filename_list_placeholder)!=NULL){ //把 %% 替换成n个%s，即 %s %s %s
+		  int filepath_list_length = g_list_length(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView]);
+		  gchar* filename_placehoders = calloc(filepath_list_length * (strlen(RFM_selected_filename_placeholder)+1) +1, sizeof(gchar));
+		  for(int i=0;i<filepath_list_length;i++) {
+		    strcat(filename_placehoders, RFM_selected_filename_placeholder);
+		    strcat(filename_placehoders," ");
+		  }
+		  g_string_replace(readlineResultString, RFM_selected_filename_list_placeholder, filename_placehoders, 1);
+		  g_free(filename_placehoders);
+	        }
 		listElement=g_list_first(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView]);
 	        gchar *env_rfm_selected_files = NULL;
 		while(listElement!=NULL) {

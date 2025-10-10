@@ -21,6 +21,7 @@
 #define RFM_SearchResultTypeNamePrefix ">"
 #define RFM_NEW_TERM_SUFFIX "&"
 #define RFM_selected_filename_placeholder "%s"
+#define RFM_selected_filename_list_placeholder "%%"
 //#define SEARCH_RFM_CMD_HISTORY "cat %s|grep -ih ^%s|sort|uniq"
 
 //add the two line follows into ~/.inputrc so that readline can search history based on prefix. read https://www.man7.org/linux/man-pages/man3/readline.3.html  for more
@@ -102,10 +103,10 @@ static RFM_SearchResultType searchresultTypes[] = {
 
 //注意，下面命令中rfm选中文件占位符 RFM_selected_filename_placeholde 要配合结尾空格使用
 static const char *parse_searchresult_with_multitype[] = { stdin_cmd_interpretors[0].name, RFM_SEARCH_RESULT_AS_INPUT_PREFIX "tee" RFM_SearchResultTypeNamePrefix SrchRsltType_multitype };
-static const char *Union_SearchResult[] = { stdin_cmd_interpretors[0].name, RFM_SEARCH_RESULT_AS_INPUT_PREFIX "(tee;find -L "RFM_selected_filename_placeholder" -exec readlink -f {} \\;)|sort|uniq " RFM_SearchResultTypeNamePrefix "0 ",NULL };
-static const char *Subtract_SearchResult[] = { stdin_cmd_interpretors[0].name, RFM_SEARCH_RESULT_AS_INPUT_PREFIX "sort|comm -23 - <(find -L "RFM_selected_filename_placeholder" -exec readlink -f {} \\;|sort) "RFM_SearchResultTypeNamePrefix "0 ",NULL };
-static const char *Intersect_With_SearchResult[] = { stdin_cmd_interpretors[0].name, RFM_SEARCH_RESULT_AS_INPUT_PREFIX "sort|comm -12 - <(find -L "RFM_selected_filename_placeholder" -exec readlink -f {} \\;|sort) "RFM_SearchResultTypeNamePrefix "0 ",NULL };
-static const char *To_SearchResult[] = { stdin_cmd_interpretors[0].name, "find -L "RFM_selected_filename_placeholder" -exec readlink -f {} \\;|sort|uniq "RFM_SearchResultTypeNamePrefix "0 ", NULL};
+static const char *Union_SearchResult[] = { stdin_cmd_interpretors[0].name, RFM_SEARCH_RESULT_AS_INPUT_PREFIX "(tee;find -L "RFM_selected_filename_list_placeholder" -exec readlink -f {} \\;)|sort|uniq " RFM_SearchResultTypeNamePrefix "0 ",NULL };
+static const char *Subtract_SearchResult[] = { stdin_cmd_interpretors[0].name, RFM_SEARCH_RESULT_AS_INPUT_PREFIX "sort|comm -23 - <(find -L "RFM_selected_filename_list_placeholder" -exec readlink -f {} \\;|sort) "RFM_SearchResultTypeNamePrefix "0 ",NULL };
+static const char *Intersect_With_SearchResult[] = { stdin_cmd_interpretors[0].name, RFM_SEARCH_RESULT_AS_INPUT_PREFIX "sort|comm -12 - <(find -L "RFM_selected_filename_list_placeholder" -exec readlink -f {} \\;|sort) "RFM_SearchResultTypeNamePrefix "0 ",NULL };
+static const char *To_SearchResult[] = { stdin_cmd_interpretors[0].name, "find -L "RFM_selected_filename_list_placeholder" -exec readlink -f {} \\;|sort|uniq "RFM_SearchResultTypeNamePrefix "0 ", NULL};
 static const char *find_same_name[] = { stdin_cmd_interpretors[0].name, rfmBinPath "rfmFindFilesWithTheSameName.sh "RFM_SearchResultTypeNamePrefix SrchRsltType_multitype" ", NULL };
 
 static const char *cd_in_searchresult[] = { stdin_cmd_interpretors[0].name, "cd ", NULL };
