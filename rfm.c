@@ -236,7 +236,7 @@ static void check_wait_status_and_set_exit_code(CALLER_OWN RFM_ChildAttribs *chi
 static void show_child_output(CALLER_OWN RFM_ChildAttribs *child_attribs);
 static int read_char_pipe(gint fd, ssize_t block_size, char **buffer);
 static void GSpawnChildSetupFunc_setenv(gpointer user_data);
-static void set_env_to_pass_into_child_process(const GtkTreeIter *iter, gchar*** env_for_g_spawn);
+static void set_env_to_pass_into_child_process_for_view_columns_when_ItemSelected_equals_one(const GtkTreeIter *iter, gchar*** env_for_g_spawn);
 /******Process spawn related definitions end*********/
 /****************************************************/
 /******Thumbnail related definitions*****************/
@@ -2604,7 +2604,7 @@ static void selectionChanged(GtkWidget *view, gpointer user_data)
 
 // establish environmental varables for view columns
 // 为把列表试图字段值通过同名环境变量传递给子进程作准备，以便在脚本中使用
-static void set_env_to_pass_into_child_process(const GtkTreeIter *iter, gchar*** env_for_g_spawn){
+static void set_env_to_pass_into_child_process_for_view_columns_when_ItemSelected_equals_one(const GtkTreeIter *iter, gchar*** env_for_g_spawn){
   g_log(RFM_LOG_GSPAWN,G_LOG_LEVEL_DEBUG,"set_env_to_pass_into_child_process");
   for (enum RFM_treeviewCol c=0;c<NUM_COLS;c++){
     if (gtk_tree_model_get_column_type(GTK_TREE_MODEL(store), c)!=G_TYPE_STRING) continue;
@@ -2658,7 +2658,7 @@ static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointe
 
       if (index_of_default_file_activation_action_based_on_mime_or_searchresultType != -1){
 	gchar ** env_for_g_spawn_local = g_get_environ();//这个传入child_attribs->env 后在 free_childattribs 里释放
-	set_env_to_pass_into_child_process(&iter,&env_for_g_spawn_local);
+	set_env_to_pass_into_child_process_for_view_columns_when_ItemSelected_equals_one(&iter,&env_for_g_spawn_local);
 	g_spawn_wrapper(run_actions[index_of_default_file_activation_action_based_on_mime_or_searchresultType].runCmd, activated_single_file_list, G_SPAWN_DEFAULT, env_for_g_spawn_local, NULL,TRUE,NULL,NULL,FALSE);
       }else {
          msg=g_strdup_printf("No default file activation action defined for mime type:\n %s/%s\n", fileAttributes->mime_root, fileAttributes->mime_sub_type);
@@ -2795,7 +2795,7 @@ static void g_spawn_wrapper_for_selected_fileList_(FREE_FULL RFM_ChildAttribs *c
       GList *filepath_list_for_selection_on_view_clone = g_list_copy_deep(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView],g_strdup,NULL);
       if (ItemSelected==1){
 	childAttribs->env=g_get_environ();
-	set_env_to_pass_into_child_process(&iter_selectionChanged,&(childAttribs->env));
+	set_env_to_pass_into_child_process_for_view_columns_when_ItemSelected_equals_one(&iter_selectionChanged,&(childAttribs->env));
       }
       g_spawn_wrapper_(filepath_list_for_selection_on_view_clone, NULL,childAttribs);
       g_list_free_full(filepath_list_for_selection_on_view_clone,(GDestroyNotify)g_free);
@@ -4642,7 +4642,7 @@ static void combine_command_with_selected_files_and_setenv(CALLER_OWN GString* r
 	        g_free(env_rfm_selected_files);
 		if (ItemSelected==1){ //通过环境变量把当前选中的文件的数据(比如grepMatch列)传递给子进程,目前人为限制只有单选文件时起作用,因为多选文件时不同文件的同一列值可能不同
 		    *env = g_get_environ();
-		    set_env_to_pass_into_child_process(&iter_selectionChanged, env);
+		    set_env_to_pass_into_child_process_for_view_columns_when_ItemSelected_equals_one(&iter_selectionChanged, env);
 		}
             } else {
 	      unsetenv("RFM_SELECTED_FILES");
