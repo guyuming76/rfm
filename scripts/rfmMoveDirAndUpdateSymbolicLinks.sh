@@ -39,10 +39,10 @@ fi
 
 if [[ -n "$sourceGitRoot" && -n "$destGitRoot" && "$sourceGitRoot" == "$destGitRoot" ]]; then
     rfmFindScope="$sourceGitRoot"
-    echo "提示: 源和目标在同一git仓库，将在仓库内($rfmFindScope)查找指向源(目录内)文件的软链接，而不是全文件系统查找，以节省时间"
+    echo "提示: 源和目标在同一git仓库，将在仓库内($rfmFindScope)和维度目录内查找指向源($Source)(目录内)文件的软链接，而不是全文件系统查找，以节省时间"
 else
     rfmFindScope="/"
-    echo "提示: 需要在整个文件系统(/)范围查找指向源(目录内)文件的软链接，可能耗时比较长"
+    echo "提示: 需要在整个文件系统(/)范围查找指向源($Source)(目录内)文件的软链接，可能耗时比较长"
 fi
 
 	# 下面 SpecificDir 实际指的是 Source
@@ -54,6 +54,16 @@ if [ "$rfmFindScope" = "/" ]; then
     -type l -exec rfm_Update_affected_SymbolicLinks_for_move_or_copy.sh "$Destination" "$Source" {} \;
 else
   find "$rfmFindScope" -type l -exec rfm_Update_affected_SymbolicLinks_for_move_or_copy.sh "$Destination" "$Source" {} \;
+  if [[ -n "$RFM_DIMENSION_PROPERTIES_FILE_NAME" ]]; then
+	readarray rfmDimensionArray < <(locate "$RFM_DIMENSION_PROPERTIES_FILE_NAME")
+	for rfmDimension in "${rfmDimensionArray[@]}";do
+		rfmDimensionDir="$(dirname "$rfmDimension")"
+		if [[ "$rfmDimensionDir" != "$rfmFindScope"* ]]; then
+			echo "在维度 $rfmDimensionDir 下查找并处理指向 $Source 的符号链接"
+			find "$rfmDimensionDir" -type l -exec rfm_Update_affected_SymbolicLinks_for_move_or_copy.sh "$Destination" "$Source" {} \;
+		fi
+	done
+  fi
 fi
 
 if [[ "$rfm_overwrite_destination" == "y" || "$rfm_overwrite_destination" == "Y" ]]; then

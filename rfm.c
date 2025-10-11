@@ -1143,9 +1143,8 @@ static void GSpawnChildSetupFunc_setenv(gpointer user_data) {
       RFM_ChildAttribs* child_attribs=(RFM_ChildAttribs*) user_data;
       //if (rfm_curPath!=NULL) setenv("PWD",rfm_curPath,TRUE);
       //working_directory won't update child process PWD env, which inherits parents PWD env,why?
-      //if (child_attribs->runOpts & G_SPAWN_STDIN_FROM_DEV_NULL) setsid();//创建单独的， 防止子进程和readline线程争夺终端控制权，产生SIGTTIN 信号，导致readline所在进程组被放入后台。目前，我们把设置 G_SPAWN_STDIN_FROM_DEV_NULL 作为标志，如有不妥，再考虑使用其他标志，比如在child_attribs 里面建立专门的标志
-      //if ((child_attribs->runOpts & G_SPAWN_STDIN_FROM_DEV_NULL) || (child_attribs->output_read_by_program && child_attribs->g_idle_add_once_to_run_CallBackFunc && child_attribs->no_free)) setsid();
-      if (child_attribs->setsid) setsid();
+      setenv("RFM_DIMENSION_PROPERTIES_FILE_NAME",RFM_DIMENSION_PROPERTIES_FILE_NAME, 1);
+      if (child_attribs->setsid) setsid();//防止子进程和readline线程争夺终端控制权，产生SIGTTIN 信号，导致readline所在进程组被放入后台。
 }
 
 static void check_wait_status_and_set_exit_code(CALLER_OWN RFM_ChildAttribs *child_attribs) {
