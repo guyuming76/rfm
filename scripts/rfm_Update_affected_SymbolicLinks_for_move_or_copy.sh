@@ -73,9 +73,20 @@ if [[ -L "$SymbolicLink" ]]; then
 			echo "  link target:       " "$link_target"
 			echo "  link target full:  " "$link_target_fullpath"
 		fi
+
+		# 检查当前处理的符号链接是否就是目标位置将要被覆盖的符号链接
+		if [[ "$SymbolicLink" == "$DestinationWithBasename" ]]; then
+		    # 如果这个符号链接就是目标位置，移动后它将被物理文件覆盖，所以不需要更新
+		    if [ -n "$G_MESSAGES_DEBUG" ]; then
+			echo "跳过目标位置的同名符号链接，移动后将被覆盖: $SymbolicLink"
+		    fi
+		    exit 0
+		fi
+
 		# 如果移动的(OldAddress)是目录, 那么所有指向 OldAddress 目录内文件的符号链接都要被更新
 		# 此时 link_target_fullpath 可以等于 OldAddress, 但不一定, 也可以是 link_target_fullpath 位于 OldAddress 下面
 		new_link_target_fullpath=$(echo "$link_target_fullpath" | sed "s:^""$OldAddress"":""$DestinationWithBasename"":")
+
 		if [ -n "$G_MESSAGES_DEBUG" ]; then
 			echo "  OldAddress:        " "$OldAddress"
 			echo "  NewAddress:        " "$NewAddress"
@@ -84,9 +95,15 @@ if [[ -L "$SymbolicLink" ]]; then
 			echo "  new target full:   " "$new_link_target_fullpath"
 		fi
 
+		if [[ -e "$new_link_target_fullpath" ]]; then
+		        rm "$new_link_target_fullpath" # 如果和$new_link_target_fullpath 的同名符号链接存在，不删除得话，貌似下面ln命令会生成的相对路径链接实际指向的不是$new_link_target_fullpath, 而是$new_link_target_full 指向的文件，所以先把这个同名文件删除
+			echo "  new target full ($new_link_target_fullpath) already exists, deleted here."
+		fi
+
 		echo "$SymbolicLink" | grep -q "^$OldAddress"
 		#目前的使用场景都是在git仓库内部,所以下面建立符号链接使用相对地址, 但如果$SymbolicLink位于OldAddress下面,也就是说结下来会被移动或复制,那么移动后的符号链接相对路径就失效了,所以我们用绝对路径,移动后再更新为相对路径
 		#即使现在mv还没有发生, new_link_target_fullpath 文件还不存在, 但我运行下来以这个还不存在的路径作为目标建立符号链接是可以的
+
 		if [ $? -eq 0 ]; then
 			if ! ln -sfT "$new_link_target_fullpath" "$SymbolicLink"; then
 				echo "创建绝对路径符号链接失败: $SymbolicLink -> $new_link_target_fullpath" >&2
@@ -108,6 +125,7 @@ if [[ -L "$SymbolicLink" ]]; then
 		fi
 
 	else
+	        #TODO：本commit添加了 [[ -e "$new_link_target_fullpath" ]] 的判断，如果已存在，删除。这里这个else分支，是否要类似处理 $link_target_fullpath, 防止下面ln语句结果不正确？ 这会儿还没遇到use case,先不动。
 		echo "$SymbolicLink" | grep -q "^$OldAddress"
 		# 如果SymbolicLink本身位于$OldAddress下面,尽管不是指向$OldAddress下面,也需要重建,因为目前在git仓库里,我们都使用相对路径建立符号链接
 		# TODO: 目前,我们假定OldAddress会被move,在mv之前,先把符号链接更新为绝对路径, 移动之后,再更新为相对路径,否则咋搞? 若是copy, 复制完后,两份符号链接都得再改回相对路径
