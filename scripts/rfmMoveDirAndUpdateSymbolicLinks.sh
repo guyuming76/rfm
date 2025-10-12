@@ -39,7 +39,7 @@ fi
 
 if [[ -n "$sourceGitRoot" && -n "$destGitRoot" && "$sourceGitRoot" == "$destGitRoot" ]]; then
     rfmFindScope="$sourceGitRoot"
-    echo "提示: 源和目标在同一git仓库，将在仓库内($rfmFindScope)和维度目录内查找指向源($Source)(目录内)文件的软链接，而不是全文件系统查找，以节省时间"
+    echo "提示: 源和目标在同一git仓库，将在仓库内($rfmFindScope)和维度目录内查找指向源($Source)(目录内)文件的软链接，而不是全文件系统查找，以节省时间.脚本使用locate命令查找维度目录."
 else
     rfmFindScope="/"
     echo "提示: 需要在整个文件系统(/)范围查找指向源($Source)(目录内)文件的软链接，可能耗时比较长"
