@@ -129,11 +129,11 @@ impl Completer for CCompleter {
                             });
                         }else if result.starts_with('}') { //这个是维度名
                             suggestions.push(Suggestion {
-                                value: result.chars().skip(1).collect(),
+                                value: result.chars().enumerate().map(|(index, c)| if index == 0 { ' ' } else { c }).collect(), //开头'}' 换成空格
                                 description: None,
                                 style: Some(Style::new().fg(Color::Yellow)),
                                 extra: None,
-                                span: Span::new(0, pos),
+                                span: Span::new(pos, pos),
                                 append_whitespace: false,
                             });
                         }else if result.starts_with('=') { //这个是维度值
