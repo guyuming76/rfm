@@ -315,7 +315,7 @@ typedef struct {
 static GHashTable* DimensionPropertiesHashTable_name_asKey;// Key:ExtColumn Name. Value:struct DimensionProperties
 static GHashTable* DimensionPropertiesHashTable_localAddress_asKey;// Key:ExtColumn localAddress. Value:struct DimensionProperties
 static void refresh_DimensionPropertiesHashTable();
-static void SetViewColumnForDimension(gchar* dimName);
+static gboolean SetViewColumnForDimension(gchar* dimName);
 static void load_DimensionPropertiesHashTable_Callback(RFM_ChildAttribs* child_attribs);
 static void load_ExtColumnHashTable_for_one_Dimension_for_GtkTreeIter(RFM_ChildAttribs* child_attribs);
 static void load_ExtColumnHashTables_for_all_Dimensions_for_GtkTreeIter(GtkTreeIter* iter_for_file_in_store);
@@ -5442,7 +5442,8 @@ static void ProcessKeyValuePair(CALLER_OWN gchar *key, OWNER_CHANGE gchar* curre
 	    snprintf(currentColumnOriginalTitle,10,"C%d", currentPageStartingColumnTitleIndex);
 	  }
 
-	  uint currentExtColumnHashTableIndex = current_Ext_Column - COL_Ext1;
+	  int currentExtColumnHashTableIndex = current_Ext_Column - COL_Ext1;
+          if (currentExtColumnHashTableIndex<0) { g_warning("ExtColumn name conflict with builtin column name:%s",col->title); return; };
 	  if (ExtColumnHashTable[currentExtColumnHashTableIndex]==NULL) ExtColumnHashTable[currentExtColumnHashTableIndex] = g_hash_table_new_full(g_str_hash, g_str_equal,g_free, g_free);
 
 	  char* strFileAttributeID=calloc(10, sizeof(char));
@@ -6042,7 +6043,7 @@ gboolean str_regex_replace(char **str, const regex_t * restrict pattern_compiled
 //2.如图片尺寸这种预定义的扩展列，Title是写死的，所以总是会出现在showcolumn命令输出里，enumCol 需要在显示的时候使用get_available_ExtColumn 分配
 //3.从查询结果里读出的列，列名事先不知道，没法写死在静态数组初始模板里，处理查询结果时按顺序在列名C1,C2,C3中使用get_available_ExtColumn 分配enumCol，如果查询结果首行是列名，则用首行列名替换Cx
 //4.本函数处理的维度对应列，列名同维度名，而维度名也可以认为是动态的
-static void SetViewColumnForDimension(gchar* dimName){
+static gboolean SetViewColumnForDimension(gchar* dimName){
       RFM_treeviewColumn * col;
       enum RFM_treeviewCol current_Ext_Column;
       if ((col=get_treeviewColumnByTitle(dimName))){ //已经有同名列了
@@ -6052,7 +6053,7 @@ static void SetViewColumnForDimension(gchar* dimName){
 	    current_Ext_Column=get_available_ExtColumn_from_end(NUM_COLS-1);
 	    if (current_Ext_Column==NUM_COLS) {
 	      g_warning("Not enough COL_Exts for dimension %s",dimName);
-	      return;
+	      return FALSE;
 	    }else{
 	      char current_Ext_Column_Original_Title[10];
 	      snprintf(current_Ext_Column_Original_Title,10,"C%d", current_Ext_Column-COL_Ext1+1);
@@ -6062,12 +6063,14 @@ static void SetViewColumnForDimension(gchar* dimName){
 	      col->ValueFunc=getExtColumnValueFromHashTable;
 	    }
       }
-      uint currentExtColumnHashTableIndex = current_Ext_Column - COL_Ext1;
+      int currentExtColumnHashTableIndex = current_Ext_Column - COL_Ext1;
+      if (currentExtColumnHashTableIndex<0) { g_warning("dimension name conflict with builtin column name:%s",col->title); return FALSE; };
       if (ExtColumnHashTable[currentExtColumnHashTableIndex]==NULL) {
 	      ExtColumnHashTable[currentExtColumnHashTableIndex] = g_hash_table_new_full(g_str_hash, g_str_equal,g_free, g_free);
 	      if (SearchResultViewInsteadOfDirectoryView && col->Show) ExtColumnHashTable_keep_during_refresh[currentExtColumnHashTableIndex]=TRUE;
               g_log(RFM_LOG_DIMENSION,G_LOG_LEVEL_DEBUG,"SetViewColumnForDimension(%s), g_hash_table_new_full called for ExtColumnHashTable[%d], RFM_treeviewCol:%d", dimName, currentExtColumnHashTableIndex, current_Ext_Column);
       }
+      return TRUE;
 }
 
 static void load_ExtColumnHashTable_for_one_Dimension_for_GtkTreeIter(RFM_ChildAttribs* child_attribs) {
@@ -6124,11 +6127,12 @@ static void load_DimensionPropertiesHashTable_Callback(RFM_ChildAttribs* child_a
 	g_warning("Dimension name shall be no more than %d chars",ColumnTitleMaxLen);
 	dimProps->name[ColumnTitleMaxLen]='\0';
       }
-      g_log(RFM_LOG_DIMENSION,G_LOG_LEVEL_DEBUG,"add dimension name:%s, localAddress:%s, ID:%s, into hashtable", dimProps->name,dimProps->localAddress, dimProps->ID);
-      g_hash_table_insert(DimensionPropertiesHashTable_name_asKey, g_strdup(dimProps->name), dimProps);
-      g_hash_table_insert(DimensionPropertiesHashTable_localAddress_asKey, g_strdup(dimProps->localAddress), dimProps);
+      if (SetViewColumnForDimension(dimProps->name)){
+	g_log(RFM_LOG_DIMENSION,G_LOG_LEVEL_DEBUG,"add dimension name:%s, localAddress:%s, ID:%s, into hashtable", dimProps->name,dimProps->localAddress, dimProps->ID);
+	g_hash_table_insert(DimensionPropertiesHashTable_name_asKey, g_strdup(dimProps->name), dimProps);
+	g_hash_table_insert(DimensionPropertiesHashTable_localAddress_asKey, g_strdup(dimProps->localAddress), dimProps);
+      }
       g_key_file_free(gkeyfile);
-      SetViewColumnForDimension(dimProps->name);
     }else{
       g_warning("load_DimensionPropertiesHashTable_Callback. error loading key value pair from file %s, error code: %d, message:%s",oneline, error==NULL?0:error->code, error==NULL?"":error->message);
       g_error_free(error);
