@@ -133,7 +133,7 @@ impl Completer for CCompleter {
                                 description: None,
                                 style: Some(Style::new().fg(Color::Yellow)),
                                 extra: None,
-                                span: Span::new(pos, pos),
+                                span: Span::new(0, pos),
                                 append_whitespace: false,
                             });
                         }else if result.starts_with('=') { //这个是维度值
