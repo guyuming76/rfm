@@ -195,6 +195,8 @@ static RFM_builtinCMD builtinCMD[] = {
 #ifdef PythonEmbedded
         {"py",     startPythonEmbedding,    "Embedding Python" },
         {"pyq",    endPythonEmbedding,      "quit Python Embedding" },
+        {"startftp",                           cmdStartFtpServer,                       "start inprocess ftp server"},
+        {"stopftp",                            cmdStopFtpServer,                        "stop inprocess ftp server"},
 #endif
 #ifdef RFM_FILE_CHOOSER
        	{"test_rfmFileChooser",Test_rfmFileChooser,"test rfmFileChooser" },

@@ -198,6 +198,9 @@ endif
 	@cp -f scripts/rfmFindDimensionValueForFile.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmMount_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmMount.sh
 	@cp -f scripts/rfmFind_DIMENSION_PROPERTIES_FILEs.sh ${DESTDIR}${PREFIX}/bin
+ifneq (${PythonEmbedded}, )
+	@cp -f scripts/rfmFtpManager.py ${DESTDIR}${PREFIX}/bin
+endif
 
 ifneq ($(CalledByEbuild),YES)
 # the CalledByEbuild variable is exported in rfm ebuild
@@ -252,6 +255,9 @@ endif
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmFindDimensionValueForFile.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmMount.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmFind_DIMENSION_PROPERTIES_FILEs.sh
+ifneq (${PythonEmbedded}, )
+	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmFtpManager.py
+endif
 
 ifneq ($(RFM_AddOn),)
 	@echo
@@ -307,6 +313,9 @@ endif
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmFindDimensionValueForFile.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmMount.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmFind_DIMENSION_PROPERTIES_FILEs.sh
+ifneq (${PythonEmbedded}, )
+	@rm -f ${DESTDIR}${PREFIX}/bin/rfmFtpManager.py
+endif
 
 ifneq ($(CalledByEbuild),YES)
 	@rm -f /usr/include/rfm_addon.h

@@ -5,6 +5,7 @@
  */
 
 #include "gdk/gdkkeysyms.h"
+#include "pytypedefs.h"
 #include <linux/limits.h>
 #include <stddef.h>
 #define _GNU_SOURCE
@@ -67,7 +68,7 @@ static int setup(RFM_ctx *rfmCtx);
 static void cleanup();
 gpointer transferPointerOwnership(gpointer *newOwner, gpointer *oldOwner);
 gboolean str_regex_replace(char **str, const regex_t * restrict pattern_compiled, const char *replacement);
-
+static gchar *rfm_curPath=NULL;  /* The current directory */
 /****************************************************/
 /******Terminal Emulator related definitions*********/
 #ifdef PythonEmbedded
@@ -96,6 +97,66 @@ static void endPythonEmbedding(){
     }
     PyMem_RawFree(pyProgramName);
     pyProgramName=NULL;
+}
+
+static PyObject *p_ftp_manager=NULL;
+static gboolean cmdStartFtpServer(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution) {
+    PyGILState_STATE gstate;
+    //PyObject *pResult = NULL;
+    gstate = PyGILState_Ensure();
+    // 添加当前执行文件绝对路径到sys.path
+    char buf[PATH_MAX];
+    char *program_dir=NULL;
+    ssize_t len = readlink("/proc/self/exe", buf, PATH_MAX - 1);
+    if (len != -1) {
+        buf[len] = '\0'; // 确保字符串正确终止
+        program_dir = g_path_get_dirname(buf); // 获取目录部分
+    } else {
+        g_debug("readlink /proc/self/exe return -1");
+        return FALSE;
+    }
+    PyRun_SimpleString("import sys, os");
+    gchar *insert_program_dir_to_path=g_strdup_printf("sys.path.insert(0, '%s')", program_dir);
+    PyRun_SimpleString(insert_program_dir_to_path);
+    g_free(insert_program_dir_to_path);
+  
+    // 导入自定义模块
+    PyObject *pModule = PyImport_ImportModule("rfmFtpManager");
+    if (pModule != NULL) {
+        p_ftp_manager = PyObject_GetAttrString(pModule, "ftp_manager");
+        if (p_ftp_manager && PyObject_HasAttrString(p_ftp_manager, "start_server")) {
+            PyObject *pResult = PyObject_CallMethod(p_ftp_manager, "start_server", "sisss","0.0.0.0",2121,"rfm","rfm",rfm_curPath);
+            if (PyErr_Occurred()) {
+              PyErr_Print(); // 打印异常信息
+              PyErr_Clear(); // 清除异常状态，以便程序继续运行（可选）
+            } else {
+              // 处理 result...
+	      if (pResult == Py_True) printf("FTP服务器启动成功\n");
+              Py_XDECREF(pResult); // 确保释放 result（如果非空）
+            }
+        }
+        Py_DECREF(pModule);
+    } else {
+        PyErr_Print();
+    }
+    
+    PyGILState_Release(gstate);
+    return TRUE;
+}
+
+static gboolean cmdStopFtpServer(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution) {
+  if (p_ftp_manager && PyObject_HasAttrString(p_ftp_manager, "stop_server")) {
+    PyObject *pResult = PyObject_CallMethod(p_ftp_manager, "stop_server", NULL);
+    if (PyErr_Occurred()) {
+      PyErr_Print(); // 打印异常信息
+      PyErr_Clear(); // 清除异常状态，以便程序继续运行（可选）
+    } else {
+      // 处理 result...
+      if (pResult == Py_True)
+        printf("FTP服务器成功停止\n");
+      Py_XDECREF(pResult); // 确保释放 result（如果非空）
+    }
+  }
 }
 #endif
 
@@ -367,7 +428,6 @@ static guint rfm_readDirSheduler=0;
 static int rfm_inotify_fd;
 static int rfm_curPath_wd = -1;    /* Current path (rfm_curPath) watch */
 static gboolean pauseInotifyHandler = FALSE;
-static gchar *rfm_curPath=NULL;  /* The current directory */
 static gchar *rfm_prePath=NULL;  /* keep previous rfm_curPath, so that it will be autoselected in view. But manual selection change such as user pressing ESC in view will set it to null. Rodney invented this to autoselect child directory after going to parent directory*/
 static GList *rfm_path_history_current = NULL;
 static int read_one_file_couter = 0;//this is useless except for logging information
