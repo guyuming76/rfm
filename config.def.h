@@ -166,8 +166,9 @@ static const char *ffmpegThumb[] =  { "/usr/bin/ffmpeg", "-i",RFM_selected_filen
 static const char *geogebraThumb[] = { rfmBinPath "rfmMakeThumbnailForGGB.sh",thumbnailsize_str,NULL };
 static const char *term_cmd[]  = { "$RFM_TERM", NULL };
 static const char *new_rfm[]  = { "$RFM_TERM", rfmBinPath "rfm", NULL };
+#ifndef PythonEmbedded
 static const char *share_dir[] = { "$RFM_TERM", rfmBinPath "rfmShareDir.sh", NULL };
-
+#endif
 static const char *launch_desktop[] = { "dex", "--term", "$RFM_TERM", NULL };
 //TODO: to get thumbnail from .desktop file
 #ifdef GitIntegration
@@ -334,7 +335,9 @@ static RFM_ToolButton tool_buttons[] = {
    { Next,           "go-next",                 next_path_clicked,      NULL,              FALSE,          TRUE,      GDK_KEY_Right,         BuiltInCmd_Next_Description,NULL},
    { "Refresh",      "view-refresh",            refresh_store,          NULL,              TRUE,           TRUE,      0,                      NULL,                   NULL},
    { FIND_FILES,     NULL,                      NULL,                   find_files,        FALSE,          TRUE,      0,                      NULL,                   NULL},
+#ifndef PythonEmbedded
    { "Share",        NULL,                      NULL,                   share_dir,         FALSE,          TRUE,      0,                      "share directory",      NULL},
+#endif
 // { "Terminal",     "utilities-terminal",      NULL,                   term_cmd,          TRUE,           TRUE,      0,                      NULL,                   NULL},
 // { "rfm",          "system-file-manager",     NULL,                   new_rfm,           TRUE,           TRUE,      0,                      NULL,                   NULL},
    { "Stop",         "process-stop",            rfm_stop_all,           NULL,              TRUE,           TRUE,      0,                      NULL,                   NULL},
