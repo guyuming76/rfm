@@ -99,10 +99,10 @@ static void endPythonEmbedding(){
     pyProgramName=NULL;
 }
 
+static PyObject *pyftpdlib_module=NULL;
 static PyObject *p_ftp_manager=NULL;
-static gboolean cmdStartFtpServer(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution) {
+static void cmdStartFtpServer(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution) {
     PyGILState_STATE gstate;
-    //PyObject *pResult = NULL;
     gstate = PyGILState_Ensure();
     // 添加当前执行文件绝对路径到sys.path
     char buf[PATH_MAX];
@@ -113,55 +113,58 @@ static gboolean cmdStartFtpServer(wordexp_t * parsed_msg, GString* readline_resu
         program_dir = g_path_get_dirname(buf); // 获取目录部分
     } else {
         g_debug("readlink /proc/self/exe return -1");
-        return FALSE;
+        return;
     }
     PyRun_SimpleString("import sys, os");
     gchar *insert_program_dir_to_path=g_strdup_printf("sys.path.insert(0, '%s')", program_dir);
     PyRun_SimpleString(insert_program_dir_to_path);
     g_free(insert_program_dir_to_path);
-  
     // 导入自定义模块
-    PyObject *pModule = PyImport_ImportModule("rfmFtpManager");
-    if (pModule != NULL) {
-        p_ftp_manager = PyObject_GetAttrString(pModule, "ftp_manager");
+    pyftpdlib_module = PyImport_ImportModule("rfmFtpManager");
+
+    if (pyftpdlib_module != NULL) {
+        p_ftp_manager = PyObject_GetAttrString(pyftpdlib_module, "ftp_manager");
         if (p_ftp_manager && PyObject_HasAttrString(p_ftp_manager, "start_server")) {
             PyObject *pResult = PyObject_CallMethod(p_ftp_manager, "start_server", "sisss","0.0.0.0",2121,"rfm","rfm",rfm_curPath);
             if (PyErr_Occurred()) {
               PyErr_Print(); // 打印异常信息
               PyErr_Clear(); // 清除异常状态，以便程序继续运行（可选）
             } else {
-              // 处理 result...
 	      if (pResult == Py_True) printf("FTP服务器启动成功\n");
               Py_XDECREF(pResult); // 确保释放 result（如果非空）
             }
         }
-        Py_DECREF(pModule);
     } else {
         PyErr_Print();
     }
-    
     PyGILState_Release(gstate);
-    return TRUE;
 }
 
-static gboolean cmdStopFtpServer(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution) {
+static void cmdStopFtpServer(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution) {
+  PyGILState_STATE gstate;
+  gstate = PyGILState_Ensure();
   if (p_ftp_manager && PyObject_HasAttrString(p_ftp_manager, "stop_server")) {
     PyObject *pResult = PyObject_CallMethod(p_ftp_manager, "stop_server", NULL);
     if (PyErr_Occurred()) {
       PyErr_Print(); // 打印异常信息
       PyErr_Clear(); // 清除异常状态，以便程序继续运行（可选）
     } else {
-      // 处理 result...
-      if (pResult == Py_True)
+      if (pResult == Py_True){
+	Py_XDECREF(p_ftp_manager);
+	p_ftp_manager = NULL;
+        Py_DECREF(pyftpdlib_module);
+	PyRun_SimpleString("del sys.modules['rfmFtpManager']");
         printf("FTP服务器成功停止\n");
+      }
       Py_XDECREF(pResult); // 确保释放 result（如果非空）
     }
-    Py_XDECREF(p_ftp_manager);
-    p_ftp_manager = NULL;
   }
+  PyGILState_Release(gstate);
 }
 
 static void change_ftp_server_root(gchar *newroot) {
+  PyGILState_STATE gstate;
+  gstate = PyGILState_Ensure();
   if (p_ftp_manager && PyObject_HasAttrString(p_ftp_manager, "change_root_directory")) {
     PyObject *pResult = PyObject_CallMethod(p_ftp_manager, "change_root_directory", "s", rfm_curPath);
     if (PyErr_Occurred()) {
@@ -172,6 +175,7 @@ static void change_ftp_server_root(gchar *newroot) {
     }
     Py_XDECREF(pResult); // 确保释放 result（如果非空）
   }
+  PyGILState_Release(gstate);
 }  
 #endif
 
