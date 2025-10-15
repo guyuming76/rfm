@@ -156,8 +156,23 @@ static gboolean cmdStopFtpServer(wordexp_t * parsed_msg, GString* readline_resul
         printf("FTP服务器成功停止\n");
       Py_XDECREF(pResult); // 确保释放 result（如果非空）
     }
+    Py_XDECREF(p_ftp_manager);
+    p_ftp_manager = NULL;
   }
 }
+
+static void change_ftp_server_root(gchar *newroot) {
+  if (p_ftp_manager && PyObject_HasAttrString(p_ftp_manager, "change_root_directory")) {
+    PyObject *pResult = PyObject_CallMethod(p_ftp_manager, "change_root_directory", "s", rfm_curPath);
+    if (PyErr_Occurred()) {
+      PyErr_Print(); // 打印异常信息
+      PyErr_Clear(); // 清除异常状态，以便程序继续运行（可选）
+    } else {
+      g_debug("ftp server root changed to %s",rfm_curPath);
+    }
+    Py_XDECREF(pResult); // 确保释放 result（如果非空）
+  }
+}  
 #endif
 
 enum rfmTerminal {
@@ -2540,6 +2555,9 @@ static void set_rfm_curPath_internal(CALLER_OWN const gchar* path){
    //when we run commands such as echo $PWD, we spawn child process with working directory rfm_curPath, so, even we do not set $PWD, we get result as expected with this kind of commands.
    //so, we should first know the relationship between working directory parameter in g_spawn and PWD env value inheritence before we do anything furthur here.
    //anyway, setting OLDPWD is necessary for us here.
+#ifdef PythonEmbedded
+	 change_ftp_server_root(rfm_curPath);
+#endif
 #ifdef RFM_AddOn
 	 if (!disable_addon){
 	   gchar * addon_path = g_strdup(rfm_curPath);
@@ -5153,6 +5171,7 @@ static void cleanup()
 #endif
   
 #ifdef PythonEmbedded
+   cmdStopFtpServer(NULL, NULL);
    endPythonEmbedding();
 #endif
    
