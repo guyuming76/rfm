@@ -102,6 +102,24 @@ static void endPythonEmbedding(){
 static PyObject *pyftpdlib_module=NULL;
 static PyObject *p_ftp_manager=NULL;
 static void cmdStartFtpServer(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution) {
+    gint port = 2121;
+    gchar *password = NULL;
+    //gchar *firewall = NULL;
+    GError *error = NULL;
+    GOptionEntry entries[] = {
+      {"port", 'p', 0, G_OPTION_ARG_INT, &port, "FTP port", "PORT"},
+      {"password", 'w', 0, G_OPTION_ARG_STRING, &password, "FTP password", "PWD"},
+      //{"firewall", 'f', 0, G_OPTION_ARG_STRING, &firewall, "firewall name", NULL},
+      {NULL}
+    };
+    GOptionContext *context = g_option_context_new("startftp");
+    g_option_context_add_main_entries(context, entries, NULL);
+    if (!g_option_context_parse_strv(context, &(parsed_msg->we_wordv), &error)) {
+      g_warning("错误: %s", error->message);
+      g_error_free(error);
+      return;
+    }
+
     PyGILState_STATE gstate;
     gstate = PyGILState_Ensure();
     // 添加当前执行文件绝对路径到sys.path
@@ -125,7 +143,7 @@ static void cmdStartFtpServer(wordexp_t * parsed_msg, GString* readline_result_s
     if (pyftpdlib_module != NULL) {
         p_ftp_manager = PyObject_GetAttrString(pyftpdlib_module, "ftp_manager");
         if (p_ftp_manager && PyObject_HasAttrString(p_ftp_manager, "start_server")) {
-            PyObject *pResult = PyObject_CallMethod(p_ftp_manager, "start_server", "sisss","0.0.0.0",2121,"rfm","rfm",rfm_curPath);
+            PyObject *pResult = PyObject_CallMethod(p_ftp_manager, "start_server", "sisss","0.0.0.0",port,"rfm",password,rfm_curPath);
             if (PyErr_Occurred()) {
               PyErr_Print(); // 打印异常信息
               PyErr_Clear(); // 清除异常状态，以便程序继续运行（可选）
@@ -138,6 +156,8 @@ static void cmdStartFtpServer(wordexp_t * parsed_msg, GString* readline_result_s
         PyErr_Print();
     }
     PyGILState_Release(gstate);
+    g_option_context_free(context);
+    if (password) g_free(password);
 }
 
 static void cmdStopFtpServer(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution) {

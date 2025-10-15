@@ -196,7 +196,7 @@ static RFM_builtinCMD builtinCMD[] = {
 #ifdef PythonEmbedded
         {"py",     startPythonEmbedding,    "Embedding Python" },
         {"pyq",    endPythonEmbedding,      "quit Python Embedding" },
-        {"startftp",                           cmdStartFtpServer,                       "start inprocess ftp server"},
+        {"startftp",                           cmdStartFtpServer,                       "start inprocess ftp server. ftp username 'rfm' hardcoded: startftp [--port xxxx(default 2121)] [--password xxxx(default empty)]"},
         {"stopftp",                            cmdStopFtpServer,                        "stop inprocess ftp server"},
 #endif
 #ifdef RFM_FILE_CHOOSER
