@@ -96,10 +96,10 @@ class FTPManager:
     
     def start_server(self, host='0.0.0.0', port=2121, 
                     username='user', password='password', 
-                    directory='/tmp'):
+                    directory='/tmp', firewall=True):
 
         # 如果不是在更改目录过程中，打开防火墙端口
-        if not self._changing_directory:
+        if not self._changing_directory and firewall:
             self._open_firewall_port(port)
 
         # 如果服务器正在运行，先停止它
@@ -114,7 +114,8 @@ class FTPManager:
             'port': port,
             'username': username,
             'password': password,
-            'directory': directory
+            'directory': directory,
+            'firewall': firewall
         }
         
         # 重置停止事件
@@ -225,7 +226,7 @@ class FTPManager:
                 self.running = False
                 
                 # 如果不是在更改目录过程中，关闭防火墙端口
-                if not self._changing_directory:
+                if not self._changing_directory and self.current_config['firewall']:
                     self._close_firewall_port(self.current_config['port'])
                 
                 self.server = None

@@ -104,12 +104,12 @@ static PyObject *p_ftp_manager=NULL;
 static void cmdStartFtpServer(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution) {
     gint port = 2121;
     gchar *password = NULL;
-    //gchar *firewall = NULL;
+    gboolean *no_firewall = False;
     GError *error = NULL;
     GOptionEntry entries[] = {
       {"port", 'p', 0, G_OPTION_ARG_INT, &port, "FTP port", "PORT"},
       {"password", 'w', 0, G_OPTION_ARG_STRING, &password, "FTP password", "PWD"},
-      //{"firewall", 'f', 0, G_OPTION_ARG_STRING, &firewall, "firewall name", NULL},
+      {"no_firewall", 'f', 0, G_OPTION_ARG_NONE, &no_firewall, "without firewall command", NULL},
       {NULL}
     };
     GOptionContext *context = g_option_context_new("startftp");
@@ -143,7 +143,7 @@ static void cmdStartFtpServer(wordexp_t * parsed_msg, GString* readline_result_s
     if (pyftpdlib_module != NULL) {
         p_ftp_manager = PyObject_GetAttrString(pyftpdlib_module, "ftp_manager");
         if (p_ftp_manager && PyObject_HasAttrString(p_ftp_manager, "start_server")) {
-            PyObject *pResult = PyObject_CallMethod(p_ftp_manager, "start_server", "sisss","0.0.0.0",port,"rfm",password,rfm_curPath);
+            PyObject *pResult = PyObject_CallMethod(p_ftp_manager, "start_server", "sisssO","0.0.0.0",port,"rfm",password,rfm_curPath,no_firewall?Py_False:Py_True);
             if (PyErr_Occurred()) {
               PyErr_Print(); // 打印异常信息
               PyErr_Clear(); // 清除异常状态，以便程序继续运行（可选）
