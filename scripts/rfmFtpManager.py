@@ -12,12 +12,11 @@ class FTPManager:
         self.server = None
         self.thread = None
         self.running = False
-        self._stop_event = threading.Event() # 添加停止事件
         self._changing_directory = False  # 标记是否在更改目录过程中
         self.current_config = { # 保存当前配置
             'host': '0.0.0.0',
             'port': 2121,
-            'username': 'user',
+            'username': 'rfm',
             'password': 'password',
             'directory': '/tmp'
         }
@@ -48,9 +47,9 @@ class FTPManager:
                     # 尝试使用 ufw (Ubuntu)
                     try:
                         if action == 'open':
-                            cmd = f'sudo ufw allow {port}/tcp'
+                            cmd = f'sudo ufw allow {port}'
                         else:  # close
-                            cmd = f'sudo ufw delete allow {port}/tcp'
+                            cmd = f'sudo ufw delete allow {port}'
                         result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
                     except:
                         # 回退到 iptables
@@ -95,7 +94,7 @@ class FTPManager:
         return self._execute_firewall_command('close', port)
     
     def start_server(self, host='0.0.0.0', port=2121, 
-                    username='user', password='password', 
+                    username='rfm', password='password',
                     directory='/tmp', firewall=True):
 
         # 如果不是在更改目录过程中，打开防火墙端口
@@ -118,9 +117,6 @@ class FTPManager:
             'firewall': firewall
         }
         
-        # 重置停止事件
-        self._stop_event.clear()
-        
         authorizer = DummyAuthorizer()
         authorizer.add_user(username, password, directory, perm='elradfmw')
         authorizer.add_anonymous(directory)
@@ -133,9 +129,7 @@ class FTPManager:
         def serve():
             try:
                 self.running = True
-                # 使用超时循环而不是 serve_forever
-                while not self._stop_event.is_set():
-                    self.server.serve_forever(timeout=1, blocking=False)
+                self.server.serve_forever()
             except Exception as e:
                 print(f"FTP服务器异常: {e}")
             finally:
@@ -205,9 +199,6 @@ class FTPManager:
     def stop_server(self):
         if self.server and self.running:
             try:
-                # 设置停止事件
-                self._stop_event.set()
-                
                 # 关闭所有客户端连接
                 self.server.close_all()
                 
@@ -216,7 +207,7 @@ class FTPManager:
                 
                 # 等待线程结束，但设置超时时间
                 if self.thread and self.thread.is_alive():
-                    self.thread.join(timeout=2.0)
+                    self.thread.join(timeout=10.0)
                     if self.thread.is_alive():
                         print("警告: FTP服务器线程没有在超时时间内停止")
                 
