@@ -87,7 +87,11 @@ static void startPythonEmbedding(){
   if (!Py_IsInitialized()) {
             g_warning("Python embedding initialization failed. Continuing without Python.");
             if (PyErr_Occurred()) PyErr_Print();
-  } else g_debug("Python embeding initialized successfully");// 添加详细诊断信息
+  } else {
+    g_debug("Python embeding initialized successfully");// 添加详细诊断信息
+    PyEval_InitThreads(); // 启用线程支持,没这个新线程运行pyftpdlib 服务客户端就连不上
+    PyEval_SaveThread(); // 释放GIL
+  }
 }
 
 static void endPythonEmbedding(){
@@ -103,7 +107,7 @@ static PyObject *pyftpdlib_module=NULL;
 static PyObject *p_ftp_manager=NULL;
 static void cmdStartFtpServer(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution) {
     gint port = 2121;
-    gchar *password = NULL;
+    gchar password[20] = {'p','a','s','s','w','o','r','d','\0'};
     gboolean *no_firewall = False;
     GError *error = NULL;
     GOptionEntry entries[] = {
@@ -157,7 +161,6 @@ static void cmdStartFtpServer(wordexp_t * parsed_msg, GString* readline_result_s
     }
     PyGILState_Release(gstate);
     g_option_context_free(context);
-    if (password) g_free(password);
 }
 
 static void cmdStopFtpServer(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution) {
@@ -178,7 +181,7 @@ static void cmdStopFtpServer(wordexp_t * parsed_msg, GString* readline_result_st
       }
       Py_XDECREF(pResult); // 确保释放 result（如果非空）
     }
-  }
+  }else printf("you may need to startftp first\n");
   PyGILState_Release(gstate);
 }
 
@@ -194,7 +197,7 @@ static void change_ftp_server_root(gchar *newroot) {
       g_debug("ftp server root changed to %s",rfm_curPath);
     }
     Py_XDECREF(pResult); // 确保释放 result（如果非空）
-  }
+  }else printf("you may need to startftp first\n");
   PyGILState_Release(gstate);
 }  
 #endif
