@@ -207,7 +207,7 @@ class FTPManager:
                 
                 # 等待线程结束，但设置超时时间
                 if self.thread and self.thread.is_alive():
-                    self.thread.join(timeout=10.0)
+                    self.thread.join(timeout=2.0)
                     if self.thread.is_alive():
                         print("警告: FTP服务器线程没有在超时时间内停止")
                 
