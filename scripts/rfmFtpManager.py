@@ -95,7 +95,7 @@ class FTPManager:
     
     def start_server(self, host='0.0.0.0', port=2121, 
                     username='rfm', password='password',
-                    directory='/tmp', firewall=True):
+                    directory='/tmp', firewall=True, perm='elradfmw'):
 
         # 如果不是在更改目录过程中，打开防火墙端口
         if not self._changing_directory and firewall:
@@ -118,7 +118,7 @@ class FTPManager:
         }
         
         authorizer = DummyAuthorizer()
-        authorizer.add_user(username, password, directory, perm='elradfmw')
+        authorizer.add_user(username, password, directory, perm)
         authorizer.add_anonymous(directory)
         
         handler = FTPHandler
