@@ -65,12 +65,12 @@ class BaseServiceManager(ABC):
                         else: # close
                             cmd = f'iptables -D INPUT -p tcp --dport {port} -j ACCEPT'
                         result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-                        try:
-                            if action == 'open':
-                                cmd1 = f'ifconfig'
-                                subprocess.run(cmd1, shell=True, text=True)
-                        finally:
-                            print("")
+                    try:
+                        if action == 'open':
+                            cmd1 = f'ifconfig'
+                            subprocess.run(cmd1, shell=True, text=True)
+                    finally:
+                        print("")
 
                 elif system == 'darwin': # macOS
                     # macOS 使用 pfctl，需要更复杂的配置
