@@ -107,7 +107,7 @@ static PyObject *py_rfmShareDir_module=NULL;
 static PyObject *p_ftp_manager=NULL;
 static PyObject *p_http_manager=NULL;
 static void cmdStartShare(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution) {
-    gint port = 2121;
+    gint port = -1;
     gchar password[20] = {'p','a','s','s','w','o','r','d','\0'};
     gchar perm[20] = {'e','l','r','a','d','f','m','w','\0'};
     gboolean ftp =False;
@@ -154,7 +154,8 @@ static void cmdStartShare(wordexp_t * parsed_msg, GString* readline_result_strin
     if (py_rfmShareDir_module != NULL) {
       if (ftp && (p_ftp_manager = PyObject_GetAttrString(py_rfmShareDir_module, "ftp_manager"))){
         if (p_ftp_manager && PyObject_HasAttrString(p_ftp_manager, "start_server")) {
-            PyObject *pResult = PyObject_CallMethod(p_ftp_manager, "start_server", "sisssOs","0.0.0.0",port,"rfm",password,rfm_curPath,no_firewall?Py_False:Py_True, perm);
+	    PyObject *kwargs = Py_BuildValue("{s:s}", "perm", perm);
+            PyObject *pResult = PyObject_CallMethod(p_ftp_manager, "start_server", "sisssOO","0.0.0.0",port,"rfm",password,rfm_curPath,no_firewall?Py_False:Py_True,kwargs);
             if (PyErr_Occurred()) {
               PyErr_Print(); // 打印异常信息
               PyErr_Clear(); // 清除异常状态，以便程序继续运行（可选）
@@ -162,6 +163,7 @@ static void cmdStartShare(wordexp_t * parsed_msg, GString* readline_result_strin
 	      if (pResult == Py_True) printf("FTP服务器启动成功\n");
               Py_XDECREF(pResult); // 确保释放 result（如果非空）
             }
+	    Py_XDECREF(kwargs);
         }else{
           PyErr_Print();
         }

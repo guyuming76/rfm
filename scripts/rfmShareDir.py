@@ -153,7 +153,7 @@ class BaseServiceManager(ABC):
         **kwargs: 其他特定参数
         """
         # 设置默认端口
-        if port is None:
+        if port is None or port<0:
             port = 2121 if self.service_type == 'ftp' else 8080
         
         # 验证目录
