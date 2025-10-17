@@ -372,10 +372,6 @@ class ServiceManagerFactory:
             raise ValueError(f"不支持的服务类型: {service_type}")
 
 
-# 保持向后兼容性
-ftp_manager = FTPManager()
-http_manager = HTTPManager()
-
 # 使用示例:
 if __name__ == "__main__":
     # 创建FTP服务管理器
