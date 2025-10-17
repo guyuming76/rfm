@@ -14,7 +14,7 @@
 
 # 检查是否提供了文件名参数
 if [ $# -ne 1 ]; then
-    echo "用法: $0 <RFM_DIMENSION_PROPERTIES_FILE_NAME>"
+    echo "用法: $0 <RFM_DIMENSION_PROPERTIES_FILE_NAME>" >&2
     exit 1
 fi
 
@@ -22,18 +22,18 @@ RFM_DIMENSION_PROPERTIES_FILE_NAME="$1"
 
 # 检查 RFM_GIT_ROOT 环境变量
 if [ -z "$RFM_GIT_ROOT" ]; then
-    echo "错误: 环境变量 RFM_GIT_ROOT 未设置"
+    echo "错误: 环境变量 RFM_GIT_ROOT 未设置" >&2
     exit 1
 fi
 
 if [ "$RFM_GIT_ROOT" = "/" ]; then
-    echo "RFM_GIT_ROOT 是根目录，不执行查找"
+    echo "环境变量RFM_GIT_ROOT值是根目录，表示当前目录不是git仓库，不查找维度定义目录" >&2
     exit 0
 fi
 
 # 检查 RFM_GIT_ROOT 是否存在
 if [ ! -d "$RFM_GIT_ROOT" ]; then
-    echo "错误: RFM_GIT_ROOT 目录不存在: $RFM_GIT_ROOT"
+    echo "错误: RFM_GIT_ROOT 目录不存在: $RFM_GIT_ROOT" >&2
     exit 1
 fi
 
