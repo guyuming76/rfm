@@ -198,7 +198,7 @@ endif
 	@cp -f scripts/rfmMount_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmMount.sh
 	@cp -f scripts/rfmFind_DIMENSION_PROPERTIES_FILEs.sh ${DESTDIR}${PREFIX}/bin
 ifneq (${PythonEmbedded}, )
-	@cp -f scripts/rfmFtpManager.py ${DESTDIR}${PREFIX}/bin
+	@cp -f scripts/rfmShareDir.py ${DESTDIR}${PREFIX}/bin
 else
 	@cp -f scripts/rfmShareDir.sh ${DESTDIR}${PREFIX}/bin
 endif
@@ -256,7 +256,7 @@ endif
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmMount.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmFind_DIMENSION_PROPERTIES_FILEs.sh
 ifneq (${PythonEmbedded}, )
-	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmFtpManager.py
+	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmShareDir.py
 else
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmShareDir.sh
 endif
@@ -315,7 +315,7 @@ endif
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmMount.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmFind_DIMENSION_PROPERTIES_FILEs.sh
 ifneq (${PythonEmbedded}, )
-	@rm -f ${DESTDIR}${PREFIX}/bin/rfmFtpManager.py
+	@rm -f ${DESTDIR}${PREFIX}/bin/rfmShareDir.py
 else
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmShareDir.sh
 endif

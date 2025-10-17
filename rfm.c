@@ -103,22 +103,27 @@ static void endPythonEmbedding(){
     pyProgramName=NULL;
 }
 
-static PyObject *pyftpdlib_module=NULL;
+static PyObject *py_rfmShareDir_module=NULL;
 static PyObject *p_ftp_manager=NULL;
-static void cmdStartFtpServer(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution) {
+static PyObject *p_http_manager=NULL;
+static void cmdStartShare(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution) {
     gint port = 2121;
     gchar password[20] = {'p','a','s','s','w','o','r','d','\0'};
     gchar perm[20] = {'e','l','r','a','d','f','m','w','\0'};
+    gboolean ftp =False;
+    gboolean http=False;
     gboolean *no_firewall = False;
     GError *error = NULL;
     GOptionEntry entries[] = {
       {"port", 'p', 0, G_OPTION_ARG_INT, &port, "FTP port", "PORT"},
       {"password", 'w', 0, G_OPTION_ARG_STRING, &password, "FTP password", "PWD"},
       {"perm", 'r', 0, G_OPTION_ARG_STRING, &perm, "user permission default elradfmw", "permission default elradfmw"},
-      {"no_firewall", 'f', 0, G_OPTION_ARG_NONE, &no_firewall, "without firewall command", NULL},
+      {"no_firewall", 'n', 0, G_OPTION_ARG_NONE, &no_firewall, "without firewall command", NULL},
+      {"ftp", 'f', 0, G_OPTION_ARG_NONE, &ftp, "ftp server", NULL},
+      {"http", 'h', 0, G_OPTION_ARG_NONE, &http, "http server", NULL},
       {NULL}
     };
-    GOptionContext *context = g_option_context_new("startftp");
+    GOptionContext *context = g_option_context_new("ShareDir");
     g_option_context_add_main_entries(context, entries, NULL);
     if (!g_option_context_parse_strv(context, &(parsed_msg->we_wordv), &error)) {
       g_warning("错误: %s", error->message);
@@ -144,10 +149,10 @@ static void cmdStartFtpServer(wordexp_t * parsed_msg, GString* readline_result_s
     PyRun_SimpleString(insert_program_dir_to_path);
     g_free(insert_program_dir_to_path);
     // 导入自定义模块
-    pyftpdlib_module = PyImport_ImportModule("rfmFtpManager");
+    py_rfmShareDir_module = PyImport_ImportModule("rfmShareDir");
 
-    if (pyftpdlib_module != NULL) {
-        p_ftp_manager = PyObject_GetAttrString(pyftpdlib_module, "ftp_manager");
+    if (py_rfmShareDir_module != NULL) {
+      if (ftp && (p_ftp_manager = PyObject_GetAttrString(py_rfmShareDir_module, "ftp_manager"))){
         if (p_ftp_manager && PyObject_HasAttrString(p_ftp_manager, "start_server")) {
             PyObject *pResult = PyObject_CallMethod(p_ftp_manager, "start_server", "sisssOs","0.0.0.0",port,"rfm",password,rfm_curPath,no_firewall?Py_False:Py_True, perm);
             if (PyErr_Occurred()) {
@@ -157,15 +162,31 @@ static void cmdStartFtpServer(wordexp_t * parsed_msg, GString* readline_result_s
 	      if (pResult == Py_True) printf("FTP服务器启动成功\n");
               Py_XDECREF(pResult); // 确保释放 result（如果非空）
             }
+        }else{
+          PyErr_Print();
         }
-    } else {
-        PyErr_Print();
+      }
+
+      if (http && (p_http_manager = PyObject_GetAttrString(py_rfmShareDir_module, "http_manager"))){
+        if (p_http_manager && PyObject_HasAttrString(p_http_manager, "start_server")) {
+            PyObject *pResult = PyObject_CallMethod(p_http_manager, "start_server", "siOssO","0.0.0.0",port,Py_None,password,rfm_curPath,no_firewall?Py_False:Py_True);
+            if (PyErr_Occurred()) {
+              PyErr_Print(); // 打印异常信息
+              PyErr_Clear(); // 清除异常状态，以便程序继续运行（可选）
+            } else {
+	      if (pResult == Py_True) printf("HTTP服务器启动成功\n");
+              Py_XDECREF(pResult); // 确保释放 result（如果非空）
+            }
+        }else{
+          PyErr_Print();
+        }
+      }
     }
     PyGILState_Release(gstate);
     g_option_context_free(context);
 }
 
-static void cmdStopFtpServer(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution) {
+static void cmdStopShare(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution) {
   PyGILState_STATE gstate;
   gstate = PyGILState_Ensure();
   if (p_ftp_manager && PyObject_HasAttrString(p_ftp_manager, "stop_server")) {
@@ -177,13 +198,25 @@ static void cmdStopFtpServer(wordexp_t * parsed_msg, GString* readline_result_st
       if (pResult == Py_True){
 	Py_XDECREF(p_ftp_manager);
 	p_ftp_manager = NULL;
-        Py_DECREF(pyftpdlib_module);
-	PyRun_SimpleString("del sys.modules['rfmFtpManager']");
         printf("FTP服务器成功停止\n");
       }
       Py_XDECREF(pResult); // 确保释放 result（如果非空）
     }
-  }else printf("you may need to startftp first\n");
+  }
+  if (p_http_manager && PyObject_HasAttrString(p_http_manager, "stop_server")) {
+    PyObject *pResult = PyObject_CallMethod(p_http_manager, "stop_server", NULL);
+    if (PyErr_Occurred()) {
+      PyErr_Print(); // 打印异常信息
+      PyErr_Clear(); // 清除异常状态，以便程序继续运行（可选）
+    } else {
+      if (pResult == Py_True){
+	Py_XDECREF(p_http_manager);
+	p_http_manager = NULL;
+        printf("HTTP服务器成功停止\n");
+      }
+      Py_XDECREF(pResult); // 确保释放 result（如果非空）
+    }
+  }
   PyGILState_Release(gstate);
 }
 
@@ -5200,7 +5233,7 @@ static void cleanup()
 #endif
   
 #ifdef PythonEmbedded
-   cmdStopFtpServer(NULL, NULL);
+   cmdStopShare(NULL, NULL);
    endPythonEmbedding();
 #endif
    
