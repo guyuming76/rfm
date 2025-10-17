@@ -153,9 +153,11 @@ static void cmdStartShare(wordexp_t * parsed_msg, GString* readline_result_strin
 
     if (py_rfmShareDir_module != NULL) {
       if (ftp && (p_ftp_manager = PyObject_GetAttrString(py_rfmShareDir_module, "ftp_manager"))){
-        if (p_ftp_manager && PyObject_HasAttrString(p_ftp_manager, "start_server")) {
-	    PyObject *kwargs = Py_BuildValue("{s:s}", "perm", perm);
-            PyObject *pResult = PyObject_CallMethod(p_ftp_manager, "start_server", "sisssOO","0.0.0.0",port,"rfm",password,rfm_curPath,no_firewall?Py_False:Py_True,kwargs);
+	PyObject *start_server_method = NULL;
+        if (p_ftp_manager && (start_server_method = PyObject_GetAttrString(p_ftp_manager, "start_server"))) {
+	    PyObject *args = Py_BuildValue("sisssO", "0.0.0.0",port,"rfm", password, rfm_curPath, (no_firewall ? Py_False : Py_True)); // 构建位置参数元组
+	    PyObject *kwargs = Py_BuildValue("{s:s}", "perm", perm); //构建关键字参数字典
+            PyObject *pResult = PyObject_Call(start_server_method, args,kwargs);
             if (PyErr_Occurred()) {
               PyErr_Print(); // 打印异常信息
               PyErr_Clear(); // 清除异常状态，以便程序继续运行（可选）
@@ -163,6 +165,8 @@ static void cmdStartShare(wordexp_t * parsed_msg, GString* readline_result_strin
 	      if (pResult == Py_True) printf("FTP服务器启动成功\n");
               Py_XDECREF(pResult); // 确保释放 result（如果非空）
             }
+	    Py_XDECREF(start_server_method);
+	    Py_XDECREF(args);
 	    Py_XDECREF(kwargs);
         }else{
           PyErr_Print();
