@@ -87,7 +87,7 @@ class BaseServiceManager(ABC):
             else:
                 print(f"防火墙命令执行失败: {result.stderr}")
                 return False
-                
+            
         except Exception as e:
             print(f"执行防火墙命令时出错: {e}")
             return False
@@ -128,7 +128,7 @@ class BaseServiceManager(ABC):
         pass
     
     @abstractmethod
-    def _create_server(self, host, port, directory, username=None, password=None):
+    def _create_server(self, host, port, directory, username=None, password=None, **kwargs):
         """子类实现的创建服务器实例逻辑"""
         pass
     
@@ -301,9 +301,12 @@ class FTPManager(BaseServiceManager):
     def __init__(self):
         super().__init__('ftp')
     
-    def _create_server(self, host, port, directory, username='rfm', password='password', perm='elradfmw'):
+    def _create_server(self, host, port, directory, username='rfm', password='password', **kwargs):
         """创建FTP服务器实例"""
         try:
+            # 从 kwargs 中获取 perm 参数，如果没有则使用默认值
+            perm = kwargs.get('perm', 'elradfmw')
+            
             authorizer = DummyAuthorizer()
             authorizer.add_user(username, password, directory, perm)
             authorizer.add_anonymous(directory)
@@ -334,7 +337,7 @@ class HTTPManager(BaseServiceManager):
     def __init__(self):
         super().__init__('http')
     
-    def _create_server(self, host, port, directory, username=None, password=None):
+    def _create_server(self, host, port, directory, username=None, password=None, **kwargs):
         """创建HTTP服务器实例"""
         try:
             # 创建自定义处理器类，绑定目录
@@ -376,7 +379,7 @@ class ServiceManagerFactory:
 if __name__ == "__main__":
     # 创建FTP服务管理器
     ftp_mgr = ServiceManagerFactory.create_manager('ftp')
-    ftp_mgr.start_server(port=2121, directory='.')
+    ftp_mgr.start_server(port=2121, directory='.', perm='elradfmw')
     
     # 创建HTTP服务管理器 
     http_mgr = ServiceManagerFactory.create_manager('http')
