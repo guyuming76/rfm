@@ -21,11 +21,11 @@ class BaseServiceManager(ABC):
         self._changing_directory = False
         self.current_config = {
             'host': '0.0.0.0',
-            'port': 2121 if service_type == 'ftp' else 8080,
-            'username': 'rfm',
-            'password': 'password',
+            'port': -1,
+            'username': None,
+            'password': None,
             'directory': '.',
-            'firewall': True
+            'firewall': False
         }
     
     def _execute_firewall_command(self, action, port):
@@ -139,7 +139,7 @@ class BaseServiceManager(ABC):
     
     def start_server(self, host='0.0.0.0', port=None, 
                     username=None, password=None,
-                    directory='.', firewall=True, **kwargs):
+                    directory='.', firewall=False, **kwargs):
         """
         启动服务的通用方法
         
@@ -176,7 +176,8 @@ class BaseServiceManager(ABC):
             'username': username,
             'password': password,
             'directory': directory,
-            'firewall': firewall
+            'firewall': firewall,
+            'kwargs': kwargs.copy()  # 保存kwargs的副本
         }
         
         # 创建服务器实例
@@ -270,7 +271,8 @@ class BaseServiceManager(ABC):
             username=config['username'],
             password=config['password'],
             directory=config['directory'],
-            firewall=config['firewall']
+            firewall=config['firewall'],
+            **config.get('kwargs', {})  # 传递保存的kwargs
         )
 
 
@@ -301,14 +303,20 @@ class FTPManager(BaseServiceManager):
     def __init__(self):
         super().__init__('ftp')
     
-    def _create_server(self, host, port, directory, username='rfm', password='password', **kwargs):
+    def _create_server(self, host, port, directory, username=None, password=None, **kwargs):
         """创建FTP服务器实例"""
         try:
             # 从 kwargs 中获取 perm 参数，如果没有则使用默认值
             perm = kwargs.get('perm', 'elradfmw')
             
             authorizer = DummyAuthorizer()
-            authorizer.add_user(username, password, directory, perm)
+            # 处理用户名密码为None的情况
+            if username and password:
+                authorizer.add_user(username, password, directory, perm)
+            else:
+                # 如果未提供凭据，只启用匿名访问
+                print("未提供用户名密码，启用匿名FTP访问")
+
             authorizer.add_anonymous(directory)
             
             handler = FTPHandler
