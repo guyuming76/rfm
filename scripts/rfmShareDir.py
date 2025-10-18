@@ -160,11 +160,9 @@ class BaseServiceManager(ABC):
         if not self._changing_directory and firewall:
             self._open_firewall_port(port)
 
-        # 如果服务器正在运行，先停止它
         if self.running:
-            self.stop_server()
-            time.sleep(0.5)
-        
+            raise RuntimeError(f"{self.service_type.upper()}服务器已经在运行中，端口: {self.current_config['port']}")        
+
         # 保存当前配置
         self.current_config = {
             'host': host,
