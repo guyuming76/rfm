@@ -1,8 +1,4 @@
-from pyftpdlib.authorizers import DummyAuthorizer
-from pyftpdlib.handlers import FTPHandler
-from pyftpdlib.servers import FTPServer
-from http.server import HTTPServer, SimpleHTTPRequestHandler
-import threading
+from threading import Thread
 import time
 import os
 import platform
@@ -76,7 +72,7 @@ class BaseServiceManager(ABC):
                     # macOS 使用 pfctl，需要更复杂的配置
                     print(f"macOS防火墙配置需要手动设置，请使用: sudo pfctl 来管理端口 {port}")
                     return True
-            
+                
             else:
                 print(f"不支持的平台: {system}")
                 return False
@@ -177,7 +173,7 @@ class BaseServiceManager(ABC):
             'password': password,
             'directory': directory,
             'firewall': firewall,
-            'kwargs': kwargs.copy()  # 保存kwargs的副本
+            'kwargs': kwargs.copy() # 保存kwargs的副本
         }
         
         # 创建服务器实例
@@ -186,7 +182,7 @@ class BaseServiceManager(ABC):
             return False
         
         # 启动服务线程
-        self.thread = threading.Thread(target=self._serve_forever, name=f"{self.service_type}_server")
+        self.thread = Thread(target=self._serve_forever, name=f"{self.service_type}_server")
         self.thread.daemon = True
         self.thread.start()
         
@@ -272,29 +268,8 @@ class BaseServiceManager(ABC):
             password=config['password'],
             directory=config['directory'],
             firewall=config['firewall'],
-            **config.get('kwargs', {})  # 传递保存的kwargs
+            **config.get('kwargs', {}) # 传递保存的kwargs
         )
-
-
-class CustomHTTPHandler(SimpleHTTPRequestHandler):
-    """自定义HTTP处理器，支持设置根目录"""
-    
-    def __init__(self, *args, directory=None, **kwargs):
-        self.base_directory = directory
-        super().__init__(*args, **kwargs)
-    
-    def translate_path(self, path):
-        """重写路径转换方法，使用指定的根目录"""
-        path = super().translate_path(path)
-        
-        if self.base_directory:
-            # 获取相对于原文档根目录的相对路径
-            relpath = os.path.relpath(path, os.getcwd())
-            # 组合新的完整路径
-            new_path = os.path.join(self.base_directory, relpath)
-            return new_path
-        
-        return path
 
 
 class FTPManager(BaseServiceManager):
@@ -306,6 +281,11 @@ class FTPManager(BaseServiceManager):
     def _create_server(self, host, port, directory, username=None, password=None, **kwargs):
         """创建FTP服务器实例"""
         try:
+            # 延迟导入 pyftpdlib
+            from pyftpdlib.authorizers import DummyAuthorizer
+            from pyftpdlib.handlers import FTPHandler
+            from pyftpdlib.servers import FTPServer
+            
             # 从 kwargs 中获取 perm 参数，如果没有则使用默认值
             perm = kwargs.get('perm', 'elradfmw')
             
@@ -323,6 +303,10 @@ class FTPManager(BaseServiceManager):
             handler.authorizer = authorizer
             
             return FTPServer((host, port), handler)
+        except ImportError:
+            print("错误: 未安装 pyftpdlib，无法启动FTP服务")
+            print("请使用: pip install pyftpdlib 安装")
+            return None
         except Exception as e:
             print(f"创建FTP服务器失败: {e}")
             return None
@@ -348,12 +332,32 @@ class HTTPManager(BaseServiceManager):
     def _create_server(self, host, port, directory, username=None, password=None, **kwargs):
         """创建HTTP服务器实例"""
         try:
-            # 创建自定义处理器类，绑定目录
-            HandlerClass = lambda *args, **kwargs: CustomHTTPHandler(
-                *args, directory=directory, **kwargs
-            )
+            # 延迟导入 http.server
+            from http.server import HTTPServer, SimpleHTTPRequestHandler
             
-            return HTTPServer((host, port), HandlerClass)
+            # 定义自定义HTTP处理器，支持设置根目录
+            class CustomHTTPHandler(SimpleHTTPRequestHandler):
+                def __init__(self, *args, **kwargs):
+                    self.base_directory = directory
+                    super().__init__(*args, **kwargs)
+                
+                def translate_path(self, path):
+                    """重写路径转换方法，使用指定的根目录"""
+                    path = super().translate_path(path)
+                    
+                    if self.base_directory:
+                        # 获取相对于原文档根目录的相对路径
+                        relpath = os.path.relpath(path, os.getcwd())
+                        # 组合新的完整路径
+                        new_path = os.path.join(self.base_directory, relpath)
+                        return new_path
+                    
+                    return path
+            
+            return HTTPServer((host, port), CustomHTTPHandler)
+        except ImportError:
+            print("错误: 无法导入 http.server 模块")
+            return None
         except Exception as e:
             print(f"创建HTTP服务器失败: {e}")
             return None
