@@ -178,10 +178,7 @@ static void cmdStartShare(wordexp_t * parsed_msg, GString* readline_result_strin
             if (PyErr_Occurred()) {
               PyErr_Print(); // 打印异常信息
               PyErr_Clear(); // 清除异常状态，以便程序继续运行（可选）
-            } else {
-	      if (pResult == Py_True) printf("FTP服务器启动成功\n");
-              Py_XDECREF(pResult); // 确保释放 result（如果非空）
-            }
+            } else Py_XDECREF(pResult);
 	    Py_XDECREF(start_server_method);
 	    Py_XDECREF(args);
 	    Py_XDECREF(kwargs);
@@ -194,10 +191,7 @@ static void cmdStartShare(wordexp_t * parsed_msg, GString* readline_result_strin
         if (PyObject_HasAttrString(p_http_manager, "start_server")) {
             PyObject *pResult = PyObject_CallMethod(p_http_manager, "start_server", "siOssO","0.0.0.0",port,Py_None,password,rfm_curPath,no_firewall?Py_False:Py_True);
             if (PyErr_Occurred()) { PyErr_Print(); PyErr_Clear();
-            } else {
-	      if (pResult == Py_True) printf("HTTP服务器启动成功\n");
-              Py_XDECREF(pResult); // 确保释放 result（如果非空）
-            }
+            } else Py_XDECREF(pResult);
         }else{ g_warning("no start_server method for http_manager");}
       }else {if (PyErr_Occurred()) {PyErr_Print();PyErr_Clear();}}
       }//http
@@ -218,7 +212,6 @@ static void cmdStopShare(wordexp_t * parsed_msg, GString* readline_result_string
       if (pResult == Py_True){
 	Py_XDECREF(p_ftp_manager);
 	p_ftp_manager = NULL;
-        printf("FTP服务器成功停止\n");
       }
       Py_XDECREF(pResult); // 确保释放 result（如果非空）
     }
@@ -233,7 +226,6 @@ static void cmdStopShare(wordexp_t * parsed_msg, GString* readline_result_string
       if (pResult == Py_True){
 	Py_XDECREF(p_http_manager);
 	p_http_manager = NULL;
-        printf("HTTP服务器成功停止\n");
       }
       Py_XDECREF(pResult); // 确保释放 result（如果非空）
     }
