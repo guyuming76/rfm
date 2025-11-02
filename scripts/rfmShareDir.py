@@ -115,7 +115,6 @@ class BaseServiceManager(ABC):
             self._serve_forever_specific()
         except Exception as e:
             print(f"{self.service_type.upper()}服务器异常: {e}")
-        finally:
             self.running = False
     
     @abstractmethod
