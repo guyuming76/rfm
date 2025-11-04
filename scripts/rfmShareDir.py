@@ -290,6 +290,7 @@ class FTPManager(BaseServiceManager):
             # 处理用户名密码为None的情况
             if username and password:
                 authorizer.add_user(username, password, directory, perm)
+                print(f"ftp服务用户名:{username}，密码:{password}，权限:{perm}, 根目录:{directory}")
             else:
                 # 如果未提供凭据，只启用匿名访问
                 print("未提供用户名密码，启用匿名FTP访问")
