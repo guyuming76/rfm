@@ -132,6 +132,29 @@ class BaseServiceManager(ABC):
         """子类实现的特定服务器停止逻辑"""
         pass
     
+    def is_port_available(self, host='0.0.0.0', port=None):
+        """检查端口是否可用，如果被占用则提供详细的诊断信息"""
+        import socket
+        if port is None:
+            port = self.current_config['port']
+        
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            result = sock.bind((host, port))
+            sock.close()
+            return True
+        except socket.error as e:
+            print(f"错误: 端口 {port} 已被占用: {e}")
+        
+            # 提供检查命令
+            print(f"\n请运行以下命令检查哪个进程占用了端口 {port}:")
+            print(f"  lsof -i :{port}")
+            print("如果rfm进程占用了端口，通过如下命令(<PID>替换为上面命令输出的rfm进程号)检查此rfm进程的环境变量cwd值(当前目录)，以便从用户界面找到此rfm进程:")
+            print("   ls -l /proc/<PID>/cwd")
+
+            return False
+    
     def start_server(self, host='0.0.0.0', port=None, 
                     username=None, password=None,
                     directory='.', firewall=False, **kwargs):
@@ -150,7 +173,7 @@ class BaseServiceManager(ABC):
         # 设置默认端口
         if port is None or port<0:
             port = 2121 if self.service_type == 'ftp' else 8080
-        
+
         # 验证目录
         if not self._validate_directory(directory):
             return False
@@ -161,7 +184,9 @@ class BaseServiceManager(ABC):
 
         if self.running:
             raise RuntimeError(f"{self.service_type.upper()}服务器已经在运行中，端口: {self.current_config['port']}")        
-
+        if not self.is_port_available(host, port):
+            return False
+        
         # 保存当前配置
         self.current_config = {
             'host': host,
