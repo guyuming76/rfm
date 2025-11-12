@@ -132,29 +132,6 @@ class BaseServiceManager(ABC):
         """子类实现的特定服务器停止逻辑"""
         pass
     
-    def is_port_available(self, host='0.0.0.0', port=None):
-        """检查端口是否可用，如果被占用则提供详细的诊断信息"""
-        import socket
-        if port is None:
-            port = self.current_config['port']
-        
-        try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            result = sock.bind((host, port))
-            sock.close()
-            return True
-        except socket.error as e:
-            print(f"错误: 端口 {port} 已被占用: {e}")
-        
-            # 提供检查命令
-            print(f"\n请运行以下命令检查哪个进程占用了端口 {port}:")
-            print(f"  lsof -i :{port}")
-            print("如果rfm进程占用了端口，通过如下命令(<PID>替换为上面命令输出的rfm进程号)检查此rfm进程的环境变量cwd值(当前目录)，以便从用户界面找到此rfm进程:")
-            print("   ls -l /proc/<PID>/cwd")
-
-            return False
-    
     def start_server(self, host='0.0.0.0', port=None, 
                     username=None, password=None,
                     directory='.', firewall=False, **kwargs):
@@ -184,8 +161,6 @@ class BaseServiceManager(ABC):
 
         if self.running:
             raise RuntimeError(f"{self.service_type.upper()}服务器已经在运行中，端口: {self.current_config['port']}")        
-        if not self.is_port_available(host, port):
-            return False
         
         # 保存当前配置
         self.current_config = {
@@ -199,9 +174,23 @@ class BaseServiceManager(ABC):
         }
         
         # 创建服务器实例
-        self.server = self._create_server(host, port, directory, username, password, **kwargs)
-        if not self.server:
-            return False
+        try:
+            self.server = self._create_server(host, port, directory, username, password, **kwargs)
+            if not self.server:
+                return False
+        except OSError as e:
+            # 使用错误号而不是错误消息来判断端口占用
+            # errno.EADDRINUSE: 98 (Address already in use / 地址已在使用)
+            if e.errno == errno.EADDRINUSE:
+                print(f"错误: 端口 {port} 已被占用")
+                print(f"\n请运行以下命令检查哪个进程占用了端口 {port}:")
+                print(f" lsof -i :{port}")
+                print("如果rfm进程占用了端口，通过如下命令(<PID>替换为上面命令输出的rfm进程号)检查此rfm进程的环境变量cwd值(当前目录)，以便从用户界面找到此rfm进程:")
+                print(" ls -l /proc/<PID>/cwd")
+                return False
+            else:
+                # 重新抛出其他OSError
+                raise e
         
         # 启动服务线程
         self.thread = Thread(target=self._serve_forever, name=f"{self.service_type}_server")
