@@ -4824,8 +4824,12 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
         effective_cmd_interpretor_pointer = cmd_interpretor_pointer; // Use this for actual execution
 
 #ifdef reedline
-        if (!from_stdin_readline) reedline_interrupt(reedline_handle);//TODO: 有啥办法保证 reedline_interrupt 是同步的？
+        if (!from_stdin_readline) reedline_interrupt(reedline_handle);//下面g_thread_join 从效果上相当于 reedline_interrupt 是同步的
+#else
+        if (from_stdin_readline)
 #endif
+	    g_thread_join(readlineThread);//we won't have more than one readlineThread running at the same time since we join before new thread here
+
         gint len = strlen(readlineResult);
 	g_debug ("parse_and_exec_command_in_gtk_thread, RFM_ChildAttribs %p, readline length %u: %s", childAttribs, len, readlineResult);
 
@@ -4969,15 +4973,14 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
           // Use effective_cmd_interpretor_index for execution calls
 	  if (SearchResultAsInput) exec_stdin_command_with_SearchResultAsInput(childAttribs->readlineResultString, from_stdin_readline, effective_cmd_interpretor_pointer, childAttribs);
 	  else if ((exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread || !from_stdin_readline) && !(execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT))) ret = exec_stdin_command(childAttribs->readlineResultString, effective_cmd_interpretor_pointer, childAttribs);
-#ifndef reedline
-	  if (from_stdin_readline)
-#endif
-	    g_thread_join(readlineThread);//we won't have more than one readlineThread running at the same time since we join before new thread here
-	  if ((execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT)) && childAttribs->readlineResultString) exec_stdin_command_in_new_VT(childAttribs->readlineResultString, effective_cmd_interpretor_pointer, childAttribs); // 在AI Mode下输入builtin cmd,如 help, 会因为是AI mode 一开始把 execStdinCmdInNewVT 设成true,所以这里加上 readlineResultString 非NULL判断
+
+          if ((execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT)) && childAttribs->readlineResultString) exec_stdin_command_in_new_VT(childAttribs->readlineResultString, effective_cmd_interpretor_pointer, childAttribs); // 在AI Mode下输入builtin cmd,如 help, 会因为是AI mode 一开始把 execStdinCmdInNewVT 设成true,所以这里加上 readlineResultString 非NULL判断
 
           // Pass the original readlineResultString (potentially NULL if handled by builtin) to the next thread
           // The next thread will use the global current_stdin_cmd_interpretor for its prompt
 #ifdef reedline
+          //pid_t pgid = getpgrp();
+          //tcsetpgrp(STDIN_FILENO, pgid);
           if (!SearchResultAsInput) readlineThread=g_thread_new("readline", readlineInSeperateThread, from_stdin_readline?childAttribs:NULL);
 #else
           if (from_stdin_readline && !SearchResultAsInput) readlineThread=g_thread_new("readline", readlineInSeperateThread, childAttribs);
