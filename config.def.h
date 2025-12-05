@@ -139,6 +139,7 @@ static const char *play_video[] = { "/usr/bin/xdg-open", NULL };
 static const char *play_audio[] = { "/usr/bin/xdg-open", NULL };
 static const char *av_info[]    = { "/usr/bin/mediainfo", "-f", NULL };
 static const char *textEdit[]   = { "$RFM_TERM", rfmBinPath "rfmTextEdit.sh", NULL };
+static const char *bat[]        = { stdin_cmd_interpretors[0].name, "bat -p --paging=never ", NULL };
 //static const char *pdf[]        = { "/usr/bin/xdg-open", NULL };
 static const char *pdf[] = { "firefox-bin", "-P","pdf",NULL };
 //open pdf with firefox-bin. you will be prompted to create a new firefox profile named pdf for the first run.
@@ -288,6 +289,7 @@ static RFM_MenuItem run_actions[] = {
    { RunActionFindSameFile, "*",       "*",                    NULL,			NULL,			NULL,		find_same_name,                 NULL },
    { RunActionMount, "inode",          "directory",            NULL,			NULL,			NULL,		mount,            		NULL },
    { RunActionUmount,"inode",          "mount-point",          NULL,			NULL,			NULL,		umount,           		NULL },
+   { "View",         "text",           "*",                    NULL,			NULL,			NULL,		bat,         		        NULL },
    { "edit",         "text",           "*",                    NULL,			NULL,			NULL,		textEdit,         		NULL },
    { "Open",         "text",           "html",                 NULL,			NULL,			NULL,		www,              		NULL },
    { "Play",         "video",          "*",                    NULL,			NULL,			NULL,		play_video,       		NULL },
