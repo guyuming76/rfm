@@ -320,6 +320,8 @@ pub extern "C" fn reedline_create(rfm_functions: *const rfmFunctions) -> *mut Re
     }))
 }
 
+pub const REEDLINE_INTERRUPTED: &'static str = "reedline_interrupted";
+
 #[no_mangle]
 pub extern "C" fn reedline_readline(
     handle: *mut ReedlineHandle,
@@ -337,11 +339,19 @@ pub extern "C" fn reedline_readline(
    match handle.inner.read_line(&prompt_obj) {
         Ok(Signal::Success(line)) => CString::new(line).unwrap().into_raw(),
         Ok(Signal::CtrlD | Signal::CtrlC) => ptr::null_mut(), // 处理Ctrl-C/Ctrl-D
+        Ok(Signal::Interrupted) => CString::new(REEDLINE_INTERRUPTED).unwrap().into_raw(),
         Err(e) => {
             warn!("Reedline error: {}", e);
             ptr::null_mut()
         }
     }
+}
+
+#[no_mangle]
+pub extern "C" fn reedline_interrupt(handle: *mut ReedlineHandle) {
+    assert!(!handle.is_null());
+    let handle = unsafe { &mut *handle };
+    handle.inner.interrupt();
 }
 
 #[no_mangle]
@@ -476,7 +486,7 @@ impl RfmEditor {
 			}
                     }
 		}
-		Signal::CtrlC | Signal::CtrlD => {
+		Signal::CtrlC | Signal::CtrlD | Signal::Interrupted => {
                     break;
 		}
             }

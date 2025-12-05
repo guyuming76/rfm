@@ -4025,7 +4025,10 @@ static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs) {
 #endif
 	    )==NULL){ g_debug("readline return null, %d",i++);}
 
-    stdin_command_Scheduler = g_idle_add_once(parse_and_exec_stdin_command_in_gtk_thread, strdup(OriginalReadlineResult));
+#ifdef reedline
+      if (strcmp(OriginalReadlineResult, REEDLINE_INTERRUPTED)!=0)
+#endif
+	stdin_command_Scheduler = g_idle_add_once(parse_and_exec_stdin_command_in_gtk_thread, strdup(OriginalReadlineResult));
     free(prompt);
   }
 }
@@ -4820,6 +4823,9 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
         gboolean execCmdInNewVT=FALSE;//used by file_menu_exec, i.e., not from readline
         effective_cmd_interpretor_pointer = cmd_interpretor_pointer; // Use this for actual execution
 
+#ifdef reedline
+        if (!from_stdin_readline) reedline_interrupt(reedline_handle);//TODO: 有啥办法保证 reedline_interrupt 是同步的？
+#endif
         gint len = strlen(readlineResult);
 	g_debug ("parse_and_exec_command_in_gtk_thread, RFM_ChildAttribs %p, readline length %u: %s", childAttribs, len, readlineResult);
 
@@ -4963,14 +4969,20 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
           // Use effective_cmd_interpretor_index for execution calls
 	  if (SearchResultAsInput) exec_stdin_command_with_SearchResultAsInput(childAttribs->readlineResultString, from_stdin_readline, effective_cmd_interpretor_pointer, childAttribs);
 	  else if ((exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread || !from_stdin_readline) && !(execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT))) ret = exec_stdin_command(childAttribs->readlineResultString, effective_cmd_interpretor_pointer, childAttribs);
-
-	  if (from_stdin_readline) g_thread_join(readlineThread);//we won't have more than one readlineThread running at the same time since we join before new thread here
+#ifndef reedline
+	  if (from_stdin_readline)
+#endif
+	    g_thread_join(readlineThread);//we won't have more than one readlineThread running at the same time since we join before new thread here
 	  if ((execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT)) && childAttribs->readlineResultString) exec_stdin_command_in_new_VT(childAttribs->readlineResultString, effective_cmd_interpretor_pointer, childAttribs); // 在AI Mode下输入builtin cmd,如 help, 会因为是AI mode 一开始把 execStdinCmdInNewVT 设成true,所以这里加上 readlineResultString 非NULL判断
 
           // Pass the original readlineResultString (potentially NULL if handled by builtin) to the next thread
           // The next thread will use the global current_stdin_cmd_interpretor for its prompt
-	  if (from_stdin_readline && !SearchResultAsInput) readlineThread=g_thread_new("readline", readlineInSeperateThread, childAttribs);
-        
+#ifdef reedline
+          if (!SearchResultAsInput) readlineThread=g_thread_new("readline", readlineInSeperateThread, from_stdin_readline?childAttribs:NULL);
+#else
+          if (from_stdin_readline && !SearchResultAsInput) readlineThread=g_thread_new("readline", readlineInSeperateThread, childAttribs);
+#endif
+
         return ret;
 }
 

@@ -19,12 +19,14 @@ typedef struct {
 ReedlineHandle* reedline_create(const rfmFunctions * rfm_functions);
 // 读取一行输入 (返回的字符串需用 string_free 释放)
 char* reedline_readline(ReedlineHandle* handle, const char* prompt, const rfmFunctions * rfm_functions);
+void reedline_interrupt(ReedlineHandle* handle);
 // 释放字符串内存
 void string_free(char* s);
 // 销毁Reedline实例
 void reedline_free(ReedlineHandle* handle);
 void reedline_save_history(ReedlineHandle* handle);
-
+// 注意：必须与 Rust 代码中的 REEDLINE_INTERRUPTED 保持一致
+#define REEDLINE_INTERRUPTED "reedline_interrupted"
 
 typedef void RfmEditor;
 int rfm_editor_edit_file(const rfmFunctions * rfm_functions, const gchar *filename, gchar **error);
