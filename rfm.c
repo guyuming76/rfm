@@ -2793,13 +2793,10 @@ static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointe
    guint i;
    long int index_of_default_file_activation_action_based_on_mime_or_searchresultType=-1;
    gchar *msg;
-   GList *activated_single_file_list=NULL;//although there is only one file, we need a list here to meet the requirement of g_spawn_wrapper parameter.
    RFM_FileAttributes *fileAttributes;
 
    gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, tree_path);
    gtk_tree_model_get(GTK_TREE_MODEL(store), &iter, COL_ATTR, &fileAttributes, -1);
-
-   activated_single_file_list=g_list_append(activated_single_file_list, g_strdup(fileAttributes->path));
 
    if (!fileAttributes->is_dir) {
 
@@ -2827,9 +2824,6 @@ static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointe
       SearchResultViewInsteadOfDirectoryView=0; //let the following set_rfm_curPath to tigger refresh_store from inotify_handler
       set_rfm_curPath(fileAttributes->path);
    }
-
-   g_list_foreach(activated_single_file_list, (GFunc)g_free, NULL);
-   g_list_free(activated_single_file_list);
 }
 
 static void row_activated(GtkTreeView *tree_view, GtkTreePath *tree_path,GtkTreeViewColumn *col, gpointer user_data)
