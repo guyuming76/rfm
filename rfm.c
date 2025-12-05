@@ -4010,6 +4010,9 @@ static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs) {
 #else
     g_free(OriginalReadlineResult);
 #endif
+#ifdef GNU_readline
+    if (rl_done == 77) rl_initialize();
+#endif
     int i=0;
     while ((OriginalReadlineResult = 
 #ifdef GNU_readline
@@ -4825,12 +4828,10 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
         if (!from_stdin_readline) reedline_interrupt(reedline_handle);//下面g_thread_join 从效果上相当于 reedline_interrupt 是同步的
 #endif
 #ifdef GNU_readline
-        if (!from_stdin_readline) rl_done = 77;
+        if (!from_stdin_readline) rl_done = 77; //77这个数没啥特别意义，AI说只要非零就可以，例子给的是1, 我怕有冲突，就设了个特别的数，以便可以比较，知道是这里设的
 #endif
 	g_thread_join(readlineThread);//we won't have more than one readlineThread running at the same time since we join before new thread here
-#ifdef GNU_readline
-        rl_done = 0;
-#endif
+
         gint len = strlen(readlineResult);
 	g_debug ("parse_and_exec_command_in_gtk_thread, RFM_ChildAttribs %p, readline length %u: %s", childAttribs, len, readlineResult);
 
