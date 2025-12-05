@@ -2817,9 +2817,7 @@ static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointe
       }
 
       if (index_of_default_file_activation_action_based_on_mime_or_searchresultType != -1){
-	gchar ** env_for_g_spawn_local = g_get_environ();//这个传入child_attribs->env 后在 free_childattribs 里释放
-	set_env_to_pass_into_child_process_for_view_columns_when_ItemSelected_equals_one(&iter,&env_for_g_spawn_local);
-	g_spawn_wrapper(run_actions[index_of_default_file_activation_action_based_on_mime_or_searchresultType].runCmd, activated_single_file_list, G_SPAWN_DEFAULT, env_for_g_spawn_local, NULL,TRUE,NULL,NULL,FALSE);
+	file_menu_exec(NULL, &(run_actions[index_of_default_file_activation_action_based_on_mime_or_searchresultType]));
       }else {
          msg=g_strdup_printf("No default file activation action defined for mime type:\n %s/%s\n", fileAttributes->mime_root, fileAttributes->mime_sub_type);
          show_msgbox(msg, "Run Action", GTK_MESSAGE_INFO);
