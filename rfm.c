@@ -4010,9 +4010,6 @@ static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs) {
 #else
     g_free(OriginalReadlineResult);
 #endif
-#ifdef GNU_readline
-    if (rl_done == 77) rl_initialize();
-#endif
     int i=0;
     while ((OriginalReadlineResult = 
 #ifdef GNU_readline
@@ -4027,7 +4024,8 @@ static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs) {
       if (strcmp(OriginalReadlineResult, REEDLINE_INTERRUPTED)!=0)
 #endif
 #ifdef GNU_readline
-    if (rl_done != 77)
+    if (rl_done == 77) { rl_done = 0; rl_initialize(); rl_cleanup_after_signal(); rl_deprep_terminal(); }
+    else
 #endif
 	stdin_command_Scheduler = g_idle_add_once(parse_and_exec_stdin_command_in_gtk_thread, strdup(OriginalReadlineResult));
     free(prompt);
