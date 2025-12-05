@@ -319,6 +319,7 @@ static void unload_addon_filemenu_func();
 static GPtrArray *rfm_filename_completion(const char *text, int *count);
 #endif
 #ifdef GNU_readline
+extern int rl_done;
 static char **rfm_filename_completion(const char *text, int *count);
 static char** gnu_readline_completion(const char *text, int start, int end);
 static char** (*OLD_rl_attempted_completion_function)(const char *text, int start, int end);
@@ -4022,6 +4023,9 @@ static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs) {
 #ifdef reedline
       if (strcmp(OriginalReadlineResult, REEDLINE_INTERRUPTED)!=0)
 #endif
+#ifdef GNU_readline
+    if (rl_done != 77)
+#endif
 	stdin_command_Scheduler = g_idle_add_once(parse_and_exec_stdin_command_in_gtk_thread, strdup(OriginalReadlineResult));
     free(prompt);
   }
@@ -4819,11 +4823,14 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 
 #ifdef reedline
         if (!from_stdin_readline) reedline_interrupt(reedline_handle);//下面g_thread_join 从效果上相当于 reedline_interrupt 是同步的
-#else
-        if (from_stdin_readline)
 #endif
-	    g_thread_join(readlineThread);//we won't have more than one readlineThread running at the same time since we join before new thread here
-
+#ifdef GNU_readline
+        if (!from_stdin_readline) rl_done = 77;
+#endif
+	g_thread_join(readlineThread);//we won't have more than one readlineThread running at the same time since we join before new thread here
+#ifdef GNU_readline
+        rl_done = 0;
+#endif
         gint len = strlen(readlineResult);
 	g_debug ("parse_and_exec_command_in_gtk_thread, RFM_ChildAttribs %p, readline length %u: %s", childAttribs, len, readlineResult);
 
@@ -4972,13 +4979,7 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 
           // Pass the original readlineResultString (potentially NULL if handled by builtin) to the next thread
           // The next thread will use the global current_stdin_cmd_interpretor for its prompt
-#ifdef reedline
-          //pid_t pgid = getpgrp();
-          //tcsetpgrp(STDIN_FILENO, pgid);
           if (!SearchResultAsInput) readlineThread=g_thread_new("readline", readlineInSeperateThread, from_stdin_readline?childAttribs:NULL);
-#else
-          if (from_stdin_readline && !SearchResultAsInput) readlineThread=g_thread_new("readline", readlineInSeperateThread, childAttribs);
-#endif
 
         return ret;
 }
