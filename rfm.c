@@ -5004,10 +5004,10 @@ static char** rfm_filename_completion(const char *text, int *count){
 #endif
 #ifdef reedline
 static GPtrArray* rfm_filename_completion(const char *text, int *count){
-#endif
   if (g_strcmp0(text, BuiltInCmd_dimension)==0){
     return rfm_completion_based_on_dimensions("");
   }
+#endif
   if (ItemSelected && (text==NULL || g_strcmp0(text, "")==0)) { //有文件被选中 且 当前光标上下文为空
     char** ret = calloc(2,sizeof(char*));
     g_mutex_lock(&rfm_selection_completion_lock);
