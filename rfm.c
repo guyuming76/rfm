@@ -3980,7 +3980,7 @@ static void writeSearchResultIntoFD_in_gtk_thread(gint fd,gboolean exportFilePat
 }
 
 static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs) {
-  g_debug("readlineInSeperateThread");
+  g_debug("readlineInSeperateThread in thread %p", readlineThread);
   if (childAttribs && !exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread && !execStdinCmdInNewVT) exec_stdin_command(childAttribs->readlineResultString, effective_cmd_interpretor_pointer, childAttribs); //因为这里exec_stdin_command 要通过 readlineInseperatethread 调用,添加一个参数ghcar **env不容易，所以保留了全局变量 env_for_g_spawn_used_by_exec_stdin_command
   //这里不用 free childAttribs, 因为如果上一步if条件没满足，没有执行exec_stdin_command ，一定是在gtk_thread里面执行了 exec 的某个版本，但因为是异步的，这里我又不方便加assert判断 childAttribs
   execStdinCmdInNewVT = FALSE;
@@ -4032,7 +4032,7 @@ static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs) {
       if (strcmp(OriginalReadlineResult, REEDLINE_INTERRUPTED)!=0)
 #endif
 #ifdef GNU_readline
-      if (rl_done == 77) { rl_done=0; }
+      if (rl_done == 77) { rl_done=0; g_debug("reset rl_done to 0 in readlineThread %p", readlineThread);}
       else
 #endif
 	stdin_command_Scheduler = g_idle_add_once(parse_and_exec_stdin_command_in_gtk_thread, OriginalReadlineResult?strdup(OriginalReadlineResult):strdup(""));
@@ -4829,6 +4829,8 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 	stdin_cmd_leading_space=FALSE;
         gboolean execCmdInNewVT=FALSE;//used by file_menu_exec, i.e., not from readline
         effective_cmd_interpretor_pointer = cmd_interpretor_pointer; // Use this for actual execution
+        gint len = strlen(readlineResult);
+	g_debug ("parse_and_exec_command_in_gtk_thread, RFM_ChildAttribs %p, readline length %u: %s", childAttribs, len, readlineResult);
 
 #ifdef reedline
         if (!from_stdin_readline) reedline_interrupt(reedline_handle);//下面g_thread_join 从效果上相当于 reedline_interrupt 是同步的
@@ -4836,10 +4838,7 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 #ifdef GNU_readline
         if (!from_stdin_readline) rl_done = 77; //77这个数没啥特别意义，AI说只要非零就可以，例子给的是1, 我怕有冲突，就设了个特别的数，以便可以比较，知道是这里设的
 #endif
-	if (!from_stdin_readline && readlineThread) { g_thread_join(readlineThread); readlineThread=NULL; }//we won't have more than one readlineThread running at the same time since we join before new thread here
-
-        gint len = strlen(readlineResult);
-	g_debug ("parse_and_exec_command_in_gtk_thread, RFM_ChildAttribs %p, readline length %u: %s", childAttribs, len, readlineResult);
+	if (!from_stdin_readline && readlineThread) { g_thread_join(readlineThread); g_debug("g_thread_join finished for readlineThread %p when !from_stdin_readline",readlineThread);readlineThread=NULL; }//we won't have more than one readlineThread running at the same time since we join before new thread here
 
 	if (len == 0){
 	    time_t now_time=time(NULL);
@@ -4995,7 +4994,7 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 }
 
 static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult){
-  if (readlineThread) { g_thread_join(readlineThread); readlineThread=NULL; }
+  if (readlineThread) { g_thread_join(readlineThread); g_debug("g_thread_join finished for readlineThread %p when from_stdin_readline",readlineThread); readlineThread=NULL; }
   RFM_ChildAttribs *childAttribs = calloc(1, sizeof(RFM_ChildAttribs));
   childAttribs->customCallbackUserData = rfmCtx;
   parse_and_exec_command_in_gtk_thread(readlineResult, TRUE, current_stdin_cmd_interpretor_pointer, childAttribs);
