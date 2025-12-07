@@ -4986,12 +4986,16 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 
           // Pass the original readlineResultString (potentially NULL if handled by builtin) to the next thread
           // The next thread will use the global current_stdin_cmd_interpretor for its prompt
-          if (!SearchResultAsInput) readlineThread=g_thread_new("readline", readlineInSeperateThread, from_stdin_readline?childAttribs:NULL);
+          if (!SearchResultAsInput) {
+              assert(readlineThread==NULL);
+              readlineThread=g_thread_new("readline", readlineInSeperateThread, from_stdin_readline?childAttribs:NULL);
+          }
 
         return ret;
 }
 
 static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult){
+  if (readlineThread) { g_thread_join(readlineThread); readlineThread=NULL; }
   RFM_ChildAttribs *childAttribs = calloc(1, sizeof(RFM_ChildAttribs));
   childAttribs->customCallbackUserData = rfmCtx;
   parse_and_exec_command_in_gtk_thread(readlineResult, TRUE, current_stdin_cmd_interpretor_pointer, childAttribs);
@@ -5270,7 +5274,7 @@ static void cleanup()
   
 #ifdef PythonEmbedded
    cmdStopShare(NULL, NULL);
-   endPythonEmbedding();
+   //endPythonEmbedding(); py_finializeex() cause sigsegv on my laptop
 #endif
    
    gtk_main_quit();
