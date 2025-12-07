@@ -320,6 +320,7 @@ static GPtrArray *rfm_filename_completion(const char *text, int *count);
 #endif
 #ifdef GNU_readline
 extern int rl_done;
+int rl_event_hook_to_help_terminate_readline(void){return 0;}
 static char **rfm_filename_completion(const char *text, int *count);
 static char** gnu_readline_completion(const char *text, int start, int end);
 static char** (*OLD_rl_attempted_completion_function)(const char *text, int start, int end);
@@ -4005,29 +4006,36 @@ static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs) {
     if (keep_selection_on_view_across_refresh && In_refresh_store) strcat(prompt,exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread ? "?]":"?>");
     else if (ItemSelected==0) strcat(prompt,exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread ? "]":">");
     else strcat(prompt,exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread ? "*]":"*>");
+
+    if (OriginalReadlineResult)
 #ifdef reedline
-    string_free(OriginalReadlineResult);
+        string_free(OriginalReadlineResult);
 #else
-    g_free(OriginalReadlineResult);
+        g_free(OriginalReadlineResult);
 #endif
+    OriginalReadlineResult = NULL;
     int i=0;
-    while ((OriginalReadlineResult = 
+    while (
 #ifdef GNU_readline
-      readline(prompt)
+	   rl_done!=77 &&
+#endif
+	   (OriginalReadlineResult = 
+#ifdef GNU_readline
+           readline(prompt)
 #endif
 #ifdef reedline
-      reedline_readline(reedline_handle, prompt, &functionPointersForReedlineWrapper)
+           reedline_readline(reedline_handle, prompt, &functionPointersForReedlineWrapper)
 #endif
-	    )==NULL){ g_debug("readline return null, %d",i++);}
+	   )==NULL){ g_debug("readline return null, %d",i++);}
 
 #ifdef reedline
       if (strcmp(OriginalReadlineResult, REEDLINE_INTERRUPTED)!=0)
 #endif
 #ifdef GNU_readline
-    if (rl_done == 77) { rl_done = 0; rl_initialize(); rl_cleanup_after_signal(); rl_deprep_terminal(); }
-    else
+      if (rl_done == 77) { rl_done=0; }
+      else
 #endif
-	stdin_command_Scheduler = g_idle_add_once(parse_and_exec_stdin_command_in_gtk_thread, strdup(OriginalReadlineResult));
+	stdin_command_Scheduler = g_idle_add_once(parse_and_exec_stdin_command_in_gtk_thread, OriginalReadlineResult?strdup(OriginalReadlineResult):strdup(""));
     free(prompt);
   }
 }
@@ -4828,7 +4836,7 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 #ifdef GNU_readline
         if (!from_stdin_readline) rl_done = 77; //77这个数没啥特别意义，AI说只要非零就可以，例子给的是1, 我怕有冲突，就设了个特别的数，以便可以比较，知道是这里设的
 #endif
-	g_thread_join(readlineThread);//we won't have more than one readlineThread running at the same time since we join before new thread here
+	if (!from_stdin_readline && readlineThread) { g_thread_join(readlineThread); readlineThread=NULL; }//we won't have more than one readlineThread running at the same time since we join before new thread here
 
         gint len = strlen(readlineResult);
 	g_debug ("parse_and_exec_command_in_gtk_thread, RFM_ChildAttribs %p, readline length %u: %s", childAttribs, len, readlineResult);
@@ -5183,6 +5191,7 @@ static int setup(RFM_ctx *rfmCtx)
    rl_variable_bind("mark-directories", "on");
    rl_bind_keyseq("\e[A", rl_history_search_backward);
    rl_bind_keyseq("\e[B", rl_history_search_forward);
+   rl_event_hook = rl_event_hook_to_help_terminate_readline;
 #endif
 #ifdef reedline
   functionPointersForReedlineWrapper.get_completion_fn = rfm_filename_completion;
