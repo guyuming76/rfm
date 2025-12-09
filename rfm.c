@@ -1365,7 +1365,7 @@ gboolean g_spawn_wrapper_(CALLER_OWN GList *file_list, CALLER_OWN const char *de
    		    if (child_attribs->output_read_by_program){
 		      if (child_attribs->stdErr && strlen(child_attribs->stdErr)>0){
 			g_debug("g_spawn_wrapper_ sync branch, with output_read_by_program: %s",child_attribs->stdErr);
-			if (child_attribs->setsid && strstr(child_attribs->stdErr, "inappropriate ioctl for device")){
+			if (child_attribs->setsid && (strstr(child_attribs->stdErr, "inappropriate ioctl for device") ||strstr(child_attribs->stdErr,"对设备不适当的 ioctl 操作"))){//TODO:这个错误难道没个编号吗？如果其他语言咋办？
 			  g_free(child_attribs->stdErr); child_attribs->stdErr=NULL;
 			  if (child_attribs->stdOut) {g_free(child_attribs->stdOut); child_attribs->stdOut=NULL;};
 			  child_attribs->status=-1;
