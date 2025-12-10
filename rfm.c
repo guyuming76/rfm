@@ -917,6 +917,8 @@ static void free_child_attribs(FREE_FULL RFM_ChildAttribs *child_attribs)
   
    free(child_attribs->stdOut); child_attribs->stdOut = NULL;
    free(child_attribs->stdErr); child_attribs->stdErr = NULL;
+   free(child_attribs->total_stdOut);
+   free(child_attribs->total_stdErr);
    g_free(child_attribs->name);   child_attribs->name = NULL;
    g_strfreev(child_attribs->env);child_attribs->env = NULL;
    //how can we memcpy the content of customCallbackUserData and free it here?
@@ -972,7 +974,8 @@ static gboolean ExecCallback_freeChildAttribs(FREE_FULL RFM_ChildAttribs * child
    }
 
    // Restart readline if this was a search command from readlineinput and it failed
-   if (child_attribs->exitcode == -1 && child_attribs->customCallBackFunc == g_spawn_async_callback_to_new_readline_thread) {
+   if ((child_attribs->exitcode == -1 && child_attribs->customCallBackFunc == g_spawn_async_callback_to_new_readline_thread)
+       || (child_attribs->spawn_async && child_attribs->keep_total_buffer_in_show_child_output && child_attribs->customCallBackFunc)){ //关于这一行条件，参见parse_and_exec_command_in_gtk_thread 和 exec_stdin_command 里的注释
        readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL); //SearchResultAsInput 时，命令执行失败，从这里新建readline.
    }
 
@@ -1082,7 +1085,8 @@ static void show_child_output(CALLER_OWN RFM_ChildAttribs *child_attribs)
    if (child_attribs->stdOut!=NULL && child_attribs->stdOut[0]!=0) {
      if (startWithTerm()){
        printf("%s",child_attribs->stdOut);
-       g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_DEBUG, "output of strlen %ld from child PID %d shown", strlen(child_attribs->stdOut), child_attribs->pid);
+       //if (((child_attribs->runOpts & G_SPAWN_CHILD_INHERITS_STDIN)!=G_SPAWN_CHILD_INHERITS_STDIN))
+	 g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_DEBUG, "output of strlen %ld from child PID %d shown", strlen(child_attribs->stdOut), child_attribs->pid);
        //TODO: if not startwithVT(), user won't see printf, but user also will not see all those g_warnings. maybe we can add some indicator on UI and guide user to some log file. When not startwithVT, redirect stdout and stderr to some log file
      }else if (strlen(child_attribs->stdOut) <= RFM_MX_MSGBOX_CHARS)
          show_msgbox(child_attribs->stdOut, child_attribs->name, GTK_MESSAGE_INFO);
@@ -1091,13 +1095,20 @@ static void show_child_output(CALLER_OWN RFM_ChildAttribs *child_attribs)
 	 show_msgbox(msg, child_attribs->name, GTK_MESSAGE_WARNING);
 	 g_free(msg);
      }
+     if (child_attribs->keep_total_buffer_in_show_child_output){
+       if (child_attribs->total_stdOut)
+         child_attribs->total_stdOut=g_strconcat(child_attribs->total_stdOut,child_attribs->stdOut, NULL);
+       else
+	 child_attribs->total_stdOut=g_strdup(child_attribs->stdOut);
+     }
      child_attribs->stdOut[0]=0;
-   }
+   }else{ g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_DEBUG, "empty child_attribs->stdOut in show_child_output"); }
 
    if (child_attribs->stdErr!=NULL && child_attribs->stdErr[0]!=0) {
      if (startWithTerm()){
        fprintf(stderr, "%s",child_attribs->stdErr);
-       g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_WARNING, "error of strlen %ld from child PID %d shown", strlen(child_attribs->stdErr), child_attribs->pid);
+       //if (((child_attribs->runOpts & G_SPAWN_CHILD_INHERITS_STDIN)!=G_SPAWN_CHILD_INHERITS_STDIN))
+	 g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_WARNING, "error of strlen %ld from child PID %d shown", strlen(child_attribs->stdErr), child_attribs->pid);
        //TODO: if not startwithVT(), user won't see printf, but user also will not see all those g_warnings. maybe we can add some indicator on UI and guide user to some log file. When not startwithVT, redirect stdout and stderr to some log file
      }else if (strlen(child_attribs->stdErr) <= RFM_MX_MSGBOX_CHARS)
          show_msgbox(child_attribs->stdErr, child_attribs->name, GTK_MESSAGE_INFO);
@@ -1106,8 +1117,14 @@ static void show_child_output(CALLER_OWN RFM_ChildAttribs *child_attribs)
 	 show_msgbox(msg, child_attribs->name, GTK_MESSAGE_WARNING);
 	 g_free(msg);
      }
+     if (child_attribs->keep_total_buffer_in_show_child_output){
+       if (child_attribs->total_stdErr)
+         child_attribs->total_stdErr=g_strconcat(child_attribs->total_stdErr,child_attribs->stdErr, NULL);
+       else
+	 child_attribs->total_stdErr=g_strdup(child_attribs->stdErr);
+     }
      child_attribs->stdErr[0]=0;
-   }
+   }else{ g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_DEBUG, "empty child_attribs->stdErr in show_child_output"); }
 }
 
 static int read_char_pipe(gint fd, ssize_t block_size, char **buffer)
@@ -3847,7 +3864,10 @@ static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousRea
 	    ret = g_spawn_wrapper_(NULL, NULL, childAttribs);
 	    childAttribs->name = strdup(SearchResultTypePointer->name);
 	  }else{
-	    childAttribs->runOpts = G_SPAWN_SEARCH_PATH|G_SPAWN_CHILD_INHERITS_STDIN|G_SPAWN_CHILD_INHERITS_STDOUT|G_SPAWN_CHILD_INHERITS_STDERR;
+	    if (cmd_interpretor_pointer->customCallBackFunc){
+	      childAttribs->spawn_async = TRUE; childAttribs->keep_total_buffer_in_show_child_output = TRUE; childAttribs->customCallBackFunc = cmd_interpretor_pointer->customCallBackFunc; //这一行设置被用作在ExecCallback_freeChildattribs 里面 g_thread_new readline thread 的一个条件，这组条件也可以看作有parse_and_exec_command_in_gtk_thread 中的条件 (effective_cmd_interpretor_pointer->customCallBackFunc && !execCmdInNewVT && !execStdinCmdInNewVT) 得来
+	      childAttribs->runOpts = G_SPAWN_SEARCH_PATH|G_SPAWN_CHILD_INHERITS_STDIN;
+	    }else childAttribs->runOpts = G_SPAWN_SEARCH_PATH|G_SPAWN_CHILD_INHERITS_STDIN|G_SPAWN_CHILD_INHERITS_STDOUT|G_SPAWN_CHILD_INHERITS_STDERR;
 	    ret = g_spawn_wrapper_(NULL, NULL, childAttribs);
 	  }
 	  add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
@@ -4982,17 +5002,24 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 	assert(startWithTerm()|| !from_stdin_readline);
           // Use effective_cmd_interpretor_index for execution calls
 	  if (SearchResultAsInput) exec_stdin_command_with_SearchResultAsInput(childAttribs->readlineResultString, from_stdin_readline, effective_cmd_interpretor_pointer, childAttribs);
-	  else if ((exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread || !from_stdin_readline) && !(execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT))) ret = exec_stdin_command(childAttribs->readlineResultString, effective_cmd_interpretor_pointer, childAttribs);
+	  else if (((exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread || !from_stdin_readline) && !(execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT)))
+		   || (current_stdin_cmd_interpretor_pointer==cmd_interpretor_pointer //这一行排除了在命令提示符下单纯输入 d>  b> 等切换cmd_interpretor的情况，这种情况下，不在这里执行 exec_stdin_command, 也就不会free childattribs, 而是需要g_thread_new readlineThread, 参见下面g_thread_new前条件判断
+		       && effective_cmd_interpretor_pointer->customCallBackFunc && !execCmdInNewVT && !execStdinCmdInNewVT) ) //这一行条件用来判断需要使用customCallBackFunction来处理 exec_stdin_command 的输出的情况，比如AI LLM返回的内容，这种情况下，g_spawn_wrapper 用异步，exec_stdin_command 会很早返回，但g_spawn_wrapper 还没完成，为了避免争夺终端模拟器，这时不能开始readline,所以就暂时不要 g_thread_new readline,在 g_spawn_wrapper 的异步callback里面再考虑 g_thread_new readline。另外这一行判断也是保证此时exec_stdin_command在gtk thread里执行，否则在readline thread里执行得话，就不方便控制exec_stdin_command 中g_spawn_wrapper 实际callback完成后才调用 readline函数了。注意之一行判断条件在下面 g_thread_new readline 前也有使用
+	           ret = exec_stdin_command(childAttribs->readlineResultString, effective_cmd_interpretor_pointer, childAttribs);
 
           if ((execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT)) && childAttribs->readlineResultString) exec_stdin_command_in_new_VT(childAttribs->readlineResultString, effective_cmd_interpretor_pointer, childAttribs); // 在AI Mode下输入builtin cmd,如 help, 会因为是AI mode 一开始把 execStdinCmdInNewVT 设成true,所以这里加上 readlineResultString 非NULL判断
 
           // Pass the original readlineResultString (potentially NULL if handled by builtin) to the next thread
           // The next thread will use the global current_stdin_cmd_interpretor for its prompt
 #ifdef reedline
-          if (!SearchResultAsInput) {
+          if (!SearchResultAsInput && (
+				       current_stdin_cmd_interpretor_pointer!=cmd_interpretor_pointer // 在本函数开头运行current_stdin_cmd_interpretor_pointer = &(stdin_cmd_interpretors[i]) 或 current_stdin_cmd_interpretor_pointer = new_cmd_interpretor, 接着 goto switchToReadlineThread 时，满足此行条件。
+				       || !(effective_cmd_interpretor_pointer->customCallBackFunc && !execCmdInNewVT && !execStdinCmdInNewVT))) {
 #endif
 #ifdef GNU_readline
-          if (!SearchResultAsInput && from_stdin_readline) {
+          if (!SearchResultAsInput && from_stdin_readline && (
+							      current_stdin_cmd_interpretor_pointer!=cmd_interpretor_pointer
+							      || !(effective_cmd_interpretor_pointer->customCallBackFunc && !execCmdInNewVT && !execStdinCmdInNewVT))) {
 #endif
               assert(readlineThread==NULL);
               readlineThread=g_thread_new("readline", readlineInSeperateThread, from_stdin_readline?childAttribs:NULL);

@@ -47,6 +47,7 @@ typedef struct {
   gchar* prompt;
   gchar** (*cmdTransformer)(gchar *, gboolean inNewVT);
   gchar* HistoryFilename;
+  void (*customCallBackFunc)(RFM_ChildAttribs*);
 } stdin_cmd_interpretor;
 
 enum RFM_treeviewCol{
@@ -174,6 +175,9 @@ typedef struct RFM_ChildAttributes{
    gboolean spawn_async;
    gint exitcode;
    gboolean output_read_by_program;
+   gboolean keep_total_buffer_in_show_child_output;
+   char* total_stdOut;
+   char* total_stdErr;
    gchar *workingDir;//一条命令可以涉及到多个addon,所以下面添加了按类型分的_addon_dir属性，到命令g_spawn 的时候再根据具体情况设置g_spawn的工作目录参数
    gchar *toolbar_button_or_filemenu_addon_dir;
    gchar *searchresulttype_addon_dir;
