@@ -1085,8 +1085,7 @@ static void show_child_output(CALLER_OWN RFM_ChildAttribs *child_attribs)
    if (child_attribs->stdOut!=NULL && child_attribs->stdOut[0]!=0) {
      if (startWithTerm()){
        printf("%s",child_attribs->stdOut);
-       //if (((child_attribs->runOpts & G_SPAWN_CHILD_INHERITS_STDIN)!=G_SPAWN_CHILD_INHERITS_STDIN))
-	 g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_DEBUG, "output of strlen %ld from child PID %d shown", strlen(child_attribs->stdOut), child_attribs->pid);
+       g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_DEBUG, "output of strlen %ld from child PID %d shown", strlen(child_attribs->stdOut), child_attribs->pid);
        //TODO: if not startwithVT(), user won't see printf, but user also will not see all those g_warnings. maybe we can add some indicator on UI and guide user to some log file. When not startwithVT, redirect stdout and stderr to some log file
      }else if (strlen(child_attribs->stdOut) <= RFM_MX_MSGBOX_CHARS)
          show_msgbox(child_attribs->stdOut, child_attribs->name, GTK_MESSAGE_INFO);
@@ -1107,8 +1106,9 @@ static void show_child_output(CALLER_OWN RFM_ChildAttribs *child_attribs)
    if (child_attribs->stdErr!=NULL && child_attribs->stdErr[0]!=0) {
      if (startWithTerm()){
        fprintf(stderr, "%s",child_attribs->stdErr);
-       //if (((child_attribs->runOpts & G_SPAWN_CHILD_INHERITS_STDIN)!=G_SPAWN_CHILD_INHERITS_STDIN))
-	 g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_WARNING, "error of strlen %ld from child PID %d shown", strlen(child_attribs->stdErr), child_attribs->pid);
+       g_log(RFM_LOG_GSPAWN,
+	     ((child_attribs->runOpts & G_SPAWN_CHILD_INHERITS_STDIN)==G_SPAWN_CHILD_INHERITS_STDIN) ? G_LOG_LEVEL_DEBUG : G_LOG_LEVEL_WARNING // bash read 命令会把输出的提示通过stderr显示，而不是stdout, 若要使用read, 应该是inherit_stdin的，通过这个判断,防止在read的时候输出warning
+	       ,"error of strlen %ld from child PID %d shown", strlen(child_attribs->stdErr), child_attribs->pid);
        //TODO: if not startwithVT(), user won't see printf, but user also will not see all those g_warnings. maybe we can add some indicator on UI and guide user to some log file. When not startwithVT, redirect stdout and stderr to some log file
      }else if (strlen(child_attribs->stdErr) <= RFM_MX_MSGBOX_CHARS)
          show_msgbox(child_attribs->stdErr, child_attribs->name, GTK_MESSAGE_INFO);

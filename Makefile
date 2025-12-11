@@ -159,8 +159,9 @@ ifeq ($(READLINE_LIB),-Dreedline)
 	@cp -f rfmReedline/target/debug/rfmReedline ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmReedlineWithSpecificHistoryFile.sh ${DESTDIR}${PREFIX}/bin/rfmReadlineWithSpecificHistoryFile.sh
 else
-	@cp -f scripts/rfmReadlineWithSpecificHistoryFile.sh ${DESTDIR}${PREFIX}/bin
+	@cp -f scripts/rfmBashReadWithSpecificHistoryFile.sh ${DESTDIR}${PREFIX}/bin/rfmReadlineWithSpecificHistoryFile.sh
 endif
+	@cp -f scripts/rfmBashReadWithSpecificHistoryFile.sh ${DESTDIR}${PREFIX}/bin
 ifneq (${CmarkTools},)
 	@cp -f extractKeyValuePairFromMarkdown ${DESTDIR}${PREFIX}/bin
 	@cp -f extractContentFromMarkdownRecursive ${DESTDIR}${PREFIX}/bin
