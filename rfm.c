@@ -933,9 +933,10 @@ static void free_child_attribs(FREE_FULL RFM_ChildAttribs *child_attribs)
    //child_attribs->readlineResultString 在 add_history_after_stdin_command_execution 函数内 free, 因为child_attribs 在g_spawn_wrapper执行玩命令后就要free,但命令执行玩还要 add_history 呢。
 }
 
-static void rfm_stop_all(RFM_ctx *rfmCtx) {
-   if (rfmCtx->delayedRefresh_GSourceID > 0)
-      g_source_remove(rfmCtx->delayedRefresh_GSourceID);
+static void rfm_stop_all(RFM_ctx *rfmctx) {
+   if (rfmctx == NULL) rfmctx = rfmCtx;//目前rfmCtx变量全都用的是main函数里面创建的实例，但尽量还是从初始调用入口函数传入这个全局变量，以后万一要变成多实例情况下改动方便。也就是这里rfmctx一般不为null. 但这下在 AI addon 的rfm_local.c里面要用到，我不想把对全局变量rfmCtx以及RFM_Ctx这个类型扩展到rfmmddon.h中，所以就加了这一句。
+   if (rfmctx->delayedRefresh_GSourceID > 0)
+      g_source_remove(rfmctx->delayedRefresh_GSourceID);
 
    if (rfm_readDirSheduler>0)
       g_source_remove(rfm_readDirSheduler);
@@ -945,7 +946,7 @@ static void rfm_stop_all(RFM_ctx *rfmCtx) {
    if (rfm_gitCommitMsgScheduler>0) g_source_remove(rfm_gitCommitMsgScheduler);
 #endif
 
-   rfmCtx->delayedRefresh_GSourceID=0;
+   rfmctx->delayedRefresh_GSourceID=0;
    rfm_readDirSheduler=0;
    rfm_thumbLoadScheduler=0;
    rfm_extColumnScheduler=0;
@@ -3894,7 +3895,14 @@ static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResult
 
             gboolean export_filepath_only = (childAttribs->customCallBackFunc == InIconView);
             //InIconview 本来是作为showCondition函数，用来控制文件集合操作上下文菜单项只在IconView显示的，以便在导出当前查询结果的时候只导出文件路径列。但用下来发觉总是要切换到Iconview操作麻烦，又不想在config.h定义里面为文件菜单定义扩展出额外的属性列，就把InIconView函数放在func列作为标志使用，func列在file_menu_exec 函数中会被赋值给childAttribs->customCallBackFunc. 下面一句覆盖掉前先把标志转移到 export_filepath_only. 也许把这个InIconView函数名改为export_filepath_only函数更好，保留InIconview名字是考虑到也许将来别的地方会用到这个函数 
-	    childAttribs->customCallBackFunc = from_stdin_readline ? g_spawn_async_callback_to_new_readline_thread : ( SearchResultTypePointer? update_SearchResultFileNameList_and_refresh_store : NULL); //如果不是从readline获取的命令，callback里面就不能包含new readline，否则会超过一个readline线程在运行.
+
+            childAttribs->customCallBackFunc =
+#ifdef reedline
+                                               g_spawn_async_callback_to_new_readline_thread; //reedline 下，!from_stdin_readline的时候 readlineThread 也会被interrupt_readline掉
+#endif
+#ifdef GNU_readline
+	                                       from_stdin_readline ? g_spawn_async_callback_to_new_readline_thread : ( SearchResultTypePointer? update_SearchResultFileNameList_and_refresh_store : NULL); //如果不是从readline获取的命令，callback里面就不能包含new readline，否则会超过一个readline线程在运行.
+#endif
 	    if (SearchResultTypePointer) {
               childAttribs->g_idle_add_once_to_run_CallBackFunc = TRUE; //TODO：目前函数是在 gtk main thread 运行的，所以这一行应该可以不要，加一下避免以后改动当前函数运行环境导致出错
 	      childAttribs->output_read_by_program = TRUE;
@@ -5016,11 +5024,13 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
 #ifdef reedline
           if (!SearchResultAsInput && (
 				       current_stdin_cmd_interpretor_pointer!=cmd_interpretor_pointer // 在本函数开头运行current_stdin_cmd_interpretor_pointer = &(stdin_cmd_interpretors[i]) 或 current_stdin_cmd_interpretor_pointer = new_cmd_interpretor, 接着 goto switchToReadlineThread 时，满足此行条件。
+				       || !ret
 				       || !(effective_cmd_interpretor_pointer->customCallBackFunc && !execCmdInNewVT && !execStdinCmdInNewVT))) {
 #endif
 #ifdef GNU_readline
           if (!SearchResultAsInput && from_stdin_readline && (
 							      current_stdin_cmd_interpretor_pointer!=cmd_interpretor_pointer
+							      || !ret
 							      || !(effective_cmd_interpretor_pointer->customCallBackFunc && !execCmdInNewVT && !execStdinCmdInNewVT))) {
 #endif
               assert(readlineThread==NULL);
