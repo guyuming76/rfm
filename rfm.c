@@ -5028,7 +5028,7 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
 #endif
               wordexp_t parsed_msg;
 	      int wordexp_retval = wordexp(readlineResult,&parsed_msg,0);
-	      if (wordexp_retval==0 && (
+	      if (wordexp_retval==0 && parsed_msg.we_wordc>0 && (
 #ifdef reedline
 					parse_rfmEdit(childAttribs->readlineResultString, childAttribs) ||
 #endif
