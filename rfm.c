@@ -337,8 +337,8 @@ static void g_spawn_async_callback_to_new_readline_thread(RFM_ChildAttribs *chil
 static void regcomp_for_regex_rules();
 static void set_stdin_cmd_leading_space_true();
 static NO_FREE stdin_cmd_interpretor* match_cmd_str_array_with_interpretors(gchar** RunCmd);
-static void combine_command_with_selected_files_and_setenv(CALLER_OWN GString* readlineResultString, gboolean cmd_end_with_space, gchar** *env);
-static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboolean const from_stdin_readline, NO_FREE const stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs* childAttribs);
+static void combine_command_with_selected_files_and_setenv(CALLER_OWN GString* readlineResultString, gboolean cmd_end_with_space, gchar** *env, gchar** fullpath_list_as_parameter);
+gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboolean const from_stdin_readline, NO_FREE const stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs* childAttribs);
 static void parse_and_exec_stdin_command_in_gtk_thread(gchar *readlineResult);
 static void parse_and_exec_cmd_in_gtk_thread (gchar * cmd);
 static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * parsed_msg, GString* readline_result_string);
@@ -728,7 +728,7 @@ static void info_clicked(gpointer user_data);
 static void copy_curPath_to_clipboard(GtkWidget *menuitem, gpointer user_data);
 static void refresh_view(RFM_ctx *rfmCtx, gboolean switch_view);
 static void switch_iconview_treeview(RFM_ctx *rfmCtx);
-static gboolean InIconView(){ return !treeview; }
+gboolean InIconView(){ return !treeview; }
 static gboolean InTreeView(){ return treeview; }
 static void Switch_SearchResultView_DirectoryView(GtkToolItem *item,RFM_ctx *rfmCtx);
 /* callback function for toolbar buttons. Its possible to make function such as home_clicked as callback directly, instead of use toolbar_button_exec as a wrapper. However,i would add GtkToolItems as first parameter for so many different callback functions then. */
@@ -921,6 +921,7 @@ static void free_child_attribs(FREE_FULL RFM_ChildAttribs *child_attribs)
    free(child_attribs->total_stdErr);
    g_free(child_attribs->name);   child_attribs->name = NULL;
    g_strfreev(child_attribs->env);child_attribs->env = NULL;
+   g_strfreev(child_attribs->fullpath_list_as_RunCmd_parameters);
    //how can we memcpy the content of customCallbackUserData and free it here?
    //g_free(child_attribs->customCallbackUserData);
    g_free(child_attribs->workingDir); child_attribs->workingDir = NULL;
@@ -3866,6 +3867,7 @@ static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousRea
 	  }else{
 	    if (cmd_interpretor_pointer->customCallBackFunc){
 	      childAttribs->spawn_async = TRUE; childAttribs->keep_total_buffer_in_show_child_output = TRUE; childAttribs->customCallBackFunc = cmd_interpretor_pointer->customCallBackFunc; //这一行设置被用作在ExecCallback_freeChildattribs 里面 g_thread_new readline thread 的一个条件，这组条件也可以看作有parse_and_exec_command_in_gtk_thread 中的条件 (effective_cmd_interpretor_pointer->customCallBackFunc && !execCmdInNewVT && !execStdinCmdInNewVT) 得来
+	      childAttribs->g_idle_add_once_to_run_CallBackFunc = TRUE;
 	      childAttribs->runOpts = G_SPAWN_SEARCH_PATH|G_SPAWN_CHILD_INHERITS_STDIN;
 	    }else childAttribs->runOpts = G_SPAWN_SEARCH_PATH|G_SPAWN_CHILD_INHERITS_STDIN|G_SPAWN_CHILD_INHERITS_STDOUT|G_SPAWN_CHILD_INHERITS_STDERR;
 	    ret = g_spawn_wrapper_(NULL, NULL, childAttribs);
@@ -4787,14 +4789,14 @@ static void set_stdin_cmd_leading_space_true(){
   stdin_cmd_leading_space=TRUE;
 }
 
-static void combine_command_with_selected_files_and_setenv(CALLER_OWN GString* readlineResultString, gboolean cmd_end_with_space, gchar** *env) {
+static void combine_command_with_selected_files_and_setenv(CALLER_OWN GString* readlineResultString, gboolean cmd_end_with_space, gchar** *env, gchar** fullpath_list_as_parameter) {
 	      // combine runCmd with selected files to get gchar** v
 	      // TODO: the following code share the same pattern as g_spawn_wrapper_for_selected_fileList_ , anyway to remove the duplicate code?
 	    GList *listElement;
-
-	    if (filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView]!=NULL) {
+            if (fullpath_list_as_parameter==NULL) fullpath_list_as_parameter = filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView];
+	    if (fullpath_list_as_parameter!=NULL) {
 	        if (strstr(readlineResultString->str, RFM_selected_filename_list_placeholder)!=NULL){ //把 %% 替换成n个%s，即 %s %s %s
-		  int filepath_list_length = g_list_length(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView]);
+		  int filepath_list_length = g_list_length(fullpath_list_as_parameter);
 		  gchar* filename_placehoders = calloc(filepath_list_length * (strlen(RFM_selected_filename_placeholder)+1) +1, sizeof(gchar));
 		  for(int i=0;i<filepath_list_length;i++) {
 		    strcat(filename_placehoders, RFM_selected_filename_placeholder);
@@ -4803,7 +4805,7 @@ static void combine_command_with_selected_files_and_setenv(CALLER_OWN GString* r
 		  g_string_replace(readlineResultString, RFM_selected_filename_list_placeholder, filename_placehoders, 1);
 		  g_free(filename_placehoders);
 	        }
-		listElement=g_list_first(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView]);
+		listElement=g_list_first(fullpath_list_as_parameter);
 	        gchar *env_rfm_selected_files = NULL;
 		while(listElement!=NULL) {
 		  //if there is %s in msg, replace it with selected filename one by one, otherwise, append filenames to the end.
@@ -4842,7 +4844,7 @@ static void combine_command_with_selected_files_and_setenv(CALLER_OWN GString* r
 // from_stdin_readline 为 TRUE 时，表示用户从命令窗口输入的字符串，这时忽略 cmd_interpretor_index 参数为调用时的 current_stdin_cmd_interpretor
 // from_stdin_readline 为假时，readlineResults 通常是 config.h 里面配置好的命令字符串。此时命令字符串数组头部会配置 cmd_interpretor_index 对应的name
 // 目前布尔返回值只在!from_stdin_readline情况下返回 exec_stdin_command 的返回值，用于编译 rfm_local.c 后返回成败
-static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboolean const from_stdin_readline, NO_FREE const stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs* childAttribs)
+gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboolean const from_stdin_readline, NO_FREE const stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs* childAttribs)
 {
         gboolean ret = FALSE;
         gboolean SearchResultAsInput=FALSE;
@@ -4976,7 +4978,7 @@ static gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResul
 #endif
             childAttribs->readlineResultString=g_string_new(strdup(readlineResult));
 
-            combine_command_with_selected_files_and_setenv(childAttribs->readlineResultString, stdin_cmd_ending_space,&(childAttribs->env));
+            combine_command_with_selected_files_and_setenv(childAttribs->readlineResultString, stdin_cmd_ending_space,&(childAttribs->env), childAttribs->fullpath_list_as_RunCmd_parameters);
             
 #ifdef RFM_AddOn
 	    if (!execStdinCmdInNewVT && !(!from_stdin_readline && execCmdInNewVT) || Addon_Prompt){ //Addon_Prompt不为空实际上就相当于 current_stdin_cmd_interpretor_pointer == AI_Model

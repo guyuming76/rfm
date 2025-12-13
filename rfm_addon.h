@@ -185,6 +185,7 @@ typedef struct RFM_ChildAttributes{
    GString *readlineResultString;
    gchar *rfmEditFilePath;
    gboolean setsid;
+   char** fullpath_list_as_RunCmd_parameters;
 } RFM_ChildAttribs;
 
 
