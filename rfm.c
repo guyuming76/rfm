@@ -3531,10 +3531,11 @@ static void switch_iconview_treeview(RFM_ctx *rfmCtx) {
   refresh_view(rfmCtx, TRUE);
 }
 
-static void Switch_SearchResultView_DirectoryView(GtkToolItem *item,RFM_ctx *rfmCtx)
+static void Switch_SearchResultView_DirectoryView(GtkToolItem *item,RFM_ctx *rfmctx)
 {
     SearchResultViewInsteadOfDirectoryView=SearchResultViewInsteadOfDirectoryView^1;
-    refresh_store(rfmCtx);
+    if (rfmctx==NULL) rfmctx=rfmCtx;
+    refresh_store(rfmctx);
 }
 
 static void inotify_insert_item(gchar *name, gboolean is_dir)
