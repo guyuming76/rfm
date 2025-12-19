@@ -4015,7 +4015,7 @@ static void writeSearchResultIntoFD_in_gtk_thread(gint fd,gboolean exportFilePat
 
 static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs) {
   g_debug("readlineInSeperateThread in thread %p", readlineThread);
-  if (childAttribs && !childAttribs->exec_stdin_command_in_gtk_thread) exec_stdin_command(childAttribs->readlineResultString, effective_cmd_interpretor_pointer, childAttribs);
+  if (childAttribs && !childAttribs->exec_stdin_command_in_gtk_thread && !execStdinCmdInNewVT) exec_stdin_command(childAttribs->readlineResultString, effective_cmd_interpretor_pointer, childAttribs);
   //这里不用 free childAttribs, 因为如果上一步if条件没满足，没有执行exec_stdin_command ，一定是在gtk_thread里面执行了 exec 的某个版本，但因为是异步的，这里我又不方便加assert判断 childAttribs
   execStdinCmdInNewVT = FALSE;
   
