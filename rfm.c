@@ -4956,10 +4956,14 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
 	    //再者有些人可能不喜欢正则表达式,而这些又是对rfm来说比较核心的功能,所以就暂不改用正则表达式识别
 	    //目前正则表达式匹配主要是解决一些字母大小写,消除空格等,把用户输入命令规范化成统一定义的格式
 
-            if (g_str_has_suffix(readlineResult, RFM_NEW_TERM_SUFFIX)){
-	      if (from_stdin_readline) execStdinCmdInNewVT = TRUE;
-	      else execCmdInNewVT = TRUE;
-	      readlineResult[len-1] = '\0'; //remove ending '&'
+            if (g_str_has_suffix(readlineResult, RFM_NEW_TERM_SUFFIX) && len>strlen(RFM_NEW_TERM_SUFFIX)){
+	      if (readlineResult[len-strlen(RFM_NEW_TERM_SUFFIX)-1] == '\\'){
+		memcpy(&readlineResult[len-strlen(RFM_NEW_TERM_SUFFIX)-1], &readlineResult[len-strlen(RFM_NEW_TERM_SUFFIX)], strlen(RFM_NEW_TERM_SUFFIX)+1);// 如果结尾是'\&', 即用户的确需要&字符在行尾，用\转义,则去掉\, 把后面字符（包括结尾的'\0'）向前移一位，改成'&'
+	      }else {
+		if (from_stdin_readline) execStdinCmdInNewVT = TRUE;
+		else execCmdInNewVT = TRUE;
+		readlineResult[len-strlen(RFM_NEW_TERM_SUFFIX)] = '\0'; //remove ending '&'
+	      }
       	      len = strlen(readlineResult);
 	    }
 
