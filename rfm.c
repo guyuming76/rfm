@@ -337,7 +337,7 @@ static void g_spawn_async_callback_to_new_readline_thread(RFM_ChildAttribs *chil
 static void regcomp_for_regex_rules();
 static void set_stdin_cmd_leading_space_true();
 static NO_FREE stdin_cmd_interpretor* match_cmd_str_array_with_interpretors(gchar** RunCmd);
-static void combine_command_with_selected_files_and_setenv(CALLER_OWN GString* readlineResultString, gboolean cmd_end_with_space, gchar** *env, gchar** fullpath_list_as_parameter);
+static void combine_command_with_selected_files_and_setenv(CALLER_OWN GString* readlineResultString, gboolean cmd_end_with_space, gchar** *env, GList* fullpath_list_as_parameter);
 gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboolean const from_stdin_readline, NO_FREE const stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs* childAttribs);
 static void parse_and_exec_stdin_command_in_gtk_thread(gchar *readlineResult);
 static void parse_and_exec_cmd_in_gtk_thread (gchar * cmd);
@@ -921,7 +921,7 @@ static void free_child_attribs(FREE_FULL RFM_ChildAttribs *child_attribs)
    free(child_attribs->total_stdErr);
    g_free(child_attribs->name);   child_attribs->name = NULL;
    g_strfreev(child_attribs->env);child_attribs->env = NULL;
-   g_strfreev(child_attribs->fullpath_list_as_RunCmd_parameters);
+   g_list_free_full(child_attribs->fullpath_list_as_RunCmd_parameters, (GDestroyNotify)g_free);
    //how can we memcpy the content of customCallbackUserData and free it here?
    //g_free(child_attribs->customCallbackUserData);
    g_free(child_attribs->workingDir); child_attribs->workingDir = NULL;
@@ -4801,7 +4801,7 @@ static void set_stdin_cmd_leading_space_true(){
   stdin_cmd_leading_space=TRUE;
 }
 
-static void combine_command_with_selected_files_and_setenv(CALLER_OWN GString* readlineResultString, gboolean cmd_end_with_space, gchar** *env, gchar** fullpath_list_as_parameter) {
+static void combine_command_with_selected_files_and_setenv(CALLER_OWN GString* readlineResultString, gboolean cmd_end_with_space, gchar** *env, GList* fullpath_list_as_parameter) {
 	      // combine runCmd with selected files to get gchar** v
 	      // TODO: the following code share the same pattern as g_spawn_wrapper_for_selected_fileList_ , anyway to remove the duplicate code?
 	    GList *listElement;
