@@ -6098,12 +6098,14 @@ static void update_SearchResultFileNameList_and_refresh_store(RFM_ChildAttribs *
     rfmCtx->childAttribs = NULL;
   }
   rfmCtx->childAttribs = childAttribs;
-  
+
+  if (filenamelist){
   gchar * oneline=strtok((gchar*)filenamelist,"\n");
   while (oneline!=NULL){
     SearchResultTypePointer->SearchResultLineProcessingFunc(oneline, TRUE, SearchResultTypePointer->cmdTemplate,NULL, childAttribs);
     fileAttributeID++;
     oneline=strtok(NULL, "\n");
+  }
   }
 
   if (SearchResultFileNameList != NULL) SearchResultFileNameList=g_list_first(g_list_reverse(SearchResultFileNameList));
