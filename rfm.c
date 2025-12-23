@@ -4947,10 +4947,6 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
 	    }
 	    len = strlen(readlineResult);
 
-#ifdef RFM_AddOn
-            if (childAttribs->cmd_interpretor_addon_dir){ //如果使用的是Addon cmd interpretor,就无需执行后续计算execStdinCmdInNewVT的代码了，因为rfm和cmd interpretor addon 的沟通都通过 check_cmd_interpretor_switch_or_effective_cmd_interpretor 函数及参数完成。
-	    }else{
-#endif
 	    //stdin_cmd_ending_space, execStdinCmdInNewVT, SearchResultAsInput 应该也可以通过正则表达式匹配实现.
 	    //一方面之前写这些代码的时候还没添加正则表达式匹配的功能
 	    //再者有些人可能不喜欢正则表达式,而这些又是对rfm来说比较核心的功能,所以就暂不改用正则表达式识别
@@ -4966,6 +4962,11 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
 	      }
       	      len = strlen(readlineResult);
 	    }
+
+#ifdef RFM_AddOn
+            if (childAttribs->cmd_interpretor_addon_dir){ //如果使用的是Addon cmd interpretor,就无需执行后续计算execStdinCmdInNewVT的代码了，因为rfm和cmd interpretor addon 的沟通都通过 check_cmd_interpretor_switch_or_effective_cmd_interpretor 函数及参数完成。
+	    }else{
+#endif
 
 	    //if we have searchresulttypesuffix in command, the ending space rule can be confusing: shall we have space after searchresulttype or before searchresulttype? Both will be considered as ending space!
 	    stdin_cmd_ending_space = (stdin_cmd_ending_space || (len>=1 && readlineResult[len-1]==' '));
