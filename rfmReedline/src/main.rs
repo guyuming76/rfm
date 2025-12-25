@@ -136,6 +136,9 @@ fn main() {
             Ok(Signal::CtrlC) => {
                 println!("");
             }
+            Ok(Signal::Interrupted) => {
+                println!("");
+            }
             Err(err) => {
                 eprintln!("详细错误信息: {:?}", err);
                 // 尝试回退到简单输入模式
