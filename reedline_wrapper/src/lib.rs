@@ -126,6 +126,7 @@ impl Completer for CCompleter {
                                 extra: None,
                                 span: Span::new(pos, pos),
                                 append_whitespace: false,
+                                ..Default::default()
                             });
                         }else if result.starts_with('}') { //这个是维度名
                             suggestions.push(Suggestion {
@@ -135,6 +136,7 @@ impl Completer for CCompleter {
                                 extra: None,
                                 span: Span::new(pos, pos),
                                 append_whitespace: false,
+                                ..Default::default()
                             });
                         }else if result.starts_with('=') { //这个是维度值
                             suggestions.push(Suggestion {
@@ -144,6 +146,7 @@ impl Completer for CCompleter {
                                 extra: None,
                                 span: Span::new(pos, pos),
                                 append_whitespace: false,
+                                ..Default::default()
                             });
                         }else{
                             //对于文件路径补全，context包含的是文件名前缀，补全的返回内容result是完整的路径，所以start_pos 等于0; 而非路径补全，目前用于rfm_editor_completion_based_on_search_result, 补全的返回内容不包含context,suggestion 应该是 context 合并上 result
@@ -168,6 +171,7 @@ impl Completer for CCompleter {
                                 extra: None,
                                 span: Span::new(start_pos, pos),
                                 append_whitespace: false,
+                                ..Default::default()
                             });
                         }
                     }

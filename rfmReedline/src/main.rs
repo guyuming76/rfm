@@ -43,6 +43,7 @@ impl Completer for ReadlineCompleter {
                                 extra: None,
                                 span: Span::new(0, _pos),
                                 append_whitespace: false,
+                                ..Default::default()
                             });
                         }
                     }

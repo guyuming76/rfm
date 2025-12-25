@@ -7,7 +7,7 @@ edition = "2021"
 crate-type = ["cdylib"]  # 编译为C兼容的动态库
 
 [dependencies]
-reedline = { git = "https://gitee.com/guyuming76/reedline.git", branch = "guyuming", features = ["bashisms","external_printer"] }   #使用最新版本，bash兼容扩展
+reedline = { git = "https://gitee.com/guyuming76/reedline.git", branch = "guyuming20251225", features = ["bashisms","external_printer"] }   #使用最新版本，bash兼容扩展
 libc = "0.2"            # 提供C类型支持
 nu-ansi-term = "0.50.0"
 dirs = "3.0"

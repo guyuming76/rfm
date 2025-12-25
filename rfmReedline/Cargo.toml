@@ -4,5 +4,5 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-reedline = { git = "https://gitee.com/guyuming76/reedline.git", branch = "guyuming", features = ["bashisms"] }   #使用最新版本，bash兼容扩展
+reedline = { git = "https://gitee.com/guyuming76/reedline.git", branch = "guyuming20251225", features = ["bashisms"] }   #使用最新版本，bash兼容扩展
 libc = "0.2"            # 提供C类型支持
