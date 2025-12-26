@@ -4656,6 +4656,7 @@ static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(CALLER_OWN wo
         for(guint i=0;i<G_N_ELEMENTS(builtinCMD);i++){
 	  if (g_strcmp0(parsed_msg->we_wordv[0], builtinCMD[i].cmd)==0) {
 	        builtinCMD[i].action(parsed_msg,readline_result_string_after_file_name_substitution);
+	        g_debug("builtin command %s run", builtinCMD[i].cmd);
 		add_history_after_stdin_command_execution(readline_result_string_after_file_name_substitution);
 		return TRUE;
 	  }
