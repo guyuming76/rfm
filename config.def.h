@@ -281,7 +281,7 @@ static RFM_MenuItem run_actions[] = {
    { "count",        "inode",          "directory",            NULL,			NULL,			NULL,		du,               		NULL },
    { "archive",      "inode",          "directory",            NULL,			NULL,			NULL,		create_archive,   		NULL },
    { ToSearchResult, "*",              "*",                    NULL,			NULL,			NULL,		To_SearchResult,   		NULL },
-   { UnionSearchResult,"*",            "*",                    NULL,			NULL,			InIconView,	Union_SearchResult,   	        InDirectoryView },
+   { UnionSearchResult,"*",            "*",                    NULL,			NULL,			InIconView,	Union_SearchResult_multitype,   InDirectoryView },
    { IntersectWithSearchResult,"*",    "*",                    NULL,			NULL,			InIconView,	Intersect_With_SearchResult,   	InDirectoryView },
    { SubtractSearchResult,"*",         "*",                    NULL,			NULL,			InIconView,	Subtract_SearchResult,   	InDirectoryView },
    { RunActionFindSoftLink,"*",        "*",                    NULL,			NULL,			NULL,		ShowSoftLinkToFileInSearchResult,NULL },
