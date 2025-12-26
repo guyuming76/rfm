@@ -195,6 +195,7 @@ static void cmdStartShare(wordexp_t * parsed_msg, GString* readline_result_strin
         }else{ g_warning("no start_server method for http_manager");}
       }else {if (PyErr_Occurred()) {PyErr_Print();PyErr_Clear();}}
       }//http
+      if (!ftp && !http) g_warning("add --ftp or --http or both as parameter, at least one of them");
     }else{ PyErr_Print();PyErr_Clear();} //py_rfmShareDir_module == NULL
  quit:
     PyGILState_Release(gstate);
