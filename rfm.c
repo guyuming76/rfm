@@ -638,6 +638,8 @@ static void cmdSearchResultColumnSeperator(wordexp_t * parsed_msg, GString* read
 static RFM_SearchResultType* MatchSearchResultType(gchar *readlineResult, RFM_ChildAttribs *childattribs);
 static void set_pagesize_for_searchresultview(const char *pagesize);
 static void cmdPagesize(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
+void addToSearchResult(FREE char *fileFullpath);
+static void cmd_addToSearchResult(CALLER_OWN wordexp_t *parsed_msg,CALLER_OWN  GString *readline_result_string_after_file_name_substitution);
 static void writeSearchResultIntoFD_in_gtk_thread(gint fd, gboolean exportFilePathOnly);
 static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, gboolean from_stdin_readline, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *childAttribs);
 /******Search Result related definitions end*********/
@@ -4508,6 +4510,20 @@ static void cmd_setenv(wordexp_t *parsed_msg, GString *readline_result_string_af
   }else printf(SETENV_USAGE);
 }
 
+void addToSearchResult(FREE char *fileFullpath) {
+        RFM_ChildAttribs *child_attribs=calloc(1, sizeof(RFM_ChildAttribs));
+        child_attribs->RunCmd = Union_SearchResult_multitype;
+        gchar* cmd = strdup(child_attribs->RunCmd[1]);
+        child_attribs->fullpath_list_as_RunCmd_parameters = g_list_prepend(child_attribs->fullpath_list_as_RunCmd_parameters,fileFullpath);
+        child_attribs->customCallBackFunc = (void (*)(RFM_ChildAttribs *))InIconView; //这里参见rfm.c exec_stdin_command_with_SearchResultAsInput 中注释
+        parse_and_exec_command_in_gtk_thread(cmd, FALSE, &stdin_cmd_interpretors[0], child_attribs);
+}
+
+static void cmd_addToSearchResult(CALLER_OWN wordexp_t *parsed_msg,CALLER_OWN  GString *readline_result_string_after_file_name_substitution) {
+  if (parsed_msg->we_wordc==2){
+    addToSearchResult(g_strdup(parsed_msg->we_wordv[1]));
+  }
+}
 
 static void call_g_dir_read_name_recursivly_to_get_dir_names_as_dimension_members(GSList **list, const char *base, const char *path) {
     gchar *full = g_build_filename(base, path, NULL);
@@ -4635,7 +4651,7 @@ static void rfmEdit(gchar* filepath) {
 
 
 //返回TRUE表示成功匹配为BuiltInCmd并被执行,无论执行成功与否,都不需要在调用Shell来执行了;返回false表示未能识别为builtInCmd,需要进一步处理. 返回true后, GString*参数内存被释放,但调用者仍需将其设为NULL,因为后续处理根据其是否为NULL来判断是否需要继续处理(比如是否需要发送到Shell执行)
-static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution){
+static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(CALLER_OWN wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution){
 
         for(guint i=0;i<G_N_ELEMENTS(builtinCMD);i++){
 	  if (g_strcmp0(parsed_msg->we_wordv[0], builtinCMD[i].cmd)==0) {

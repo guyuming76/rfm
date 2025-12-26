@@ -109,6 +109,7 @@
 #define BuiltInCmd_Up_Description              "go to parent directory，short cut key: ALT + Up arrow（MOD1 usually is ALT）"
 #define BuiltInCmd_Previous_Description        "Navigate to previous path，shortcut: ALT+Left arrow"
 #define BuiltInCmd_Next_Description            "Navigate to next path，shortcut: ALT+Right arrow"
+#define BuiltInCmd_add2search                  "add fullpath filename as parameter into search result view, work the same way as the \"" UnionSearchResult "\" in contextual file menu"
 
 #ifdef reedline
 	#define reedline_specific_help "    The '〉' after the prompt shows that input is read with the reedline library，which supports multiline edit，and ALT+Enter can be used for new line.\n"

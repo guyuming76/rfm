@@ -219,6 +219,7 @@ static RFM_builtinCMD builtinCMD[] = {
 	{ Up,					up_clicked,				BuiltInCmd_Up_Description},
         {Previous,                             prev_path_clicked,                       BuiltInCmd_Previous_Description},
         {Next,                                 next_path_clicked,                       BuiltInCmd_Next_Description},
+	{"add2search",                         cmd_addToSearchResult,                   BuiltInCmd_add2search},
 };
 
 /* Menu Items
