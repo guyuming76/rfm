@@ -3912,6 +3912,7 @@ static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResult
               childAttribs->g_idle_add_once_to_run_CallBackFunc = TRUE; //TODO：目前函数是在 gtk main thread 运行的，所以这一行应该可以不要，加一下避免以后改动当前函数运行环境导致出错
 	      childAttribs->output_read_by_program = TRUE;
 	      childAttribs->no_free = TRUE;
+	      childAttribs->setsid = TRUE;
 	      //}else childAttribs->runOpts = G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR;
 	      //不能保证writeSearchResultIntoFD执行的时候不向命令窗口输出内容,不知道子进程输出和writeSearchResultIntoFD同时争抢命令窗口会发生什么. 所以不如让 child_supervisor 读取子进程输出 fd 后再显示,至少都是在 gtk main loop 里面输出
 	    }
