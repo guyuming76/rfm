@@ -2669,7 +2669,7 @@ static void set_rfm_curPath_internal(CALLER_OWN const gchar* path){
 	   gchar * addon_path = g_strdup(rfm_curPath);
 	   gboolean is_root_dir;
 	   do {
-	     if (access(addon_path, R_OK) == 0); load_addon(addon_path);
+	     if (access(addon_path, R_OK) == 0); load_addon(addon_path);//TODO:addon文件名现在是固定的RFM_LOCAL_C_FILE，这样的好处是在load_addon函数中对没个上层目录都只要检查固定名称的文件是否存在。如果把addon文件命名规则改成*.rfm_addon.c, 虽然可以带来同一个目录下有多个不同addon的好处，但这里每层目录都要一个个文件检查，性能太差了。一个办法是在setup函数对 global_addons_locating_cmd_template 的调用中先用locate找出所有满足*.rfm_addon.c命名规范的addon放入内存数据结构, 然后这里就不要在目录里一个个查文件了。同时，工具栏的addon命令也修改为更新和显示此内存数据结构
 	     gchar *addon_path_parent = g_path_get_dirname(addon_path);
 	     is_root_dir = (g_strcmp0(addon_path, addon_path_parent)==0); // g_path_get_dirname("/") return "/"
 	     g_free(addon_path); addon_path = addon_path_parent;
