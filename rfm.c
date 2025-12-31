@@ -796,12 +796,20 @@ typedef struct {
   gchar *local_so_path;
 } RFM_ADDON;
 
+typedef struct {
+  char* fullpath;
+  char* addon_type_definition_str;
+  gboolean loaded;
+} RFM_ADDON_FILE_STATUS;
+
 static gboolean disable_addon = FALSE;
 void remove_toolbar_buttons(FREE GtkWidget ***buttons, const size_t size);
 void remove_file_menuitems(FREE GtkWidget ***menuitems, const size_t size);
 
 static void free_addon(RFM_ADDON *addon);
 static GHashTable* addons; // RFM_ADDON as value
+static GHashTable* all_addon_definitions; // addon definition file directory as key, nested ghashtable as value; in nested ghashtable, addon definition file fullpath as key, RFM_ADDON_FILE_STATUS as value
+
 static void load_global_addons_callback(RFM_ChildAttribs* child_attribs);
 static void load_addon(CALLER_OWN char* filepath);
 static void append_addon_treeviewColumns(RFM_ADDON *addon,gboolean searchresultview, gboolean dirview);
