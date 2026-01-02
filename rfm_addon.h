@@ -196,4 +196,4 @@ enum RFM_ADDON_TYPE {
   Global,
 };
 
-#define RFM_LOG_ADDON "rfm_addon"
+#define RFM_LOG_ADDON "rfm-addon"

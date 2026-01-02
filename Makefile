@@ -194,7 +194,6 @@ endif
 	@cp -f scripts/rfm_Update_affected_SymbolicLinks_for_move_or_copy.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfm_mkdir_and_move_selected_files_into_it_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfm_mkdir_and_move_selected_files_into_it.sh
 	@cp -f scripts/rfmSaveSearchResultToFile_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmSaveSearchResultToFile.sh
-	@cp -f scripts/rfmLocateGlobalAddons.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmFindDimensionValueForFile.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmMount_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmMount.sh
 	@cp -f scripts/rfmFind_DIMENSION_PROPERTIES_FILEs.sh ${DESTDIR}${PREFIX}/bin
@@ -252,7 +251,6 @@ endif
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfm_Update_affected_SymbolicLinks_for_move_or_copy.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfm_mkdir_and_move_selected_files_into_it.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmSaveSearchResultToFile.sh
-	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmLocateGlobalAddons.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmFindDimensionValueForFile.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmMount.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmFind_DIMENSION_PROPERTIES_FILEs.sh
@@ -311,7 +309,6 @@ endif
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfm_Update_affected_SymbolicLinks_for_move_or_copy.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfm_mkdir_and_move_selected_files_into_it.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmSaveSearchResultToFile.sh
-	@rm -f ${DESTDIR}${PREFIX}/bin/rfmLocateGlobalAddons.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmFindDimensionValueForFile.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmMount.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmFind_DIMENSION_PROPERTIES_FILEs.sh

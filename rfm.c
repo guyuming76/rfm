@@ -796,22 +796,17 @@ typedef struct {
   gchar *local_so_path;
 } RFM_ADDON;
 
-typedef struct {
-  char* fullpath;
-  char* addon_type_definition_str;
-  gboolean loaded;
-} RFM_ADDON_FILE_STATUS;
-
 static gboolean disable_addon = FALSE;
 void remove_toolbar_buttons(FREE GtkWidget ***buttons, const size_t size);
 void remove_file_menuitems(FREE GtkWidget ***menuitems, const size_t size);
 
 static void free_addon(RFM_ADDON *addon);
 static GHashTable* addons; // RFM_ADDON as value
-static GHashTable* all_addon_definitions; // addon definition file directory as key, nested ghashtable as value; in nested ghashtable, addon definition file fullpath as key, RFM_ADDON_FILE_STATUS as value
+static GHashTable* all_addon_definitions_by_dir; // addon definition file directory as key, nested ghashtable as value; in nested ghashtable, addon definition file fullpath as key, addon type definition str such as "const enum RFM_ADDON_TYPE addon_type = DirectoryTree;" as value
 
-static void load_global_addons_callback(RFM_ChildAttribs* child_attribs);
-static void load_addon(CALLER_OWN char* filepath);
+static void locate_all_addons_callback(RFM_ChildAttribs* child_attribs);
+static void load_addon(CALLER_OWN char* addon_fullpath);
+static void load_addon_dir(char* addon_dir);
 static void append_addon_treeviewColumns(RFM_ADDON *addon,gboolean searchresultview, gboolean dirview);
 static void remove_addon_treeviewColumns(RFM_ADDON *addon);
 static void unload_local_extension(RFM_ADDON *addon);
@@ -928,7 +923,7 @@ static void free_child_attribs(FREE_FULL RFM_ChildAttribs *child_attribs)
   
    free(child_attribs->stdOut); child_attribs->stdOut = NULL;
    free(child_attribs->stdErr); child_attribs->stdErr = NULL;
-   free(child_attribs->total_stdOut);
+   free(child_attribs->total_stdOut); //TODO: 这里向别的地方一样，应该设成NULL的。当时我添加这行的时候，想不起来其他地方为啥还要置NULL,今天从上面日志发现同一个child_attribs 地址，有反复free的现象（从日志上下文看，应该是读取git信息相关操作），但只是同一个地址，还不能确定是同一个，否则下面 g_free(child_attribs) 为啥没有double free 错？
    free(child_attribs->total_stdErr);
    g_free(child_attribs->name);   child_attribs->name = NULL;
    g_strfreev(child_attribs->env);child_attribs->env = NULL;
@@ -1019,10 +1014,10 @@ static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_
 /* Identical to g_spawn_async_with_pipes_and_fds() but with n_fds set to zero, so no FD assignments are used. */
    
    if (child_attribs->output_read_by_program || (((child_attribs->runOpts & G_SPAWN_CHILD_INHERITS_STDOUT)!=G_SPAWN_CHILD_INHERITS_STDOUT) && ((child_attribs->runOpts & G_SPAWN_STDOUT_TO_DEV_NULL)!=G_SPAWN_STDOUT_TO_DEV_NULL)))
-     if (read_char_pipe(child_attribs->stdOut_fd, PIPE_SZ, &child_attribs->stdOut)<0) g_log(RFM_LOG_GSPAWN_READ_PIPE, G_LOG_LEVEL_DEBUG,"read_char_pipe failed");
+     if (read_char_pipe(child_attribs->stdOut_fd, PIPE_SZ, &child_attribs->stdOut)<0) g_log(RFM_LOG_GSPAWN_READ_PIPE, G_LOG_LEVEL_DEBUG,"read_char_pipe failed, child_attribs->stdOut_fd:%d", child_attribs->stdOut_fd);
 
    if ((((child_attribs->runOpts) & G_SPAWN_CHILD_INHERITS_STDERR)!=G_SPAWN_CHILD_INHERITS_STDERR) && (((child_attribs->runOpts) & G_SPAWN_STDERR_TO_DEV_NULL)!=G_SPAWN_STDERR_TO_DEV_NULL))
-     if (read_char_pipe(child_attribs->stdErr_fd, PIPE_SZ, &child_attribs->stdErr)<0) g_log(RFM_LOG_GSPAWN_READ_PIPE, G_LOG_LEVEL_DEBUG,"read_char_pipe failed");
+     if (read_char_pipe(child_attribs->stdErr_fd, PIPE_SZ, &child_attribs->stdErr)<0) g_log(RFM_LOG_GSPAWN_READ_PIPE, G_LOG_LEVEL_DEBUG,"read_char_pipe failed, child_attribs->stdErr_fd:%d", child_attribs->stdErr_fd);
    
    if (!child_attribs->output_read_by_program && ((child_attribs->stdOut && strlen(child_attribs->stdOut)>0) || (child_attribs->stdErr && strlen(child_attribs->stdErr)>0))) show_child_output(child_attribs);
    //TODO: devPicAndVideo submodule commit f746eaf096827adda06cb2a085787027f1dca027 的错误起源于上面一行代码和RFM_EXEC_FILECHOOSER 的引入。
@@ -2677,7 +2672,7 @@ static void set_rfm_curPath_internal(CALLER_OWN const gchar* path){
 	   gchar * addon_path = g_strdup(rfm_curPath);
 	   gboolean is_root_dir;
 	   do {
-	     if (access(addon_path, R_OK) == 0); load_addon(addon_path);//TODO:addon文件名现在是固定的RFM_LOCAL_C_FILE，这样的好处是在load_addon函数中对没个上层目录都只要检查固定名称的文件是否存在。如果把addon文件命名规则改成*.rfm_addon.c, 虽然可以带来同一个目录下有多个不同addon的好处，但这里每层目录都要一个个文件检查，性能太差了。一个办法是在setup函数对 global_addons_locating_cmd_template 的调用中先用locate找出所有满足*.rfm_addon.c命名规范的addon放入内存数据结构, 然后这里就不要在目录里一个个查文件了。同时，工具栏的addon命令也修改为更新和显示此内存数据结构
+	     if (access(addon_path, R_OK) == 0); load_addon_dir(addon_path);
 	     gchar *addon_path_parent = g_path_get_dirname(addon_path);
 	     is_root_dir = (g_strcmp0(addon_path, addon_path_parent)==0); // g_path_get_dirname("/") return "/"
 	     g_free(addon_path); addon_path = addon_path_parent;
@@ -3867,7 +3862,7 @@ static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousRea
 	  }
 #endif
           childAttribs->RunCmd = cmd_interpretor_pointer->cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE);
-          childAttribs->spawn_async = FALSE;
+          childAttribs->spawn_async = FALSE; //TODO: 这个是默认值，不用设置，设置了得话反倒会覆盖上游的主动设置
           if (SearchResultTypePointer) {
 	    childAttribs->g_idle_add_once_to_run_CallBackFunc = TRUE;
 	    childAttribs->output_read_by_program = TRUE;
@@ -3882,7 +3877,8 @@ static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousRea
 	      childAttribs->spawn_async = TRUE; childAttribs->keep_total_buffer_in_show_child_output = TRUE; childAttribs->customCallBackFunc = cmd_interpretor_pointer->customCallBackFunc; //这一行设置被用作在ExecCallback_freeChildattribs 里面 g_thread_new readline thread 的一个条件，这组条件也可以看作有parse_and_exec_command_in_gtk_thread 中的条件 (effective_cmd_interpretor_pointer->customCallBackFunc && !execCmdInNewVT && !execStdinCmdInNewVT) 得来
 	      childAttribs->g_idle_add_once_to_run_CallBackFunc = TRUE;
 	      childAttribs->runOpts = G_SPAWN_SEARCH_PATH|G_SPAWN_CHILD_INHERITS_STDIN;
-	    }else childAttribs->runOpts = G_SPAWN_SEARCH_PATH|G_SPAWN_CHILD_INHERITS_STDIN|G_SPAWN_CHILD_INHERITS_STDOUT|G_SPAWN_CHILD_INHERITS_STDERR;
+	    }else if (childAttribs->output_read_by_program){ childAttribs->runOpts |= G_SPAWN_SEARCH_PATH|G_SPAWN_CHILD_INHERITS_STDIN;
+	    }else childAttribs->runOpts |= G_SPAWN_SEARCH_PATH|G_SPAWN_CHILD_INHERITS_STDIN|G_SPAWN_CHILD_INHERITS_STDOUT|G_SPAWN_CHILD_INHERITS_STDERR;
 	    ret = g_spawn_wrapper_(NULL, NULL, childAttribs);
 	  }
 	  add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
@@ -5301,8 +5297,17 @@ static int setup(RFM_ctx *rfmCtx)
    gtk_menu_shell_append(GTK_MENU_SHELL(columnHeaderMenu), InsertAfterMenuItem);
    }
 #ifdef RFM_AddOn
-   if (!disable_addon) g_spawn_wrapper(global_addons_locating_cmd_template, NULL, G_SPAWN_DEFAULT, NULL, NULL, FALSE, load_global_addons_callback, NULL, TRUE); //同步打开rfm会太慢吗?
   //TODO: 考虑partse_and_exec_cmd_in_gtk_thread里支持 类似callback, readoutput by program 这种机制, 也许可以和SearchResult那一块有交集.这会儿作为workaround,就为命令做了一个单独的bash脚本,一边可以在命令里有管道
+   if (!disable_addon) {
+     all_addon_definitions_by_dir = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_hash_table_destroy);
+     RFM_ChildAttribs *child_attribs = calloc(1, sizeof(RFM_ChildAttribs));
+     child_attribs->customCallBackFunc = locate_all_addons_callback;
+     child_attribs->customCallbackUserData = child_attribs;
+     child_attribs->output_read_by_program = TRUE;
+     child_attribs->setsid = TRUE;
+     //child_attribs->spawn_async = TRUE; //TODO: 倒不是说这里要用async,只是开发时发现，这个会被 exec_stdin_command 里的设置覆盖掉
+     parse_and_exec_command_in_gtk_thread(g_strdup(locate_all_addons[1]), FALSE, match_cmd_str_array_with_interpretors(locate_all_addons), child_attribs);
+   }
 #endif
    if (initDir == NULL) initDir = cwd;
    set_rfm_curPath(initDir);
@@ -6553,12 +6558,29 @@ static void append_addon_treeviewColumns(RFM_ADDON *addon, gboolean searchresult
   }
 }
 
-static void load_addon(CALLER_OWN char* addon_directory){
-    assert(addon_directory[0]=='/');//检查是绝对路径
+static void load_addon_dir(char *addon_dir) {
+  GHashTable *addons_in_dir = g_hash_table_lookup(all_addon_definitions_by_dir, addon_dir);
+  if (addons_in_dir){
+     GHashTableIter ht_iter;
+     gchar *key;
+     gchar *value;
+     g_hash_table_iter_init(&ht_iter, addons_in_dir);
+     while (g_hash_table_iter_next(&ht_iter, &key, &value)){
+       if (!g_hash_table_lookup(addons, key)) load_addon(key);
+     }
+  }
+}
+
+static void load_addon(CALLER_OWN char* addon_fullpath){
+    assert(addon_fullpath[0]=='/');//检查是绝对路径
     char *dlsym_error = NULL; //The message returned by dlerror() may reside in a statically allocated buffer that is overwritten by subsequent dlerror()calls. https://www.man7.org/linux/man-pages/man3/dlerror.3.html
+    g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "load_addon(%s)",addon_fullpath);
     RFM_ADDON * addon = calloc(1, sizeof(RFM_ADDON));
-    addon->local_c_path = g_build_filename(addon_directory, RFM_LOCAL_C_FILE, NULL);
-    addon->local_so_path = g_build_filename(addon_directory, RFM_AddOn, NULL);
+    addon->local_c_path = g_strdup(addon_fullpath);
+    gchar* addon_dir = g_path_get_dirname(addon_fullpath);
+    // 生成.so文件名：将.c替换为.so
+    gchar *base_name = g_path_get_basename(addon_fullpath);
+    addon->local_so_path = g_strdup_printf("%s/%.*s.so",addon_dir, (int)(strlen(base_name)-2), base_name); // 去掉.c，加上.so
     gboolean compile_needed = FALSE;
     if (g_file_test(addon->local_c_path, G_FILE_TEST_EXISTS)) {
        if (g_hash_table_lookup(addons, addon->local_c_path)){
@@ -6648,7 +6670,7 @@ static void load_addon(CALLER_OWN char* addon_directory){
             goto cleanup;
         }else addon->addon_type = *addon_type_variable;
 
-	if (addon->addon_type == Directory && strcmp(rfm_curPath, addon_directory)!=0) goto cleanup;
+	if (addon->addon_type == Directory && strcmp(rfm_curPath, addon_dir)!=0) goto cleanup;
 
 	addon->local_leave_func = dlsym(addon->rfm_local_so_handle, RFM_LOCAL_LEAVE_FUNC);
         dlsym_error = dlerror();
@@ -6665,10 +6687,11 @@ static void load_addon(CALLER_OWN char* addon_directory){
             goto cleanup;
         } else if (addon->local_enter_func){
             g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Calling %s from %s", RFM_LOCAL_ENTER_FUNC, addon->local_so_path);
-            (*(addon->local_enter_func))(addon_directory); //call enter function
+            (*(addon->local_enter_func))(addon_dir); //call enter function
 	    g_hash_table_insert(addons, strdup(addon->local_c_path), addon);
 	    append_addon_treeviewColumns(addon,TRUE,TRUE);
 	    g_debug("addons size after loading:%d",g_hash_table_size(addons));
+	    g_free(addon_dir);
 	    return; // 成功call enter funtion 就不要cleanup, unload 完再cleanup
         } else {
              g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Function %s not found in %s (optional).", RFM_LOCAL_ENTER_FUNC, addon->local_so_path);
@@ -6682,15 +6705,32 @@ static void load_addon(CALLER_OWN char* addon_directory){
         addon->rfm_local_so_handle = NULL;
     }
     free_addon(addon);
+    g_free(addon_dir);
 }
 
-static void load_global_addons_callback(RFM_ChildAttribs* child_attribs) {
+static void locate_all_addons_callback(RFM_ChildAttribs* child_attribs) {
   char *child_stdout=(char*)(child_attribs->stdOut);
+  g_debug("locate_all_addons_callback with child_attribs:%p",child_attribs);
+  if (!child_stdout) return;
+  g_hash_table_remove_all(all_addon_definitions_by_dir);
   gchar * savedptr=NULL;
   gchar * oneline=strtok_r(child_stdout,"\n",&savedptr);
   while (oneline!=NULL){
-      gchar * fullpath = g_path_get_dirname(oneline);
-      load_addon(fullpath);
+      g_debug("locate_all_addons_callback processing oneline:%s", oneline);
+      gchar** addon_fullpath_and_type = g_strsplit(oneline, ":", 2); // locate_all_addons 返回冒号分割的行，第一个冒号前为fullpath, 冒号后为const enum RFM_ADDON_TYPE addon_type = DirectoryTree;这样的字符串
+      if (g_strv_length(addon_fullpath_and_type)==2){
+	gchar * fullpath_dir = g_path_get_dirname(addon_fullpath_and_type[0]);
+	GHashTable* addons_in_dir = g_hash_table_lookup(all_addon_definitions_by_dir, fullpath_dir);
+	if (!addons_in_dir) {
+	  addons_in_dir = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
+	  g_hash_table_insert(all_addon_definitions_by_dir, g_strdup(fullpath_dir), addons_in_dir);
+	}
+	g_hash_table_insert(addons_in_dir, g_strdup(addon_fullpath_and_type[0]), g_strdup(addon_fullpath_and_type[1]));
+	//加载Global addon
+	if (strstr(addon_fullpath_and_type[1], "Global") && !g_hash_table_lookup(addons, addon_fullpath_and_type[0])) load_addon(addon_fullpath_and_type[0]);
+	g_strfreev(addon_fullpath_and_type);
+	g_free(fullpath_dir);
+      }else g_warning("locate_all_addons return line invalid:%s",oneline);
       oneline=strtok_r(NULL, "\n",&savedptr);
   }
 }
