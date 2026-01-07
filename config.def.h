@@ -65,7 +65,7 @@ const stdin_cmd_interpretor stdin_cmd_interpretors[] = {
 #define RFM_ADDON_LEAVE_FUNC "rfm_local_leave"
 //#define RFM_ADDON_FILENAME_SUFFIX ".rfm_addon.c"
 //这里暂时把之前的 addon 文件名作为后缀，保持兼容。推荐使用上面注释掉行的文件名后缀，可以通过添加软链接实现，以便保持git log 完整易读
-#define RFM_ADDON_FILENAME_SUFFIX "/rfm_local.c"
+#define RFM_ADDON_FILENAME_SUFFIX "rfm_local.c"
 #define RFM_ADDON_RESOURCE_STRUCT "addon_resource"
 #define RFM_ADDON_TYPE_VAR_NAME "addon_type"
 // 上面这组定义对应的是rfm_local.c里面的变量和方法名，如果把这些定义放在rfm_local.h里面得话，可以实现

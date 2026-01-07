@@ -795,6 +795,7 @@ typedef struct {
   gchar *addon_c_fullpath;
   gchar *addon_so_fullpath;
   gchar *addon_hash;
+  gchar *addon_base_filename;
 } RFM_ADDON;
 
 static gboolean disable_addon = FALSE;
@@ -804,7 +805,8 @@ void remove_file_menuitems(FREE GtkWidget ***menuitems, const size_t size);
 static void free_addon(RFM_ADDON *addon);
 static GHashTable* addons; // RFM_ADDON as value
 static GHashTable* all_addon_definitions_by_dir; // addon definition file directory as key, nested ghashtable as value; in nested ghashtable, addon definition file fullpath as key, addon type definition str such as "const enum RFM_ADDON_TYPE addon_type = DirectoryTree;" as value
-static GHashTable* addons_hash; //use addon hash as key, filepath as value to detect duplicate load
+static GHashTable* addons_hash; //use addon hash as key, addon pointer as value to detect duplicate load
+static GHashTable* addons_filename; //use filename as key, to detect duplicate load, such as different versions of the same addon
 static void locate_all_addons_callback(RFM_ChildAttribs* child_attribs);
 static void load_addon(CALLER_OWN char* addon_fullpath);
 static void load_addon_dir(char* addon_dir);
@@ -5425,7 +5427,8 @@ int main(int argc, char *argv[])
 
    setenv("RFM_GIT_ROOT","/",1);
    addons = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
-   addons_hash = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
+   addons_hash = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, NULL);
+   addons_filename = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, NULL);
    rfmCtx=calloc(1,sizeof(RFM_ctx));
    if (rfmCtx==NULL) return 1;
    //rfmCtx->rfm_sortColumn=GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID;
@@ -6583,13 +6586,22 @@ static void load_addon(CALLER_OWN char* addon_fullpath){
     addon->addon_c_fullpath = g_strdup(addon_fullpath);
     gchar* addon_dir = g_path_get_dirname(addon_fullpath);
     // 生成.so文件名：将.c替换为.so
-    gchar *base_name = g_path_get_basename(addon_fullpath);
-    addon->addon_so_fullpath = g_strdup_printf("%s/%.*s.so",addon_dir, (int)(strlen(base_name)-2), base_name); // 去掉.c，加上.so
+    addon->addon_base_filename = g_path_get_basename(addon_fullpath);
+    addon->addon_so_fullpath = g_strdup_printf("%s/%.*s.so",addon_dir, (int)(strlen(addon->addon_base_filename)-2), addon->addon_base_filename); // 去掉.c，加上.so
     gboolean compile_needed = FALSE;
     if (g_file_test(addon->addon_c_fullpath, G_FILE_TEST_EXISTS)) {
        if (g_hash_table_lookup(addons, addon->addon_c_fullpath)){
 	   g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Addon %s already loaded, no need to load again", addon->addon_c_fullpath);
 	   goto cleanup;
+       }
+       //上面的判断是防止同一个addon被重复加载，所以loglevel info足够了; 而下面的判断是防止同名文件（同一个addon的不同版本出现在不同目录），和不同名但同hash（同一个addon不同名出现在不同目录）,这是需要用户手工干预的，比如改文件名，所以用warning。注意这里考虑的主要是global类型的addon。 Directory类型的同一个addon自然可以出现在不同目录中，但不会同时加载的
+       //TODO: 如果是DirectoryTree类型的Addon,命名冲突如何？这等今后DirectoryTree类型用起来再说。目前只有global类型的AI addon我常用，AI 出现以后，rfm TODO addon都不怎么用了。
+       if (g_strcmp0(addon->addon_base_filename, RFM_ADDON_FILENAME_SUFFIX)!=0){ //之前addon统一叫rfm_local.c, 所以这种情况要排除
+         RFM_ADDON *addon_with_the_same_name = g_hash_table_lookup(addons_filename, addon->addon_base_filename);
+         if (addon_with_the_same_name) {
+           g_warning("Addon %s with the same name already loaded, no need to load %s", addon_with_the_same_name->addon_c_fullpath, addon->addon_c_fullpath);
+           goto cleanup;
+         }
        }
        if (!g_file_test(addon->addon_so_fullpath, G_FILE_TEST_EXISTS)) {
            g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "%s not found, compilation needed.", addon->addon_so_fullpath);
@@ -6597,9 +6609,9 @@ static void load_addon(CALLER_OWN char* addon_fullpath){
        } else {
            // Compare hashes instead of timestamps
            addon->addon_hash = calculate_file_hash(addon->addon_c_fullpath);
-	   gchar* already_loaded = g_hash_table_lookup(addons_hash, addon->addon_hash);
-	   if (already_loaded){
-	     g_warning("Addon %s with the same hash already loaded , no need to load %s", already_loaded, addon->addon_c_fullpath);
+	   RFM_ADDON* addon_with_the_same_hash = g_hash_table_lookup(addons_hash, addon->addon_hash);
+	   if (addon_with_the_same_hash){
+	     g_warning("Addon %s with the same hash already loaded , no need to load %s", addon_with_the_same_hash->addon_c_fullpath, addon->addon_c_fullpath);
 	     goto cleanup;
 	   }
            gchar *so_hash = NULL;
@@ -6697,7 +6709,8 @@ static void load_addon(CALLER_OWN char* addon_fullpath){
             g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Calling %s from %s", RFM_ADDON_ENTER_FUNC, addon->addon_so_fullpath);
             (*(addon->addon_enter_func))(addon_dir); //call enter function
 	    g_hash_table_insert(addons, strdup(addon->addon_c_fullpath), addon);
-	    g_hash_table_insert(addons_hash, strdup(addon->addon_hash), strdup(addon->addon_c_fullpath));
+	    g_hash_table_insert(addons_hash, addon->addon_hash, addon);
+	    g_hash_table_insert(addons_filename, addon->addon_base_filename, addon);
 	    append_addon_treeviewColumns(addon,TRUE,TRUE);
 	    g_debug("addons size after loading:%d",g_hash_table_size(addons));
 	    g_free(addon_dir);
@@ -6781,6 +6794,7 @@ static void free_addon(RFM_ADDON *addon){
 	g_free(addon->addon_c_fullpath);
 	g_free(addon->addon_so_fullpath);
         g_free(addon->addon_hash);
+        g_free(addon->addon_base_filename);
         free(addon);
 }
 
@@ -6802,6 +6816,7 @@ static void unload_addon_filemenu_func() {
          if (addon) {
 	   g_hash_table_remove(addons, fileAttributes->path);
 	   g_hash_table_remove(addons_hash, addon->addon_hash);
+	   g_hash_table_remove(addons_filename, addon->addon_base_filename);
 	   unload_local_extension(addon);
 	   free_addon(addon);
 	 }
