@@ -794,6 +794,7 @@ typedef struct {
   void (*local_leave_func)(void);
   gchar *local_c_path;
   gchar *local_so_path;
+  gchar *addon_hash;
 } RFM_ADDON;
 
 static gboolean disable_addon = FALSE;
@@ -803,7 +804,7 @@ void remove_file_menuitems(FREE GtkWidget ***menuitems, const size_t size);
 static void free_addon(RFM_ADDON *addon);
 static GHashTable* addons; // RFM_ADDON as value
 static GHashTable* all_addon_definitions_by_dir; // addon definition file directory as key, nested ghashtable as value; in nested ghashtable, addon definition file fullpath as key, addon type definition str such as "const enum RFM_ADDON_TYPE addon_type = DirectoryTree;" as value
-
+static GHashTable* addons_hash; //use addon hash as key, filepath as value to detect duplicate load
 static void locate_all_addons_callback(RFM_ChildAttribs* child_attribs);
 static void load_addon(CALLER_OWN char* addon_fullpath);
 static void load_addon_dir(char* addon_dir);
@@ -5424,6 +5425,7 @@ int main(int argc, char *argv[])
 
    setenv("RFM_GIT_ROOT","/",1);
    addons = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
+   addons_hash = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
    rfmCtx=calloc(1,sizeof(RFM_ctx));
    if (rfmCtx==NULL) return 1;
    //rfmCtx->rfm_sortColumn=GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID;
@@ -6594,7 +6596,12 @@ static void load_addon(CALLER_OWN char* addon_fullpath){
            compile_needed = TRUE;
        } else {
            // Compare hashes instead of timestamps
-           gchar *current_c_hash = calculate_file_hash(addon->local_c_path);
+           addon->addon_hash = calculate_file_hash(addon->local_c_path);
+	   gchar* already_loaded = g_hash_table_lookup(addons_hash, addon->addon_hash);
+	   if (already_loaded){
+	     g_warning("Addon %s with the same hash already loaded , no need to load %s", already_loaded, addon->local_c_path);
+	     goto cleanup;
+	   }
            gchar *so_hash = NULL;
            void *temp_handle = dlopen(addon->local_so_path, RTLD_LAZY | RTLD_LOCAL);
 
@@ -6625,20 +6632,19 @@ static void load_addon(CALLER_OWN char* addon_fullpath){
                compile_needed = TRUE; // Force recompile if .so can't be opened
            }
 
-           if (!compile_needed && current_c_hash && so_hash) {
-               if (g_strcmp0(current_c_hash, so_hash) != 0) {
-                   g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Hash mismatch for %s. Recompilation needed. (C: %s, SO: %s)", addon->local_c_path, current_c_hash, so_hash);
+           if (!compile_needed && addon->addon_hash && so_hash) {
+               if (g_strcmp0(addon->addon_hash, so_hash) != 0) {
+                   g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Hash mismatch for %s. Recompilation needed. (C: %s, SO: %s)", addon->local_c_path, addon->addon_hash, so_hash);
                    compile_needed = TRUE;
                } else {
                     g_log(RFM_LOG_ADDON, G_LOG_LEVEL_DEBUG, "Hashes match for %s. No recompilation needed.", addon->local_c_path);
                }
-           } else if (!compile_needed && !current_c_hash) {
+           } else if (!compile_needed && !addon->addon_hash) {
                 g_warning("Failed to calculate hash for current %s. Recompiling.", addon->local_c_path);
                 compile_needed = TRUE; // Force recompile if current hash fails
            }
            // compile_needed might have been set true inside the dlopen/dlsym block
 
-           g_free(current_c_hash);
            g_free(so_hash);
        }
 
@@ -6691,6 +6697,7 @@ static void load_addon(CALLER_OWN char* addon_fullpath){
             g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Calling %s from %s", RFM_LOCAL_ENTER_FUNC, addon->local_so_path);
             (*(addon->local_enter_func))(addon_dir); //call enter function
 	    g_hash_table_insert(addons, strdup(addon->local_c_path), addon);
+	    g_hash_table_insert(addons_hash, strdup(addon->addon_hash), strdup(addon->local_c_path));
 	    append_addon_treeviewColumns(addon,TRUE,TRUE);
 	    g_debug("addons size after loading:%d",g_hash_table_size(addons));
 	    g_free(addon_dir);
@@ -6773,6 +6780,7 @@ static void unload_local_extension(RFM_ADDON *addon) {
 static void free_addon(RFM_ADDON *addon){
 	g_free(addon->local_c_path);
 	g_free(addon->local_so_path);
+        g_free(addon->addon_hash);
         free(addon);
 }
 
@@ -6793,6 +6801,7 @@ static void unload_addon_filemenu_func() {
 	 RFM_ADDON *addon = g_hash_table_lookup(addons, fileAttributes->path);
          if (addon) {
 	   g_hash_table_remove(addons, fileAttributes->path);
+	   g_hash_table_remove(addons_hash, addon->addon_hash);
 	   unload_local_extension(addon);
 	   free_addon(addon);
 	 }
