@@ -61,8 +61,8 @@ const stdin_cmd_interpretor stdin_cmd_interpretors[] = {
 };
 
 #ifdef RFM_AddOn
-#define RFM_LOCAL_ENTER_FUNC "rfm_local_enter"
-#define RFM_LOCAL_LEAVE_FUNC "rfm_local_leave"
+#define RFM_ADDON_ENTER_FUNC "rfm_local_enter"
+#define RFM_ADDON_LEAVE_FUNC "rfm_local_leave"
 //#define RFM_ADDON_FILENAME_SUFFIX ".rfm_addon.c"
 //这里暂时把之前的 addon 文件名作为后缀，保持兼容。推荐使用上面注释掉行的文件名后缀，可以通过添加软链接实现，以便保持git log 完整易读
 #define RFM_ADDON_FILENAME_SUFFIX "/rfm_local.c"

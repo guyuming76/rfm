@@ -6680,21 +6680,21 @@ static void load_addon(CALLER_OWN char* addon_fullpath){
 
 	if (addon->addon_type == Directory && strcmp(rfm_curPath, addon_dir)!=0) goto cleanup;
 
-	addon->addon_leave_func = dlsym(addon->addon_so_handle, RFM_LOCAL_LEAVE_FUNC);
+	addon->addon_leave_func = dlsym(addon->addon_so_handle, RFM_ADDON_LEAVE_FUNC);
         dlsym_error = dlerror();
         if (dlsym_error) {
-	    g_warning("dlsym failed for %s in %s: %s", RFM_LOCAL_LEAVE_FUNC, addon->addon_so_fullpath, dlsym_error);
+	    g_warning("dlsym failed for %s in %s: %s", RFM_ADDON_LEAVE_FUNC, addon->addon_so_fullpath, dlsym_error);
 	    goto cleanup;
 	}
 
         // Find and call enter function
-        addon->addon_enter_func = dlsym(addon->addon_so_handle, RFM_LOCAL_ENTER_FUNC);
+        addon->addon_enter_func = dlsym(addon->addon_so_handle, RFM_ADDON_ENTER_FUNC);
         dlsym_error = dlerror();
         if (dlsym_error) {
-            g_warning("dlsym failed for %s in %s: %s", RFM_LOCAL_ENTER_FUNC, addon->addon_so_fullpath, dlsym_error);
+            g_warning("dlsym failed for %s in %s: %s", RFM_ADDON_ENTER_FUNC, addon->addon_so_fullpath, dlsym_error);
             goto cleanup;
         } else if (addon->addon_enter_func){
-            g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Calling %s from %s", RFM_LOCAL_ENTER_FUNC, addon->addon_so_fullpath);
+            g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Calling %s from %s", RFM_ADDON_ENTER_FUNC, addon->addon_so_fullpath);
             (*(addon->addon_enter_func))(addon_dir); //call enter function
 	    g_hash_table_insert(addons, strdup(addon->addon_c_fullpath), addon);
 	    g_hash_table_insert(addons_hash, strdup(addon->addon_hash), strdup(addon->addon_c_fullpath));
@@ -6703,7 +6703,7 @@ static void load_addon(CALLER_OWN char* addon_fullpath){
 	    g_free(addon_dir);
 	    return; // 成功call enter funtion 就不要cleanup, unload 完再cleanup
         } else {
-             g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Function %s not found in %s (optional).", RFM_LOCAL_ENTER_FUNC, addon->addon_so_fullpath);
+             g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Function %s not found in %s (optional).", RFM_ADDON_ENTER_FUNC, addon->addon_so_fullpath);
         }
     } else {
          g_log(RFM_LOG_ADDON, G_LOG_LEVEL_DEBUG, "No local extension file %s found.", addon->addon_c_fullpath);
@@ -6765,10 +6765,10 @@ static void unload_local_extension(RFM_ADDON *addon) {
   if (addon->addon_so_handle) {
         g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Unloading local extension. %s", addon->addon_so_fullpath);
         if (addon->addon_leave_func) {
-            g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Calling %s from %s", RFM_LOCAL_LEAVE_FUNC, addon->addon_so_fullpath);
+            g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Calling %s from %s", RFM_ADDON_LEAVE_FUNC, addon->addon_so_fullpath);
             (*(addon->addon_leave_func))(); //call leave function
         } else {
-             g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Function %s not found in %s (optional).", RFM_LOCAL_LEAVE_FUNC, addon->addon_so_fullpath);
+             g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Function %s not found in %s (optional).", RFM_ADDON_LEAVE_FUNC, addon->addon_so_fullpath);
         }
         remove_addon_treeviewColumns(addon);
         if (dlclose(addon->addon_so_handle) != 0) {
