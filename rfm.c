@@ -789,11 +789,11 @@ static size_t TREEVIEW_COLUMNS_array_size = G_N_ELEMENTS(treeviewColumns);
 typedef struct {
   RFM_ADDON_RESOURCE_TYPE * resource_managed_by_addon;
   enum RFM_ADDON_TYPE addon_type;
-  void *rfm_local_so_handle;
-  void (*local_enter_func)(gchar*);
-  void (*local_leave_func)(void);
-  gchar *local_c_path;
-  gchar *local_so_path;
+  void *addon_so_handle;
+  void (*addon_enter_func)(gchar*);
+  void (*addon_leave_func)(void);
+  gchar *addon_c_fullpath;
+  gchar *addon_so_fullpath;
   gchar *addon_hash;
 } RFM_ADDON;
 
@@ -3013,7 +3013,7 @@ static void toolbar_button_exec(GtkToolItem *item, RFM_ToolButton *button_defini
      while (g_hash_table_iter_next(&ht_iter, &key, &value)){
        if ((button_definition >= value->resource_managed_by_addon->toolbar_button_definitions_local)
 	   && button_definition < value->resource_managed_by_addon->toolbar_button_definitions_local + (value->resource_managed_by_addon->toolbar_button_definitions_local_array_size)*sizeof(RFM_ToolButton)){ //根据地址判断button_definition 指向某个静态数组.TODO:建立一个反向索引hashtable,以resource_managed_by_addon成员地址为key,addon为value,这样就不用循环了，直接lookup。问题是建一个hashtable呢还是每种成员建一个hashtable，如果是每种成员建一个hashtable，需要iterate时，每次只需要在特定hashtable上iterate就可以了
-	 child_attribs->toolbar_button_or_filemenu_addon_dir = g_path_get_dirname(value->local_c_path);
+	 child_attribs->toolbar_button_or_filemenu_addon_dir = g_path_get_dirname(value->addon_c_fullpath);
 	 break;
        }
      }
@@ -3049,7 +3049,7 @@ static void file_menu_exec(GtkMenuItem *menuitem, RFM_MenuItem *file_menu_item_d
      while (g_hash_table_iter_next(&ht_iter, &key, &value)){
        if ((file_menu_item_definition >= value->resource_managed_by_addon->file_menuitem_definitions_local)
 	   && file_menu_item_definition < value->resource_managed_by_addon->file_menuitem_definitions_local + (value->resource_managed_by_addon->file_menuitem_definitions_local_array_size)*sizeof(RFM_MenuItem)){ //根据地址判断button_definition 指向某个静态数组.TODO:建立一个反向索引hashtable,以resource_managed_by_addon成员地址为key,addon为value,这样就不用循环了，直接lookup。问题是建一个hashtable呢还是每种成员建一个hashtable，如果是每种成员建一个hashtable，需要iterate时，每次只需要在特定hashtable上iterate就可以了
-	 child_attribs->toolbar_button_or_filemenu_addon_dir = g_path_get_dirname(value->local_c_path);
+	 child_attribs->toolbar_button_or_filemenu_addon_dir = g_path_get_dirname(value->addon_c_fullpath);
 	 break;
        }
      }
@@ -4805,11 +4805,11 @@ static RFM_SearchResultType* MatchSearchResultType(gchar* readlineResult, RFM_Ch
 		   for (guint i = 0; i < addon_resource->searchresulttypes_array_size; i++) {
 		         char* searchTypeNameSuffix=g_strconcat(RFM_SearchResultTypeNamePrefix,addon_resource->searchresulttypes[i].name,NULL);
 			 if (g_str_has_suffix(readlineResult, searchTypeNameSuffix)){
-			   g_debug("Addon:%s; searchResultTypeName:%s",value->local_c_path,addon_resource->searchresulttypes[i].name);
+			   g_debug("Addon:%s; searchResultTypeName:%s",value->addon_c_fullpath,addon_resource->searchresulttypes[i].name);
 			   readlineResult[len-strlen(searchTypeNameSuffix)]='\0';//remove suffix from readlineResult
 			   g_free(searchTypeNameSuffix);
 
-			   childattribs->searchresulttype_addon_dir = g_dirname(value->local_c_path);
+			   childattribs->searchresulttype_addon_dir = g_dirname(value->addon_c_fullpath);
 			   return &(addon_resource->searchresulttypes[i]);
 			 }
 			 g_free(searchTypeNameSuffix);
@@ -5930,7 +5930,7 @@ static int ProcessKeyValuePairInData(GKeyFile *keyfile, char* groupname){
 			   if (strlen(addon_resource->searchresulttypes[i].name)>strlen(longest_matched_searchresulttype_name)){
 			     longest_matched_searchresulttype_name = addon_resource->searchresulttypes[i].name;
 			     matched_searchresulttype_pointer = &(addon_resource->searchresulttypes[i]);
-			     childAttribs->searchresulttype_addon_dir = g_path_get_dirname(value->local_c_path);
+			     childAttribs->searchresulttype_addon_dir = g_path_get_dirname(value->addon_c_fullpath);
 			   }
 			 }
 		   }
@@ -6476,14 +6476,14 @@ static gboolean compile_local_extension(RFM_ADDON* addon) {
     gchar *c_file_hash = NULL; // To store the hash of the .c file
 
     // Calculate hash of the .c file
-    c_file_hash = calculate_file_hash(addon->local_c_path);
+    c_file_hash = calculate_file_hash(addon->addon_c_fullpath);
     if (!c_file_hash) {
-        g_warning("Failed to calculate hash for %s", addon->local_c_path);
+        g_warning("Failed to calculate hash for %s", addon->addon_c_fullpath);
         // No goto cleanup here, just return FALSE after freeing potential resources
         // Note: local_c_path and local_so_path are freed in the caller (load_local_extension)
         return FALSE;
     }
-    g_debug("Hash of %s: %s", addon->local_c_path, c_file_hash);
+    g_debug("Hash of %s: %s", addon->addon_c_fullpath, c_file_hash);
 
     // Prepare the hash definition for the compiler command
     gchar *hash_define = g_strdup_printf("-DRFM_LOCAL_C_HASH=\\\"%s\\\"", c_file_hash);
@@ -6498,7 +6498,7 @@ static gboolean compile_local_extension(RFM_ADDON* addon) {
     DCmarkTools = "-DCmarkTools";
 #endif
 
-    gchar* rfm_local_c_compile_cmd = g_strdup_printf(rfm_local_c_compile_cmd_template, DCmarkTools, DGitIntegration, rfmLANGUAGE, RFM_SearchResultTypeNamePrefix, RFM_NEW_TERM_SUFFIX, RFM_selected_filename_placeholder, RFM_SEARCH_RESULT_AS_INPUT_PREFIX, addon->local_so_path, hash_define, addon->local_c_path);
+    gchar* rfm_local_c_compile_cmd = g_strdup_printf(rfm_local_c_compile_cmd_template, DCmarkTools, DGitIntegration, rfmLANGUAGE, RFM_SearchResultTypeNamePrefix, RFM_NEW_TERM_SUFFIX, RFM_selected_filename_placeholder, RFM_SEARCH_RESULT_AS_INPUT_PREFIX, addon->addon_so_fullpath, hash_define, addon->addon_c_fullpath);
     RFM_ChildAttribs *childAttribs = calloc(1, sizeof(RFM_ChildAttribs));
     return parse_and_exec_command_in_gtk_thread(rfm_local_c_compile_cmd, FALSE, &(stdin_cmd_interpretors[0]), childAttribs);
 }
@@ -6515,7 +6515,7 @@ static void remove_addon_treeviewColumns(RFM_ADDON *addon){
       RFM_treeviewColumn *col = get_treeviewColumnByTitle(addon->resource_managed_by_addon->treeviewColumns[i].title);
       //TODO:在load_addon的时候检查title重复冲突
       if (col) col->enumCol = NUM_COLS;//先置空所有 enumCol TODO: 如果控件不为空,要释放控件吗?还是refresh_store的时候会自动处理?
-      else g_warning("treeview column title %s in addon %s not found",addon->resource_managed_by_addon->treeviewColumns[i].title, addon->local_c_path);
+      else g_warning("treeview column title %s in addon %s not found",addon->resource_managed_by_addon->treeviewColumns[i].title, addon->addon_c_fullpath);
     }
     gchar *column_layout_without_addon = get_current_column_layout(TRUE);//获取除了此addon外的列layout
 
@@ -6580,30 +6580,30 @@ static void load_addon(CALLER_OWN char* addon_fullpath){
     char *dlsym_error = NULL; //The message returned by dlerror() may reside in a statically allocated buffer that is overwritten by subsequent dlerror()calls. https://www.man7.org/linux/man-pages/man3/dlerror.3.html
     g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "load_addon(%s)",addon_fullpath);
     RFM_ADDON * addon = calloc(1, sizeof(RFM_ADDON));
-    addon->local_c_path = g_strdup(addon_fullpath);
+    addon->addon_c_fullpath = g_strdup(addon_fullpath);
     gchar* addon_dir = g_path_get_dirname(addon_fullpath);
     // 生成.so文件名：将.c替换为.so
     gchar *base_name = g_path_get_basename(addon_fullpath);
-    addon->local_so_path = g_strdup_printf("%s/%.*s.so",addon_dir, (int)(strlen(base_name)-2), base_name); // 去掉.c，加上.so
+    addon->addon_so_fullpath = g_strdup_printf("%s/%.*s.so",addon_dir, (int)(strlen(base_name)-2), base_name); // 去掉.c，加上.so
     gboolean compile_needed = FALSE;
-    if (g_file_test(addon->local_c_path, G_FILE_TEST_EXISTS)) {
-       if (g_hash_table_lookup(addons, addon->local_c_path)){
-	   g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Addon %s already loaded, no need to load again", addon->local_c_path);
+    if (g_file_test(addon->addon_c_fullpath, G_FILE_TEST_EXISTS)) {
+       if (g_hash_table_lookup(addons, addon->addon_c_fullpath)){
+	   g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Addon %s already loaded, no need to load again", addon->addon_c_fullpath);
 	   goto cleanup;
        }
-       if (!g_file_test(addon->local_so_path, G_FILE_TEST_EXISTS)) {
-           g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "%s not found, compilation needed.", addon->local_so_path);
+       if (!g_file_test(addon->addon_so_fullpath, G_FILE_TEST_EXISTS)) {
+           g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "%s not found, compilation needed.", addon->addon_so_fullpath);
            compile_needed = TRUE;
        } else {
            // Compare hashes instead of timestamps
-           addon->addon_hash = calculate_file_hash(addon->local_c_path);
+           addon->addon_hash = calculate_file_hash(addon->addon_c_fullpath);
 	   gchar* already_loaded = g_hash_table_lookup(addons_hash, addon->addon_hash);
 	   if (already_loaded){
-	     g_warning("Addon %s with the same hash already loaded , no need to load %s", already_loaded, addon->local_c_path);
+	     g_warning("Addon %s with the same hash already loaded , no need to load %s", already_loaded, addon->addon_c_fullpath);
 	     goto cleanup;
 	   }
            gchar *so_hash = NULL;
-           void *temp_handle = dlopen(addon->local_so_path, RTLD_LAZY | RTLD_LOCAL);
+           void *temp_handle = dlopen(addon->addon_so_fullpath, RTLD_LAZY | RTLD_LOCAL);
 
            if (temp_handle) {
                // Clear any previous error before dlsym
@@ -6619,28 +6619,28 @@ static void load_addon(CALLER_OWN char* addon_fullpath){
                         so_hash = g_strdup(*hash_ptr);
                         g_log(RFM_LOG_ADDON, G_LOG_LEVEL_DEBUG, "Found hash in SO: %s", so_hash);
                    } else {
-                        g_warning("Symbol 'rfm_local_c_file_hash' found in %s but points to NULL. Recompiling.", addon->local_so_path);
+                        g_warning("Symbol 'rfm_local_c_file_hash' found in %s but points to NULL. Recompiling.", addon->addon_so_fullpath);
                         compile_needed = TRUE; // Force recompile if symbol is NULL
                    }
                } else {
-                    g_warning("Could not find symbol 'rfm_local_c_file_hash' in %s: %s. Recompiling.", addon->local_so_path, dlsym_error ? dlsym_error : "(symbol not found)");
+                    g_warning("Could not find symbol 'rfm_local_c_file_hash' in %s: %s. Recompiling.", addon->addon_so_fullpath, dlsym_error ? dlsym_error : "(symbol not found)");
                     compile_needed = TRUE; // Force recompile if symbol not found
                }
                dlclose(temp_handle);
            } else {
-               g_warning("Could not dlopen %s to check hash: %s. Recompiling.", addon->local_so_path, dlerror());
+               g_warning("Could not dlopen %s to check hash: %s. Recompiling.", addon->addon_so_fullpath, dlerror());
                compile_needed = TRUE; // Force recompile if .so can't be opened
            }
 
            if (!compile_needed && addon->addon_hash && so_hash) {
                if (g_strcmp0(addon->addon_hash, so_hash) != 0) {
-                   g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Hash mismatch for %s. Recompilation needed. (C: %s, SO: %s)", addon->local_c_path, addon->addon_hash, so_hash);
+                   g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Hash mismatch for %s. Recompilation needed. (C: %s, SO: %s)", addon->addon_c_fullpath, addon->addon_hash, so_hash);
                    compile_needed = TRUE;
                } else {
-                    g_log(RFM_LOG_ADDON, G_LOG_LEVEL_DEBUG, "Hashes match for %s. No recompilation needed.", addon->local_c_path);
+                    g_log(RFM_LOG_ADDON, G_LOG_LEVEL_DEBUG, "Hashes match for %s. No recompilation needed.", addon->addon_c_fullpath);
                }
            } else if (!compile_needed && !addon->addon_hash) {
-                g_warning("Failed to calculate hash for current %s. Recompiling.", addon->local_c_path);
+                g_warning("Failed to calculate hash for current %s. Recompiling.", addon->addon_c_fullpath);
                 compile_needed = TRUE; // Force recompile if current hash fails
            }
            // compile_needed might have been set true inside the dlopen/dlsym block
@@ -6656,62 +6656,62 @@ static void load_addon(CALLER_OWN char* addon_fullpath){
         }
 
         // Load the .so file
-        addon->rfm_local_so_handle = dlopen(addon->local_so_path, RTLD_LAZY | RTLD_LOCAL);
-        if (!addon->rfm_local_so_handle) {
-            g_warning("dlopen failed for %s: %s", addon->local_so_path, dlerror());
+        addon->addon_so_handle = dlopen(addon->addon_so_fullpath, RTLD_LAZY | RTLD_LOCAL);
+        if (!addon->addon_so_handle) {
+            g_warning("dlopen failed for %s: %s", addon->addon_so_fullpath, dlerror());
             goto cleanup;
         }
 
         //查找 addon 资源
-        addon->resource_managed_by_addon = dlsym(addon->rfm_local_so_handle, RFM_ADDON_RESOURCE_STRUCT);
+        addon->resource_managed_by_addon = dlsym(addon->addon_so_handle, RFM_ADDON_RESOURCE_STRUCT);
         dlsym_error = dlerror();
         if (dlsym_error) {
-            g_warning("dlsym failed for %s in %s: %s", RFM_ADDON_RESOURCE_STRUCT, addon->local_so_path, dlsym_error);
+            g_warning("dlsym failed for %s in %s: %s", RFM_ADDON_RESOURCE_STRUCT, addon->addon_so_fullpath, dlsym_error);
             goto cleanup;
         }
 
         //查找 addon 类型
-        enum RFM_ADDON_TYPE *addon_type_variable = dlsym(addon->rfm_local_so_handle, RFM_ADDON_TYPE_VAR_NAME);
+        enum RFM_ADDON_TYPE *addon_type_variable = dlsym(addon->addon_so_handle, RFM_ADDON_TYPE_VAR_NAME);
         dlsym_error = dlerror();
         if (dlsym_error) {
-            g_warning("dlsym failed for %s in %s: %s", RFM_ADDON_TYPE_VAR_NAME, addon->local_so_path, dlsym_error);
+            g_warning("dlsym failed for %s in %s: %s", RFM_ADDON_TYPE_VAR_NAME, addon->addon_so_fullpath, dlsym_error);
             goto cleanup;
         }else addon->addon_type = *addon_type_variable;
 
 	if (addon->addon_type == Directory && strcmp(rfm_curPath, addon_dir)!=0) goto cleanup;
 
-	addon->local_leave_func = dlsym(addon->rfm_local_so_handle, RFM_LOCAL_LEAVE_FUNC);
+	addon->addon_leave_func = dlsym(addon->addon_so_handle, RFM_LOCAL_LEAVE_FUNC);
         dlsym_error = dlerror();
         if (dlsym_error) {
-	    g_warning("dlsym failed for %s in %s: %s", RFM_LOCAL_LEAVE_FUNC, addon->local_so_path, dlsym_error);
+	    g_warning("dlsym failed for %s in %s: %s", RFM_LOCAL_LEAVE_FUNC, addon->addon_so_fullpath, dlsym_error);
 	    goto cleanup;
 	}
 
         // Find and call enter function
-        addon->local_enter_func = dlsym(addon->rfm_local_so_handle, RFM_LOCAL_ENTER_FUNC);
+        addon->addon_enter_func = dlsym(addon->addon_so_handle, RFM_LOCAL_ENTER_FUNC);
         dlsym_error = dlerror();
         if (dlsym_error) {
-            g_warning("dlsym failed for %s in %s: %s", RFM_LOCAL_ENTER_FUNC, addon->local_so_path, dlsym_error);
+            g_warning("dlsym failed for %s in %s: %s", RFM_LOCAL_ENTER_FUNC, addon->addon_so_fullpath, dlsym_error);
             goto cleanup;
-        } else if (addon->local_enter_func){
-            g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Calling %s from %s", RFM_LOCAL_ENTER_FUNC, addon->local_so_path);
-            (*(addon->local_enter_func))(addon_dir); //call enter function
-	    g_hash_table_insert(addons, strdup(addon->local_c_path), addon);
-	    g_hash_table_insert(addons_hash, strdup(addon->addon_hash), strdup(addon->local_c_path));
+        } else if (addon->addon_enter_func){
+            g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Calling %s from %s", RFM_LOCAL_ENTER_FUNC, addon->addon_so_fullpath);
+            (*(addon->addon_enter_func))(addon_dir); //call enter function
+	    g_hash_table_insert(addons, strdup(addon->addon_c_fullpath), addon);
+	    g_hash_table_insert(addons_hash, strdup(addon->addon_hash), strdup(addon->addon_c_fullpath));
 	    append_addon_treeviewColumns(addon,TRUE,TRUE);
 	    g_debug("addons size after loading:%d",g_hash_table_size(addons));
 	    g_free(addon_dir);
 	    return; // 成功call enter funtion 就不要cleanup, unload 完再cleanup
         } else {
-             g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Function %s not found in %s (optional).", RFM_LOCAL_ENTER_FUNC, addon->local_so_path);
+             g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Function %s not found in %s (optional).", RFM_LOCAL_ENTER_FUNC, addon->addon_so_fullpath);
         }
     } else {
-         g_log(RFM_LOG_ADDON, G_LOG_LEVEL_DEBUG, "No local extension file %s found.", addon->local_c_path);
+         g_log(RFM_LOG_ADDON, G_LOG_LEVEL_DEBUG, "No local extension file %s found.", addon->addon_c_fullpath);
     }
  cleanup:
-    if (addon->rfm_local_so_handle) {
-        if (dlclose(addon->rfm_local_so_handle) != 0) g_warning("dlclose failed: %s", dlerror());
-        addon->rfm_local_so_handle = NULL;
+    if (addon->addon_so_handle) {
+        if (dlclose(addon->addon_so_handle) != 0) g_warning("dlclose failed: %s", dlerror());
+        addon->addon_so_handle = NULL;
     }
     free_addon(addon);
     g_free(addon_dir);
@@ -6750,7 +6750,7 @@ static void find_and_unload_addons_before_leaving_current_directory(CALLER_OWN c
     RFM_ADDON *value;
     g_hash_table_iter_init(&ht_iter, addons);
     while (g_hash_table_iter_next(&ht_iter, &key, &value)){
-      gchar * addon_dir = g_path_get_dirname(value->local_c_path);
+      gchar * addon_dir = g_path_get_dirname(value->addon_c_fullpath);
       if (value->addon_type==Directory || (value->addon_type==DirectoryTree && !g_str_has_prefix(path, addon_dir))) {
 	g_hash_table_iter_remove(&ht_iter);
 	unload_local_extension(value);
@@ -6762,24 +6762,24 @@ static void find_and_unload_addons_before_leaving_current_directory(CALLER_OWN c
 }
 
 static void unload_local_extension(RFM_ADDON *addon) {
-  if (addon->rfm_local_so_handle) {
-        g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Unloading local extension. %s", addon->local_so_path);
-        if (addon->local_leave_func) {
-            g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Calling %s from %s", RFM_LOCAL_LEAVE_FUNC, addon->local_so_path);
-            (*(addon->local_leave_func))(); //call leave function
+  if (addon->addon_so_handle) {
+        g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Unloading local extension. %s", addon->addon_so_fullpath);
+        if (addon->addon_leave_func) {
+            g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Calling %s from %s", RFM_LOCAL_LEAVE_FUNC, addon->addon_so_fullpath);
+            (*(addon->addon_leave_func))(); //call leave function
         } else {
-             g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Function %s not found in %s (optional).", RFM_LOCAL_LEAVE_FUNC, addon->local_so_path);
+             g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Function %s not found in %s (optional).", RFM_LOCAL_LEAVE_FUNC, addon->addon_so_fullpath);
         }
         remove_addon_treeviewColumns(addon);
-        if (dlclose(addon->rfm_local_so_handle) != 0) {
+        if (dlclose(addon->addon_so_handle) != 0) {
              g_warning("dlclose failed: %s", dlerror());
         }
     }
 }
 
 static void free_addon(RFM_ADDON *addon){
-	g_free(addon->local_c_path);
-	g_free(addon->local_so_path);
+	g_free(addon->addon_c_fullpath);
+	g_free(addon->addon_so_fullpath);
         g_free(addon->addon_hash);
         free(addon);
 }
