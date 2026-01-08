@@ -6584,6 +6584,7 @@ static void load_addon(CALLER_OWN char* addon_fullpath){
     g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "load_addon(%s)",addon_fullpath);
     RFM_ADDON * addon = calloc(1, sizeof(RFM_ADDON));
     addon->addon_c_fullpath = g_strdup(addon_fullpath);
+    addon->addon_hash = calculate_file_hash(addon->addon_c_fullpath);
     gchar* addon_dir = g_path_get_dirname(addon_fullpath);
     // 生成.so文件名：将.c替换为.so
     addon->addon_base_filename = g_path_get_basename(addon_fullpath);
@@ -6608,7 +6609,6 @@ static void load_addon(CALLER_OWN char* addon_fullpath){
            compile_needed = TRUE;
        } else {
            // Compare hashes instead of timestamps
-           addon->addon_hash = calculate_file_hash(addon->addon_c_fullpath);
 	   RFM_ADDON* addon_with_the_same_hash = g_hash_table_lookup(addons_hash, addon->addon_hash);
 	   if (addon_with_the_same_hash){
 	     g_warning("Addon %s with the same hash already loaded , no need to load %s", addon_with_the_same_hash->addon_c_fullpath, addon->addon_c_fullpath);
