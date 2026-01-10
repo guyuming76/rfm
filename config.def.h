@@ -137,6 +137,7 @@ static const char *create_softlink[] = { stdin_cmd_interpretors[0].name, "rfmCre
 static const char *find_softlink[] = { "$RFM_TERM",rfmBinPath "rfmFindLinksToTheSameFile.sh",NULL };
 static const char *ShowSoftLinkToFileInSearchResult[] = { stdin_cmd_interpretors[0].name, "find -L \"$RFM_GIT_ROOT\" -not -path '*/.git/*' -exec test %s  -ef {} \\; -print"RFM_SearchResultTypeNamePrefix"0 ",NULL};
 static const char *findDimensionValueForFile[] = { rfmBinPath "rfmFindDimensionValueForFile.sh",NULL};
+static const char *ShowAllValuesForOneDimension[] = { rfmBinPath "rfmShowAllValuesForOneDimension.sh",NULL};
 static const char *change_owner[] = { "$RFM_TERM", rfmBinPath "rfmChangeOwner.sh",NULL };
 static const char *play_video[] = { "/usr/bin/xdg-open", NULL };
 static const char *play_audio[] = { "/usr/bin/xdg-open", NULL };
