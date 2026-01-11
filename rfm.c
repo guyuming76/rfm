@@ -471,15 +471,19 @@ typedef struct {
   gchar *name;
   gchar *RemoteAddress;
   gchar *localAddress;
+  gboolean use_getExtColumnValueFromHashTable;
 } DimensionProperties;
 
 static GHashTable* DimensionPropertiesHashTable_name_asKey;// Key:ExtColumn Name. Value:struct DimensionProperties
 static GHashTable* DimensionPropertiesHashTable_localAddress_asKey;// Key:ExtColumn localAddress. Value:struct DimensionProperties
 static void refresh_DimensionPropertiesHashTable();
-static gboolean SetViewColumnForDimension(gchar* dimName);
+static gboolean SetViewColumnForDimension(DimensionProperties* dimProps);
 static void load_DimensionPropertiesHashTable_Callback(RFM_ChildAttribs* child_attribs);
 static void load_ExtColumnHashTable_for_one_Dimension_for_GtkTreeIter(RFM_ChildAttribs* child_attribs);
 static void load_ExtColumnHashTables_for_all_Dimensions_for_GtkTreeIter(GtkTreeIter* iter_for_file_in_store);
+static void load_AllDimensionValues_for_DimensionColumns();
+static void load_AllDimensionValues_for_one_DimensionColumn(RFM_ChildAttribs* childAttribs);
+static gchar* getDimensionValueFromHashTable(gchar* fullpath, guint ExtColumnHashTableIndex);
 static void free_DimensionProperties(DimensionProperties *dimProp);
 static void call_g_dir_read_name_recursivly_to_get_dir_names_as_dimension_members(GSList **list, const char *base, const char *path);
 static char **get_rfm_dimension_members_for_one_dimension(const char *dimension_localAddress, int start, int end);
@@ -2028,6 +2032,9 @@ static void load_ExtColumns_and_iconview_markup_tooltip(RFM_FileAttributes* file
 		else gtk_list_store_set(store,cell->iter, cell->store_column, ExtColumnValueInHashTable, -1);
 		g_free(ExtColumnValueInHashTable);
 	      }
+	    }else if (TREEVIEW_COLUMNS[i].ValueFunc==getDimensionValueFromHashTable){
+	      gchar* DimensionValueInHashTable = TREEVIEW_COLUMNS[i].ValueFunc(fileAttributes->path, TREEVIEW_COLUMNS[i].enumCol-COL_Ext1);
+	      gtk_list_store_set(store,cell->iter, cell->store_column, DimensionValueInHashTable, -1);
 	    }else if (TREEVIEW_COLUMNS[i].ValueFunc!=NULL){
 	      gtk_list_store_set(store,cell->iter, cell->store_column, TREEVIEW_COLUMNS[i].ValueFunc(fileAttributes->id), -1);
 	      //for grepMatch column, fileAttributes->file_name is added as key into grepMatch_hash, however, we suppose grep output absoluteaddr, so filenamne equals fileattributes->path here
@@ -2446,6 +2453,7 @@ static gboolean fill_fileAttributeList_with_filenames_from_search_result_and_the
   gtk_tree_sortable_set_default_sort_func(GTK_TREE_SORTABLE(store), sort_func, NULL, NULL);
   gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(store), current_sort_column_id, current_sorttype);
 
+  load_AllDimensionValues_for_DimensionColumns();
   //We can load thumbnail and gitCommitMsg one by one right after one row of store inserted, as we do in read_one_DirItem_into_fileAttributeList_and_insert_into_store_in_each_cal. But since for pipeline, we have the paging mechanism, we won't have too much rows loaded in a batch, so, we keep the old way of loading thumbnails and gitCommitMsg in batch here. 
   Iterate_through_fileAttribute_list_to_insert_into_store();
   if (rfm_do_thumbs == 1 && g_file_test(rfm_thumbDir, G_FILE_TEST_IS_DIR))
@@ -2560,6 +2568,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
 #else
      title=g_strdup(rfm_curPath);
 #endif
+     load_AllDimensionValues_for_DimensionColumns();
      read_one_file_couter = 0;
      if (insert_fileAttributes_into_store_one_by_one)
        rfm_readDirSheduler=g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, (GSourceFunc)read_one_DirItem_into_fileAttributeList_and_insert_into_store_if_onebyone, dir, (GDestroyNotify)g_dir_close);
@@ -3219,7 +3228,7 @@ static void createCandidateColumnsMenu(GtkMenuItem* parent, RFM_treeviewColumn *
     if (TREEVIEW_COLUMNS[i].enumCol<NUM_COLS){
       snprintf(menuTitle, sizeof(menuTitle),"%4d: %s%s", TREEVIEW_COLUMNS[i].Show? TREEVIEW_COLUMNS[i].enumCol : (-1)*TREEVIEW_COLUMNS[i].enumCol,TREEVIEW_COLUMNS[i].title, (current_sort_column_id==TREEVIEW_COLUMNS[i].enumCol?(current_sorttype==GTK_SORT_ASCENDING?"{v}":"{^}"):""));
       menuItemForColumn = gtk_menu_item_new_with_label(menuTitle);
-    }else if (TREEVIEW_COLUMNS[i].ValueFunc!=getExtColumnValueFromHashTable){
+    }else if (TREEVIEW_COLUMNS[i].ValueFunc!=getExtColumnValueFromHashTable && TREEVIEW_COLUMNS[i].ValueFunc!=getDimensionValueFromHashTable){
       g_assert(!TREEVIEW_COLUMNS[i].Show);
       snprintf(menuTitle,sizeof(menuTitle),"    : %s",TREEVIEW_COLUMNS[i].title);
       menuItemForColumn = gtk_menu_item_new_with_label(menuTitle);
@@ -3319,7 +3328,7 @@ static gboolean on_query_tooltip(GtkWidget *widget, gint x, gint y, gboolean key
 
         if (path && gtk_tree_model_get_iter(model, &iter, path)) {
 	    if (column) col = get_treeviewcolumnByGtkTreeviewcolumn(column);
-	    if (col==NULL || col->ValueFunc!=getExtColumnValueFromHashTable) return FALSE;
+	    if (col==NULL || col->ValueFunc!=getExtColumnValueFromHashTable) return FALSE;//Dimension 列內容通常不會很長，能顯示完整，無需tooltip
 	    RFM_FileAttributes *fileAttributes;
             gtk_tree_model_get(model, &iter, COL_ATTR, &fileAttributes, -1);
 	    gchar *cell_text = getExtColumnValueFromHashTable(fileAttributes->id, col->enumCol-COL_Ext1);
@@ -4404,7 +4413,7 @@ static void print_columns_status(wordexp_t * parsed_msg){
 	    for(size_t i=0;i<TREEVIEW_COLUMNS_array_size;i++)
 	      if (TREEVIEW_COLUMNS[i].enumCol<NUM_COLS)
 		printf("%4d: %s%s\n", TREEVIEW_COLUMNS[i].Show? TREEVIEW_COLUMNS[i].enumCol : (-1)*TREEVIEW_COLUMNS[i].enumCol,TREEVIEW_COLUMNS[i].title, (current_sort_column_id==TREEVIEW_COLUMNS[i].enumCol?(current_sorttype==GTK_SORT_ASCENDING?"{v}":"{^}"):""));
-	      else if (TREEVIEW_COLUMNS[i].ValueFunc!=getExtColumnValueFromHashTable){//如果是C1,C2,...C60这样的列且还没映射到store, 就不要显示了，否则显示太长，用户需要往上翻看实际关心的列标题。除了用这种方式判断，有没有更好的方法判断这种扩展列？
+	      else if (TREEVIEW_COLUMNS[i].ValueFunc!=getExtColumnValueFromHashTable){//如果是C1,C2,...C60这样的列且还没映射到store, 就不要显示了，否则显示太长，用户需要往上翻看实际关心的列标题。除了用这种方式判断，有没有更好的方法判断这种扩展列？ 如果是getDimensionValueFromHashTable,則意味這 enumCol<NUM_COLS, 因為已經分配了
 	        g_assert(!TREEVIEW_COLUMNS[i].Show);
 		printf("    : %s\n",TREEVIEW_COLUMNS[i].title);
 	      }
@@ -4585,7 +4594,7 @@ static GPtrArray* rfm_editor_completion_based_on_search_result(char *text) {
   int ret_row_index=0;
   if (SearchResultViewInsteadOfDirectoryView){
     	    for(size_t i=0;i<TREEVIEW_COLUMNS_array_size;i++)
-	      if (TREEVIEW_COLUMNS[i].enumCol<NUM_COLS && TREEVIEW_COLUMNS[i].Show && TREEVIEW_COLUMNS[i].gtkCol && TREEVIEW_COLUMNS[i].ValueFunc==getExtColumnValueFromHashTable){
+	      if (TREEVIEW_COLUMNS[i].enumCol<NUM_COLS && TREEVIEW_COLUMNS[i].Show && TREEVIEW_COLUMNS[i].gtkCol && TREEVIEW_COLUMNS[i].ValueFunc==getExtColumnValueFromHashTable){//TODO:getExtColumnValueFromHashTable情況下，hashtable中包含是已經在當前searchresult中用到的維度值。如果是getDimensionValueFromHashTable, 則hashtable中是所有已經用到的維度值和所有被維度值標記的值,會遠大於所有維度值，有大量重複。這裡，在getDimensionValueFromHashTable情況下，如果能獲得所有維度值比較合適，distinct的
 		if (text==NULL || g_strcmp0(text, "")==0){//输入上下文为空时，把查询结果列名作为补全内容
 		  g_ptr_array_add(ret, g_strdup_printf("|%s",TREEVIEW_COLUMNS[i].title));//因为linux文件名路径中不可以出现|字符，所以返回项中加|前缀以便和路径补全的结果区分，下同
                 }else if (strstr(text, TREEVIEW_COLUMNS[i].title) && ExtColumnHashTable[ExtColumnHashTable_column_index_as_ret_row_index]){ //否则，从列名包含在输入上下文内容中的列对应的ExtColumnHashTable中取值
@@ -5970,6 +5979,14 @@ static gchar* getExtColumnValueFromHashTable(guint fileAttributeId, guint ExtCol
    return ret;
 }
 
+static gchar* getDimensionValueFromHashTable(gchar* fullpath, guint ExtColumnHashTableIndex){
+   if (ExtColumnHashTable[ExtColumnHashTableIndex]==NULL) return NULL;
+   gchar *ret=g_hash_table_lookup(ExtColumnHashTable[ExtColumnHashTableIndex], fullpath);
+   g_log(RFM_LOG_DATA_EXT, G_LOG_LEVEL_DEBUG, "getDimensionValueFromHashTable(fullpath %s, ExtColumnHashTableIndex %d) return %s",fullpath,ExtColumnHashTableIndex,ret);
+   return ret;
+}
+
+
 static NO_FREE RFM_FileAttributes *get_fileAttributes_byId(guint fileAttributeId) {
    GList *listElement;
    RFM_FileAttributes *fileAttributes;
@@ -6324,8 +6341,9 @@ gboolean str_regex_replace(char **str, const regex_t * restrict pattern_compiled
 //2.如图片尺寸这种预定义的扩展列，Title是写死的，所以总是会出现在showcolumn命令输出里，enumCol 需要在显示的时候使用get_available_ExtColumn 分配
 //3.从查询结果里读出的列，列名事先不知道，没法写死在静态数组初始模板里，处理查询结果时按顺序在列名C1,C2,C3中使用get_available_ExtColumn 分配enumCol，如果查询结果首行是列名，则用首行列名替换Cx
 //4.本函数处理的维度对应列，列名同维度名，而维度名也可以认为是动态的
-static gboolean SetViewColumnForDimension(gchar* dimName){
+static gboolean SetViewColumnForDimension(DimensionProperties* dimProps){
       RFM_treeviewColumn * col;
+      gchar *dimName = dimProps->name;
       enum RFM_treeviewCol current_Ext_Column;
       if ((col=get_treeviewColumnByTitle(dimName))){ //已经有同名列了
 	    current_Ext_Column=col->enumCol;
@@ -6341,7 +6359,7 @@ static gboolean SetViewColumnForDimension(gchar* dimName){
 	      col = get_treeviewColumnByTitle(current_Ext_Column_Original_Title);
 	      col->enumCol=current_Ext_Column;
 	      snprintf(col->title,ColumnTitleMaxLen,"%s",dimName);
-	      col->ValueFunc=getExtColumnValueFromHashTable;
+	      col->ValueFunc = dimProps->use_getExtColumnValueFromHashTable? getExtColumnValueFromHashTable : getDimensionValueFromHashTable; //默認為false,所以是getDimensionValueFromHashTable. 使用getExtColumnValueFromHashTable, 需要為每一行文件spawn子進程，調用腳本獲取維度值，性能非常差，所以增加了 getDimensionvaluefromhashtable, 一次性把所有文件對於某一維度的值都裝入hashtable,然後再以fullpath,而不是fileAttributeID為key到hashtable中取維度值
 	    }
       }
       int currentExtColumnHashTableIndex = current_Ext_Column - COL_Ext1;
@@ -6378,7 +6396,7 @@ static void load_ExtColumnHashTables_for_all_Dimensions_for_GtkTreeIter(GtkTreeI
         g_hash_table_iter_init(&iter_for_DimensionPropertiesHashTable,DimensionPropertiesHashTable_name_asKey);
         while (g_hash_table_iter_next(&iter_for_DimensionPropertiesHashTable, &key, &value)) {
 	        RFM_treeviewColumn *col = get_treeviewColumnByTitle(value->name);
-                if (!col->Show) continue;
+                if (col==NULL || !col->Show || col->ValueFunc!=getExtColumnValueFromHashTable) continue; //如果ValueFunc使用getDimensionValueFromHashTable,則不在這裡處理。 這裡col==NULL的判斷是這個commit添加的，其實不需要，因為在 SetViewColumnForDimension 函數中會設置col
 	        dimension_localAddress = g_list_prepend(dimension_localAddress,value->localAddress);
 		RFM_store_cell* cell=malloc(sizeof(RFM_store_cell));
 	        cell->iter = iter_for_file_in_store;
@@ -6387,6 +6405,38 @@ static void load_ExtColumnHashTables_for_all_Dimensions_for_GtkTreeIter(GtkTreeI
                 g_list_free(dimension_localAddress);dimension_localAddress = NULL;
         }
         g_value_unset(&full_path);
+}
+
+static void load_AllDimensionValues_for_one_DimensionColumn(RFM_ChildAttribs* childAttribs) {
+  DimensionProperties *dimProps = (DimensionProperties*)childAttribs->customCallbackUserData;
+  RFM_treeviewColumn *col = get_treeviewColumnByTitle(dimProps->name);
+  assert(col);//在load_AllDimensionValues_for_DimensionColumns中已經驗證過col非NULL了
+  assert(ExtColumnHashTable[col->enumCol - COL_Ext1]);//hasttable的創建在SetViewColumnForDimension 函數中已經完成
+  char *child_stdout=(char*)(childAttribs->stdOut);
+  if (child_stdout==NULL) return;
+  gchar * savedptr=NULL;
+  gchar * oneline=strtok_r(child_stdout,"\n",&savedptr);
+  while (oneline!=NULL){
+    gchar** fullpath_dimValue = g_strsplit(oneline, ":", 2);
+    if (g_hash_table_insert(ExtColumnHashTable[col->enumCol - COL_Ext1],strdup(fullpath_dimValue[0]), strdup(fullpath_dimValue[1])))
+      g_log(RFM_LOG_DIMENSION,G_LOG_LEVEL_DEBUG,"load_AllDimensionValues_for_one_DimensionColumn, g_hash_table_insert called for ExtColumnHashTable[%d], RFM_treeviewCol:%d,%s, fullpath:%s, dimValue:%s", col->enumCol - COL_Ext1, col->enumCol,col->title, fullpath_dimValue[0], fullpath_dimValue[1]);
+    else
+      g_log(RFM_LOG_DIMENSION,G_LOG_LEVEL_DEBUG,"load_AllDimensionValues_for_one_DimensionColumn, g_hash_table_insert overwrite existing value for ExtColumnHashTable[%d], RFM_treeviewCol:%d,%s, fullpath:%s, dimValue:%s", col->enumCol - COL_Ext1, col->enumCol,col->title, fullpath_dimValue[0], fullpath_dimValue[1]);
+    g_strfreev(fullpath_dimValue);
+    oneline=strtok_r(NULL, "\n",&savedptr);
+  }
+}
+
+static void load_AllDimensionValues_for_DimensionColumns() {
+        GHashTableIter iter_for_DimensionPropertiesHashTable;
+        gchar *key;
+        DimensionProperties *value;
+        g_hash_table_iter_init(&iter_for_DimensionPropertiesHashTable,DimensionPropertiesHashTable_name_asKey);
+        while (g_hash_table_iter_next(&iter_for_DimensionPropertiesHashTable, &key, &value)) {
+	        RFM_treeviewColumn *col = get_treeviewColumnByTitle(value->name);
+                if (col==NULL || !col->Show || col->ValueFunc!=getDimensionValueFromHashTable) continue;
+		g_spawn_wrapper(ShowAllValuesForOneDimension, NULL, G_SPAWN_DEFAULT, NULL, value->localAddress, FALSE, load_AllDimensionValues_for_one_DimensionColumn,value,TRUE);
+        }
 }
 
 static void load_DimensionPropertiesHashTable_Callback(RFM_ChildAttribs* child_attribs) {
@@ -6408,7 +6458,7 @@ static void load_DimensionPropertiesHashTable_Callback(RFM_ChildAttribs* child_a
 	g_warning("Dimension name shall be no more than %d chars",ColumnTitleMaxLen);
 	dimProps->name[ColumnTitleMaxLen]='\0';
       }
-      if (SetViewColumnForDimension(dimProps->name)){
+      if (SetViewColumnForDimension(dimProps)){
 	g_log(RFM_LOG_DIMENSION,G_LOG_LEVEL_DEBUG,"add dimension name:%s, localAddress:%s, ID:%s, into hashtable", dimProps->name,dimProps->localAddress, dimProps->ID);
 	g_hash_table_insert(DimensionPropertiesHashTable_name_asKey, g_strdup(dimProps->name), dimProps);
 	g_hash_table_insert(DimensionPropertiesHashTable_localAddress_asKey, g_strdup(dimProps->localAddress), dimProps);
