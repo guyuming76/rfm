@@ -268,8 +268,9 @@ pub extern "C" fn reedline_create(rfm_functions: *const rfmFunctions) -> *mut Re
         ReedlineEvent::Submit
     );
 
-    keybindings.add_binding(KeyModifiers::ALT, KeyCode::Char('e'),
-        ReedlineEvent::ExecuteHostCommand("esc".to_string())); //用户在命令提示状态输入esc字符和按Alt+e键同样效果. 本来用ESC或ALT+ESC组合来实现取消选择更好，但ESC被reedline用掉了。
+    keybindings.add_binding(KeyModifiers::NONE, KeyCode::Esc,
+        ReedlineEvent::UntilFound(vec![ReedlineEvent::Esc, ReedlineEvent::ExecuteHostCommand("esc".to_string())]));
+
     keybindings.add_binding(KeyModifiers::ALT, KeyCode::Up,
         ReedlineEvent::ExecuteHostCommand("u".to_string())); //Up命令，Up是Chinese.h里定义的常量，config.h里面正则表达式替换使其可通过u使用
         keybindings.add_binding(KeyModifiers::ALT, KeyCode::Left, ReedlineEvent::ExecuteHostCommand("l".to_string())); //Previous命令
@@ -420,7 +421,7 @@ impl RfmEditor {
                                ReedlineEvent::ExecuteHostCommand("save".to_string()));
         keybindings.add_binding(KeyModifiers::CONTROL, KeyCode::Char('x'),
                                ReedlineEvent::ExecuteHostCommand("exit".to_string()));
-        keybindings.add_binding(KeyModifiers::ALT, KeyCode::Char('e'), ReedlineEvent::ExecuteHostCommand("esc".to_string()));
+        keybindings.add_binding(KeyModifiers::NONE, KeyCode::Esc, ReedlineEvent::UntilFound(vec![ReedlineEvent::Esc, ReedlineEvent::ExecuteHostCommand("esc".to_string())]));
         let edit_mode = Box::new(Emacs::new(keybindings));
         let line_editor = Reedline::create()
             .with_validator(Box::new(AlwaysIncompleteValidator)) // 缺少这行，在编辑多行文本时就没法中中间插入行，新行会被加到最后
