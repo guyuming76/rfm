@@ -313,7 +313,7 @@ static rfmFunctions functionPointersForReedlineWrapper;
 
 #ifdef RFM_AddOn
 static gchar* Addon_Prompt = NULL;
-static NO_FREE char *AddOnStatus(guint fileAttributeId);
+static NO_FREE char *AddOnStatus(RFM_FileAttributes* fileAttribs, guint ExtColumnHashTableIndex);
 static void unload_addon_filemenu_func();
 #endif
 #ifdef reedline
@@ -483,7 +483,7 @@ static void load_ExtColumnHashTable_for_one_Dimension_for_GtkTreeIter(RFM_ChildA
 static void load_ExtColumnHashTables_for_all_Dimensions_for_GtkTreeIter(GtkTreeIter* iter_for_file_in_store);
 static void load_AllDimensionValues_for_DimensionColumns();
 static void load_AllDimensionValues_for_one_DimensionColumn(RFM_ChildAttribs* childAttribs);
-static gchar* getDimensionValueFromHashTable(gchar* fullpath, guint ExtColumnHashTableIndex);
+static gchar* getDimensionValueFromHashTable(RFM_FileAttributes* fileAttribs, guint ExtColumnHashTableIndex);
 static void free_DimensionProperties(DimensionProperties *dimProp);
 static void call_g_dir_read_name_recursivly_to_get_dir_names_as_dimension_members(GSList **list, const char *base, const char *path);
 static char **get_rfm_dimension_members_for_one_dimension(const char *dimension_localAddress, int start, int end);
@@ -563,7 +563,7 @@ static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer rfmCtx
 static void inotify_insert_item(gchar *name, gboolean is_dir);
 static gboolean delayed_refreshAll(gpointer user_data);
 static void Update_Store_ExtColumns(RFM_ChildAttribs *childAttribs);
-static gchar* getExtColumnValueFromHashTable(guint fileAttributeId, guint ExtColumnHashTableIndex);
+static gchar* getExtColumnValueFromHashTable(RFM_FileAttributes* fileAttribs, guint ExtColumnHashTableIndex);
 static NO_FREE RFM_FileAttributes *get_fileAttributes_byId(guint fileAttributeId);
 static void set_rfm_curPath(CALLER_OWN gchar *path);
 static void set_rfm_curPath_internal(CALLER_OWN const gchar* path);
@@ -2022,9 +2022,9 @@ static void load_ExtColumns_and_iconview_markup_tooltip(RFM_FileAttributes* file
 	      gchar* ExtColumn_cmd_template[] = {"/bin/bash", "-c", ExtColumn_cmd, NULL};
 	      //TODO: 列表视图里自定义列的ValueCmd目前还只是用 bash 解析，将来也许可以考虑扩展成指定 cmd_interpretor , 比如用 AI 来执行
 	      g_spawn_wrapper(ExtColumn_cmd_template, NULL, G_SPAWN_DEFAULT, NULL, NULL, FALSE, Update_Store_ExtColumns, &cell, TRUE);
-	    }else if (TREEVIEW_COLUMNS[i].ValueFunc==getExtColumnValueFromHashTable){
+	    }else if (TREEVIEW_COLUMNS[i].ValueFunc==getExtColumnValueFromHashTable){ //TODO: TreeView中只显示第一行不应该绑定在getExtColumnValueFromHashTable函数上，可以考虑给Column加个属性，但这样一来config.h中Column属性又要变宽了，所以可以考虑定义一个getExtColumnFirstLineValueFromHashTable函数用在这里，然后在定制代码中决定是否用这个函数
 	      //ExtColumnValueInHashTable 可能包含多行字符串，\n分割，这里，用第一行更新store. TODO:也序定制 gtkCellRenderer或实现一个自定义的Renderer更好。
-	      gchar *ExtColumnValueInHashTable=TREEVIEW_COLUMNS[i].ValueFunc(fileAttributes->id,TREEVIEW_COLUMNS[i].enumCol-COL_Ext1);
+	      gchar *ExtColumnValueInHashTable=TREEVIEW_COLUMNS[i].ValueFunc(fileAttributes,TREEVIEW_COLUMNS[i].enumCol-COL_Ext1);
 	      if (ExtColumnValueInHashTable){
 		ExtColumnValueInHashTable = strdup(ExtColumnValueInHashTable);
 		char *firstline = strtok(ExtColumnValueInHashTable, "\n");
@@ -2032,11 +2032,8 @@ static void load_ExtColumns_and_iconview_markup_tooltip(RFM_FileAttributes* file
 		else gtk_list_store_set(store,cell->iter, cell->store_column, ExtColumnValueInHashTable, -1);
 		g_free(ExtColumnValueInHashTable);
 	      }
-	    }else if (TREEVIEW_COLUMNS[i].ValueFunc==getDimensionValueFromHashTable){
-	      gchar* DimensionValueInHashTable = TREEVIEW_COLUMNS[i].ValueFunc(fileAttributes->path, TREEVIEW_COLUMNS[i].enumCol-COL_Ext1);
-	      gtk_list_store_set(store,cell->iter, cell->store_column, DimensionValueInHashTable, -1);
 	    }else if (TREEVIEW_COLUMNS[i].ValueFunc!=NULL){
-	      gtk_list_store_set(store,cell->iter, cell->store_column, TREEVIEW_COLUMNS[i].ValueFunc(fileAttributes->id), -1);
+	      gtk_list_store_set(store,cell->iter, cell->store_column, TREEVIEW_COLUMNS[i].ValueFunc(fileAttributes, TREEVIEW_COLUMNS[i].enumCol-COL_Ext1), -1);
 	      //for grepMatch column, fileAttributes->file_name is added as key into grepMatch_hash, however, we suppose grep output absoluteaddr, so filenamne equals fileattributes->path here
 	    }else if ((cell->iconview_markup) || (cell->iconview_tooltip)){
 	      GValue enumColValue = G_VALUE_INIT;
@@ -3331,7 +3328,7 @@ static gboolean on_query_tooltip(GtkWidget *widget, gint x, gint y, gboolean key
 	    if (col==NULL || col->ValueFunc!=getExtColumnValueFromHashTable) return FALSE;//Dimension 列內容通常不會很長，能顯示完整，無需tooltip
 	    RFM_FileAttributes *fileAttributes;
             gtk_tree_model_get(model, &iter, COL_ATTR, &fileAttributes, -1);
-	    gchar *cell_text = getExtColumnValueFromHashTable(fileAttributes->id, col->enumCol-COL_Ext1);
+	    gchar *cell_text = getExtColumnValueFromHashTable(fileAttributes, col->enumCol-COL_Ext1);//TODO:如果添加getExtColumnFirstLineValueFromHashTable函数，这里也要改
             if (cell_text && cell_text[0] != '\0') {
                 // 设置Tooltip文本
                 gtk_tooltip_set_text(tooltip, cell_text);
@@ -5969,19 +5966,19 @@ static int ProcessKeyValuePairInData(GKeyFile *keyfile, char* groupname){
    return ret;
 }
 
-static gchar* getExtColumnValueFromHashTable(guint fileAttributeId, guint ExtColumnHashTableIndex){
+static gchar* getExtColumnValueFromHashTable(RFM_FileAttributes* fileAttribs, guint ExtColumnHashTableIndex){
    if (ExtColumnHashTable[ExtColumnHashTableIndex]==NULL) return NULL;
    gchar key[10];
-   snprintf(key,10, "%d", fileAttributeId);
+   snprintf(key,10, "%d", fileAttribs->id);
    gchar *ret=g_hash_table_lookup(ExtColumnHashTable[ExtColumnHashTableIndex], key);
-   g_log(RFM_LOG_DATA_EXT, G_LOG_LEVEL_DEBUG, "getExtColumnValueFromHashTable(fileAttributeId %d, ExtColumnHashTableIndex %d) return %s",fileAttributeId,ExtColumnHashTableIndex,ret);
+   g_log(RFM_LOG_DATA_EXT, G_LOG_LEVEL_DEBUG, "getExtColumnValueFromHashTable(fileAttributeId %d, ExtColumnHashTableIndex %d) return %s",fileAttribs->id,ExtColumnHashTableIndex,ret);
    return ret;
 }
 
-static gchar* getDimensionValueFromHashTable(gchar* fullpath, guint ExtColumnHashTableIndex){
+static gchar* getDimensionValueFromHashTable(RFM_FileAttributes* fileAttribs, guint ExtColumnHashTableIndex){
    if (ExtColumnHashTable[ExtColumnHashTableIndex]==NULL) return NULL;
-   gchar *ret=g_hash_table_lookup(ExtColumnHashTable[ExtColumnHashTableIndex], fullpath);
-   g_log(RFM_LOG_DATA_EXT, G_LOG_LEVEL_DEBUG, "getDimensionValueFromHashTable(fullpath %s, ExtColumnHashTableIndex %d) return %s",fullpath,ExtColumnHashTableIndex,ret);
+   gchar *ret=g_hash_table_lookup(ExtColumnHashTable[ExtColumnHashTableIndex], fileAttribs->path);
+   g_log(RFM_LOG_DATA_EXT, G_LOG_LEVEL_DEBUG, "getDimensionValueFromHashTable(fullpath %s, ExtColumnHashTableIndex %d) return %s",fileAttribs->path,ExtColumnHashTableIndex,ret);
    return ret;
 }
 
@@ -6847,9 +6844,8 @@ static void free_addon(RFM_ADDON *addon){
         free(addon);
 }
 
-static NO_FREE char *AddOnStatus(guint fileAttributeId) {
-  RFM_FileAttributes *fileAttributes = get_fileAttributes_byId(fileAttributeId);
-  if (g_hash_table_lookup(addons, fileAttributes->path)) return "loaded";
+static NO_FREE char *AddOnStatus(RFM_FileAttributes* fileAttribs, guint ExtColumnHashTableIndex) {
+  if (g_hash_table_lookup(addons, fileAttribs->path)) return "loaded";
   else return "not loaded";
 }
 
