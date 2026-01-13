@@ -3874,7 +3874,6 @@ static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousRea
 	  }
 #endif
           childAttribs->RunCmd = cmd_interpretor_pointer->cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE);
-          childAttribs->spawn_async = FALSE; //TODO: 这个是默认值，不用设置，设置了得话反倒会覆盖上游的主动设置
           if (SearchResultTypePointer) {
 	    childAttribs->g_idle_add_once_to_run_CallBackFunc = TRUE;
 	    childAttribs->output_read_by_program = TRUE;
