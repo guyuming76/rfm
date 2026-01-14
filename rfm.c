@@ -5082,13 +5082,11 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
 static void parse_and_exec_stdin_command_in_gtk_thread (gchar * readlineResult){
   if (readlineThread) { g_thread_join(readlineThread); g_debug("g_thread_join finished for readlineThread %p when from_stdin_readline",readlineThread); readlineThread=NULL; }
   RFM_ChildAttribs *childAttribs = calloc(1, sizeof(RFM_ChildAttribs));
-  childAttribs->customCallbackUserData = rfmCtx;
   parse_and_exec_command_in_gtk_thread(readlineResult, TRUE, current_stdin_cmd_interpretor_pointer, childAttribs);
 }
 
 static void parse_and_exec_cmd_in_gtk_thread (gchar * cmd){
   RFM_ChildAttribs *childAttribs = calloc(1, sizeof(RFM_ChildAttribs));
-  childAttribs->customCallbackUserData = rfmCtx;
   // 在创建子进程前暂停readline
   //rl_callback_handler_remove();
   parse_and_exec_command_in_gtk_thread(cmd, FALSE, current_stdin_cmd_interpretor_pointer, childAttribs);
