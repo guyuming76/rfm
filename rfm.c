@@ -729,8 +729,10 @@ static void up_clicked(gpointer user_data);
 static void prev_path_clicked(gpointer user_data) {set_rfm_curPath("<");}
 static void next_path_clicked(gpointer user_data) {set_rfm_curPath(">");}
 static void home_clicked(gpointer user_data);
-static void PreviousPage(RFM_ctx *rfmCtx);
-static void NextPage(RFM_ctx *rfmCtx);
+static void PreviousPage();
+static void NextPage();
+static void FirstPage();
+static void TurnPage(gboolean next);
 static void info_clicked(gpointer user_data);
 static void copy_curPath_to_clipboard(GtkWidget *menuitem, gpointer user_data);
 static void refresh_view(RFM_ctx *rfmCtx, gboolean switch_view);
@@ -2379,7 +2381,7 @@ static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store_if
    return G_SOURCE_REMOVE;
 }
 
-static void TurnPage(RFM_ctx *rfmCtx, gboolean next) {
+static void TurnPage(gboolean next) {
   GList *name =CurrentPage_SearchResultView;
   gint i=0;
   while (name != NULL && i < PageSize_SearchResultView) {
@@ -2397,11 +2399,11 @@ static void TurnPage(RFM_ctx *rfmCtx, gboolean next) {
   }
 }
 
-static void NextPage(RFM_ctx *rfmCtx) { TurnPage(rfmCtx, TRUE); }
+static void NextPage() { TurnPage(TRUE); }
 
-static void PreviousPage(RFM_ctx *rfmCtx) { TurnPage(rfmCtx, FALSE); }
+static void PreviousPage() { TurnPage(FALSE); }
 
-static void FirstPage(RFM_ctx *rfmCtx){
+static void FirstPage(){
   CurrentPage_SearchResultView = SearchResultFileNameList;
   currentFileNum = 1;
   refresh_store(rfmCtx);
@@ -2413,7 +2415,7 @@ static void set_pagesize_for_searchresultview(const char *pagesize){
     if (ps>0){
       PageSize_SearchResultView = ps;
       setenv("RFM_PAGESIZE", pagesize, 1);
-      if (SearchResultViewInsteadOfDirectoryView && SearchResultFileNameList!=NULL) FirstPage(rfmCtx);
+      if (SearchResultViewInsteadOfDirectoryView && SearchResultFileNameList!=NULL) FirstPage();
     }else g_warning("invalid parameter:%s",pagesize);
   }
 }
@@ -6170,7 +6172,7 @@ static void update_SearchResultFileNameList_and_refresh_store(RFM_ChildAttribs *
   }
   SearchResultTypePointer = NULL; //完成向SearchResultTypePointerForCurrentExistingSearchResult转移后清零,TODO:如果Search命令执行失败如何清零?把他们从全局变量改为childAttribs属性应该就好了
 
-  FirstPage(rfmCtx);
+  FirstPage();
   if (old_filenamelist!=NULL) g_list_free(old_filenamelist);
   for(int i=0;i<=NUM_Ext_Columns;i++) if (old_ExtColumnHashTable[i]!=NULL) { g_hash_table_destroy(old_ExtColumnHashTable[i]); old_ExtColumnHashTable[i] = NULL; }
 }
