@@ -46,14 +46,9 @@
 #define INOTIFY_MASK IN_MOVE|IN_CREATE|IN_CLOSE_WRITE|IN_DELETE|IN_DELETE_SELF|IN_MOVE_SELF
 #define PIPE_SZ 65535      /* Kernel pipe size */
 
-//I don't understand why Rodney need this ctx type. it's only instantiated in main, so, all members can be changed into global variable, and many function parameter can be removed. However, if there would be any important usage, adding the removed function parameters will be time taking. So, just keep as is, although it makes current code confusing.
-typedef struct {
-
-} RFM_ctx;
 static RFM_ChildAttribs *childAttribsForCurrentDisplayingSearchResult=NULL;//这个用来保持查询视图当前查询运行时的值，查询刷新时使用
 static GUnixMountMonitor *rfm_mountMonitor=NULL;   /* Reference for monitor mount events */
 static guint delayedRefresh_GSourceID=0;  /* Main loop source ID for refresh_store() delayed refresh timer */
-static RFM_ctx *rfmCtx = NULL;
 static gchar*  PROG_NAME = NULL;
 static gchar *rfm_homePath;         /* Users home dir */
 static char *initDir=NULL;
@@ -5428,8 +5423,7 @@ int main(int argc, char *argv[])
    addons = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
    addons_hash = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, NULL);
    addons_filename = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, NULL);
-   rfmCtx=calloc(1,sizeof(RFM_ctx));
-   if (rfmCtx==NULL) return 1;
+
    rfm_mountMonitor=g_unix_mount_monitor_get();
    delayedRefresh_GSourceID=0;
 
