@@ -51,8 +51,8 @@ typedef struct {
    gint        rfm_sortColumn;   /* The column in the tree model to sort on */
    GUnixMountMonitor *rfm_mountMonitor;   /* Reference for monitor mount events */
    guint       delayedRefresh_GSourceID;  /* Main loop source ID for refresh_store() delayed refresh timer */
-   RFM_ChildAttribs *childAttribs;//这个用来保持查询视图当前查询运行时的值，查询刷新时使用
 } RFM_ctx;
+static RFM_ChildAttribs *childAttribsForCurrentDisplayingSearchResult=NULL;//这个用来保持查询视图当前查询运行时的值，查询刷新时使用
 static RFM_ctx *rfmCtx = NULL;
 static gchar*  PROG_NAME = NULL;
 static gchar *rfm_homePath;         /* Users home dir */
@@ -2548,7 +2548,7 @@ static void refresh_store()
      }
      fileAttributeID=currentFileNum;
      title=g_strdup_printf(PipeTitle, currentFileNum,SearchResultFileNameListLength,PageSize_SearchResultView);
-     fill_fileAttributeList_with_filenames_from_search_result_and_then_insert_into_store(rfmCtx->childAttribs);
+     fill_fileAttributeList_with_filenames_from_search_result_and_then_insert_into_store(childAttribsForCurrentDisplayingSearchResult);
 
      In_refresh_store=FALSE;
      if (!no_window) gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
@@ -6139,12 +6139,11 @@ static void update_SearchResultFileNameList_and_refresh_store(RFM_ChildAttribs *
   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"update_SearchResultFileNameList, length: %ld charactor(s)",filenamelist?strlen((gchar*)filenamelist):0);
 
   //释放上次查询的childAttribs,换上这次新的
-  if (rfmCtx->childAttribs){
-    rfmCtx->childAttribs->no_free = FALSE;
-    free_child_attribs(rfmCtx->childAttribs);
-    rfmCtx->childAttribs = NULL;
+  if (childAttribsForCurrentDisplayingSearchResult){
+    childAttribsForCurrentDisplayingSearchResult->no_free = FALSE;
+    free_child_attribs(childAttribsForCurrentDisplayingSearchResult);
   }
-  rfmCtx->childAttribs = childAttribs;
+  childAttribsForCurrentDisplayingSearchResult = childAttribs;
 
   if (filenamelist){
   gchar * oneline=strtok((gchar*)filenamelist,"\n");
