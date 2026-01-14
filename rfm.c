@@ -557,11 +557,11 @@ static gboolean iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_o
 //called in search result view
 static void SearchResultView_iterate_through_store_to_load_thumbnails_or_enqueue_thumbQueue_and_load_gitCommitMsg_ifdef_GitIntegration(void);
 static GHashTable *get_mount_points(void);
-static gboolean mounts_handler(GUnixMountMonitor *monitor, gpointer rfmCtx);
-static gboolean init_inotify(RFM_ctx *rfmCtx);
-static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer rfmCtx);
+static gboolean mounts_handler(GUnixMountMonitor *monitor);
+static gboolean init_inotify();
+static gboolean inotify_handler(gint fd, GIOCondition condition);
 static void inotify_insert_item(gchar *name, gboolean is_dir);
-static gboolean delayed_refreshAll(gpointer user_data);
+static gboolean delayed_refreshAll();
 static void Update_Store_ExtColumns(RFM_ChildAttribs *childAttribs);
 static gchar* getExtColumnValueFromHashTable(RFM_FileAttributes* fileAttribs, guint ExtColumnHashTableIndex);
 static NO_FREE RFM_FileAttributes *get_fileAttributes_byId(guint fileAttributeId);
@@ -3609,18 +3609,17 @@ static void inotify_insert_item(gchar *name, gboolean is_dir)
                        -1);
 }
 
-static gboolean delayed_refreshAll(gpointer user_data)
+static gboolean delayed_refreshAll()
 {
-  refresh_store((RFM_ctx *)user_data);
-  ((RFM_ctx*)user_data)->delayedRefresh_GSourceID=0;
+  refresh_store();
+  rfmCtx->delayedRefresh_GSourceID=0;
   return G_SOURCE_REMOVE;
 }
 
-static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer user_data)
+static gboolean inotify_handler(gint fd, GIOCondition condition)
 {
    char buffer[(sizeof(struct inotify_event)+16)*1024];
    int len=0, i=0;
-   RFM_ctx *rfmCtx=user_data;
    int eventCount=0;
    gboolean refreshImediately=FALSE;
    gboolean refreshDelayed=FALSE;
@@ -3674,25 +3673,25 @@ static gboolean inotify_handler(gint fd, GIOCondition condition, gpointer user_d
          if (rfmCtx->delayedRefresh_GSourceID>0)
             g_source_remove(rfmCtx->delayedRefresh_GSourceID);
 	 //TODO: Why shall we remove the existing timer here? support there are regular inotify event at a constant interval less then the RFM_INOTIFY_TIMOUT, the timer will always be removed before actual call the refresh function. Is it by design? why?
-	 rfmCtx->delayedRefresh_GSourceID=g_timeout_add(RFM_INOTIFY_TIMEOUT, delayed_refreshAll, user_data);
+	 rfmCtx->delayedRefresh_GSourceID=g_timeout_add(RFM_INOTIFY_TIMEOUT, delayed_refreshAll, NULL);
    };
    //if both refreshdelayed and refreshimediately, i guess refreshdelayed will be removed imediately in rfm_stop_all by the refreshimediately below.
    if (refreshImediately){ /* Refresh imediately: refresh_store() will remove delayedRefresh_GSourceID if required */
 	 g_debug("refresh_store imediately from inotify_handler");
-         refresh_store(rfmCtx);
+         refresh_store();
    }
    return TRUE;
 }
 
-static gboolean init_inotify(RFM_ctx *rfmCtx)
+static gboolean init_inotify()
 {
    rfm_inotify_fd = inotify_init();
    if ( rfm_inotify_fd < 0 ) return FALSE;
-   else g_unix_fd_add(rfm_inotify_fd, G_IO_IN, inotify_handler, rfmCtx);
+   else g_unix_fd_add(rfm_inotify_fd, G_IO_IN, inotify_handler, NULL);
    return TRUE;
 }
 
-static gboolean mounts_handler(GUnixMountMonitor *monitor, gpointer rfmCtx)
+static gboolean mounts_handler(GUnixMountMonitor *monitor)
 {
    GList *listElement;
    RFM_FileAttributes *fileAttributes;
@@ -5196,10 +5195,10 @@ static int setup()
       }
    }
    
-   g_signal_connect (rfmCtx->rfm_mountMonitor, "mounts-changed", G_CALLBACK (mounts_handler), rfmCtx);
-   g_signal_connect (rfmCtx->rfm_mountMonitor, "mountpoints-changed", G_CALLBACK (mounts_handler), rfmCtx); /* fstab changed */
+   g_signal_connect (rfmCtx->rfm_mountMonitor, "mounts-changed", G_CALLBACK (mounts_handler), NULL);
+   g_signal_connect (rfmCtx->rfm_mountMonitor, "mountpoints-changed", G_CALLBACK (mounts_handler), NULL); /* fstab changed */
 
-   init_inotify(rfmCtx);
+   init_inotify();
 
    #ifdef RFM_ICON_THEME
       icon_theme=gtk_icon_theme_new();
