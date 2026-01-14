@@ -3299,7 +3299,7 @@ static gboolean view_key_press(GtkWidget *widget, GdkEvent *event) {
 	  ek->keyval == tool_buttons[i].Accel &&
           (ek->state & GDK_MOD1_MASK) == GDK_MOD1_MASK &&
           SHOW_TOOLBAR_BUTTON(tool_buttons,i)) {
-        tool_buttons[i].func(rfmCtx);
+        tool_buttons[i].func();
         return TRUE;
       }
     }
