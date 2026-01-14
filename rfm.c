@@ -64,7 +64,7 @@ static GtkWidget *icon_or_tree_view = NULL; //this should be in the gtk ui secti
 static gboolean treeview=FALSE; //在commit 4960886ed663d74170940ea2ff299ba5ba0199cc 里，可能就是为了代码好看，把这一行随手挪下面去了，结果rfmFileChooser.h就编译不了了
 static void show_msgbox(gchar *msg, gchar *title, gint type);
 static void die(const char *errstr, ...);
-static int setup(RFM_ctx *rfmCtx);
+static int setup();
 static void cleanup();
 gpointer transferPointerOwnership(gpointer *newOwner, gpointer *oldOwner);
 gboolean str_regex_replace(char **str, const regex_t * restrict pattern_compiled, const char *replacement);
@@ -5150,7 +5150,7 @@ static char** gnu_readline_completion(const char *text, int start, int end){
 }
 #endif
 
-static int setup(RFM_ctx *rfmCtx)
+static int setup()
 {
    gtk_init(NULL, NULL);
    if (!no_window){
@@ -5570,7 +5570,7 @@ int main(int argc, char *argv[])
     c++;
    }
 
-   if (setup(rfmCtx)==0){
+   if (setup()==0){
       if (auto_execution_command_after_rfm_start) g_idle_add_once(parse_and_exec_cmd_in_gtk_thread, auto_execution_command_after_rfm_start);
       if (!no_window) gtk_main();
    }else
