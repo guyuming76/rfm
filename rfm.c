@@ -48,7 +48,6 @@
 
 //I don't understand why Rodney need this ctx type. it's only instantiated in main, so, all members can be changed into global variable, and many function parameter can be removed. However, if there would be any important usage, adding the removed function parameters will be time taking. So, just keep as is, although it makes current code confusing.
 typedef struct {
-   gint        rfm_sortColumn;   /* The column in the tree model to sort on */
    GUnixMountMonitor *rfm_mountMonitor;   /* Reference for monitor mount events */
    guint       delayedRefresh_GSourceID;  /* Main loop source ID for refresh_store() delayed refresh timer */
 } RFM_ctx;
@@ -5430,7 +5429,6 @@ int main(int argc, char *argv[])
    addons_filename = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, NULL);
    rfmCtx=calloc(1,sizeof(RFM_ctx));
    if (rfmCtx==NULL) return 1;
-   //rfmCtx->rfm_sortColumn=GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID;
    rfmCtx->rfm_mountMonitor=g_unix_mount_monitor_get();
    rfmCtx->delayedRefresh_GSourceID=0;
 
