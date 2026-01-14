@@ -48,10 +48,10 @@
 
 //I don't understand why Rodney need this ctx type. it's only instantiated in main, so, all members can be changed into global variable, and many function parameter can be removed. However, if there would be any important usage, adding the removed function parameters will be time taking. So, just keep as is, although it makes current code confusing.
 typedef struct {
-   GUnixMountMonitor *rfm_mountMonitor;   /* Reference for monitor mount events */
    guint       delayedRefresh_GSourceID;  /* Main loop source ID for refresh_store() delayed refresh timer */
 } RFM_ctx;
 static RFM_ChildAttribs *childAttribsForCurrentDisplayingSearchResult=NULL;//这个用来保持查询视图当前查询运行时的值，查询刷新时使用
+static GUnixMountMonitor *rfm_mountMonitor=NULL;   /* Reference for monitor mount events */
 static RFM_ctx *rfmCtx = NULL;
 static gchar*  PROG_NAME = NULL;
 static gchar *rfm_homePath;         /* Users home dir */
@@ -5190,8 +5190,8 @@ static int setup()
       }
    }
    
-   g_signal_connect (rfmCtx->rfm_mountMonitor, "mounts-changed", G_CALLBACK (mounts_handler), NULL);
-   g_signal_connect (rfmCtx->rfm_mountMonitor, "mountpoints-changed", G_CALLBACK (mounts_handler), NULL); /* fstab changed */
+   g_signal_connect (rfm_mountMonitor, "mounts-changed", G_CALLBACK (mounts_handler), NULL);
+   g_signal_connect (rfm_mountMonitor, "mountpoints-changed", G_CALLBACK (mounts_handler), NULL); /* fstab changed */
 
    init_inotify();
 
@@ -5429,7 +5429,7 @@ int main(int argc, char *argv[])
    addons_filename = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, NULL);
    rfmCtx=calloc(1,sizeof(RFM_ctx));
    if (rfmCtx==NULL) return 1;
-   rfmCtx->rfm_mountMonitor=g_unix_mount_monitor_get();
+   rfm_mountMonitor=g_unix_mount_monitor_get();
    rfmCtx->delayedRefresh_GSourceID=0;
 
    if (thumbnailers[0].thumbRoot==NULL)
