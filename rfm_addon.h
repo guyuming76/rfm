@@ -109,7 +109,7 @@ typedef struct {
 typedef struct {
    gchar *buttonName;
    gchar *buttonIcon;
-   void (*func)();//TODO：这里传入RFM_ToolButton* 才比较合理，以便自定义函数对应多个button的时候可以区分
+   void (*func)(struct RFM_ToolButton *);//虽然目前我config.h以及rfm_addon.c中用到的函数参数实际上都是空，但这里传入RFM_ToolButton* 才比较合理，以便将来在rfm_addon里可以动态生成一些按钮，自定义函数可以根据参数判断哪个button被按下。
    const gchar **RunCmd;
    gboolean showInSearchResultView;
    gboolean showInDirectoryView;

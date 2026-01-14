@@ -2997,7 +2997,7 @@ static NO_FREE stdin_cmd_interpretor* match_cmd_str_array_with_interpretors(gcha
 static void toolbar_button_exec(GtkToolItem *item, RFM_ToolButton *button_definition)
 {
    if (button_definition->RunCmd==NULL) /* Argument is an internal function */
-     button_definition->func();
+     button_definition->func(button_definition);
    else { /* Assume argument is a shell exec */
      RFM_ChildAttribs *child_attribs=calloc(1, sizeof(RFM_ChildAttribs));
      child_attribs->RunCmd = button_definition->RunCmd;
@@ -3007,6 +3007,7 @@ static void toolbar_button_exec(GtkToolItem *item, RFM_ToolButton *button_defini
      child_attribs->spawn_async = TRUE;
      child_attribs->name = g_strdup(button_definition->buttonName);
      child_attribs->customCallBackFunc = button_definition->func;
+     child_attribs->customCallbackUserData = button_definition;
 #ifdef RFM_AddOn
      GHashTableIter ht_iter;
      gchar *key;
@@ -3292,7 +3293,7 @@ static gboolean view_key_press(GtkWidget *widget, GdkEvent *event) {
 	  ek->keyval == tool_buttons[i].Accel &&
           (ek->state & GDK_MOD1_MASK) == GDK_MOD1_MASK &&
           SHOW_TOOLBAR_BUTTON(tool_buttons,i)) {
-        tool_buttons[i].func();
+        tool_buttons[i].func(&(tool_buttons[i]));
         return TRUE;
       }
     }
