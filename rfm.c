@@ -48,10 +48,11 @@
 
 //I don't understand why Rodney need this ctx type. it's only instantiated in main, so, all members can be changed into global variable, and many function parameter can be removed. However, if there would be any important usage, adding the removed function parameters will be time taking. So, just keep as is, although it makes current code confusing.
 typedef struct {
-   guint       delayedRefresh_GSourceID;  /* Main loop source ID for refresh_store() delayed refresh timer */
+
 } RFM_ctx;
 static RFM_ChildAttribs *childAttribsForCurrentDisplayingSearchResult=NULL;//这个用来保持查询视图当前查询运行时的值，查询刷新时使用
 static GUnixMountMonitor *rfm_mountMonitor=NULL;   /* Reference for monitor mount events */
+static guint delayedRefresh_GSourceID=0;  /* Main loop source ID for refresh_store() delayed refresh timer */
 static RFM_ctx *rfmCtx = NULL;
 static gchar*  PROG_NAME = NULL;
 static gchar *rfm_homePath;         /* Users home dir */
@@ -948,8 +949,8 @@ static void free_child_attribs(FREE_FULL RFM_ChildAttribs *child_attribs)
 }
 
 static void rfm_stop_all() {
-   if (rfmCtx->delayedRefresh_GSourceID > 0)
-      g_source_remove(rfmCtx->delayedRefresh_GSourceID);
+   if (delayedRefresh_GSourceID > 0)
+      g_source_remove(delayedRefresh_GSourceID);
 
    if (rfm_readDirSheduler>0)
       g_source_remove(rfm_readDirSheduler);
@@ -959,7 +960,7 @@ static void rfm_stop_all() {
    if (rfm_gitCommitMsgScheduler>0) g_source_remove(rfm_gitCommitMsgScheduler);
 #endif
 
-   rfmCtx->delayedRefresh_GSourceID=0;
+   delayedRefresh_GSourceID=0;
    rfm_readDirSheduler=0;
    rfm_thumbLoadScheduler=0;
    rfm_extColumnScheduler=0;
@@ -3609,7 +3610,7 @@ static void inotify_insert_item(gchar *name, gboolean is_dir)
 static gboolean delayed_refreshAll()
 {
   refresh_store();
-  rfmCtx->delayedRefresh_GSourceID=0;
+  delayedRefresh_GSourceID=0;
   return G_SOURCE_REMOVE;
 }
 
@@ -3667,10 +3668,10 @@ static gboolean inotify_handler(gint fd, GIOCondition condition)
 
    g_debug("inotify_handler, refreshDelay:%d, refreshImediately:%d in %d events.",refreshDelayed,refreshImediately,eventCount);
    if (refreshDelayed){  /* Delayed refresh: rate-limiter */
-         if (rfmCtx->delayedRefresh_GSourceID>0)
-            g_source_remove(rfmCtx->delayedRefresh_GSourceID);
+         if (delayedRefresh_GSourceID>0)
+            g_source_remove(delayedRefresh_GSourceID);
 	 //TODO: Why shall we remove the existing timer here? support there are regular inotify event at a constant interval less then the RFM_INOTIFY_TIMOUT, the timer will always be removed before actual call the refresh function. Is it by design? why?
-	 rfmCtx->delayedRefresh_GSourceID=g_timeout_add(RFM_INOTIFY_TIMEOUT, delayed_refreshAll, NULL);
+	 delayedRefresh_GSourceID=g_timeout_add(RFM_INOTIFY_TIMEOUT, delayed_refreshAll, NULL);
    };
    //if both refreshdelayed and refreshimediately, i guess refreshdelayed will be removed imediately in rfm_stop_all by the refreshimediately below.
    if (refreshImediately){ /* Refresh imediately: refresh_store() will remove delayedRefresh_GSourceID if required */
@@ -5430,7 +5431,7 @@ int main(int argc, char *argv[])
    rfmCtx=calloc(1,sizeof(RFM_ctx));
    if (rfmCtx==NULL) return 1;
    rfm_mountMonitor=g_unix_mount_monitor_get();
-   rfmCtx->delayedRefresh_GSourceID=0;
+   delayedRefresh_GSourceID=0;
 
    if (thumbnailers[0].thumbRoot==NULL)
       rfm_do_thumbs=0;
