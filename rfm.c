@@ -542,10 +542,10 @@ static void free_fileAttributes(RFM_FileAttributes *fileAttributes);
 char* quote_path(char** path);
 char * get_drwxrwxrwx(mode_t st_mode);
 static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guint64 mtimeThreshold, GHashTable *mount_hash);
-static void refresh_store(RFM_ctx *rfmCtx);
-static void refresh_store_on_searchresult(RFM_ctx* ctx);
+static void refresh_store();
+static void refresh_store_on_searchresult();
 static void clear_store(void);
-static void rfm_stop_all(RFM_ctx *rfmCtx);
+static void rfm_stop_all();
 static gboolean fill_fileAttributeList_with_filenames_from_search_result_and_then_insert_into_store(RFM_ChildAttribs* childAttribs);
 static gboolean read_one_DirItem_into_fileAttributeList_and_insert_into_store_if_onebyone(GDir *dir);
 static void toggle_insert_fileAttributes_into_store_one_by_one();
@@ -725,9 +725,9 @@ static GtkWidget *columnHeaderMenu = NULL;
 static GtkWidget *HideColumnMenuItem = NULL;
 static GtkWidget *InsertBeforeMenuItem = NULL;
 static GtkWidget *InsertAfterMenuItem = NULL;
-static void up_clicked(gpointer user_data);
-static void prev_path_clicked(gpointer user_data) {set_rfm_curPath("<");}
-static void next_path_clicked(gpointer user_data) {set_rfm_curPath(">");}
+static void up_clicked();
+static void prev_path_clicked() {set_rfm_curPath("<");}
+static void next_path_clicked() {set_rfm_curPath(">");}
 static void home_clicked(gpointer user_data);
 static void PreviousPage();
 static void NextPage();
@@ -735,11 +735,11 @@ static void FirstPage();
 static void TurnPage(gboolean next);
 static void info_clicked(gpointer user_data);
 static void copy_curPath_to_clipboard(GtkWidget *menuitem, gpointer user_data);
-static void refresh_view(RFM_ctx *rfmCtx, gboolean switch_view);
-static void switch_iconview_treeview(RFM_ctx *rfmCtx);
+static void refresh_view(gboolean switch_view);
+static void switch_iconview_treeview();
 gboolean InIconView(){ return !treeview; }
 static gboolean InTreeView(){ return treeview; }
-static void Switch_SearchResultView_DirectoryView(GtkToolItem *item,RFM_ctx *rfmCtx);
+static void Switch_SearchResultView_DirectoryView();
 /* callback function for toolbar buttons. Its possible to make function such as home_clicked as callback directly, instead of use toolbar_button_exec as a wrapper. However,i would add GtkToolItems as first parameter for so many different callback functions then. */
 /* since g_spawn_wrapper will free child_attribs, and we don't want the childAttribs object associated with UI interface item to be freed, we duplicate childAttribs here. */
 /* tool_buttons actions are basically defined at current directory level, or current view level, for example: to go to parent directory, or to switch between icon or tree view */
@@ -757,7 +757,7 @@ void add_file_menuitems(GtkWidget ***menuitems, const RFM_MenuItem menuitem_defi
  * If all files are the same mime root but different sub, then selection_mimeSub is set to NULL
  * If all the files are completely different types, both root and sub types are set to NULL
  */
-static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx);
+static gboolean popup_file_menu(GdkEvent *event);
 static void show_hide_file_menu_item(GtkWidget ***menuitems, RFM_MenuItem menuitem_definitions[],size_t menuitem_definitions_size, gboolean match_mimeRoot, gboolean match_mimeSub, RFM_FileAttributes* first_selection_fileAttributes, GList *selectionList);
 
 static gboolean mountpoint_mounted(RFM_FileAttributes *fileAttributes);
@@ -770,12 +770,12 @@ static void g_idle_add_once_handle_escape_key(){ g_idle_add_once(cmd_handle_esca
 static stdin_cmd_interpretor * current_stdin_cmd_interpretor_pointer = &(stdin_cmd_interpretors[0]);
 static stdin_cmd_interpretor * effective_cmd_interpretor_pointer = &(stdin_cmd_interpretors[0]);  //keep the init value the same as that of current_stdin_cmd_interpretor so that these two would be same for the first run of readlineInseperatethread
 
-static GtkWidget *add_view(RFM_ctx *rfmCtx);
+static GtkWidget *add_view();
 void add_toolbar_buttons(GtkWidget ***buttons, const RFM_ToolButton button_definitions[], const size_t size);
-static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixbufs, RFM_ctx *rfmCtx);
+static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixbufs);
 static void refresh_toolbar();
-static gboolean view_key_press(GtkWidget *widget, GdkEvent *event,RFM_ctx *rfmCtx);
-static gboolean view_button_press(GtkWidget *widget, GdkEvent *event,RFM_ctx *rfmCtx);
+static gboolean view_key_press(GtkWidget *widget, GdkEvent *event);
+static gboolean view_button_press(GtkWidget *widget, GdkEvent *event);
 static gboolean on_query_tooltip(GtkWidget *widget, gint x, gint y, gboolean keyboard_mode, GtkTooltip *tooltip, gpointer user_data);
 static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointer user_data);
 static void row_activated(GtkTreeView *tree_view, GtkTreePath *tree_path,GtkTreeViewColumn *col, gpointer user_data);
@@ -948,10 +948,9 @@ static void free_child_attribs(FREE_FULL RFM_ChildAttribs *child_attribs)
    //child_attribs->readlineResultString 在 add_history_after_stdin_command_execution 函数内 free, 因为child_attribs 在g_spawn_wrapper执行玩命令后就要free,但命令执行玩还要 add_history 呢。
 }
 
-static void rfm_stop_all(RFM_ctx *rfmctx) {
-   if (rfmctx == NULL) rfmctx = rfmCtx;//目前rfmCtx变量全都用的是main函数里面创建的实例，但尽量还是从初始调用入口函数传入这个全局变量，以后万一要变成多实例情况下改动方便。也就是这里rfmctx一般不为null. 但这下在 AI addon 的rfm_local.c里面要用到，我不想把对全局变量rfmCtx以及RFM_Ctx这个类型扩展到rfmmddon.h中，所以就加了这一句。
-   if (rfmctx->delayedRefresh_GSourceID > 0)
-      g_source_remove(rfmctx->delayedRefresh_GSourceID);
+static void rfm_stop_all() {
+   if (rfmCtx->delayedRefresh_GSourceID > 0)
+      g_source_remove(rfmCtx->delayedRefresh_GSourceID);
 
    if (rfm_readDirSheduler>0)
       g_source_remove(rfm_readDirSheduler);
@@ -961,7 +960,7 @@ static void rfm_stop_all(RFM_ctx *rfmctx) {
    if (rfm_gitCommitMsgScheduler>0) g_source_remove(rfm_gitCommitMsgScheduler);
 #endif
 
-   rfmctx->delayedRefresh_GSourceID=0;
+   rfmCtx->delayedRefresh_GSourceID=0;
    rfm_readDirSheduler=0;
    rfm_thumbLoadScheduler=0;
    rfm_extColumnScheduler=0;
@@ -2395,7 +2394,7 @@ static void TurnPage(gboolean next) {
     CurrentPage_SearchResultView = name;
     if (next) currentFileNum=currentFileNum + PageSize_SearchResultView;
     else currentFileNum=currentFileNum - PageSize_SearchResultView;
-    refresh_store(rfmCtx);
+    refresh_store();
   }
 }
 
@@ -2406,7 +2405,7 @@ static void PreviousPage() { TurnPage(FALSE); }
 static void FirstPage(){
   CurrentPage_SearchResultView = SearchResultFileNameList;
   currentFileNum = 1;
-  refresh_store(rfmCtx);
+  refresh_store();
 }
 
 static void set_pagesize_for_searchresultview(const char *pagesize){
@@ -2446,7 +2445,7 @@ static gboolean fill_fileAttributeList_with_filenames_from_search_result_and_the
 
   if (SearchResultTypePointerForCurrentExistingSearchResult && !showSearchResultExtColumnsBasedOnHashTableValues_has_already_been_called_for_searchresult) showSearchResultExtColumnsBasedOnHashTableValues();
 
-  icon_or_tree_view = add_view(rfmCtx);//add view have to be called after showSearchResultExtColumnsBasedOnHashTableValues()
+  icon_or_tree_view = add_view();//add view have to be called after showSearchResultExtColumnsBasedOnHashTableValues()
   //commit ab8f8c2f832bc32b431ced50bda21de36b9314d5 里, 我发现 add_view 需要在showSearchResultExtColumnsBasedOnHashTableValues()后面调用,就在那个commit 里面移动了add_view 的位置,否则会出现一个问题:运行 locate .rfmTODO.md>TODO.md 后,只有filename列显示,需要连续回车刷新下才会显示ext列. 究其原因,可能和第 3334 行代码有关, 也就是说,在调用 show_hide_treeview_column 时,需要 icon_or_tree_view值有效,否则gtkcolumn不会被设置成显示
   //但commit ab8f8c2f832bc32b431ced50bda21de36b9314d5 造成了新的问题, Iterate_through_fileAttribute_list_to_insert_into_store() 调用会自动选择刷新前选中的行,这功能需要 icon_or_tree_view 变量值有效,也就是add_view 要发生在Iterate_through_fileAttribute_list_to_insert_into_store()调用前
   gtk_tree_sortable_set_default_sort_func(GTK_TREE_SORTABLE(store), sort_func, NULL, NULL);
@@ -2504,10 +2503,10 @@ static void set_Titles(CALLER_OWN const gchar * title){
 }
 
 
-static void refresh_store(RFM_ctx *rfmCtx)
+static void refresh_store()
 {
    In_refresh_store = TRUE;
-   rfm_stop_all(rfmCtx);
+   rfm_stop_all();
 
    /* if (icon_or_tree_view!=NULL && viewSelectionChangedSignalConnection!=0) { */
    /*   g_signal_handler_disconnect((treeview? gtk_tree_view_get_selection(GTK_TREE_VIEW(icon_or_tree_view)) : icon_or_tree_view), viewSelectionChangedSignalConnection); */
@@ -2554,7 +2553,7 @@ static void refresh_store(RFM_ctx *rfmCtx)
      In_refresh_store=FALSE;
      if (!no_window) gtk_widget_set_sensitive(PathAndRepositoryNameDisplay, TRUE);
    } else {
-     icon_or_tree_view = add_view(rfmCtx);//call add_view earlier for directory view so that user won't see a blank window for long.
+     icon_or_tree_view = add_view();//call add_view earlier for directory view so that user won't see a blank window for long.
      if (current_sort_column_id == GTK_TREE_SORTABLE_UNSORTED_SORT_COLUMN_ID) current_sort_column_id = GTK_TREE_SORTABLE_DEFAULT_SORT_COLUMN_ID;
      gtk_tree_sortable_set_default_sort_func(GTK_TREE_SORTABLE(store), sort_func, NULL, NULL);
      gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(store), current_sort_column_id, current_sorttype);
@@ -2599,8 +2598,8 @@ static void refresh_store(RFM_ctx *rfmCtx)
 }
 
 //在目录视图，添加删除文件会有inotify handler促发刷新，在searchresultview才需要作为动作的后续调用刷新
-static void refresh_store_on_searchresult(RFM_ctx* ctx){
-  if (SearchResultViewInsteadOfDirectoryView) refresh_store(ctx);
+static void refresh_store_on_searchresult(){
+  if (SearchResultViewInsteadOfDirectoryView) refresh_store();
 }
 
 
@@ -2748,7 +2747,7 @@ static void set_rfm_curPath(CALLER_OWN gchar* path)
        // and it will destory and recreate view base on conditions such as whether curPath_is_git_repo
        inotify_rm_watch(rfm_inotify_fd, rfm_curPath_wd);
        rfm_curPath_wd = rfm_new_wd;
-       if (pauseInotifyHandler) refresh_store(rfmCtx);
+       if (pauseInotifyHandler) refresh_store();
      }
 
      if (UseTargetAddressWhenEnterSymbloicLinkForDir) free(realpath);
@@ -2903,20 +2902,19 @@ static void set_view_selection_list(GtkWidget *view, gboolean treeview,GList *se
   }
 }
 
-static void up_clicked(gpointer user_data)
+static void up_clicked()
 {
-   gchar *dir_name;
-   dir_name=g_path_get_dirname(rfm_curPath);
+   gchar *dir_name = g_path_get_dirname(rfm_curPath);
    set_rfm_curPath(dir_name);
    g_free(dir_name);
 }
 
-static void home_clicked(gpointer user_data)
+static void home_clicked()
 {
    set_rfm_curPath(rfm_homePath);
 }
 
-static void info_clicked(gpointer user_data)
+static void info_clicked()
 {
    GList *listElement=NULL;
    GString   *string=NULL;
@@ -3004,7 +3002,7 @@ static NO_FREE stdin_cmd_interpretor* match_cmd_str_array_with_interpretors(gcha
 static void toolbar_button_exec(GtkToolItem *item, RFM_ToolButton *button_definition)
 {
    if (button_definition->RunCmd==NULL) /* Argument is an internal function */
-     button_definition->func(rfmCtx);
+     button_definition->func();
    else { /* Assume argument is a shell exec */
      RFM_ChildAttribs *child_attribs=calloc(1, sizeof(RFM_ChildAttribs));
      child_attribs->RunCmd = button_definition->RunCmd;
@@ -3014,7 +3012,7 @@ static void toolbar_button_exec(GtkToolItem *item, RFM_ToolButton *button_defini
      child_attribs->spawn_async = TRUE;
      child_attribs->name = g_strdup(button_definition->buttonName);
      child_attribs->customCallBackFunc = button_definition->func;
-     child_attribs->customCallbackUserData = rfmCtx;
+     child_attribs->customCallbackUserData = rfmCtx; //TODO：这里传入一个全局参数没意义，传入RFM_ToolButton* 才比较合理，以便自定义函数对应多个button的时候可以区分
 #ifdef RFM_AddOn
      GHashTableIter ht_iter;
      gchar *key;
@@ -3133,7 +3131,7 @@ static void show_hide_file_menu_item(GtkWidget ***menuitems, RFM_MenuItem menuit
    free(showMenuItem);
 }
 
-static gboolean popup_file_menu(GdkEvent *event, RFM_ctx *rfmCtx)
+static gboolean popup_file_menu(GdkEvent *event)
 {
    GtkTreeIter iter;
    GList *selectionList;
@@ -3283,10 +3281,10 @@ static void cmd_handle_escape_key() {
     else gtk_icon_view_unselect_all(GTK_ICON_VIEW(icon_or_tree_view));
 }
 
-static gboolean view_key_press(GtkWidget *widget, GdkEvent *event,RFM_ctx *rfmCtx) {
+static gboolean view_key_press(GtkWidget *widget, GdkEvent *event) {
   GdkEventKey *ek=(GdkEventKey *)event;
   if (ek->keyval==GDK_KEY_Menu)
-    return popup_file_menu(event, rfmCtx);
+    return popup_file_menu(event);
   else if (ek->keyval==GDK_KEY_q){
     cleanup();
     return TRUE;
@@ -3343,7 +3341,7 @@ static gboolean on_query_tooltip(GtkWidget *widget, gint x, gint y, gboolean key
     return FALSE; // 未处理Tooltip
 }
 
-static gboolean view_button_press(GtkWidget *widget, GdkEvent *event, RFM_ctx *rfmCtx)
+static gboolean view_button_press(GtkWidget *widget, GdkEvent *event)
 {
    GtkTreePath *tree_path=NULL;
    gboolean ret_val=FALSE;
@@ -3368,7 +3366,7 @@ static gboolean view_button_press(GtkWidget *widget, GdkEvent *event, RFM_ctx *r
                gtk_icon_view_select_path(GTK_ICON_VIEW(widget), tree_path);
              }
             }
-            popup_file_menu(event, rfmCtx);
+            popup_file_menu(event);
             ret_val=TRUE;
          }
          else {
@@ -3447,7 +3445,7 @@ void add_toolbar_buttons(GtkWidget ***buttons, const RFM_ToolButton button_defin
    }
 }
 
-static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixbufs, RFM_ctx *rfmCtx)
+static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixbufs)
 {
    tool_bar=gtk_toolbar_new();
    gtk_toolbar_set_style(GTK_TOOLBAR(tool_bar), GTK_TOOLBAR_ICONS);
@@ -3456,13 +3454,13 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
    //we add the following toolbutton here instead of define in config.def.h because we need its global reference.
    PathAndRepositoryNameDisplay = gtk_tool_button_new(NULL,rfm_curPath);
    gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), GTK_TOOL_BUTTON(PathAndRepositoryNameDisplay), -1);
-   g_signal_connect(PathAndRepositoryNameDisplay, "clicked", G_CALLBACK(Switch_SearchResultView_DirectoryView),rfmCtx);
+   g_signal_connect(PathAndRepositoryNameDisplay, "clicked", G_CALLBACK(Switch_SearchResultView_DirectoryView),NULL);
    
    add_toolbar_buttons(&tool_bar_buttons,tool_buttons,G_N_ELEMENTS(tool_buttons));
 }
 
 
-static GtkWidget *add_view(RFM_ctx *rfmCtx)
+static GtkWidget *add_view()
 {
    GtkWidget *_view;
    if (no_window) return NULL;
@@ -3505,8 +3503,8 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
    #ifdef RFM_SINGLE_CLICK
    gtk_icon_view_set_activate_on_single_click(GTK_ICON_VIEW(icon_view), TRUE);
    #endif
-   g_signal_connect(_view, "button-press-event", G_CALLBACK(view_button_press), rfmCtx);
-   g_signal_connect(_view, "key-press-event", G_CALLBACK(view_key_press), rfmCtx);
+   g_signal_connect(_view, "button-press-event", G_CALLBACK(view_button_press), NULL);
+   g_signal_connect(_view, "key-press-event", G_CALLBACK(view_key_press), NULL);
 
    if (treeview){
      g_signal_connect(_view, "row-activated", G_CALLBACK(row_activated), NULL);
@@ -3531,28 +3529,27 @@ static GtkWidget *add_view(RFM_ctx *rfmCtx)
    return _view;
 }
 
-static void refresh_view(RFM_ctx *rfmCtx, gboolean switch_view) {
+static void refresh_view(gboolean switch_view) {
   if (no_window) return;
   GList *  selectionList=get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
   gtk_widget_hide(rfm_main_box);
   gtk_widget_destroy(scroll_window);
   if (switch_view) treeview=!treeview;
-  icon_or_tree_view=add_view(rfmCtx);
+  icon_or_tree_view=add_view();
   gtk_widget_show_all(window);
   refresh_toolbar();
   set_view_selection_list(icon_or_tree_view, treeview, selectionList);
   g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
 }
 
-static void switch_iconview_treeview(RFM_ctx *rfmCtx) {
-  refresh_view(rfmCtx, TRUE);
+static void switch_iconview_treeview() {
+  refresh_view(TRUE);
 }
 
-static void Switch_SearchResultView_DirectoryView(GtkToolItem *item,RFM_ctx *rfmctx)
+static void Switch_SearchResultView_DirectoryView()
 {
     SearchResultViewInsteadOfDirectoryView=SearchResultViewInsteadOfDirectoryView^1;
-    if (rfmctx==NULL) rfmctx=rfmCtx;
-    refresh_store(rfmctx);
+    refresh_store();
 }
 
 static void inotify_insert_item(gchar *name, gboolean is_dir)
@@ -3712,7 +3709,7 @@ static gboolean mounts_handler(GUnixMountMonitor *monitor, gpointer rfmCtx)
       listElement=g_list_next(listElement);
    }
    if (listElement!=NULL)
-      refresh_store((RFM_ctx*)rfmCtx);
+      refresh_store();
 
    g_hash_table_destroy(mount_hash);
    return TRUE;
@@ -3907,7 +3904,7 @@ static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResult
 	      return;
 	    }
 
-            if (!SearchResultViewInsteadOfDirectoryView) Switch_SearchResultView_DirectoryView(NULL, childAttribs->customCallbackUserData);
+            if (!SearchResultViewInsteadOfDirectoryView) Switch_SearchResultView_DirectoryView();
 
 	    childAttribs->RunCmd = cmd_interpretor_pointer->cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE);
 	    childAttribs->stdIn_fd = -1; //set to non-zero, and will be set to a valid fd by g_spawn_async_with_pipes
@@ -4360,8 +4357,8 @@ static void show_hide_treeview_columns_in_order(CALLER_OWN gchar* order_sequence
 	
               } while (order_seq_array[j]!=NULL);
 	      g_strfreev(order_seq_array);
-              if (pending_refresh_store) g_idle_add_once(refresh_store, rfmCtx);
-	      else if (pending_refresh_view) refresh_view(rfmCtx, FALSE);
+              if (pending_refresh_store) g_idle_add_once(refresh_store, NULL);
+	      else if (pending_refresh_view) refresh_view(FALSE);
 }
 
 static MEM_ALLOC gchar* get_current_column_layout(gboolean title){
@@ -4687,9 +4684,9 @@ static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(CALLER_OWN wo
         }else if (g_strcmp0(parsed_msg->we_wordv[0],"quit")==0) {
 	  cleanup();
         }else if (g_strcmp0(parsed_msg->we_wordv[0],"/")==0) {
-	  switch_iconview_treeview(rfmCtx);
+	  switch_iconview_treeview();
 	}else if (g_strcmp0(parsed_msg->we_wordv[0],"//")==0) {
-	  Switch_SearchResultView_DirectoryView(NULL, rfmCtx);
+	  Switch_SearchResultView_DirectoryView();
 
         }else{
 	  gchar** dimNameAndValue = g_strsplit(parsed_msg->we_wordv[0],"=",2);
@@ -4718,7 +4715,7 @@ static void cmd_cd(wordexp_t *parsed_msg, GString *readline_result_string_after_
 	    gchar * addr=parsed_msg->we_wordv[1];
 	    g_debug("cd %s", addr);
 	    if (g_strcmp0(addr, "..")==0) {
-	      up_clicked(NULL);
+	      up_clicked();
 	    }else if (g_strcmp0(addr, ".")==0){
 
 	    }else if (g_strcmp0(addr, "-")==0){
@@ -4748,7 +4745,7 @@ static void cmd_cd(wordexp_t *parsed_msg, GString *readline_result_string_after_
 		if (ItemSelected==1){
 		  if (selected_file_mode_str[0]=='d'){
 		    set_rfm_curPath(rfm_selection_completion);//因为当前函数和selectionChanged函数运行在同一线程里，所以读取rfm_selection_completion不用加锁
-		    if (SearchResultViewInsteadOfDirectoryView) Switch_SearchResultView_DirectoryView(NULL, rfmCtx);		  
+		    if (SearchResultViewInsteadOfDirectoryView) Switch_SearchResultView_DirectoryView();
 		  }else if (SearchResultViewInsteadOfDirectoryView){
 		    SearchResultViewInsteadOfDirectoryView = SearchResultViewInsteadOfDirectoryView^1;
 		    g_list_free_full(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView],(GDestroyNotify)g_free);
@@ -4914,7 +4911,7 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
 	    time_t now_time=time(NULL);
             if ((now_time - lastEnter)<=1){
                 lastEnter=now_time;
-               	refresh_store(rfmCtx);
+               	refresh_store();
             }else
                 lastEnter=now_time;
 	}else{
@@ -5298,7 +5295,7 @@ static int setup()
    rfm_prePath= getenv("OLDPWD");
    if (rfm_prePath!=NULL) rfm_prePath=strdup(rfm_prePath); //i don't remember exactly, but i think i do this because i read somewhere that getenv result is special and i should not free it.
    if (!no_window){
-   add_toolbar(rfm_main_box, defaultPixbufs, rfmCtx);
+   add_toolbar(rfm_main_box, defaultPixbufs);
    menu=gtk_menu_new();
    add_file_menuitems(&menuItem,run_actions,G_N_ELEMENTS(run_actions));
 
@@ -5328,7 +5325,7 @@ static int setup()
    if (no_window) writeSearchResultIntoFD_in_gtk_thread(STDOUT_FILENO, FALSE);
   
    if (!no_window && showHelpOnStart && startWithTerm() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)) stdin_command_help(NULL,NULL);
-   refresh_store(rfmCtx);
+   refresh_store();
    if(!no_window && startWithTerm() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)){
        readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);
    }

@@ -109,7 +109,7 @@ typedef struct {
 typedef struct {
    gchar *buttonName;
    gchar *buttonIcon;
-   void (*func)(gpointer);
+   void (*func)();//TODO：这里传入RFM_ToolButton* 才比较合理，以便自定义函数对应多个button的时候可以区分
    const gchar **RunCmd;
    gboolean showInSearchResultView;
    gboolean showInDirectoryView;
@@ -124,7 +124,7 @@ typedef struct {
    gchar *runSub;
    gchar *filenameSuffix;
    gchar *OrSearchResultType;
-   void (*func)(gpointer); //参数指针传入的是没用的rfmCtx，也可以使用不带参数的函数，执行时根据当前selection获得文件
+   void (*func)(gpointer); //TODO:参数指针传入的是没用的rfmCtx，也可以使用不带参数的函数，执行时根据当前selection获得文件
    const gchar **runCmd;
    gboolean (*showCondition)(RFM_FileAttributes*);
 } RFM_MenuItem;
