@@ -118,13 +118,45 @@ typedef struct {
    gboolean (*showCondition)();
 } RFM_ToolButton;
 
+/* deepseek-r1>〉我代码中函数指针调用传递一个参数 func(file_menu_item_definition); */
+/* ::: 函数指针定义也是需要一个参数 void (*func)(struct RFM_MenuItem *); */
+/* ::: 但实际赋值给函数指针的函数定义参数为零，但编译执行都没报错，这和你前面说的不一致啊？ */
+/* /home/guyuming/rfm1/rfmAI_deepseek-reasoner___20260115_145409.rfmAI.md */
+
+/* 确认上传这些对话历史吗? [Y/n]  */
+/* 从对话记录文件中读取历史消息: /home/guyuming/rfm1/rfmAI_deepseek-reasoner___20260115_145409.rfmAI.md */
+/* # 思考: */
+/* 您提到的情况确实是一个常见的误解点，让我详细解释一下。 */
+
+/* 首先，根据C语言标准，函数指针的类型必须与所指向的函数类型严格匹配，包括参数个数和类型。如果不匹配，那么行为是未定义（undefined behavior）的。但是，在某些编译环境下，可能会出现您描述的情况：编译通过且运行时没有立即出错。这并不代表代码正确，而是未定义行为的一种表现，可能在某些平台上恰好能运行，但随时可能出错。 */
+
+/* 让我们分析一下您提到的例子： */
+
+/* 1. 函数指针定义：`void (*func)(struct RFM_MenuItem *);` */
+/*    - 这是一个指向函数的指针，该函数接受一个指向`struct RFM_MenuItem`的指针作为参数，返回类型为`void`。 */
+
+/* 2. 您将函数指针`func`指向了一个实际函数，但该实际函数的定义参数为零（即没有参数）。假设这个实际函数声明为：`void actual_func();`（注意：这里没有参数列表，或者可能是`void actual_func(void)`？） */
+
+/* 3. 然后通过函数指针调用：`func(file_menu_item_definition);`，传递了一个参数。 */
+
+/* 根据C标准，这是不允许的。但是，为什么编译没有报错呢？可能有以下几种原因： */
+
+/* - **旧式函数声明**：如果实际函数的声明是旧式声明（即没有指定参数列表），例如`void actual_func();`，那么在C语言中，这个声明表示该函数可以接受任意数量的参数（但参数类型和个数都不进行检查）。如果实际函数的定义也是旧式定义（K&R风格），那么编译器可能不会严格检查。 */
+
+/* - **编译器宽松检查**：默认情况下，某些编译器（尤其是GCC）可能会允许这种不匹配，只是给出警告而不是错误。如果您没有开启严格的编译选项（如`-Wall -Wextra -Werror`），那么编译器可能会放行。 */
+
+/* - **调用约定和参数传递**：在x86等架构上，函数参数的传递通常是通过栈或寄存器。如果调用时传递了一个参数，而函数定义中没有参数，那么被调用的函数不会使用这个参数，但调用者仍然会传递。这可能导致栈不平衡吗？不一定，因为调用者会清理栈（取决于调用约定）。但是，如果函数定义中使用了这个参数（而实际上没有传递），就会读取到错误的值。在您的情况下，是调用时传递了参数但函数定义没有参数，那么函数定义中不会使用这个参数，而调用者传递的参数可能仍然在栈上（或寄存器中），但函数不会去使用它。这可能会造成资源浪费，但不一定立即崩溃。 */
+
+/* 然而，请注意，如果实际函数的声明是`void actual_func(void);`，那么它明确表示不接受任何参数。在这种情况下，将函数指针类型为`void (*)(struct RFM_MenuItem *)`指向`actual_func`会导致类型不匹配，编译器应该产生警告或错误。 */
+
+
 typedef struct {
    gchar *runName;
    gchar *runRoot;
    gchar *runSub;
    gchar *filenameSuffix;
    gchar *OrSearchResultType;
-   void (*func)(); //TODO:这里传入RFM_menuitem* 才比较合理
+   void (*func)(struct RFM_MenuItem *); //Although i use void here, RFM_MenuItem * might be used in some addon for dynmaically created menuitem
    const gchar **runCmd;
    gboolean (*showCondition)(RFM_FileAttributes*);
 } RFM_MenuItem;

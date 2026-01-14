@@ -3033,7 +3033,7 @@ static void toolbar_button_exec(GtkToolItem *item, RFM_ToolButton *button_defini
 static void file_menu_exec(GtkMenuItem *menuitem, RFM_MenuItem *file_menu_item_definition)
 { 
   if (file_menu_item_definition->runCmd==NULL) //如果runCmd为空，则直接执行func,否则，先执行runCmd,后通过callbackfunc指针执行func
-     file_menu_item_definition->func();
+     file_menu_item_definition->func(file_menu_item_definition);
   else{
      RFM_ChildAttribs *child_attribs=calloc(1, sizeof(RFM_ChildAttribs));
      child_attribs->RunCmd = file_menu_item_definition->runCmd;
@@ -3043,6 +3043,7 @@ static void file_menu_exec(GtkMenuItem *menuitem, RFM_MenuItem *file_menu_item_d
      child_attribs->spawn_async = TRUE;
      child_attribs->name = g_strdup(file_menu_item_definition->runName);
      child_attribs->customCallBackFunc = file_menu_item_definition->func;
+     child_attribs->customCallbackUserData = file_menu_item_definition;
 #ifdef RFM_AddOn
      GHashTableIter ht_iter;
      gchar *key;
