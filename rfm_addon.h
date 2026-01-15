@@ -12,6 +12,8 @@
 #define OWNER_CHANGE //indicate that ownership changed after function calll, need to pay attention.
 
 typedef struct RFM_ChildAttributes RFM_ChildAttribs;
+struct RFM_ToolButton;
+struct RFM_MenuItem;
 
 typedef struct {  /* Update free_fileAttributes() and malloc_fileAttributes() if new items are added */
    guint id; // usually, path can be unique id for fileAttributelist, however, for searchresult from grep, same file can appear more than once, so we need a id as key for grepMatch_hash and others.
