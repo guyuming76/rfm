@@ -52,9 +52,9 @@ if [ -n "$VIRTUAL_ENV" ]; then
     venv_name=$(basename "$VIRTUAL_ENV")
     echo "The current python virtual environment is named '$venv_name'." >&2
     # valgrind --tool=memcheck rfm
-    MALLOC_CHECK_=1 RUST_LOG=reedline_wrapper=debug rfm "$@" --InheritedPrompt "($venv_name) "
+    MALLOC_CHECK_=1 RUST_LOG=rfm=warn rfm "$@" --InheritedPrompt "($venv_name) "
 else
-    MALLOC_CHECK_=1 RUST_LOG=reedline_wrapper=debug rfm "$@"
+    MALLOC_CHECK_=1 RUST_LOG=rfm=warn rfm "$@"
 fi
 
 exit_status=$?
