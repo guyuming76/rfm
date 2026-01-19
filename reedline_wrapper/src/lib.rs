@@ -271,18 +271,15 @@ pub extern "C" fn reedline_create(rfm_functions: *const rfmFunctions) -> *mut Re
     keybindings.add_binding(KeyModifiers::NONE, KeyCode::Esc,
         ReedlineEvent::UntilFound(vec![ReedlineEvent::Esc, ReedlineEvent::ExecuteHostCommand("esc".to_string())]));
 
-    keybindings.add_binding(KeyModifiers::ALT, KeyCode::Up,
-        ReedlineEvent::ExecuteHostCommand("u".to_string())); //Up命令，Up是Chinese.h里定义的常量，config.h里面正则表达式替换使其可通过u使用
-        keybindings.add_binding(KeyModifiers::ALT, KeyCode::Left, ReedlineEvent::ExecuteHostCommand("l".to_string())); //Previous命令
-        keybindings.add_binding(KeyModifiers::ALT, KeyCode::Right, ReedlineEvent::ExecuteHostCommand("r".to_string())); //Next命令
+    keybindings.add_binding(KeyModifiers::ALT, KeyCode::Up, ReedlineEvent::ExecuteHostCommand("u".to_string())); //Up命令，Up是Chinese.h里定义的常量，config.h里面正则表达式替换使其可通过u使用
+    keybindings.add_binding(KeyModifiers::ALT, KeyCode::Left, ReedlineEvent::ExecuteHostCommand("l".to_string())); //Previous命令
+    keybindings.add_binding(KeyModifiers::ALT, KeyCode::Right, ReedlineEvent::ExecuteHostCommand("r".to_string())); //Next命令
 
     // 配置菜单（即使您不想显示菜单，也需要配置）
     let completion_menu = Box::new(ColumnarMenu::default().with_name("completion_menu"));
 
     // 配置 Tab 键绑定
-    keybindings.add_binding(
-	KeyModifiers::NONE,
-    	KeyCode::Tab,
+    keybindings.add_binding(KeyModifiers::NONE, KeyCode::Tab,
 	ReedlineEvent::UntilFound(vec![
 		ReedlineEvent::Menu("completion_menu".to_string()),
         	ReedlineEvent::MenuNext,
