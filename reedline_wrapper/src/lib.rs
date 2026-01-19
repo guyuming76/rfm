@@ -275,15 +275,6 @@ pub extern "C" fn reedline_create(rfm_functions: *const rfmFunctions) -> *mut Re
         ReedlineEvent::ExecuteHostCommand("u".to_string())); //Up命令，Up是Chinese.h里定义的常量，config.h里面正则表达式替换使其可通过u使用
         keybindings.add_binding(KeyModifiers::ALT, KeyCode::Left, ReedlineEvent::ExecuteHostCommand("l".to_string())); //Previous命令
         keybindings.add_binding(KeyModifiers::ALT, KeyCode::Right, ReedlineEvent::ExecuteHostCommand("r".to_string())); //Next命令
-    // 修改历史文件创建部分
-    let history_path = home_dir()
-        .map(|mut path| {
-            path.push(".rfm_reedline_history.txt");
-            path
-        })
-        .unwrap_or_else(|| ".rfm_reedline_history.txt".into());
-
-    let history_result = FileBackedHistory::with_file(1000, history_path.clone());
 
     // 配置菜单（即使您不想显示菜单，也需要配置）
     let completion_menu = Box::new(ColumnarMenu::default().with_name("completion_menu"));
@@ -298,24 +289,33 @@ pub extern "C" fn reedline_create(rfm_functions: *const rfmFunctions) -> *mut Re
     		]),
     	);
 
+    let engine_builder = Reedline::create()
+        .use_bracketed_paste(true) //复制粘贴处理 \r\n,需要terminal支持
+        .with_completer(Box::new(CombinedCompleter::new(CCompleter::new(rfm_functions, None))))
+        .with_menu(ReedlineMenu::EngineCompleter(completion_menu))
+        .with_validator(Box::new(AlwaysIncompleteValidator))
+        .with_edit_mode(Box::new(Emacs::new(keybindings)))
+        .with_quick_completions(true)
+        .with_hinter(Box::new(
+            CwdAwareHinter::default()
+                .with_style(Style::new().italic().fg(Color::LightGray))
+                .with_min_chars(2)
+        ));
 
-    // 创建 Reedline 引擎并配置
+    // 修改历史文件创建部分
+    let history_path = home_dir()
+        .map(|mut path| {
+            path.push(".rfm_reedline_history.txt");
+            path
+        })
+        .unwrap_or_else(|| ".rfm_reedline_history.txt".into());
+
+    let history_result = FileBackedHistory::with_file(1000, history_path.clone());
     let engine = match history_result {
-        Ok(history) => Reedline::create().use_bracketed_paste(true)
-	    .with_completer(Box::new(CombinedCompleter::new(CCompleter::new(rfm_functions, None)))) // 使用组合补全器
-					.with_menu(ReedlineMenu::EngineCompleter(completion_menu))
-					.with_history(Box::new(history))
-        				.with_validator(Box::new(AlwaysIncompleteValidator)) // 使用自定义验证器
-        				.with_edit_mode(Box::new(Emacs::new(keybindings)))  // 使用自定义键绑定
-					.with_quick_completions(true)  // 启用快速补全,只有一个补全选项时，系统会自动选择该选项而不显示菜单
-					.with_hinter(Box::new(CwdAwareHinter::default().with_style(Style::new().italic().fg(Color::LightGray)).with_min_chars(2))),
+        Ok(history) => engine_builder.with_history(Box::new(history)),
         Err(e) => {
             warn!("History load error: {}", e);
-            Reedline::create().with_completer(Box::new(CombinedCompleter::new(CCompleter::new(rfm_functions, None)))) // 使用组合补全器
-					.with_menu(ReedlineMenu::EngineCompleter(completion_menu))
-        				.with_validator(Box::new(AlwaysIncompleteValidator)) // 使用自定义验证器
-        				.with_edit_mode(Box::new(Emacs::new(keybindings)))  // 使用自定义键绑定
-					.with_quick_completions(true)  // 启用快速补全,只有一个补全选项时，系统会自动选择该选项而不显示菜单
+            engine_builder
         }
     };
 
