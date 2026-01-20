@@ -229,6 +229,7 @@ endif
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmRefreshImage.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmVTforCMD.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmReadlineWithSpecificHistoryFile.sh
+	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmBashReadWithSpecificHistoryFile.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmCopyMove.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmRemove.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmProperties.sh
@@ -288,6 +289,7 @@ endif
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmRefreshImage.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmVTforCMD.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmReadlineWithSpecificHistoryFile.sh
+	@rm -f ${DESTDIR}${PREFIX}/bin/rfmBashReadWithSpecificHistoryFile.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmCopyMove.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmRemove.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmProperties.sh
