@@ -3869,7 +3869,7 @@ static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousRea
 	    childAttribs->output_read_by_program = TRUE;
 	    childAttribs->customCallBackFunc = update_SearchResultFileNameList_and_refresh_store;
 	    childAttribs->runOpts = G_SPAWN_SEARCH_PATH|G_SPAWN_STDIN_FROM_DEV_NULL;
-	    childAttribs->setsid = TRUE;
+	    childAttribs->setsid = TRUE;//search 后台进程有可能运行时间比较长，为了防止和终端输入争抢，设置这里，所以同时就不设置 G_SPAWN_CHILD_INHERITS_STDIN|G_SPAWN_CHILD_INHERITS_STDOUT,但这也意味着执行search的过程就无法和用户通过命令行交互
 	    childAttribs->no_free = TRUE; //update_SearchResultFileNameList_and_refresh_store 要多次调用SearchResultTypeProcessingFunc, 可能会重复使用这个childAttribs,多次穿过 g_spawn_wrapper调用, 在update_SearchResultFileNameList_and_refresh_store 调用的最后置为 FALSE.
 	    ret = g_spawn_wrapper_(NULL, NULL, childAttribs);
 	    childAttribs->name = strdup(SearchResultTypePointer->name);
