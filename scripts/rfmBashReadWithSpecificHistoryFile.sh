@@ -9,7 +9,7 @@ HISTCONTROL=ignoreboth
 history -r
 
 # 读取用户输入到指定的变量
-read -e -r "$var_name"
+read -e -r "$var_name" </dev/tty
 
 # 获取用户实际输入的值
 user_input="${!var_name}"

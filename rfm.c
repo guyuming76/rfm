@@ -283,7 +283,7 @@ static GMutex rfm_selection_completion_lock;
 static char selected_filename_placeholder_in_space[34];       //" %s "  by default
 static char selected_filename_placeholder_in_quotation[34];   //"'%s'"  by default
 
-static gboolean exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread = FALSE;
+static gboolean exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread = FALSE;// use ] command alias to toggleBlockGUI
 static gboolean execStdinCmdInNewVT = FALSE;
 // since it's may be complicated if possible to update stdin prompt whenever the terminal window get focus, i just show ItemSelected prompt in new prompt, and user press two times to refresh gtk view.So, I need a way to recognize consecutive enter press.
 static time_t lastEnter;
@@ -1016,7 +1016,7 @@ static gboolean g_spawn_async_with_pipes_wrapper_child_supervisor(gpointer user_
 /* g_spawn_async_with_pipes(${1:const gchar *working_directory}, ${2:gchar **argv}, ${3:gchar **envp}, ${4:GSpawnFlags flags}, ${5:GSpawnChildSetupFunc child_setup}, ${6:gpointer user_data}, ${7:GPid *child_pid}, ${8:gint *standard_input}, ${9:gint *standard_output}, ${10:gint *standard_error}, ${11:GError **error}) */
 /* Identical to g_spawn_async_with_pipes_and_fds() but with n_fds set to zero, so no FD assignments are used. */
    
-   if (child_attribs->output_read_by_program || (((child_attribs->runOpts & G_SPAWN_CHILD_INHERITS_STDOUT)!=G_SPAWN_CHILD_INHERITS_STDOUT) && ((child_attribs->runOpts & G_SPAWN_STDOUT_TO_DEV_NULL)!=G_SPAWN_STDOUT_TO_DEV_NULL)))
+   if (child_attribs->output_read_by_program || (((child_attribs->runOpts & G_SPAWN_CHILD_INHERITS_STDOUT)!=G_SPAWN_CHILD_INHERITS_STDOUT) && ((child_attribs->runOpts & G_SPAWN_STDOUT_TO_DEV_NULL)!=G_SPAWN_STDOUT_TO_DEV_NULL)))//rfm代码处理输出，或者不继承（父进程，即终端）输出
      if (read_char_pipe(child_attribs->stdOut_fd, PIPE_SZ, &child_attribs->stdOut)<0) g_log(RFM_LOG_GSPAWN_READ_PIPE, G_LOG_LEVEL_DEBUG,"read_char_pipe failed, child_attribs->stdOut_fd:%d", child_attribs->stdOut_fd);
 
    if ((((child_attribs->runOpts) & G_SPAWN_CHILD_INHERITS_STDERR)!=G_SPAWN_CHILD_INHERITS_STDERR) && (((child_attribs->runOpts) & G_SPAWN_STDERR_TO_DEV_NULL)!=G_SPAWN_STDERR_TO_DEV_NULL))
@@ -3001,10 +3001,7 @@ static void toolbar_button_exec(GtkToolItem *item, RFM_ToolButton *button_defini
    else { /* Assume argument is a shell exec */
      RFM_ChildAttribs *child_attribs=calloc(1, sizeof(RFM_ChildAttribs));
      child_attribs->RunCmd = button_definition->RunCmd;
-     child_attribs->runOpts = G_SPAWN_DEFAULT;
-     child_attribs->stdOut = NULL;
-     child_attribs->stdErr = NULL;
-     child_attribs->spawn_async = TRUE;
+     if (!exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread) child_attribs->spawn_async = TRUE;//到目前为止，我日常很少通过 toggleBlockGUI 功能，只是在功能添加之初测试过，所以改这一句对我现有常用功能应该没啥影响。设计的出发点在于在执行命令的时候锁死GUI界面，究竟async 好还是sync 好，当时应该也比较随意。也就是当时应该也没明确定义是否要block到自进程结束。显然对于耗时较长的 search ，async 不会让终端输入等待太久，所以之前一直 async 执行子进程。到目前为止，子进程bash脚本执行过程都无需终端窗口输入。需要交互输入的常用命令如AI addon的对话，是通过在 exec_stdin_command 中另外的方式处理同步的，会和cmd_interpretor 提示符关联，好处是可以在 config.h, rfm_addon.c 里面为命令设定好cmd_interpretor.这次新加AI对话历史相似度查询功能，犹豫是不是新加一个cmd_interpretor 。问题是interpretor类型太多用户也不好记。所以做了这个commit 中 exec_stdin_command 中的修改，以便用户在切换到 exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread 状态后可以运行需要提示输入的脚本且不和readlineThread冲突，TODO: 但问题是这个现在要提示用户手工切换。
      child_attribs->name = g_strdup(button_definition->buttonName);
      child_attribs->customCallBackFunc = button_definition->func;
      child_attribs->customCallbackUserData = button_definition;
@@ -3060,7 +3057,7 @@ static void file_menu_exec(GtkMenuItem *menuitem, RFM_MenuItem *file_menu_item_d
      stdin_cmd_interpretor *cmd_interpretor_pointer = match_cmd_str_array_with_interpretors(child_attribs->RunCmd);
      if (cmd_interpretor_pointer){
        gchar* cmd = strdup(child_attribs->RunCmd[1]);
-       if (startWithTerm()) printf("\n\r%s\033[32m%s%s]\033[0m%s\r\n",InheritedPrompt, cmd_interpretor_pointer->prompt,(ItemSelected==0)?"":"*",cmd);
+       if (startWithTerm()) printf("\n\r%s\033[32m%s%s]\033[0m%s\r\n",InheritedPrompt, cmd_interpretor_pointer->prompt,(ItemSelected==0)?"":"*",cmd);//TODO: 这里显示] 的目的只是为了和用户手工输入的命令作区分，但这个又和toggleBlockGUI 的]相冲突，这里换成啥区别符号好呢？
        parse_and_exec_command_in_gtk_thread(cmd, FALSE, cmd_interpretor_pointer, child_attribs);
      }else g_spawn_wrapper_for_selected_fileList_(child_attribs);
   }
@@ -3865,6 +3862,14 @@ static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousRea
 #endif
           childAttribs->RunCmd = cmd_interpretor_pointer->cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE);
           if (SearchResultTypePointer) {
+	    if (childAttribs->exec_stdin_command_in_gtk_thread){
+	        childAttribs->runOpts |= G_SPAWN_SEARCH_PATH|G_SPAWN_CHILD_INHERITS_STDIN|G_SPAWN_CHILD_INHERITS_STDERR;
+	        childAttribs->output_read_by_program = TRUE;
+	        childAttribs->g_idle_add_once_to_run_CallBackFunc = TRUE;
+	        childAttribs->customCallBackFunc = update_SearchResultFileNameList_and_refresh_store;
+	        childAttribs->no_free = TRUE;
+	        ret = g_spawn_wrapper_(NULL, NULL, childAttribs);
+	    }else{
 	    childAttribs->g_idle_add_once_to_run_CallBackFunc = TRUE;
 	    childAttribs->output_read_by_program = TRUE;
 	    childAttribs->customCallBackFunc = update_SearchResultFileNameList_and_refresh_store;
@@ -3873,6 +3878,7 @@ static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousRea
 	    childAttribs->no_free = TRUE; //update_SearchResultFileNameList_and_refresh_store 要多次调用SearchResultTypeProcessingFunc, 可能会重复使用这个childAttribs,多次穿过 g_spawn_wrapper调用, 在update_SearchResultFileNameList_and_refresh_store 调用的最后置为 FALSE.
 	    ret = g_spawn_wrapper_(NULL, NULL, childAttribs);
 	    childAttribs->name = strdup(SearchResultTypePointer->name);
+	    }
 	  }else{
 	    if (cmd_interpretor_pointer->customCallBackFunc){
 	      childAttribs->spawn_async = TRUE; childAttribs->keep_total_buffer_in_show_child_output = TRUE; childAttribs->customCallBackFunc = cmd_interpretor_pointer->customCallBackFunc; //这一行设置被用作在ExecCallback_freeChildattribs 里面 g_thread_new readline thread 的一个条件，这组条件也可以看作有parse_and_exec_command_in_gtk_thread 中的条件 (effective_cmd_interpretor_pointer->customCallBackFunc && !execCmdInNewVT && !execStdinCmdInNewVT) 得来
@@ -5049,8 +5055,8 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
 		   || (current_stdin_cmd_interpretor_pointer==cmd_interpretor_pointer //这一行排除了在命令提示符下单纯输入 d>  b> 等切换cmd_interpretor的情况，这种情况下，不在这里执行 exec_stdin_command, 也就不会free childattribs, 而是需要g_thread_new readlineThread, 参见下面g_thread_new前条件判断
 		       && effective_cmd_interpretor_pointer->customCallBackFunc && !execCmdInNewVT && !execStdinCmdInNewVT) ){ //这一行条件用来判断需要使用customCallBackFunction来处理 exec_stdin_command 的输出的情况，比如AI LLM返回的内容，这种情况下，g_spawn_wrapper 用异步，exec_stdin_command 会很早返回，但g_spawn_wrapper 还没完成，为了避免争夺终端模拟器，这时不能开始readline,所以就暂时不要 g_thread_new readline,在 g_spawn_wrapper 的异步callback里面再考虑 g_thread_new readline。另外这一行判断也是保证此时exec_stdin_command在gtk thread里执行，否则在readline thread里执行得话，就不方便控制exec_stdin_command 中g_spawn_wrapper 实际callback完成后才调用 readline函数了。注意之一行判断条件在下面 g_thread_new readline 前也有使用
 	    if (childAttribs->readlineResultString){
-	           ret = exec_stdin_command(childAttribs->readlineResultString, effective_cmd_interpretor_pointer, childAttribs);
 	           childAttribs->exec_stdin_command_in_gtk_thread = TRUE;//因为上面的组合判断条件越来越复杂了，不方便把等价条件放入readlineInSeperateThread; 并且exec_stdin_command中调用的g_spawn_wrapper可能是异步的，也不能直接在这里释放childAttribs并置NULL,所以这里添加了一个标志属性简化代码
+	           ret = exec_stdin_command(childAttribs->readlineResultString, effective_cmd_interpretor_pointer, childAttribs);
 	    }
           }
           if ((execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT)) && childAttribs->readlineResultString) exec_stdin_command_in_new_VT(childAttribs->readlineResultString, effective_cmd_interpretor_pointer, childAttribs); // 在AI Mode下输入builtin cmd,如 help, 会因为是AI mode 一开始把 execStdinCmdInNewVT 设成true,所以这里加上 readlineResultString 非NULL判断
