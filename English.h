@@ -215,7 +215,7 @@ BuiltInCmd_SearchResultColumnSeperator \
 "Usage:       setenv EnvVarName Value\n" \
 "For example: setenv G_MESSAGES_DEBUG all\n" \
 "             setenv G_MESSAGES_DEBUG rfm\n" \
-"             setenv G_MESSAGES_DEBUG rfm,rfm-data,rfm-data-ext,rfm-data-thumbnail,rfm-data-search,rfm-data-git,rfm-gspawn,rfm-column,rfm-column-verbose,rfm-gtk,rfm-readline（try space as seperator if comma does not work）\n" \
+"             setenv G_MESSAGES_DEBUG rfm,rfm-data,rfm-data-ext,rfm-data-thumbnail,rfm-data-search,rfm-data-git,rfm-gspawn,rfm-column,rfm-column-verbose,rfm-gtk,rfm-readline（try space as seperator if comma does not work, and add double quotation）\n" \
 "             setenv G_MESSAGES_DEBUG \"\"\n" \
 "Get current value with:\n" \
 "             env |grep G_MESSAGES_DEBUG\n" \

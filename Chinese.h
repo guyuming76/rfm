@@ -217,7 +217,7 @@ BuiltInCmd_SearchResultColumnSeperator \
 "用法:  setenv EnvVarName Value\n" \
 "例子:  setenv G_MESSAGES_DEBUG all\n" \
 "       setenv G_MESSAGES_DEBUG rfm\n" \
-"       setenv G_MESSAGES_DEBUG rfm,rfm-data,rfm-data-ext,rfm-data-thumbnail,rfm-data-search,rfm-data-git,rfm-gspawn,rfm-column,rfm-column-verbose,rfm-gtk,rfm-readline (分割符逗号不行就试空格，glib版本升级好像变过)\n" \
+"       setenv G_MESSAGES_DEBUG rfm,rfm-data,rfm-data-ext,rfm-data-thumbnail,rfm-data-search,rfm-data-git,rfm-gspawn,rfm-column,rfm-column-verbose,rfm-gtk,rfm-readline (分割符逗号不行就试空格，glib版本升级好像变过, rfm这些参数应该也要用双引号括起来吧？)\n" \
 "       setenv G_MESSAGES_DEBUG \"\"\n" \
 "获取当前值:\n" \
 "       env |grep G_MESSAGES_DEBUG\n" \
