@@ -3021,7 +3021,7 @@ static void toolbar_button_exec(GtkToolItem *item, RFM_ToolButton *button_defini
      stdin_cmd_interpretor *cmd_interpretor_pointer = match_cmd_str_array_with_interpretors(child_attribs->RunCmd);
      if (cmd_interpretor_pointer){
        gchar* cmd = strdup(child_attribs->RunCmd[1]);
-       if (startWithTerm()) printf("\n\r%s\033[32m%s%s]\033[0m%s\r\n",InheritedPrompt, cmd_interpretor_pointer->prompt,(ItemSelected==0)?"":"*",cmd);
+       if (startWithTerm()) printf("\n\r%s\033[32m%s%s`\033[0m%s`\r\n",InheritedPrompt, cmd_interpretor_pointer->prompt,(ItemSelected==0)?"":"*",cmd);
        parse_and_exec_command_in_gtk_thread(cmd, FALSE, cmd_interpretor_pointer, child_attribs);
      }else g_spawn_wrapper_(NULL, NULL, child_attribs);
    }
@@ -3034,10 +3034,7 @@ static void file_menu_exec(GtkMenuItem *menuitem, RFM_MenuItem *file_menu_item_d
   else{
      RFM_ChildAttribs *child_attribs=calloc(1, sizeof(RFM_ChildAttribs));
      child_attribs->RunCmd = file_menu_item_definition->runCmd;
-     child_attribs->runOpts = G_SPAWN_DEFAULT;
-     child_attribs->stdOut = NULL;
-     child_attribs->stdErr = NULL;
-     child_attribs->spawn_async = TRUE;
+     if (!exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread) child_attribs->spawn_async = TRUE;
      child_attribs->name = g_strdup(file_menu_item_definition->runName);
      child_attribs->customCallBackFunc = file_menu_item_definition->func;
      child_attribs->customCallbackUserData = file_menu_item_definition;
@@ -3057,7 +3054,7 @@ static void file_menu_exec(GtkMenuItem *menuitem, RFM_MenuItem *file_menu_item_d
      stdin_cmd_interpretor *cmd_interpretor_pointer = match_cmd_str_array_with_interpretors(child_attribs->RunCmd);
      if (cmd_interpretor_pointer){
        gchar* cmd = strdup(child_attribs->RunCmd[1]);
-       if (startWithTerm()) printf("\n\r%s\033[32m%s%s]\033[0m%s\r\n",InheritedPrompt, cmd_interpretor_pointer->prompt,(ItemSelected==0)?"":"*",cmd);//TODO: 这里显示] 的目的只是为了和用户手工输入的命令作区分，但这个又和toggleBlockGUI 的]相冲突，这里换成啥区别符号好呢？
+       if (startWithTerm()) printf("\n\r%s\033[32m%s%s`\033[0m%s`\r\n",InheritedPrompt, cmd_interpretor_pointer->prompt,(ItemSelected==0)?"":"*",cmd);
        parse_and_exec_command_in_gtk_thread(cmd, FALSE, cmd_interpretor_pointer, child_attribs);
      }else g_spawn_wrapper_for_selected_fileList_(child_attribs);
   }
@@ -3193,12 +3190,12 @@ static void sort_on_column_header(GtkMenuItem *menuitem, RFM_treeviewColumn* rfm
 static void hide_column_menuitem_activated(GtkMenuItem *menuitem, RFM_treeviewColumn *col) {
         char cmd[256+1];
         snprintf(cmd, sizeof(cmd),"-%s",col->title);
-        if (startWithTerm()) printf("\n\r%s\033[32m%s%s]\033[0mshowcolumn %s\r\n",InheritedPrompt, current_stdin_cmd_interpretor_pointer->prompt,(ItemSelected==0)?"":"*",cmd);
+        if (startWithTerm()) printf("\n\r%s\033[32m%s%s`\033[0mshowcolumn %s`\r\n",InheritedPrompt, current_stdin_cmd_interpretor_pointer->prompt,(ItemSelected==0)?"":"*",cmd);
         show_hide_treeview_columns_in_order(cmd);
 }
 
 static void insert_column_menuitem_callback(GtkMenuItem *menuitem,char *order_seq) {
-      if (startWithTerm()) printf("\n\r%s\033[32m%s%s]\033[0mshowcolumn %s\r\n",InheritedPrompt, current_stdin_cmd_interpretor_pointer->prompt,(ItemSelected==0)?"":"*",order_seq);
+      if (startWithTerm()) printf("\n\r%s\033[32m%s%s`\033[0mshowcolumn %s`\r\n",InheritedPrompt, current_stdin_cmd_interpretor_pointer->prompt,(ItemSelected==0)?"":"*",order_seq);
       show_hide_treeview_columns_in_order(order_seq);
 }
 
