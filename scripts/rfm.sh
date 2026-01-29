@@ -47,11 +47,15 @@ fi
 
 export rfmFontCSS="* { font-size: 16px; }"
 
+#使用 GTK Inspector
+#export GTK_DEBUG=interactive
+
 if [ -n "$VIRTUAL_ENV" ]; then
     # 提取虚拟环境的名称，通常是路径的最后一部分
     venv_name=$(basename "$VIRTUAL_ENV")
     echo "The current python virtual environment is named '$venv_name'." >&2
     # valgrind --tool=memcheck rfm
+
     MALLOC_CHECK_=1 RUST_LOG=rfm=warn rfm "$@" --InheritedPrompt "($venv_name) "
 else
     MALLOC_CHECK_=1 RUST_LOG=rfm=warn rfm "$@"
