@@ -3272,9 +3272,11 @@ static void cmd_handle_escape_key() {
 
 static gboolean view_key_press(GtkWidget *widget, GdkEvent *event) {
   GdkEventKey *ek=(GdkEventKey *)event;
-  if (ek->keyval==GDK_KEY_Menu)
-    return popup_file_menu(event);
-  else if (ek->keyval==GDK_KEY_q){
+  if (ek->keyval==GDK_KEY_Menu){
+    if (!popup_file_menu(event)){
+      //TODO: 当没有文件选中，popup_file_menu返回false. 找到tool_bar 中包含的因为宽度不够而显示的溢出按钮，并调用点击。但问题是，工具栏（GtkToolbar）内部有一个容器（可能是GtkBox）来存放工具项，而溢出按钮可能是在这个容器内，但并不是通过gtk_container_get_children()返回的直接子控件。deepseek给出的代码使用gtk_contain_get_children返回工具栏的children,但总是找不到这个按钮。问题是 gtk Inspector 为啥可以列出这个按钮，也许要查阅gtk Inspector源代码. 另一方面，gtk4 好像对工具栏改动比较大
+    }else return TRUE;
+  } else if (ek->keyval==GDK_KEY_q){
     cleanup();
     return TRUE;
   } else if (ek->keyval == GDK_KEY_Escape) {
