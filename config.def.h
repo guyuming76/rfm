@@ -47,6 +47,7 @@
 
 static gint RFM_THUMBNAIL_SIZE = 128; /* Maximum size for thumb dir normal is 128 */
 static gboolean UseTargetAddressWhenEnterSymbloicLinkForDir=TRUE;
+static gboolean exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread = FALSE;  // use ] command alias to toggleBlockGUI
 static gboolean keep_selection_on_view_across_refresh = TRUE;
 static gchar* dumb_keyfile_groupname = "https://discourse.gnome.org/t/gkeyfile-to-handle-conf-without-groupname/23080/3";
 

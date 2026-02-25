@@ -283,7 +283,6 @@ static GMutex rfm_selection_completion_lock;
 static char selected_filename_placeholder_in_space[34];       //" %s "  by default
 static char selected_filename_placeholder_in_quotation[34];   //"'%s'"  by default
 
-static gboolean exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread = FALSE;// use ] command alias to toggleBlockGUI
 static gboolean execStdinCmdInNewVT = FALSE;
 // since it's may be complicated if possible to update stdin prompt whenever the terminal window get focus, i just show ItemSelected prompt in new prompt, and user press two times to refresh gtk view.So, I need a way to recognize consecutive enter press.
 static time_t lastEnter;
