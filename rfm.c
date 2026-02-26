@@ -3020,7 +3020,7 @@ static void toolbar_button_exec(GtkToolItem *item, RFM_ToolButton *button_defini
      stdin_cmd_interpretor *cmd_interpretor_pointer = match_cmd_str_array_with_interpretors(child_attribs->RunCmd);
      if (cmd_interpretor_pointer){
        gchar* cmd = strdup(child_attribs->RunCmd[1]);
-       if (startWithTerm()) printf("\n\r%s\033[32m%s%s%s`\033[0m%s`\r\n",InheritedPrompt, cmd_interpretor_pointer->prompt,(ItemSelected==0)?"":"*",exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread?"]":">",cmd);
+       if (startWithTerm()) printf("\n\r%s\033[32m%s%s%s\033[0m`%s`\r\n",InheritedPrompt, cmd_interpretor_pointer->prompt,(ItemSelected==0)?"":"*",exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread?"]":">",cmd);
        parse_and_exec_command_in_gtk_thread(cmd, FALSE, cmd_interpretor_pointer, child_attribs);
      }else g_spawn_wrapper_(NULL, NULL, child_attribs);
    }
@@ -3053,7 +3053,7 @@ static void file_menu_exec(GtkMenuItem *menuitem, RFM_MenuItem *file_menu_item_d
      stdin_cmd_interpretor *cmd_interpretor_pointer = match_cmd_str_array_with_interpretors(child_attribs->RunCmd);
      if (cmd_interpretor_pointer){
        gchar* cmd = strdup(child_attribs->RunCmd[1]);
-       if (startWithTerm()) printf("\n\r%s\033[32m%s%s%s`\033[0m%s`\r\n",InheritedPrompt, cmd_interpretor_pointer->prompt,(ItemSelected==0)?"":"*",exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread?"]":">",cmd);
+       if (startWithTerm()) printf("\n\r%s\033[32m%s%s%s\033[0m`%s`\r\n",InheritedPrompt, cmd_interpretor_pointer->prompt,(ItemSelected==0)?"":"*",exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread?"]":">",cmd);
        parse_and_exec_command_in_gtk_thread(cmd, FALSE, cmd_interpretor_pointer, child_attribs);
      }else g_spawn_wrapper_for_selected_fileList_(child_attribs);
   }
