@@ -611,13 +611,13 @@ static RFM_SearchResultType* SearchResultTypePointerForCurrentExistingSearchResu
 //如要分配新的自定义列,此变量记录分配的列名,按C1,C2..顺序,分配后,用键值替换原始的Cx列名
 static int currentSearchResultTypeStartingColumnTitleIndex;
 static int currentPageStartingColumnTitleIndex;
-static gboolean first_line_column_title=FALSE;
+static int FileNameIndexInColumnTitles=FALSE;
 static gchar* stdout_read_by_search_result=NULL;
 static gboolean showSearchResultExtColumnsBasedOnHashTableValues_has_already_been_called_for_searchresult = FALSE;//方便用showcolumn命令手工调整SearchResult的列布局
 static void update_SearchResultFileNameList_and_refresh_store(RFM_ChildAttribs *childAttribs);
 static void showSearchResultExtColumnsBasedOnHashTableValues();
 static int ProcessOnelineForSearchResult(CALLER_OWN gchar *oneline, gboolean new_search);
-static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboolean new_search, gboolean first_line_column_title);
+static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboolean new_search, int first_line_column_title);
 static int ProcessOnelineForSearchResult_with_title(CALLER_OWN char* oneline, gboolean new_search);
 static void CallDefaultSearchResultFunctionForNewSearch(CALLER_OWN char *one_line_in_search_result);
 int ProcessKeyValuePairInFilesFromSearchResult(CALLER_OWN char *oneline, gboolean new_search);
@@ -2422,7 +2422,7 @@ static gboolean fill_fileAttributeList_with_filenames_from_search_result_and_the
   gint i=0;
   GList *name=CurrentPage_SearchResultView;
   while (name!=NULL && i<PageSize_SearchResultView){
-    if (fileAttributeID==1 && first_line_column_title) fileAttributeID++;
+    if (fileAttributeID==1 && FileNameIndexInColumnTitles) fileAttributeID++;
     
     fileAttributes = get_fileAttributes_for_a_file(name->data, mtimeThreshold, mount_hash);
     if (fileAttributes != NULL) {
@@ -4598,7 +4598,7 @@ static GPtrArray* rfm_editor_completion_based_on_search_result(char *text) {
 	                    gchar *value;
 	                    g_hash_table_iter_init(&ht_iter, ExtColumnHashTable[ExtColumnHashTable_column_index_as_ret_row_index]);
 	                    while (g_hash_table_iter_next(&ht_iter, &key, &value)){
-			      if (first_line_column_title && strcmp(key,"1")==0) continue;
+			      if (FileNameIndexInColumnTitles && strcmp(key,"1")==0) continue;
 			      gboolean already_in_ret = FALSE;
                               for(int i=ret->len-1;i>=0;i--){
 				if (strcmp(g_ptr_array_index(ret, i), value)==0) { already_in_ret=TRUE;break; }
@@ -5574,13 +5574,25 @@ int main(int argc, char *argv[])
 }
 
 static int ProcessOnelineForSearchResult(CALLER_OWN char* oneline, gboolean new_search){
-  first_line_column_title = FALSE;
-  return ProcessOnelineForSearchResult_internel(oneline, new_search, first_line_column_title);
+  FileNameIndexInColumnTitles = FALSE;
+  return ProcessOnelineForSearchResult_internel(oneline, new_search, FileNameIndexInColumnTitles);
 }
 
 static int ProcessOnelineForSearchResult_with_title(CALLER_OWN char* oneline, gboolean new_search){
-  first_line_column_title = TRUE;
-  return ProcessOnelineForSearchResult_internel(oneline, new_search, first_line_column_title);
+  if (fileAttributeID==1){
+    gchar** column_title_array = g_strsplit(oneline, SearchResultColumnSeperator, TREEVIEW_COLUMNS_array_size);
+    uint i=0;
+    while(column_title_array[i]){
+      if (strcmp(column_title_array[i], fld_FileName)==0){
+	FileNameIndexInColumnTitles = i + 1; //filename_index_in_column_titles start with 1
+	g_strfreev(column_title_array);
+	return ProcessOnelineForSearchResult_internel(oneline, new_search, FileNameIndexInColumnTitles);
+      }
+    }
+    g_warning("no %s field in search result!",fld_FileName);
+    g_strfreev(column_title_array);
+    return 0;
+  }else return ProcessOnelineForSearchResult_internel(oneline, new_search, FileNameIndexInColumnTitles);
 }
 
 // default search result processing function
@@ -5588,7 +5600,8 @@ static int ProcessOnelineForSearchResult_with_title(CALLER_OWN char* oneline, gb
 // 同一searchresult包含的多行结果分隔符数相同,类似 csv 格式
 // first_line_column_title 为FALSE时,搜索结果第一行不包含表头,显示C1,C2,C3,...的顺序列名
 // first_line_column_title 为TRUE的时候,第一行为表头,且只能用于扩展列,不会去查找现有同名列
-static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboolean new_search, gboolean first_line_column_title){
+// 当 first_line_column_title 为false时，假定文件名列排第一， filename_index_in_column_title 为0 即false；当first_line_column_title 为true时，filename_index_in_column_titles 大于等于1,即从1开始。在本commit前，假设文件名始终位于查询结果首列，不论是否first_line_column_title(即查询结果类型withTitle)。
+static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboolean new_search, int filename_index_in_column_titles){
            if (oneline == NULL || !new_search) return 0;
 	   char* key=calloc(10, sizeof(char));
 	   uint seperatorPositionAfterCurrentExtColumnValue = strcspn(oneline, SearchResultColumnSeperator);
@@ -5657,7 +5670,7 @@ static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboo
 	       } while(current_Ext_Column<NUM_COLS && seperatorPositionAfterCurrentExtColumnValue < currentExtColumnValueLength);
 	   }
 	   free(key);
-	   if (!(fileAttributeID==1 && first_line_column_title)){
+	   if (!(fileAttributeID==1 && filename_index_in_column_titles)){
 	     SearchResultFileNameList=g_list_prepend(SearchResultFileNameList, strdup(oneline));
 	     SearchResultFileNameListLength++;
 	     g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"appended into SearchResultFileNameList:%s", oneline);
@@ -6052,7 +6065,7 @@ static void showSearchResultExtColumnsBasedOnHashTableValues(){
 	 for(int i=COL_Ext1; i<NUM_COLS;i++){
 	   if (ExtColumnHashTable[i-COL_Ext1]!=NULL){
 	     show_hide_treeview_columns_enum(3, previousColumn,i,INT_MAX);//INT_MAX 结尾表示只显示指明的列,不显示其他默认显示常规列如文件大小日期.这样设计的出发点是:当我们在查询结果里只包含文件名时,我们希望显示文件名,大小,日期等如同目录视图一样的列. 而当查询结果包含除文件名之外的扩展列时,我们希望只显示文件名和这些扩展列,而不包括文件大小日期等常规列,以便让用户注意力能集中在这些扩展列上
-	     if (first_line_column_title){
+	     if (FileNameIndexInColumnTitles){
 	       RFM_treeviewColumn *col = get_treeviewColumnByEnum(i);
 	       snprintf(col->title,ColumnTitleMaxLen,"%s",(char*)g_hash_table_lookup(ExtColumnHashTable[i-COL_Ext1], "1"));
 	     }
