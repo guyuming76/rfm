@@ -5612,9 +5612,9 @@ static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboo
                char* currentExtColumnValue = oneline + seperatorPositionAfterCurrentExtColumnValue + 1; //moving char pointer
 	       uint currentExtColumnValueLength;
 	       enum RFM_treeviewCol current_Ext_Column=COL_Ext1;
-	       char currentColumnTitle[10];
-	       snprintf(currentColumnTitle,10,"C%d", currentColumnTitleIndex);
-	       RFM_treeviewColumn* col = get_treeviewColumnByTitle(currentColumnTitle);
+	       char currentColumnTitleIndexName[10]; //这个总是保存 C1,C2,C3. 对于searchresulttype withTitle，即 filename_index_in_column_title>0 的情况，真正的column title 保存在 key(即fileAttributeID)值为1 的 ExtColumnHashTable[currentExtColumnHashTableIndex] 中
+	       snprintf(currentColumnTitleIndexName,10,"C%d", currentColumnTitleIndex);
+	       RFM_treeviewColumn* col = get_treeviewColumnByTitle(currentColumnTitleIndexName);
 	       // Column Titles will always be C1, C2, C3, ..., that is, continuous with no gap, and start from C1
 	       // but current_Ext_Column and currentExtColumnHashTable Ext can have gap: it can be COL_Ext2, COL_Ext4,...,
 	       // 上面一行的假设 current_Ext_Column 有空缺,我想象中可能会是用户通过 showcolumn 命令占用了一些扩展列.但这只是我在写这段代码时想象中可能出现的情况,并未在测试中实际遇到过
@@ -5640,20 +5640,20 @@ static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboo
 		    
 		    seperatorPositionAfterCurrentExtColumnValue = strcspn(currentExtColumnValue, SearchResultColumnSeperator);
 		    currentExtColumnValue[seperatorPositionAfterCurrentExtColumnValue] = 0; //ending NULL for currentExtColumnValue
-		    g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"Insert column %s into ExtColumnHashTable[%d]: fileAttributeID as key %s,value %s", currentColumnTitle, currentExtColumnHashTableIndex,key,currentExtColumnValue);
+		    g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"Insert column %s into ExtColumnHashTable[%d]: fileAttributeID as key %s,value %s", currentColumnTitleIndexName, currentExtColumnHashTableIndex,key,currentExtColumnValue);
 		    g_hash_table_insert(ExtColumnHashTable[currentExtColumnHashTableIndex], strdup(key), strdup(currentExtColumnValue));
 
 		    currentExtColumnValue = currentExtColumnValue + seperatorPositionAfterCurrentExtColumnValue + 1; //moving char pointer
 
       		    currentColumnTitleIndex++;
-		    snprintf(currentColumnTitle,10,"C%d", currentColumnTitleIndex);
+		    snprintf(currentColumnTitleIndexName,10,"C%d", currentColumnTitleIndex);
 
 		    if (fileAttributeID==1){//搜索结果第一行
 		         g_assert(col->enumCol==NUM_COLS);
 			 g_assert(col->ValueFunc==getExtColumnValueFromHashTable);
 		         col->enumCol = current_Ext_Column;
 
-                         col = get_treeviewColumnByTitle(currentColumnTitle);
+                         col = get_treeviewColumnByTitle(currentColumnTitleIndexName);
 			 
 			 current_Ext_Column++;
 			 current_Ext_Column=get_available_ExtColumn(current_Ext_Column);
@@ -5662,7 +5662,7 @@ static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboo
 		         //我们假定搜索结果每行列数都是相同的,第二行数据用 get_treeviewColumnByTitle(C1) 一定可以找到第一行为C1分配的位置
 		         //但这里currentColumnTitle do while 循环最后会调用get_treeviewColumnByTitle(C2), 对于本方法并没有问题,因为while 判断会结束循环
 		         //但如果ProcessKeyValuePairInFilesFromSearchResult 调用本方法,get_treeviewColumnByTitle(C2) 会返回NULL,所以下面语句加了if NULL 判断
-		         if ((col = get_treeviewColumnByTitle(currentColumnTitle)))
+		         if ((col = get_treeviewColumnByTitle(currentColumnTitleIndexName)))
 			     current_Ext_Column = col->enumCol;
 			 else current_Ext_Column = NUM_COLS;
 		    }
