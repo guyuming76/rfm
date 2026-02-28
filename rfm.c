@@ -5579,6 +5579,7 @@ static int ProcessOnelineForSearchResult(CALLER_OWN char* oneline, gboolean new_
 }
 
 static int ProcessOnelineForSearchResult_with_title(CALLER_OWN char* oneline, gboolean new_search){
+  g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"ProcessOnelineForSearchResult_with_title(%s, new_search:%d) fileAttributeID:%d", oneline, new_search,fileAttributeID);
   if (fileAttributeID==1){
     gchar** column_title_array = g_strsplit(oneline, SearchResultColumnSeperator, TREEVIEW_COLUMNS_array_size);
     uint i=0;
@@ -5588,6 +5589,7 @@ static int ProcessOnelineForSearchResult_with_title(CALLER_OWN char* oneline, gb
 	g_strfreev(column_title_array);
 	return ProcessOnelineForSearchResult_internel(oneline, new_search, FileNameIndexInColumnTitles);
       }
+      i++;
     }
     g_warning("no %s field in search result!",fld_FileName);
     g_strfreev(column_title_array);
@@ -5602,14 +5604,26 @@ static int ProcessOnelineForSearchResult_with_title(CALLER_OWN char* oneline, gb
 // first_line_column_title 为TRUE的时候,第一行为表头,且只能用于扩展列,不会去查找现有同名列
 // 当 first_line_column_title 为false时，假定文件名列排第一， filename_index_in_column_title 为0 即false；当first_line_column_title 为true时，filename_index_in_column_titles 大于等于1,即从1开始。在本commit前，假设文件名始终位于查询结果首列，不论是否first_line_column_title(即查询结果类型withTitle)。
 static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboolean new_search, int filename_index_in_column_titles){
+           g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"ProcessOnelineForSearchResult_internel(%s, new_search:%d, filename_index_in_column_titles:%d)", oneline, new_search, filename_index_in_column_titles);
            if (oneline == NULL || !new_search) return 0;
 	   char* key=calloc(10, sizeof(char));
+           char* filename = oneline;
+           char* currentExtColumnValue = NULL;
 	   char* seperatorPointerAfterCurrentExtColumnValue = strstr(oneline, SearchResultColumnSeperator);
 	   uint currentColumnTitleIndex=1;
-	   if (seperatorPointerAfterCurrentExtColumnValue) { //found ":" in oneline
+	   if (seperatorPointerAfterCurrentExtColumnValue) { //found SearchResulutColumnSeperator such as ":" in oneline; emacs里 ctrl+alt+f  ctrl+alt+b 跳转到匹配的括号
 	       snprintf(key,10, "%d", fileAttributeID);
 	       *seperatorPointerAfterCurrentExtColumnValue = 0; //ending NULL for filename
-               char* currentExtColumnValue = seperatorPointerAfterCurrentExtColumnValue + strlen(SearchResultColumnSeperator); //moving char pointer
+
+               if (filename_index_in_column_titles<=1){ //如果第一列是文件名
+		 currentExtColumnValue = seperatorPointerAfterCurrentExtColumnValue + strlen(SearchResultColumnSeperator); //如果第一列是文件名，则移动currentExtColumnValue指针到下一列。
+		 filename = oneline;
+		 g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"first column is filename:%s", filename);
+	       }else{
+		 currentExtColumnValue = oneline;
+		 g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"first column is not filename:%s", oneline);
+	       }
+	     
 	       enum RFM_treeviewCol current_Ext_Column=COL_Ext1;
 	       char currentColumnTitleIndexName[10]; //这个总是保存 C1,C2,C3. 对于searchresulttype withTitle，即 filename_index_in_column_title>0 的情况，真正的column title 保存在 key(即fileAttributeID)值为1 的 ExtColumnHashTable[currentExtColumnHashTableIndex] 中
 	       snprintf(currentColumnTitleIndexName,10,"C%d", currentColumnTitleIndex);
@@ -5635,8 +5649,11 @@ static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboo
                         ExtColumnHashTable_keep_during_refresh[currentExtColumnHashTableIndex]=TRUE;
                     }
 		    
-		    seperatorPointerAfterCurrentExtColumnValue = strstr(currentExtColumnValue, SearchResultColumnSeperator);
-		    if (seperatorPointerAfterCurrentExtColumnValue) *seperatorPointerAfterCurrentExtColumnValue = 0; //ending NULL for currentExtColumnValue
+		    if (currentExtColumnValue!=oneline) {//当currentExtColumnValue==oneline 时，说明第一列不是文件名，do 循环前已经把第一列后面的SearchResultColumnSeperator首字符置0了。
+		      //do 循环的开始，找下一个SearchResultColumnSeperator, 并将其首字符置0,即为currentExtColumnValue尾部设NULL
+		      seperatorPointerAfterCurrentExtColumnValue = strstr(currentExtColumnValue, SearchResultColumnSeperator);
+		      if (seperatorPointerAfterCurrentExtColumnValue) *seperatorPointerAfterCurrentExtColumnValue = 0; //ending NULL for currentExtColumnValue
+		    }
 		    g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"Insert column %s into ExtColumnHashTable[%d]: fileAttributeID as key %s,value %s", currentColumnTitleIndexName, currentExtColumnHashTableIndex,key,currentExtColumnValue);
 		    g_hash_table_insert(ExtColumnHashTable[currentExtColumnHashTableIndex], strdup(key), strdup(currentExtColumnValue));
 
@@ -5644,6 +5661,20 @@ static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboo
 
       		    currentColumnTitleIndex++;
 		    snprintf(currentColumnTitleIndexName,10,"C%d", currentColumnTitleIndex);
+
+		    if (currentColumnTitleIndex == filename_index_in_column_titles) {//如果循环下一轮要处理的列是文件名列，则设置filename并移动指针到下一列
+		      filename = currentExtColumnValue;
+		      
+		      //TODO：这里在一个do循环中，使用 strstr 查找 SearchResultColumnSeperator两次，即处理了两列，不够优美。重构这个函数，在do循环体内处理filename列，而不是像现在这样，在循环体内跳过filename列，到循环结束后再prepend到 SearchResultFileNameList
+		      //TODO: 当第一列不是filename时，用 SearchResult|tee>withTitle 命令过滤出选中的查询结果，filename会出现在过滤出的结果的第一列，这个似乎造成用户迷惑
+		      g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"skip filename column");
+		      *seperatorPointerAfterCurrentExtColumnValue = 0; //为filename前一个字段设置ending NULL
+		      seperatorPointerAfterCurrentExtColumnValue = strstr(currentExtColumnValue, SearchResultColumnSeperator);//查找filename后面的seperator
+		      if (seperatorPointerAfterCurrentExtColumnValue){
+			currentExtColumnValue = seperatorPointerAfterCurrentExtColumnValue + strlen(SearchResultColumnSeperator); //moving char pointer
+			*seperatorPointerAfterCurrentExtColumnValue = 0; //为filename设置ending NULL
+		      }
+		    }
 
 		    if (fileAttributeID==1){//搜索结果第一行
 		         g_assert(col->enumCol==NUM_COLS);
@@ -5668,9 +5699,9 @@ static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboo
 	   }
 	   free(key);
 	   if (!(fileAttributeID==1 && filename_index_in_column_titles)){
-	     SearchResultFileNameList=g_list_prepend(SearchResultFileNameList, strdup(oneline));
+	     SearchResultFileNameList=g_list_prepend(SearchResultFileNameList, strdup(filename));
 	     SearchResultFileNameListLength++;
-	     g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"appended into SearchResultFileNameList:%s", oneline);
+	     g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"appended into SearchResultFileNameList:%s", filename);
 	   }
 	   return currentColumnTitleIndex;
 }
