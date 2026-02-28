@@ -5604,13 +5604,12 @@ static int ProcessOnelineForSearchResult_with_title(CALLER_OWN char* oneline, gb
 static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboolean new_search, int filename_index_in_column_titles){
            if (oneline == NULL || !new_search) return 0;
 	   char* key=calloc(10, sizeof(char));
-	   uint seperatorPositionAfterCurrentExtColumnValue = strcspn(oneline, SearchResultColumnSeperator);
+	   char* seperatorPointerAfterCurrentExtColumnValue = strstr(oneline, SearchResultColumnSeperator);
 	   uint currentColumnTitleIndex=1;
-	   if (seperatorPositionAfterCurrentExtColumnValue < strlen(oneline)) { //found ":" in oneline
+	   if (seperatorPointerAfterCurrentExtColumnValue) { //found ":" in oneline
 	       snprintf(key,10, "%d", fileAttributeID);
-	       oneline[seperatorPositionAfterCurrentExtColumnValue] = 0; //ending NULL for filename
-               char* currentExtColumnValue = oneline + seperatorPositionAfterCurrentExtColumnValue + 1; //moving char pointer
-	       uint currentExtColumnValueLength;
+	       *seperatorPointerAfterCurrentExtColumnValue = 0; //ending NULL for filename
+               char* currentExtColumnValue = seperatorPointerAfterCurrentExtColumnValue + strlen(SearchResultColumnSeperator); //moving char pointer
 	       enum RFM_treeviewCol current_Ext_Column=COL_Ext1;
 	       char currentColumnTitleIndexName[10]; //这个总是保存 C1,C2,C3. 对于searchresulttype withTitle，即 filename_index_in_column_title>0 的情况，真正的column title 保存在 key(即fileAttributeID)值为1 的 ExtColumnHashTable[currentExtColumnHashTableIndex] 中
 	       snprintf(currentColumnTitleIndexName,10,"C%d", currentColumnTitleIndex);
@@ -5630,20 +5629,18 @@ static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboo
 	       }
 		 
 	       do {
-		    currentExtColumnValueLength = strlen(currentExtColumnValue);
-
 		    uint currentExtColumnHashTableIndex = current_Ext_Column - COL_Ext1;
                     if (ExtColumnHashTable[currentExtColumnHashTableIndex]==NULL) {
                         ExtColumnHashTable[currentExtColumnHashTableIndex] = g_hash_table_new_full(g_str_hash, g_str_equal,g_free, g_free);
                         ExtColumnHashTable_keep_during_refresh[currentExtColumnHashTableIndex]=TRUE;
                     }
 		    
-		    seperatorPositionAfterCurrentExtColumnValue = strcspn(currentExtColumnValue, SearchResultColumnSeperator);
-		    currentExtColumnValue[seperatorPositionAfterCurrentExtColumnValue] = 0; //ending NULL for currentExtColumnValue
+		    seperatorPointerAfterCurrentExtColumnValue = strstr(currentExtColumnValue, SearchResultColumnSeperator);
+		    if (seperatorPointerAfterCurrentExtColumnValue) *seperatorPointerAfterCurrentExtColumnValue = 0; //ending NULL for currentExtColumnValue
 		    g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"Insert column %s into ExtColumnHashTable[%d]: fileAttributeID as key %s,value %s", currentColumnTitleIndexName, currentExtColumnHashTableIndex,key,currentExtColumnValue);
 		    g_hash_table_insert(ExtColumnHashTable[currentExtColumnHashTableIndex], strdup(key), strdup(currentExtColumnValue));
 
-		    currentExtColumnValue = currentExtColumnValue + seperatorPositionAfterCurrentExtColumnValue + 1; //moving char pointer
+		    if (seperatorPointerAfterCurrentExtColumnValue) currentExtColumnValue = seperatorPointerAfterCurrentExtColumnValue + strlen(SearchResultColumnSeperator); //moving char pointer
 
       		    currentColumnTitleIndex++;
 		    snprintf(currentColumnTitleIndexName,10,"C%d", currentColumnTitleIndex);
@@ -5667,7 +5664,7 @@ static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboo
 			 else current_Ext_Column = NUM_COLS;
 		    }
 
-	       } while(current_Ext_Column<NUM_COLS && seperatorPositionAfterCurrentExtColumnValue < currentExtColumnValueLength);
+	       } while(current_Ext_Column<NUM_COLS && seperatorPointerAfterCurrentExtColumnValue);
 	   }
 	   free(key);
 	   if (!(fileAttributeID==1 && filename_index_in_column_titles)){
