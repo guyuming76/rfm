@@ -1334,6 +1334,7 @@ static void GSpawnChildSetupFunc_setenv(gpointer user_data) {
       //if (rfm_curPath!=NULL) setenv("PWD",rfm_curPath,TRUE);
       //working_directory won't update child process PWD env, which inherits parents PWD env,why?
       setenv("RFM_DIMENSION_PROPERTIES_FILE_NAME",RFM_DIMENSION_PROPERTIES_FILE_NAME, 1);
+      setenv("RFM_SearchResultColumnSeperator",SearchResultColumnSeperator,1);
       if (child_attribs->setsid) setsid();//防止子进程和readline线程争夺终端控制权，产生SIGTTIN 信号，导致readline所在进程组被放入后台。
 }
 
