@@ -606,6 +606,7 @@ static gint SearchResultFileNameListLength=0;
 static gint currentFileNum=0;
 static GList *CurrentPage_SearchResultView=NULL;
 static gint PageSize_SearchResultView=100;
+static gboolean SearchResultAsInput=FALSE; //TODO:这个属性也可以放到childAttribs里面，而不是像现在这样的全局变量，当这样就需要把childAttribs传入ProcessOnelineForSearchResult系列函数。考虑到目前这个全局变量都在gtk main loop中运行，不存在冲突，就暂不移入childAttribs了。
 static RFM_SearchResultType* SearchResultTypePointer = NULL; // we need to pass this status from exec_stdin_command to readlineInSeperatedThread, however, we can only pass one parameter in g_thread_new, so, i use a global variable here.
 static RFM_SearchResultType* SearchResultTypePointerForCurrentExistingSearchResult = NULL; //The value above will be override by next command, which can be a non-search command, we need this variable to preserve the current displaying searchresulttype
 //如要分配新的自定义列,此变量记录分配的列名,按C1,C2..顺序,分配后,用键值替换原始的Cx列名
@@ -4005,7 +4006,6 @@ static void writeSearchResultIntoFD_in_gtk_thread(gint fd,gboolean exportFilePat
 	}while((c=g_list_next(c)));
 	}else g_warning("no column shown in view!");
 
-
     }else{// !treeview || exportFilePathOnly
       GValue val = G_VALUE_INIT;
       if (treeview || exportFilePathOnly) gtk_tree_model_get_value(GTK_TREE_MODEL(store), &iter, COL_FULL_PATH, &val);
@@ -4888,7 +4888,7 @@ static void combine_command_with_selected_files_and_setenv(CALLER_OWN GString* r
 gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboolean const from_stdin_readline, NO_FREE const stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs* childAttribs)
 {
         gboolean ret = FALSE;
-        gboolean SearchResultAsInput=FALSE;
+        SearchResultAsInput=FALSE;
 	stdin_cmd_leading_space=FALSE;
         gboolean execCmdInNewVT=FALSE;//used by file_menu_exec, i.e., not from readline
         effective_cmd_interpretor_pointer = cmd_interpretor_pointer; // Use this for actual execution
@@ -5581,6 +5581,11 @@ static int ProcessOnelineForSearchResult(CALLER_OWN char* oneline, gboolean new_
 
 static int ProcessOnelineForSearchResult_with_title(CALLER_OWN char* oneline, gboolean new_search){
   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"ProcessOnelineForSearchResult_with_title(%s, new_search:%d) fileAttributeID:%d", oneline, new_search,fileAttributeID);
+  if (SearchResultAsInput && !treeview){//iconview视图下面查询结果第一行不会导出文件名标题列(参见writeSearchResultIntoFD_in_gtk_thread)，所以读入的时候也如同没有 _with_title 一样。
+    FileNameIndexInColumnTitles = FALSE;
+    return ProcessOnelineForSearchResult_internel(oneline, new_search, FileNameIndexInColumnTitles);
+  }
+
   if (fileAttributeID==1){
     gchar** column_title_array = g_strsplit(oneline, SearchResultColumnSeperator, TREEVIEW_COLUMNS_array_size);
     uint i=0;
