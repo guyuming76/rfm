@@ -4003,7 +4003,7 @@ static void writeSearchResultIntoFD_in_gtk_thread(gint fd,gboolean exportFilePat
 	  }
 	  //g_value_unset(&val);
 	}while((c=g_list_next(c)));
-    }else g_warning("no column shown in view!");
+	}else g_warning("no column shown in view!");
 
 
     }else{// !treeview || exportFilePathOnly
