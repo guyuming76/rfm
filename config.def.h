@@ -47,7 +47,7 @@
 
 static gint RFM_THUMBNAIL_SIZE = 128; /* Maximum size for thumb dir normal is 128 */
 static gboolean UseTargetAddressWhenEnterSymbloicLinkForDir=TRUE;
-static gboolean exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread = FALSE;  // use ] command alias to toggleBlockGUI
+static gboolean exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread = TRUE;
 static gboolean keep_selection_on_view_across_refresh = TRUE;
 static gchar* dumb_keyfile_groupname = "https://discourse.gnome.org/t/gkeyfile-to-handle-conf-without-groupname/23080/3";
 
@@ -108,6 +108,7 @@ static RFM_SearchResultType searchresultTypes[] = {
 static const char *parse_searchresult_with_multitype[] = { stdin_cmd_interpretors[0].name, RFM_SEARCH_RESULT_AS_INPUT_PREFIX "tee" RFM_SearchResultTypeNamePrefix SrchRsltType_multitype ,NULL };
 const char *Union_SearchResult[] = { stdin_cmd_interpretors[0].name, RFM_SEARCH_RESULT_AS_INPUT_PREFIX "(tee;find -L "RFM_selected_filename_list_placeholder" -exec readlink -f {} \\;)|sort|uniq " RFM_SearchResultTypeNamePrefix "0 ",NULL };
 const char *Union_SearchResult_multitype[] = { stdin_cmd_interpretors[0].name, RFM_SEARCH_RESULT_AS_INPUT_PREFIX "(tee;find -L "RFM_selected_filename_list_placeholder" -exec readlink -f {} \\;)|sort|uniq " RFM_SearchResultTypeNamePrefix SrchRsltType_multitype " ",NULL };
+const char *Union_SearchResult_clipboard[] = { stdin_cmd_interpretors[0].name, RFM_SEARCH_RESULT_AS_INPUT_PREFIX "(tee;rfmFromClipboard.sh)" RFM_SearchResultTypeNamePrefix "withTitle",NULL };
 static const char *Subtract_SearchResult[] = { stdin_cmd_interpretors[0].name, RFM_SEARCH_RESULT_AS_INPUT_PREFIX "sort|comm -23 - <(find -L "RFM_selected_filename_list_placeholder" -exec readlink -f {} \\;|sort) "RFM_SearchResultTypeNamePrefix "0 ",NULL };
 static const char *Intersect_With_SearchResult[] = { stdin_cmd_interpretors[0].name, RFM_SEARCH_RESULT_AS_INPUT_PREFIX "sort|comm -12 - <(find -L "RFM_selected_filename_list_placeholder" -exec readlink -f {} \\;|sort) "RFM_SearchResultTypeNamePrefix "0 ",NULL };
 static const char *To_SearchResult[] = { stdin_cmd_interpretors[0].name, "find -L "RFM_selected_filename_list_placeholder" -exec readlink -f {} \\;|sort|uniq "RFM_SearchResultTypeNamePrefix "0 ", NULL};
@@ -356,6 +357,7 @@ static RFM_ToolButton tool_buttons[] = {
    { FILTERSEARCHRESULT,NULL,                   NULL,                filter_selected_searchresult,TRUE,    FALSE,     0,                      NULL,                   InTreeView },
    { START_MENU,     NULL,                      NULL,                   start_menu,        FALSE,          TRUE,      0,                      NULL,                  NULL},
    { PARSE_SEARCH_RESULT, NULL,                 InIconView,        parse_searchresult_with_multitype, TRUE,FALSE,     0,                      NULL,                  NULL},
+   { UnionSearchResultClipboard, NULL,          NULL,                   Union_SearchResult_clipboard, TRUE,FALSE,     0,                      NULL,                  NULL},
 #ifdef RFM_AddOn
    { "addons",       NULL,                      NULL,                   locate_addons,     TRUE,           TRUE,      0,                      NULL,                  NULL},
 #endif
@@ -412,7 +414,7 @@ static RFM_treeviewColumn treeviewColumns_init[] = {
 
 static RFM_treeviewColumn treeviewColumns[G_N_ELEMENTS(treeviewColumns_init) + NUM_Ext_Columns - 1]; // 因为C1已经包含在treeviewColumns_init 里了，所以要-1
 
-static char SearchResultColumnSeperator[32]={':', 0}; //this is the default value and can be override by specific searchresulttype and can also be set manually with builtin cmd
+static char SearchResultColumnSeperator[32]={':','-','-',':', 0}; //this is the default value and can be override by specific searchresulttype and can also be set manually with builtin cmd
 
 
 

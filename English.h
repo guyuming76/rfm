@@ -26,6 +26,7 @@
 #define RunActionUmount "umount"
 #define ToSearchResult "File Set Operation: To SearchResult"
 #define UnionSearchResult  "File Set Operation: Union SearchResult"
+#define UnionSearchResultClipboard  "File Set Operation: Union SearchResult with clipboard"
 #define IntersectWithSearchResult  "File Set Operation: Intersect With SearchResult"
 #define SubtractSearchResult  "File Set Operation: Subtract SearchResult"
 #define RunActionFindSoftLink "File Set Operation: find soft links to file within RFM_GIT_ROOT(env variable) directory"
