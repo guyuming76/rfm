@@ -8,6 +8,7 @@
 #define RFM_DIMENSION_LOCAL_PATH "远程地址"
 
 #define SrchRsltType_multitype "multitype"
+#define SrchRsltType_current "currenttype"
 #define MSG_cannot_enter_directory "\n\n不能进入目录!"
 #define MSG_cannot_enter_deleted_directory "\n\n请使用工具栏上'git ls-files'命令查看已删除的目录内容"
 #define PageUp  "上葉"
@@ -252,3 +253,4 @@ BuiltInCmd_SearchResultColumnSeperator \
 #define SearchResultType_default_with_title "类似0号default查询结果类型,区别仅在于首行包含的是列标题,而不是实际数据.举例,过滤出当前查询结果第一行，参数-n2是因为title占一行，加上一行数据：\n" \
 "      SearchResult|head -n2>withTitle\n"
 
+#define SearchResultType_current "当前查询结果视图的类型，如果当前为空，则使用默认类型"

@@ -7,6 +7,7 @@
 #define RFM_DIMENSION_LOCAL_PATH "RemoteAddress"
 
 #define SrchRsltType_multitype "multitype"
+#define SrchRsltType_current "currenttype"
 #define MSG_cannot_enter_directory "\n\nCan't enter directory!"
 #define MSG_cannot_enter_deleted_directory "\n\nPlease show content of deleted directory with the 'git ls-files' in toolbar"
 #define PageUp  "PageUp"
@@ -248,3 +249,4 @@ BuiltInCmd_SearchResultColumnSeperator \
 #define SearchResultType_default_with_title "The same as the default search result type, except that the first row in command output contains column title.for example, to filter out the first row in current search result:\n" \ 
 "      SearchResult|head -n2>withTitle"
 
+#define SearchResultType_current "use the same type as in current search result view. use default if current is empty"

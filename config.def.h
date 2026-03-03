@@ -91,6 +91,7 @@ static RFM_SearchResultType searchresultTypes[] = {
 //name	       SearchResultLineProcessingFunc                  showcolumn     SearchResultColumnSeperator  cmdTemplate Description
   {"default",  ProcessOnelineForSearchResult,                  NULL,          NULL, NULL,                            SearchResultType_default }, //default searchresult, contain only filename list such as returned by locate, or filename followed by additional info such as returned by grep
   {SrchRsltType_multitype,CallMatchingProcessorForSearchResultLine,NULL,      NULL, NULL,                            SearchResultType_multitype },
+  {SrchRsltType_current,NULL,                                  NULL,          NULL, NULL,                            SearchResultType_current},
   {"gkeyfile", ProcessKeyValuePairInFilesFromSearchResult,     NULL,          NULL, NULL,                            SearchResultType_gkeyfile},
 #ifdef CmarkTools
   {".md",      ProcessJsonInCmdOutputFromSearchResult,         NULL,          NULL, MD_parsing_cmdTemplate,          SearchResultType_markdown1 },
@@ -106,11 +107,10 @@ static RFM_SearchResultType searchresultTypes[] = {
 
 //注意，下面命令中rfm选中文件占位符 RFM_selected_filename_placeholde 要配合结尾空格使用
 static const char *parse_searchresult_with_multitype[] = { stdin_cmd_interpretors[0].name, RFM_SEARCH_RESULT_AS_INPUT_PREFIX "tee" RFM_SearchResultTypeNamePrefix SrchRsltType_multitype ,NULL };
-const char *Union_SearchResult[] = { stdin_cmd_interpretors[0].name, RFM_SEARCH_RESULT_AS_INPUT_PREFIX "(tee;find -L "RFM_selected_filename_list_placeholder" -exec readlink -f {} \\;)|sort|uniq " RFM_SearchResultTypeNamePrefix "0 ",NULL };
-const char *Union_SearchResult_multitype[] = { stdin_cmd_interpretors[0].name, RFM_SEARCH_RESULT_AS_INPUT_PREFIX "(tee;find -L "RFM_selected_filename_list_placeholder" -exec readlink -f {} \\;)|sort|uniq " RFM_SearchResultTypeNamePrefix SrchRsltType_multitype " ",NULL };
+const char *Union_SearchResult[] = { stdin_cmd_interpretors[0].name, RFM_SEARCH_RESULT_AS_INPUT_PREFIX "(tee;find -L "RFM_selected_filename_list_placeholder" -exec readlink -f {} \\;)|sort|uniq " RFM_SearchResultTypeNamePrefix SrchRsltType_current " ",NULL };
 const char *Union_SearchResult_clipboard[] = { stdin_cmd_interpretors[0].name, RFM_SEARCH_RESULT_AS_INPUT_PREFIX "(tee;rfmFromClipboard.sh)" RFM_SearchResultTypeNamePrefix "withTitle",NULL };
-static const char *Subtract_SearchResult[] = { stdin_cmd_interpretors[0].name, RFM_SEARCH_RESULT_AS_INPUT_PREFIX "sort|comm -23 - <(find -L "RFM_selected_filename_list_placeholder" -exec readlink -f {} \\;|sort) "RFM_SearchResultTypeNamePrefix "0 ",NULL };
-static const char *Intersect_With_SearchResult[] = { stdin_cmd_interpretors[0].name, RFM_SEARCH_RESULT_AS_INPUT_PREFIX "sort|comm -12 - <(find -L "RFM_selected_filename_list_placeholder" -exec readlink -f {} \\;|sort) "RFM_SearchResultTypeNamePrefix "0 ",NULL };
+static const char *Subtract_SearchResult[] = { stdin_cmd_interpretors[0].name, RFM_SEARCH_RESULT_AS_INPUT_PREFIX "sort|comm -23 - <(find -L "RFM_selected_filename_list_placeholder" -exec readlink -f {} \\;|sort) "RFM_SearchResultTypeNamePrefix SrchRsltType_current " ",NULL };
+static const char *Intersect_With_SearchResult[] = { stdin_cmd_interpretors[0].name, RFM_SEARCH_RESULT_AS_INPUT_PREFIX "sort|comm -12 - <(find -L "RFM_selected_filename_list_placeholder" -exec readlink -f {} \\;|sort) "RFM_SearchResultTypeNamePrefix SrchRsltType_current " ",NULL };
 static const char *To_SearchResult[] = { stdin_cmd_interpretors[0].name, "find -L "RFM_selected_filename_list_placeholder" -exec readlink -f {} \\;|sort|uniq "RFM_SearchResultTypeNamePrefix "0 ", NULL};
 static const char *find_same_name[] = { stdin_cmd_interpretors[0].name, rfmBinPath "rfmFindFilesWithTheSameName.sh "RFM_SearchResultTypeNamePrefix SrchRsltType_multitype" ", NULL };
 
@@ -287,7 +287,7 @@ static RFM_MenuItem run_actions[] = {
    { "count",        "inode",          "directory",            NULL,			NULL,			NULL,		du,               		NULL },
    { "archive",      "inode",          "directory",            NULL,			NULL,			NULL,		create_archive,   		NULL },
    { ToSearchResult, "*",              "*",                    NULL,			NULL,			NULL,		To_SearchResult,   		NULL },
-   { UnionSearchResult,"*",            "*",                    NULL,			NULL,			InIconView,	Union_SearchResult_multitype,   InDirectoryView },
+   { UnionSearchResult,"*",            "*",                    NULL,			NULL,			InIconView,	Union_SearchResult,             InDirectoryView },
    { IntersectWithSearchResult,"*",    "*",                    NULL,			NULL,			InIconView,	Intersect_With_SearchResult,   	InDirectoryView },
    { SubtractSearchResult,"*",         "*",                    NULL,			NULL,			InIconView,	Subtract_SearchResult,   	InDirectoryView },
    { FILTERSEARCHRESULT,"*",           "*",                    NULL,			NULL,			NULL,	        filter_selected_searchresult,   InSearchResultView },

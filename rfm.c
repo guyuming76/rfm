@@ -4524,7 +4524,7 @@ static void cmd_setenv(wordexp_t *parsed_msg, GString *readline_result_string_af
 
 void addToSearchResult(FREE char *fileFullpath) {
         RFM_ChildAttribs *child_attribs=calloc(1, sizeof(RFM_ChildAttribs));
-        child_attribs->RunCmd = Union_SearchResult_multitype;
+        child_attribs->RunCmd = Union_SearchResult;
         gchar* cmd = strdup(child_attribs->RunCmd[1]);
         child_attribs->fullpath_list_as_RunCmd_parameters = g_list_prepend(child_attribs->fullpath_list_as_RunCmd_parameters,fileFullpath);
         child_attribs->customCallBackFunc = (void (*)(RFM_ChildAttribs *))InIconView; //这里参见rfm.c exec_stdin_command_with_SearchResultAsInput 中注释
@@ -4787,7 +4787,9 @@ static RFM_SearchResultType* MatchSearchResultType(gchar* readlineResult, RFM_Ch
 		g_debug("SearchResultTypeIndex:%d; searchResultTypeName:%s",i,searchresultTypes[i].name);
 		readlineResult[len-strlen(searchTypeNumberSuffix)]='\0';//remove suffix from readlineResult
 		g_free(searchTypeNumberSuffix);
-		return &(searchresultTypes[i]);
+                if (strcmp(SrchRsltType_current, searchresultTypes[i].name)==0){
+		  return SearchResultTypePointerForCurrentExistingSearchResult ? SearchResultTypePointerForCurrentExistingSearchResult : &(searchresultTypes[0]);
+		}else return &(searchresultTypes[i]);
 	      }
 	      g_free(searchTypeNumberSuffix);
 	      
@@ -4796,7 +4798,9 @@ static RFM_SearchResultType* MatchSearchResultType(gchar* readlineResult, RFM_Ch
 		g_debug("SearchResultTypeIndex:%d; searchResultTypeName:%s",i,searchresultTypes[i].name);
 		readlineResult[len-strlen(searchTypeNameSuffix)]='\0';//remove suffix from readlineResult
 		g_free(searchTypeNameSuffix);
-		return &(searchresultTypes[i]);
+                if (strcmp(SrchRsltType_current, searchresultTypes[i].name)==0){
+		  return SearchResultTypePointerForCurrentExistingSearchResult ? SearchResultTypePointerForCurrentExistingSearchResult : &(searchresultTypes[0]);
+		}else return &(searchresultTypes[i]);
 	      }
 	      g_free(searchTypeNameSuffix);
 	    }
