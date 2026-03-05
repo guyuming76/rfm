@@ -1335,8 +1335,6 @@ static void GSpawnChildSetupFunc_setenv(gpointer user_data) {
       RFM_ChildAttribs* child_attribs=(RFM_ChildAttribs*) user_data;
       //if (rfm_curPath!=NULL) setenv("PWD",rfm_curPath,TRUE);
       //working_directory won't update child process PWD env, which inherits parents PWD env,why?
-      setenv("RFM_DIMENSION_PROPERTIES_FILE_NAME",RFM_DIMENSION_PROPERTIES_FILE_NAME, 1);
-      setenv("RFM_SearchResultColumnSeperator",SearchResultColumnSeperator,1);
       if (child_attribs->setsid) setsid();//防止子进程和readline线程争夺终端控制权，产生SIGTTIN 信号，导致readline所在进程组被放入后台。
 }
 
@@ -1372,6 +1370,9 @@ gboolean g_spawn_wrapper_(CALLER_OWN GList *file_list, CALLER_OWN const char *de
 
    v=build_cmd_vector(child_attribs->RunCmd, file_list, dest_path);
    if (v != NULL) {
+      setenv("RFM_DIMENSION_PROPERTIES_FILE_NAME",RFM_DIMENSION_PROPERTIES_FILE_NAME, 1);
+      setenv("RFM_SearchResultColumnSeperator",SearchResultColumnSeperator,1);
+      //上面setenv原本放在 GSpawnChildSetupFunc_setenv 里的，但是测试发觉不稳定，有时子进程里没设置
       gchar * argv=g_strjoinv(" ", v);
       gchar* workingDir = choose_working_directory_for_g_spawn(child_attribs);
       if (child_attribs->spawn_async){
