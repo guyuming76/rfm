@@ -613,6 +613,7 @@ static RFM_SearchResultType* SearchResultTypePointerForCurrentExistingSearchResu
 static int currentSearchResultTypeStartingColumnTitleIndex;
 static int currentPageStartingColumnTitleIndex;
 static int FileNameIndexInColumnTitles=FALSE;
+static gchar** search_result_type_withtitle_column_title_array = NULL;
 static gchar* stdout_read_by_search_result=NULL;
 static gboolean showSearchResultExtColumnsBasedOnHashTableValues_has_already_been_called_for_searchresult = FALSE;//方便用showcolumn命令手工调整SearchResult的列布局
 static void update_SearchResultFileNameList_and_refresh_store(RFM_ChildAttribs *childAttribs);
@@ -5580,6 +5581,7 @@ int main(int argc, char *argv[])
 
 static int ProcessOnelineForSearchResult(CALLER_OWN char* oneline, gboolean new_search){
   FileNameIndexInColumnTitles = FALSE;
+  if (search_result_type_withtitle_column_title_array) { g_strfreev(search_result_type_withtitle_column_title_array);search_result_type_withtitle_column_title_array=NULL; }
   return ProcessOnelineForSearchResult_internel(oneline, new_search, FileNameIndexInColumnTitles);
 }
 
@@ -5591,18 +5593,18 @@ static int ProcessOnelineForSearchResult_with_title(CALLER_OWN char* oneline, gb
   }
 
   if (fileAttributeID==1){
-    gchar** column_title_array = g_strsplit(oneline, SearchResultColumnSeperator, TREEVIEW_COLUMNS_array_size);
+    if (search_result_type_withtitle_column_title_array) { g_strfreev(search_result_type_withtitle_column_title_array);search_result_type_withtitle_column_title_array=NULL; }
+    search_result_type_withtitle_column_title_array = g_strsplit(oneline, SearchResultColumnSeperator, TREEVIEW_COLUMNS_array_size);
     uint i=0;
-    while(column_title_array[i]){
-      if (strcmp(column_title_array[i], fld_FileName)==0){
+    while(search_result_type_withtitle_column_title_array[i]){
+      if (strcmp(search_result_type_withtitle_column_title_array[i], fld_FileName)==0){
 	FileNameIndexInColumnTitles = i + 1; //filename_index_in_column_titles start with 1
-	g_strfreev(column_title_array);
 	return ProcessOnelineForSearchResult_internel(oneline, new_search, FileNameIndexInColumnTitles);
       }
       i++;
     }
     g_warning("no %s field in search result!",fld_FileName);
-    g_strfreev(column_title_array);
+    g_strfreev(search_result_type_withtitle_column_title_array);
     return 0;
   }else return ProcessOnelineForSearchResult_internel(oneline, new_search, FileNameIndexInColumnTitles);
 }
@@ -5676,7 +5678,6 @@ static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboo
 		      filename = currentExtColumnValue;
 		      
 		      //TODO：这里在一个do循环中，使用 strstr 查找 SearchResultColumnSeperator两次，即处理了两列，不够优美。重构这个函数，在do循环体内处理filename列，而不是像现在这样，在循环体内跳过filename列，到循环结束后再prepend到 SearchResultFileNameList
-		      //TODO: 当第一列不是filename时，用 SearchResult|tee>withTitle 命令过滤出选中的查询结果，filename会出现在过滤出的结果的第一列，这个似乎造成用户迷惑
 		      g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"skip filename column");
 		      *seperatorPointerAfterCurrentExtColumnValue = 0; //为filename前一个字段设置ending NULL
 		      seperatorPointerAfterCurrentExtColumnValue = strstr(currentExtColumnValue, SearchResultColumnSeperator);//查找filename后面的seperator
@@ -6097,8 +6098,19 @@ static void showSearchResultExtColumnsBasedOnHashTableValues(){
   //for those contain more than filepath, the additionl column usually will be filled in the ExtColumnHashTable, we use following layout.
   gboolean old_value=do_not_show_VALUE_MAY_NOT_LOADED_message_because_we_will_add_GtkTreeViewColumn_later;
   do_not_show_VALUE_MAY_NOT_LOADED_message_because_we_will_add_GtkTreeViewColumn_later=TRUE;
-  if(ExtColumnHashTablesHaveData){//只要有使用getExtColumnValueFromHashTable取值函数的列,就只显示文件名和这些列,而不显示那些常规的如文件大小日期列,如要显示这些列,可在 showcolumn 里面指定.
-	 show_hide_treeview_columns_enum(3, INT_MAX,COL_FILENAME,INT_MAX);
+  if (search_result_type_withtitle_column_title_array){//只有在searchresulttype(即(SearchResultTypePointerForCurrentExistingSearchResult)是 withTitle 的情况下才不为空
+         int num_of_columns = g_strv_length(search_result_type_withtitle_column_title_array);
+         gchar **tmp_strings = calloc(num_of_columns + 3, sizeof(gchar*));// 多两个位置用于首尾的逗号,加上endingNULL
+         tmp_strings[0] = ""; tmp_strings[num_of_columns + 1] = "";
+         for (int i = 0; i < num_of_columns; i++) {
+           tmp_strings[i + 1] = search_result_type_withtitle_column_title_array[i]; // 原始字符串
+         }
+         gchar* column_titles_begin_and_end_with_comma = g_strjoinv(",", tmp_strings);
+         show_hide_treeview_columns_in_order(column_titles_begin_and_end_with_comma);
+         g_free(tmp_strings); g_free(column_titles_begin_and_end_with_comma);
+
+  }else if(ExtColumnHashTablesHaveData){//只要有使用getExtColumnValueFromHashTable取值函数的列,就只显示文件名和这些列,而不显示那些常规的如文件大小日期列,如要显示这些列,可在 showcolumn 里面指定.
+         show_hide_treeview_columns_enum(3, INT_MAX,COL_FILENAME,INT_MAX);
 	 enum RFM_treeviewCol previousColumn = COL_FILENAME;
 	 for(int i=COL_Ext1; i<NUM_COLS;i++){
 	   if (ExtColumnHashTable[i-COL_Ext1]!=NULL){
