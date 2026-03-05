@@ -2258,7 +2258,7 @@ static void read_git_status_porcelain_cmd_output_into_hashtable(gpointer *child_
 	  if (i==0) sprintf(status,"D ");
 	  else status=strdup("A ");
 	}
-	if (curPathRelativeToGitRoot && !g_str_has_prefix(filenames[i],curPathRelativeToGitRoot)) continue;//只处理当前目录树
+	if (!SearchResultViewInsteadOfDirectoryView && curPathRelativeToGitRoot && !g_str_has_prefix(filenames[i],curPathRelativeToGitRoot)) continue;//只处理当前目录树
       //TODO: remove ending "/"
       //when i mkdir test in gitreporoot
       //cd test
