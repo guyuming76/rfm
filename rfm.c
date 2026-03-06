@@ -512,6 +512,7 @@ static GHashTable* ExtColumnHashTable[NUM_Ext_Columns + 1];
 // hashtable and value not refreshed during refresh_store or turn_page. 
 // For ExtColumn value from file parser, the hashtable keep only the values for the current page, and it will be refreshed during each refresh_store or turn_page. This is for performance.
 static gboolean ExtColumnHashTable_keep_during_refresh[NUM_Ext_Columns + 1];
+static gboolean SearchResultContainNonFilenameColumn = FALSE;
 // if true, means that rfm read file names in following way:
 //      ls|xargs realpath|rfm
 // or
@@ -2432,7 +2433,7 @@ static gboolean fill_fileAttributeList_with_filenames_from_search_result_and_the
     if (fileAttributes != NULL) {
       rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
       g_log(RFM_LOG_DATA,G_LOG_LEVEL_DEBUG,"appended into rfm_fileAttributeList:%s", (char*)name->data);
-      if (SearchResultViewInsteadOfDirectoryView && SearchResultTypePointerForCurrentExistingSearchResult)
+      if (SearchResultViewInsteadOfDirectoryView && SearchResultTypePointerForCurrentExistingSearchResult)//本函数仅在refresh_store()searchresultview分支调用，因此判断条件中SearchResultViewInsteadOfDirectoryView其实可以不要
 	SearchResultTypePointerForCurrentExistingSearchResult->SearchResultLineProcessingFunc((gchar*)(name->data), FALSE, SearchResultTypePointerForCurrentExistingSearchResult->cmdTemplate, fileAttributes, childAttribs);
     }
     fileAttributeID++;//上面SearchResultLineProcessingFunc里面会使用fileAttributeID作为hashtable的key, commit ab8f8c2f832bc32b431ced50bda21de36b9314d5 之前是分两次从fileAttributeID=1开始遍历文件名列表的,但commit ab8f8c2f832bc32b431ced50bda21de36b9314d5 和并成了现在的一次遍历, 造成了一个bug: 之前在 get_fileAttributes_for_a_file 调用fileAttributeID++, 后面的SearchResultLineProcessingFunc里fileAttributeID值就错了,所以现在改在这里调用 fileAttributeID++
@@ -5660,6 +5661,7 @@ static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboo
                     if (ExtColumnHashTable[currentExtColumnHashTableIndex]==NULL) {
                         ExtColumnHashTable[currentExtColumnHashTableIndex] = g_hash_table_new_full(g_str_hash, g_str_equal,g_free, g_free);
                         ExtColumnHashTable_keep_during_refresh[currentExtColumnHashTableIndex]=TRUE;
+		        SearchResultContainNonFilenameColumn = TRUE;
                     }
 		    
 		    if (currentExtColumnValue!=oneline) {//当currentExtColumnValue==oneline 时，说明第一列不是文件名，do 循环前已经把第一列后面的SearchResultColumnSeperator首字符置0了。
@@ -6087,27 +6089,32 @@ void ensure_fd0_is_opened_for_stdin_inherited_from_parent_process_instead_of_use
          }else fclose(pipeStream);
 }
 
+
+//对于searchresulttype withTitle 的，显示输入的title列
+//for searchresults that contains only filepath, like those from locate, we use the same column layout as directory view
+//for those contain more than filepath(SearchResultContainNonFilenameColumn), the additionl column usually will be filled in the ExtColumnHashTable, we use following layout.
 //参见 RFM_SearchResultType.showcolumn 属性注释。
 static void showSearchResultExtColumnsBasedOnHashTableValues(){
-  gboolean ExtColumnHashTablesHaveData=FALSE;
-  for(int i=0;i<NUM_Ext_Columns;i++) if (ExtColumnHashTable[i]!=NULL) {
-       ExtColumnHashTablesHaveData=TRUE;
-       if (FileNameIndexInColumnTitles){//ProcessOnelineForSearchResult_with_title 的时候，对于没列输入的数据，都使用ExtColumnHashTable保存，并把title保存在key 1 里，对于现有的同名列，如文件属性，DimensionValue,也使用单独的ExtColumnHashTable。
-	   char* column_title_in_first_line = (char*)g_hash_table_lookup(ExtColumnHashTable[i], "1");
-	   if (column_title_in_first_line){
-	       if (!get_treeviewColumnByTitle(column_title_in_first_line)){ //如有同名列，列名会保持C1,C2,这种形式，而不会改成冲突的名字。FileNameIndexInColumnTitles 不为0可以等同于下面search_result_type_withtitle_column_title_array不为空的判断，因为下面search_result_type_withtitle_column_title_array时使用的是column title字符串显示列，这样，ProcessOnelineForSearchResult_with_title 里保存在ExtColumnHashTable里的值实际不会被显示，实际显示的是从文件属性读取的。TODO:这种机制也许将来可以被用来导入并批量更新文件属性
-		 RFM_treeviewColumn *col = get_treeviewColumnByEnum(i + COL_Ext1);
-		 snprintf(col->title,ColumnTitleMaxLen,"%s",(char*)g_hash_table_lookup(ExtColumnHashTable[i], "1"));
-	       }else g_debug("showSearchResultExtColumnsBasedOnHashTableValues:column %s in first line already exists", column_title_in_first_line);
-	       //g_free(column_title_in_first_line); 文档上说g_hash_table_lookup的返回值是caller own的，但这里free会造成代码在别的地方莫名crash
-	   }else g_warning("showSearchResultExtColumnsBasedOnHashTableValues:no column title for key 1 in ExtColumnHashTable[%d]",i);
-       }
-  }
-  //for searchresults that contains only filepath, like those from locate, we use the same column layout as directory view
-  //for those contain more than filepath, the additionl column usually will be filled in the ExtColumnHashTable, we use following layout.
+
   gboolean old_value=do_not_show_VALUE_MAY_NOT_LOADED_message_because_we_will_add_GtkTreeViewColumn_later;
   do_not_show_VALUE_MAY_NOT_LOADED_message_because_we_will_add_GtkTreeViewColumn_later=TRUE;
   if (search_result_type_withtitle_column_title_array){//只有在searchresulttype(即(SearchResultTypePointerForCurrentExistingSearchResult)是 withTitle 的情况下才不为空
+
+         for(int i=0;i<NUM_Ext_Columns;i++) if (ExtColumnHashTable[i]){//ProcessOnelineForSearchResult_with_title 的时候，对于没列输入的数据，都使用ExtColumnHashTable保存，并把title保存在key 1 里，对于现有的同名列，如文件属性，DimensionValue,也使用单独的ExtColumnHashTable。
+	   char* column_title_in_first_line = (char*)g_hash_table_lookup(ExtColumnHashTable[i], "1");
+	   if (column_title_in_first_line){
+	       RFM_treeviewColumn *existingColWithTheSameTitle = get_treeviewColumnByTitle(column_title_in_first_line);
+	       if (existingColWithTheSameTitle){ //如有同名列，列名会保持C1,C2,这种形式，而不会改成冲突的名字。FileNameIndexInColumnTitles 不为0可以等同于下面search_result_type_withtitle_column_title_array不为空的判断，因为下面search_result_type_withtitle_column_title_array时使用的是column title字符串显示列，这样，ProcessOnelineForSearchResult_with_title 里保存在ExtColumnHashTable里的值实际不会被显示，实际显示的是从文件属性读取的。TODO:这种机制也许将来可以被用来导入并批量更新文件属性
+		 g_debug("showSearchResultExtColumnsBasedOnHashTableValues:column %s in first line already exists", column_title_in_first_line);
+		 if ((existingColWithTheSameTitle->enumCol < NUM_COLS) && (existingColWithTheSameTitle->enumCol >= COL_Ext1)) ExtColumnHashTable_keep_during_refresh[existingColWithTheSameTitle->enumCol - COL_Ext1] = TRUE;
+	       }else{
+		 RFM_treeviewColumn *col = get_treeviewColumnByEnum(i + COL_Ext1);
+		 snprintf(col->title,ColumnTitleMaxLen,"%s",(char*)g_hash_table_lookup(ExtColumnHashTable[i], "1"));
+	       }
+	       //g_free(column_title_in_first_line); 文档上说g_hash_table_lookup的返回值是caller own的，但这里free会造成代码在别的地方莫名crash
+	   }else g_debug("showSearchResultExtColumnsBasedOnHashTableValues:no column title for key 1 in ExtColumnHashTable[%d]",i);
+         }
+
          int num_of_columns = g_strv_length(search_result_type_withtitle_column_title_array);
          gchar **tmp_strings = calloc(num_of_columns + 3, sizeof(gchar*));// 多两个位置用于首尾的逗号,加上endingNULL
          tmp_strings[0] = ""; tmp_strings[num_of_columns + 1] = "";
@@ -6118,7 +6125,7 @@ static void showSearchResultExtColumnsBasedOnHashTableValues(){
          show_hide_treeview_columns_in_order(column_titles_begin_and_end_with_comma);
          g_free(tmp_strings); g_free(column_titles_begin_and_end_with_comma);
 
-  }else if(ExtColumnHashTablesHaveData){//只要有使用getExtColumnValueFromHashTable取值函数的列,就只显示文件名和这些列,而不显示那些常规的如文件大小日期列,如要显示这些列,可在 showcolumn 里面指定.
+  }else if(SearchResultContainNonFilenameColumn){//只显示文件名和这些列,而不显示那些常规的如文件大小日期列,如要显示这些列,可在 showcolumn 里面指定.
          show_hide_treeview_columns_enum(3, INT_MAX,COL_FILENAME,INT_MAX);
 	 enum RFM_treeviewCol previousColumn = COL_FILENAME;
 	 for(int i=COL_Ext1; i<NUM_COLS;i++){
@@ -6177,7 +6184,7 @@ static void update_SearchResultFileNameList_and_refresh_store(RFM_ChildAttribs *
     ExtColumnHashTable[i]=NULL;
     ExtColumnHashTable_keep_during_refresh[i]=FALSE;
   }
-
+  SearchResultContainNonFilenameColumn = FALSE;
   SearchResultViewInsteadOfDirectoryView = 1;
   memcpy(SearchResultViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
 #ifdef RFM_AddOn
@@ -6422,7 +6429,8 @@ static gboolean SetViewColumnForDimension(DimensionProperties* dimProps){
       if (currentExtColumnHashTableIndex<0) { g_warning("dimension name conflict with builtin column name:%s",col->title); return FALSE; };
       if (ExtColumnHashTable[currentExtColumnHashTableIndex]==NULL) {
 	      ExtColumnHashTable[currentExtColumnHashTableIndex] = g_hash_table_new_full(g_str_hash, g_str_equal,g_free, g_free);
-	      if (SearchResultViewInsteadOfDirectoryView && col->Show) ExtColumnHashTable_keep_during_refresh[currentExtColumnHashTableIndex]=TRUE;
+	      //if (SearchResultViewInsteadOfDirectoryView && col->Show) ExtColumnHashTable_keep_during_refresh[currentExtColumnHashTableIndex]=TRUE;
+	      if (SearchResultViewInsteadOfDirectoryView) ExtColumnHashTable_keep_during_refresh[currentExtColumnHashTableIndex]=TRUE;
               g_log(RFM_LOG_DIMENSION,G_LOG_LEVEL_DEBUG,"SetViewColumnForDimension(%s), g_hash_table_new_full called for ExtColumnHashTable[%d], RFM_treeviewCol:%d", dimName, currentExtColumnHashTableIndex, current_Ext_Column);
       }
       return TRUE;
