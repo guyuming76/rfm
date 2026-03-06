@@ -6092,8 +6092,16 @@ static void showSearchResultExtColumnsBasedOnHashTableValues(){
   gboolean ExtColumnHashTablesHaveData=FALSE;
   for(int i=0;i<NUM_Ext_Columns;i++) if (ExtColumnHashTable[i]!=NULL) {
        ExtColumnHashTablesHaveData=TRUE;
-       g_debug("ExtColumnHashTablesHaveData");
-       break;
+       if (FileNameIndexInColumnTitles){//ProcessOnelineForSearchResult_with_title 的时候，对于没列输入的数据，都使用ExtColumnHashTable保存，并把title保存在key 1 里，对于现有的同名列，如文件属性，DimensionValue,也使用单独的ExtColumnHashTable。
+	   char* column_title_in_first_line = (char*)g_hash_table_lookup(ExtColumnHashTable[i], "1");
+	   if (column_title_in_first_line){
+	       if (!get_treeviewColumnByTitle(column_title_in_first_line)){ //如有同名列，列名会保持C1,C2,这种形式，而不会改成冲突的名字。FileNameIndexInColumnTitles 不为0可以等同于下面search_result_type_withtitle_column_title_array不为空的判断，因为下面search_result_type_withtitle_column_title_array时使用的是column title字符串显示列，这样，ProcessOnelineForSearchResult_with_title 里保存在ExtColumnHashTable里的值实际不会被显示，实际显示的是从文件属性读取的。TODO:这种机制也许将来可以被用来导入并批量更新文件属性
+		 RFM_treeviewColumn *col = get_treeviewColumnByEnum(i + COL_Ext1);
+		 snprintf(col->title,ColumnTitleMaxLen,"%s",(char*)g_hash_table_lookup(ExtColumnHashTable[i], "1"));
+	       }else g_debug("showSearchResultExtColumnsBasedOnHashTableValues:column %s in first line already exists", column_title_in_first_line);
+	       //g_free(column_title_in_first_line); 文档上说g_hash_table_lookup的返回值是caller own的，但这里free会造成代码在别的地方莫名crash
+	   }else g_warning("showSearchResultExtColumnsBasedOnHashTableValues:no column title for key 1 in ExtColumnHashTable[%d]",i);
+       }
   }
   //for searchresults that contains only filepath, like those from locate, we use the same column layout as directory view
   //for those contain more than filepath, the additionl column usually will be filled in the ExtColumnHashTable, we use following layout.
@@ -6116,10 +6124,6 @@ static void showSearchResultExtColumnsBasedOnHashTableValues(){
 	 for(int i=COL_Ext1; i<NUM_COLS;i++){
 	   if (ExtColumnHashTable[i-COL_Ext1]!=NULL){
 	     show_hide_treeview_columns_enum(3, previousColumn,i,INT_MAX);//INT_MAX 结尾表示只显示指明的列,不显示其他默认显示常规列如文件大小日期.这样设计的出发点是:当我们在查询结果里只包含文件名时,我们希望显示文件名,大小,日期等如同目录视图一样的列. 而当查询结果包含除文件名之外的扩展列时,我们希望只显示文件名和这些扩展列,而不包括文件大小日期等常规列,以便让用户注意力能集中在这些扩展列上
-	     if (FileNameIndexInColumnTitles){
-	       RFM_treeviewColumn *col = get_treeviewColumnByEnum(i);
-	       snprintf(col->title,ColumnTitleMaxLen,"%s",(char*)g_hash_table_lookup(ExtColumnHashTable[i-COL_Ext1], "1"));
-	     }
 	     previousColumn = i;
 	   }
 	 }
