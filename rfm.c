@@ -3205,11 +3205,11 @@ static void insert_column_menuitem_callback(GtkMenuItem *menuitem,char *order_se
 
 static void createCandidateColumnsMenu(GtkMenuItem* parent, RFM_treeviewColumn *col) {
   GtkWidget* candidateColumnsMenu = gtk_menu_item_get_submenu(parent);
-  if (candidateColumnsMenu){
-    gtk_menu_item_set_submenu(parent, NULL);
-    if (GTK_IS_WIDGET(candidateColumnsMenu)) gtk_widget_destroy(candidateColumnsMenu);//TODO:这里为啥要判断GTK_IS_WIDGET？如果不判断，我会得到critical错误
+  if (candidateColumnsMenu && GTK_IS_WIDGET(candidateColumnsMenu)){
+      gtk_widget_destroy(candidateColumnsMenu);
+      gtk_menu_item_set_submenu(parent, NULL);
   }
-  //上面是删除上次生成的旧的，下面是根据当前 TREEVIEW_COLUMNS 建新的
+  //TODO:上面是删除上次生成的旧的，下面是根据当前 TREEVIEW_COLUMNS 建新的. 上面的代码是否可以删除,让gtk自动释放旧的
   candidateColumnsMenu = gtk_menu_new();
   gtk_menu_item_set_submenu(parent, candidateColumnsMenu);
   char menuTitle[256+10];
