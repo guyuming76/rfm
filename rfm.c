@@ -3022,7 +3022,7 @@ static void toolbar_button_exec(GtkToolItem *item, RFM_ToolButton *button_defini
        }
      }
 #endif
-     stdin_cmd_interpretor *cmd_interpretor_pointer = match_cmd_str_array_with_interpretors(child_attribs->RunCmd);
+     stdin_cmd_interpretor *cmd_interpretor_pointer = match_cmd_str_array_with_interpretors(button_definition->RunCmd);//match_cmd函数里面会使用地址相等比较，所以要用原始静态字符串数组，而不是g_strdupv深度复制的
      if (cmd_interpretor_pointer){
        gchar* cmd = strdup(child_attribs->RunCmd[1]);
        if (startWithTerm()) printf("\n\r%s\033[32m%s%s%s\033[0m`%s`\r\n",InheritedPrompt, cmd_interpretor_pointer->prompt,(ItemSelected==0)?"":"*",exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread?"]":">",cmd);
@@ -3055,7 +3055,7 @@ static void file_menu_exec(GtkMenuItem *menuitem, RFM_MenuItem *file_menu_item_d
        }
      }
 #endif
-     stdin_cmd_interpretor *cmd_interpretor_pointer = match_cmd_str_array_with_interpretors(child_attribs->RunCmd);
+     stdin_cmd_interpretor *cmd_interpretor_pointer = match_cmd_str_array_with_interpretors(file_menu_item_definition->runCmd);//match_cmd函数里面会使用地址相等比较，所以要用原始静态字符串数组，而不是g_strdupv深度复制的
      if (cmd_interpretor_pointer){
        gchar* cmd = strdup(child_attribs->RunCmd[1]);
        if (startWithTerm()) printf("\n\r%s\033[32m%s%s%s\033[0m`%s`\r\n",InheritedPrompt, cmd_interpretor_pointer->prompt,(ItemSelected==0)?"":"*",exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread?"]":">",cmd);
