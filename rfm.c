@@ -351,13 +351,13 @@ static GPtrArray* rfm_editor_completion_based_on_search_result(char *text);
 static void rfmEdit(gchar* filepath);
 static gboolean parse_rfmEdit(GString *readline_result_string_after_file_name_substitution,RFM_ChildAttribs *childAttribs);
 #endif
-gchar shell_cmd_buffer[PATH_MAX]; //TODO: notice that this is shared single instance. But we only run shell command in sync mode now. so, no more than one thread will use this
-gchar* stdin_cmd_template_bash[]={"/bin/bash","-i","-c", shell_cmd_buffer, NULL};
-static gchar* stdin_cmd_template_nu[]={"nu","-c", shell_cmd_buffer, NULL};
-gchar* stdin_cmd_template_bash_newVT_nonHold[] = { "$RFM_TERM", "/bin/bash", "-i", "-c", shell_cmd_buffer, NULL };
-gchar* stdin_cmd_template_bash_newVT_nonHold_with_e[] = { "$RFM_TERM", "$RFM_TERM_E" ,"/bin/bash", "-i", "-c", shell_cmd_buffer, NULL };
-static gchar* stdin_cmd_template_nu_newVT_nonHold[] = { "$RFM_TERM", "nu", "-i", "-c", shell_cmd_buffer, NULL };
-static gchar* stdin_cmd_template_nu_newVT_nonHold_with_e[] = { "$RFM_TERM", "$RFM_TERM_E" ,"nu", "-i", "-c", shell_cmd_buffer, NULL };
+gchar** replace_shell_cmd_buffer(gchar **strv, gchar *buffer);
+gchar* stdin_cmd_template_bash[]={"/bin/bash","-i","-c", "shell_cmd_buffer", NULL};
+static gchar* stdin_cmd_template_nu[]={"nu","-c", "shell_cmd_buffer", NULL};
+gchar* stdin_cmd_template_bash_newVT_nonHold[] = { "$RFM_TERM", "/bin/bash", "-i", "-c", "shell_cmd_buffer", NULL };
+gchar* stdin_cmd_template_bash_newVT_nonHold_with_e[] = { "$RFM_TERM", "$RFM_TERM_E" ,"/bin/bash", "-i", "-c", "shell_cmd_buffer", NULL };
+static gchar* stdin_cmd_template_nu_newVT_nonHold[] = { "$RFM_TERM", "nu", "-i", "-c", "shell_cmd_buffer", NULL };
+static gchar* stdin_cmd_template_nu_newVT_nonHold_with_e[] = { "$RFM_TERM", "$RFM_TERM_E" ,"nu", "-i", "-c", "shell_cmd_buffer", NULL };
 static NO_FREE gchar** stdin_command_bash(CALLER_OWN gchar* user_input_cmd, gboolean inNewVT);
 static NO_FREE gchar** stdin_command_nu(CALLER_OWN gchar* user_input_cmd, gboolean inNewVT);
 
@@ -926,7 +926,7 @@ static void free_child_attribs(FREE_FULL RFM_ChildAttribs *child_attribs)
 {
    g_log(RFM_LOG_GSPAWN,G_LOG_LEVEL_DEBUG,"RFM_childAttribs %p free %s",child_attribs, child_attribs->no_free? "with no_free":"");
    if(child_attribs->no_free) return;
-  
+   if (child_attribs->RunCmd) g_strfreev(child_attribs->RunCmd);
    free(child_attribs->stdOut); child_attribs->stdOut = NULL;
    free(child_attribs->stdErr); child_attribs->stdErr = NULL;
    free(child_attribs->total_stdOut); //TODO: 这里向别的地方一样，应该设成NULL的。当时我添加这行的时候，想不起来其他地方为啥还要置NULL,今天从上面日志发现同一个child_attribs 地址，有反复free的现象（从日志上下文看，应该是读取git信息相关操作），但只是同一个地址，还不能确定是同一个，否则下面 g_free(child_attribs) 为啥没有double free 错？
@@ -1433,7 +1433,7 @@ gboolean g_spawn_wrapper(CALLER_OWN const char **action, CALLER_OWN GList *file_
   child_attribs->customCallBackFunc=callbackfunc;
   child_attribs->customCallbackUserData=callbackfuncUserData;
   child_attribs->runOpts=run_opts;
-  child_attribs->RunCmd = action;
+  child_attribs->RunCmd = g_strdupv(action);
   child_attribs->stdOut = NULL;
   child_attribs->stdErr = NULL;
   child_attribs->spawn_async = async;
@@ -3004,7 +3004,7 @@ static void toolbar_button_exec(GtkToolItem *item, RFM_ToolButton *button_defini
      button_definition->func(button_definition);
    else { /* Assume argument is a shell exec */
      RFM_ChildAttribs *child_attribs=calloc(1, sizeof(RFM_ChildAttribs));
-     child_attribs->RunCmd = button_definition->RunCmd;
+     child_attribs->RunCmd = g_strdupv(button_definition->RunCmd);
      if (!exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread) child_attribs->spawn_async = TRUE;//到目前为止，我日常很少通过 toggleBlockGUI 功能，只是在功能添加之初测试过，所以改这一句对我现有常用功能应该没啥影响。设计的出发点在于在执行命令的时候锁死GUI界面，究竟async 好还是sync 好，当时应该也比较随意。也就是当时应该也没明确定义是否要block到自进程结束。显然对于耗时较长的 search ，async 不会让终端输入等待太久，所以之前一直 async 执行子进程。到目前为止，子进程bash脚本执行过程都无需终端窗口输入。需要交互输入的常用命令如AI addon的对话，是通过在 exec_stdin_command 中另外的方式处理同步的，会和cmd_interpretor 提示符关联，好处是可以在 config.h, rfm_addon.c 里面为命令设定好cmd_interpretor.这次新加AI对话历史相似度查询功能，犹豫是不是新加一个cmd_interpretor 。问题是interpretor类型太多用户也不好记。所以做了这个commit 中 exec_stdin_command 中的修改，以便用户在切换到 exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread 状态后可以运行需要提示输入的脚本且不和readlineThread冲突，TODO: 但问题是这个现在要提示用户手工切换。
      child_attribs->name = g_strdup(button_definition->buttonName);
      child_attribs->customCallBackFunc = button_definition->func;
@@ -3037,7 +3037,7 @@ static void file_menu_exec(GtkMenuItem *menuitem, RFM_MenuItem *file_menu_item_d
      file_menu_item_definition->func(file_menu_item_definition);
   else{
      RFM_ChildAttribs *child_attribs=calloc(1, sizeof(RFM_ChildAttribs));
-     child_attribs->RunCmd = file_menu_item_definition->runCmd;
+     child_attribs->RunCmd = g_strdupv(file_menu_item_definition->runCmd);
      if (!exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread) child_attribs->spawn_async = TRUE;
      child_attribs->name = g_strdup(file_menu_item_definition->runName);
      child_attribs->customCallBackFunc = file_menu_item_definition->func;
@@ -3756,26 +3756,41 @@ static void free_default_pixbufs(RFM_defaultPixbufs *defaultPixbufs)
    g_free(defaultPixbufs);
 }
 
+gchar** replace_shell_cmd_buffer(gchar **strv, gchar *buffer) {
+   int len = g_strv_length(strv);
+   for (int i = 0; i<len; i++) {
+        if (strcmp(strv[i], "shell_cmd_buffer") == 0) {
+	  g_free(strv[i]); strv[i]=buffer;
+        }
+   }
+   return strv;
+}
 
 static NO_FREE gchar** stdin_command_bash(CALLER_OWN gchar* user_input_cmd, gboolean inNewVT) {
+  gchar** ret;
+  gchar* shell_cmd_buffer = calloc(ARG_MAX, sizeof(gchar));
   if (inNewVT){
     snprintf(shell_cmd_buffer,PATH_MAX,"set -o history; %s;read -p '\033[33m%s\033[0m'; exit \$? 2>/dev/null", user_input_cmd, PRESS_ENTER_TO_CLOSE_WINDOW);
     //without set -o history and "bash -i", bash builtin history command will not show results.
     //Seems to be by design, but why? for the nu shell, nu -c "history" just works
     //without exit, rfm will quit after commands such as ls, nano, but commands such as echo 1 will work. if you change exit to sleep 20, even echo 1 will make rfm terminate. Are there any race condition here?
     gchar * term_e = getenv("RFM_TERM_E");
-    if (term_e!=NULL && strcmp(term_e,"")!=0) return stdin_cmd_template_bash_newVT_nonHold_with_e;
-    else return stdin_cmd_template_bash_newVT_nonHold;
+    if (term_e!=NULL && strcmp(term_e,"")!=0) ret = g_strdupv(stdin_cmd_template_bash_newVT_nonHold_with_e);
+    else ret = g_strdupv(stdin_cmd_template_bash_newVT_nonHold);
   }else {
     snprintf(shell_cmd_buffer,PATH_MAX,"set -o history; %s; exit \$? 2>/dev/null",user_input_cmd);
-    return stdin_cmd_template_bash;
+    ret = g_strdupv(stdin_cmd_template_bash);
   }
+  return replace_shell_cmd_buffer(ret, shell_cmd_buffer);
 }
 static NO_FREE gchar** stdin_command_nu(CALLER_OWN gchar* user_input_cmd, gboolean inNewVT) {
 //TODO: add read -p into shell_cmd_buffer when inNewVT like stdin_command_bash
+  gchar** ret;
+  gchar* shell_cmd_buffer = calloc(ARG_MAX, sizeof(gchar));
   snprintf(shell_cmd_buffer,PATH_MAX,"%s",user_input_cmd);
   gchar * term_e = getenv("RFM_TERM_E");
-  return inNewVT? ((term_e!=NULL && strcmp(term_e,"")!=0) ? stdin_cmd_template_nu_newVT_nonHold_with_e : stdin_cmd_template_nu_newVT_nonHold ) : stdin_cmd_template_nu;
+  ret = inNewVT? ((term_e!=NULL && strcmp(term_e,"")!=0) ? stdin_cmd_template_nu_newVT_nonHold_with_e : stdin_cmd_template_nu_newVT_nonHold ) : stdin_cmd_template_nu;
+  return replace_shell_cmd_buffer(ret, shell_cmd_buffer);
 }
 
 
@@ -4527,7 +4542,7 @@ static void cmd_setenv(wordexp_t *parsed_msg, GString *readline_result_string_af
 
 void addToSearchResult(FREE char *fileFullpath) {
         RFM_ChildAttribs *child_attribs=calloc(1, sizeof(RFM_ChildAttribs));
-        child_attribs->RunCmd = Union_SearchResult;
+        child_attribs->RunCmd = g_strdupv(Union_SearchResult);
         gchar* cmd = strdup(child_attribs->RunCmd[1]);
         child_attribs->fullpath_list_as_RunCmd_parameters = g_list_prepend(child_attribs->fullpath_list_as_RunCmd_parameters,fileFullpath);
         child_attribs->customCallBackFunc = (void (*)(RFM_ChildAttribs *))InIconView; //这里参见rfm.c exec_stdin_command_with_SearchResultAsInput 中注释
