@@ -6632,8 +6632,15 @@ static gboolean compile_local_extension(RFM_ADDON* addon) {
 #endif
 
     gchar* rfm_local_c_compile_cmd = g_strdup_printf(rfm_local_c_compile_cmd_template, DCmarkTools, DGitIntegration, rfmLANGUAGE, RFM_SearchResultTypeNamePrefix, RFM_NEW_TERM_SUFFIX, RFM_selected_filename_placeholder, RFM_SEARCH_RESULT_AS_INPUT_PREFIX, addon->addon_so_fullpath, hash_define, addon->addon_c_fullpath);
-    RFM_ChildAttribs *childAttribs = calloc(1, sizeof(RFM_ChildAttribs));
-    return parse_and_exec_command_in_gtk_thread(rfm_local_c_compile_cmd, FALSE, &(stdin_cmd_interpretors[0]), childAttribs);
+    gboolean success = FALSE;
+    wordexp_t parsed_msg;
+    int wordexp_retval = wordexp(rfm_local_c_compile_cmd,&parsed_msg,0);
+    if (wordexp_retval==0){
+      success = g_spawn_wrapper(parsed_msg.we_wordv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, FALSE, NULL, NULL, FALSE);
+      wordfree(&parsed_msg);
+    }
+    g_free(rfm_local_c_compile_cmd);
+    return success;
 }
 
 // treeviewColumns相关初始化流程：
