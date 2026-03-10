@@ -623,7 +623,7 @@ static void showSearchResultExtColumnsBasedOnHashTableValues();
 static int ProcessOnelineForSearchResult(CALLER_OWN gchar *oneline, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs);
 static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboolean new_search, int first_line_column_title);
 static int ProcessOnelineForSearchResult_with_title(CALLER_OWN char* oneline, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs);
-static void CallDefaultSearchResultFunctionForNewSearch(CALLER_OWN char *one_line_in_search_result);
+static void CallDefaultSearchResultFunctionForNewSearch(CALLER_OWN char *one_line_in_search_result, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs);
 int ProcessKeyValuePairInFilesFromSearchResult(CALLER_OWN char *oneline, gboolean new_search);
 int ProcessKeyValuePairInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char **cmdtemplate, RFM_FileAttributes* fileAttributes,RFM_ChildAttribs *childAttribs);
 int ProcessJsonInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate, RFM_FileAttributes* fileAttributes,RFM_ChildAttribs* child_attribs);
@@ -5746,12 +5746,12 @@ static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboo
 	   return currentColumnTitleIndex;
 }
 
-static void CallDefaultSearchResultFunctionForNewSearch(CALLER_OWN char *one_line_in_search_result){
+static void CallDefaultSearchResultFunctionForNewSearch(CALLER_OWN char *one_line_in_search_result, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs){
      if (fileAttributeID==1) {
-       currentSearchResultTypeStartingColumnTitleIndex = ProcessOnelineForSearchResult(one_line_in_search_result,TRUE, NULL,NULL,NULL);//TODO: pass arg
+       currentSearchResultTypeStartingColumnTitleIndex = ProcessOnelineForSearchResult(one_line_in_search_result,TRUE, cmdTemplate, fileAttributes, childAttribs);
        currentPageStartingColumnTitleIndex = currentSearchResultTypeStartingColumnTitleIndex;
      //首行记录在  ProcessOnelineForSearchResult 里已经被分配掉的列序号
-     }else ProcessOnelineForSearchResult(one_line_in_search_result, TRUE, NULL, NULL, NULL); //TODO: pass arg
+     }else ProcessOnelineForSearchResult(one_line_in_search_result, TRUE, cmdTemplate, fileAttributes, childAttribs);
 }
 
 // 处理存储键值对文件(类似INI)数据,每行一个文件,每个文件可包含不同的键
@@ -5759,7 +5759,7 @@ static void CallDefaultSearchResultFunctionForNewSearch(CALLER_OWN char *one_lin
 // if new_search, oneline contains leading filename plus optional columns, otherwise, oneline contains only filename
 int ProcessKeyValuePairInFilesFromSearchResult(CALLER_OWN char *oneline, gboolean new_search){
    if (new_search){
-     CallDefaultSearchResultFunctionForNewSearch(oneline);
+     CallDefaultSearchResultFunctionForNewSearch(oneline, TRUE, NULL, NULL, NULL);//TODO:pass arg
      return 0;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
    }
 
@@ -5870,7 +5870,7 @@ static int ProcessJsonStr(CALLER_OWN gchar* json_data){
 
 static int ProcessJsonFileFromSearchResult(CALLER_OWN char *oneline, gboolean new_search){
    if (new_search){
-     CallDefaultSearchResultFunctionForNewSearch(oneline);
+     CallDefaultSearchResultFunctionForNewSearch(oneline, TRUE, NULL, NULL, NULL);//TODO:pass arg
      return 0;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
    }
    gchar * absolute_address = g_canonicalize_filename(oneline, rfm_SearchResultPath);
@@ -5908,7 +5908,7 @@ int ProcessJsonInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean ne
 //SearchResultType 里面定义的cmdTemplate格式是独特的：一方面，可以指明cmd_interpretor, 使用match_cmd_str_array_with_interpretors, 另一方面，却又不是通过parse_and_exec_command_in_gtk_thread来执行，通过调用cmd_interpretor的cmdTransformer来转换成 g_spawn_wrapper接受的形式。同时做了一个简单的把cmdTemplate中%s替换成查询结果文件名oneline的操作，这个替换既没使用build_cmd_vector中的文件名替换，又没使用parse_and_exec_command_in_gtk_thread中的选中文件名替换
 static int ProcessCmdOutputFromSearchResultWithFunction(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate, RFM_ChildAttribs* child_attribs, int (*func)(RFM_ChildAttribs*)){
    if (new_search){
-     CallDefaultSearchResultFunctionForNewSearch(oneline);
+     CallDefaultSearchResultFunctionForNewSearch(oneline, TRUE, cmdtemplate, NULL, child_attribs);//TODO:pass arg, 这个还缺个fileAttribs,但多个函数指针
      return 0;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
    }
 
@@ -5985,7 +5985,7 @@ static int ProcessKeyValuePairInData(GKeyFile *keyfile, char* groupname){
  static int CallMatchingProcessorForSearchResultLine(char *oneline, gboolean new_search, char *cmdtemplate, RFM_FileAttributes* fileAttributes, RFM_ChildAttribs* childAttribs){
    assert(g_strcmp0(SearchResultTypePointerForCurrentExistingSearchResult->name,SrchRsltType_multitype)==0);
    if (new_search){
-     CallDefaultSearchResultFunctionForNewSearch(oneline);
+     CallDefaultSearchResultFunctionForNewSearch(oneline, TRUE, cmdtemplate, fileAttributes , childAttribs);
      return 0;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
    }
 
