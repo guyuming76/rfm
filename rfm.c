@@ -608,7 +608,6 @@ static gint SearchResultFileNameListLength=0;
 static gint currentFileNum=0;
 static GList *CurrentPage_SearchResultView=NULL;
 static gint PageSize_SearchResultView=100;
-static gboolean SearchResultAsInput=FALSE; //TODO:这个属性也可以放到childAttribs里面，而不是像现在这样的全局变量，当这样就需要把childAttribs传入ProcessOnelineForSearchResult系列函数。考虑到目前这个全局变量都在gtk main loop中运行，不存在冲突，就暂不移入childAttribs了。
 static RFM_SearchResultType* SearchResultTypePointer = NULL; // we need to pass this status from exec_stdin_command to readlineInSeperatedThread, however, we can only pass one parameter in g_thread_new, so, i use a global variable here.
 static RFM_SearchResultType* SearchResultTypePointerForCurrentExistingSearchResult = NULL; //The value above will be override by next command, which can be a non-search command, we need this variable to preserve the current displaying searchresulttype
 //如要分配新的自定义列,此变量记录分配的列名,按C1,C2..顺序,分配后,用键值替换原始的Cx列名
@@ -4921,7 +4920,6 @@ static void combine_command_with_selected_files_and_setenv(CALLER_OWN GString* r
 gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboolean const from_stdin_readline, NO_FREE const stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs* childAttribs)
 {
         gboolean ret = FALSE;
-        SearchResultAsInput=FALSE;
 	stdin_cmd_leading_space=FALSE;
         gboolean execCmdInNewVT=FALSE;//used by file_menu_exec, i.e., not from readline
         effective_cmd_interpretor_pointer = cmd_interpretor_pointer; // Use this for actual execution
@@ -5047,7 +5045,7 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
 		  g_warning("%s does not work with %s for now. TODO: we might save search result into temp file and use it in new terminal emulator in future.", RFM_SEARCH_RESULT_AS_INPUT_PREFIX, RFM_NEW_TERM_SUFFIX);
 		  readlineResult[0]='\0';//设置读取字符串为空，执行一个空命令
 		}else{
-	          SearchResultAsInput=TRUE;
+	          childAttribs->SearchResultAsInput=TRUE;
 		  for (int i=0;i<len;i++) readlineResult[i]=readlineResult[i + strlen(RFM_SEARCH_RESULT_AS_INPUT_PREFIX)]; //remove the prefix SearchResult|, which has 13 char
 		}
 	    }
@@ -5082,7 +5080,7 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
 
 	assert(startWithTerm()|| !from_stdin_readline);
           // Use effective_cmd_interpretor_index for execution calls
-	  if (SearchResultAsInput) exec_stdin_command_with_SearchResultAsInput(childAttribs->readlineResultString, from_stdin_readline, effective_cmd_interpretor_pointer, childAttribs);//c语言推荐的做法是变量free了以后置NULL,但这里exec_stdin_command_with_SearchResultAsInput中异步的g_spawn_返回false后才free childAttribs, 成功得话要等异步callback得话才free childAttribs, 所以这里没法判断是否置NULL。TODO：好的做法似乎应该是传入 &childAttribs, 甚至 free_child_attribs 函数就应该改成接收 &childAttribs 参数， free完后就立刻就地置NULL
+	  if (childAttribs->SearchResultAsInput) exec_stdin_command_with_SearchResultAsInput(childAttribs->readlineResultString, from_stdin_readline, effective_cmd_interpretor_pointer, childAttribs);//c语言推荐的做法是变量free了以后置NULL,但这里exec_stdin_command_with_SearchResultAsInput中异步的g_spawn_返回false后才free childAttribs, 成功得话要等异步callback得话才free childAttribs, 所以这里没法判断是否置NULL。TODO：好的做法似乎应该是传入 &childAttribs, 甚至 free_child_attribs 函数就应该改成接收 &childAttribs 参数， free完后就立刻就地置NULL
 	  else if (((exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread || !from_stdin_readline) && !(execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT)))
 		   || (current_stdin_cmd_interpretor_pointer==cmd_interpretor_pointer //这一行排除了在命令提示符下单纯输入 d>  b> 等切换cmd_interpretor的情况，这种情况下，不在这里执行 exec_stdin_command, 也就不会free childattribs, 而是需要g_thread_new readlineThread, 参见下面g_thread_new前条件判断
 		       && effective_cmd_interpretor_pointer->customCallBackFunc && !execCmdInNewVT && !execStdinCmdInNewVT) ){ //这一行条件用来判断需要使用customCallBackFunction来处理 exec_stdin_command 的输出的情况，比如AI LLM返回的内容，这种情况下，g_spawn_wrapper 用异步，exec_stdin_command 会很早返回，但g_spawn_wrapper 还没完成，为了避免争夺终端模拟器，这时不能开始readline,所以就暂时不要 g_thread_new readline,在 g_spawn_wrapper 的异步callback里面再考虑 g_thread_new readline。另外这一行判断也是保证此时exec_stdin_command在gtk thread里执行，否则在readline thread里执行得话，就不方便控制exec_stdin_command 中g_spawn_wrapper 实际callback完成后才调用 readline函数了。注意之一行判断条件在下面 g_thread_new readline 前也有使用
@@ -5096,13 +5094,13 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
           // Pass the original readlineResultString (potentially NULL if handled by builtin) to the next thread
           // The next thread will use the global current_stdin_cmd_interpretor for its prompt
 #ifdef reedline
-          if (!SearchResultAsInput && (
+          if (!childAttribs->SearchResultAsInput && (
 				       current_stdin_cmd_interpretor_pointer!=cmd_interpretor_pointer // 在本函数开头运行current_stdin_cmd_interpretor_pointer = &(stdin_cmd_interpretors[i]) 或 current_stdin_cmd_interpretor_pointer = new_cmd_interpretor, 接着 goto switchToReadlineThread 时，满足此行条件。
 				       || !ret
 				       || !(effective_cmd_interpretor_pointer->customCallBackFunc && !execCmdInNewVT && !execStdinCmdInNewVT))) {
 #endif
 #ifdef GNU_readline
-          if (childAttribs->readlineResultString==NULL || (!SearchResultAsInput && from_stdin_readline && (
+          if (childAttribs->readlineResultString==NULL || (!childAttribs->SearchResultAsInput && from_stdin_readline && (
 							      current_stdin_cmd_interpretor_pointer!=cmd_interpretor_pointer
 							      || !ret
 							      || !(effective_cmd_interpretor_pointer->customCallBackFunc && !execCmdInNewVT && !execStdinCmdInNewVT)))) {
@@ -5615,7 +5613,7 @@ static int ProcessOnelineForSearchResult(CALLER_OWN char* oneline, gboolean new_
 
 static int ProcessOnelineForSearchResult_with_title(CALLER_OWN char* oneline, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs){
   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"ProcessOnelineForSearchResult_with_title(%s, new_search:%d) fileAttributeID:%d", oneline, new_search,fileAttributeID);
-  if (SearchResultAsInput && !treeview){//iconview视图下面查询结果第一行不会导出文件名标题列(参见writeSearchResultIntoFD_in_gtk_thread)，所以读入的时候也如同没有 _with_title 一样。
+  if (childAttribs->SearchResultAsInput && !treeview){//iconview视图下面查询结果第一行不会导出文件名标题列(参见writeSearchResultIntoFD_in_gtk_thread)，所以读入的时候也如同没有 _with_title 一样。
     FileNameIndexInColumnTitles = FALSE;
     return ProcessOnelineForSearchResult_internel(oneline, new_search, FileNameIndexInColumnTitles);
   }
