@@ -627,7 +627,7 @@ static void CallDefaultSearchResultFunctionForNewSearch(CALLER_OWN char *one_lin
 int ProcessKeyValuePairInFilesFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs);
 int ProcessKeyValuePairInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char **cmdtemplate, RFM_FileAttributes* fileAttributes,RFM_ChildAttribs *childAttribs);
 int ProcessJsonInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate, RFM_FileAttributes* fileAttributes,RFM_ChildAttribs* child_attribs);
-static int ProcessCmdOutputFromSearchResultWithFunction(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate, RFM_ChildAttribs* child_attribs, int (*func)(RFM_ChildAttribs*));
+static int ProcessCmdOutputFromSearchResultWithFunction(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate, RFM_FileAttributes* fileAttributes, RFM_ChildAttribs* child_attribs, int (*func)(RFM_ChildAttribs*));
 static int ProcessKeyValuePairInData(GKeyFile* keyfile, char *groupname);
 static void ProcessKeyValuePair(CALLER_OWN gchar *key, OWNER_CHANGE gchar* currentExtColumnValue, CALLER_OWN char* currentColumnOriginalTitle);
 static int ProcessGKeyfileStrWrapper(RFM_ChildAttribs *child_attribs);
@@ -5898,17 +5898,17 @@ static int ProcessJsonFileFromSearchResult(CALLER_OWN char *oneline, gboolean ne
 // 而parse_and_exec_cmd_in_gtk_thread 里的readlineResult是返回这个查询结果多行记录的，每行一个文件。
 // 所以这两个函数看上去都是执行命令模板的，有类似之处，却不好合并
 int ProcessKeyValuePairInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate, RFM_FileAttributes* fileAttributes, RFM_ChildAttribs* childAttribs){
-  ProcessCmdOutputFromSearchResultWithFunction(oneline,new_search,cmdtemplate,childAttribs,ProcessGKeyfileStrWrapper);
+  ProcessCmdOutputFromSearchResultWithFunction(oneline,new_search,cmdtemplate,fileAttributes,childAttribs,ProcessGKeyfileStrWrapper);
 }
 
 int ProcessJsonInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate, RFM_FileAttributes* fileAttributes, RFM_ChildAttribs* child_attribs){
-  ProcessCmdOutputFromSearchResultWithFunction(oneline,new_search,cmdtemplate,child_attribs,ProcessJsonStrWrapper);
+  ProcessCmdOutputFromSearchResultWithFunction(oneline,new_search,cmdtemplate,fileAttributes,child_attribs,ProcessJsonStrWrapper);
 }
 
 //SearchResultType 里面定义的cmdTemplate格式是独特的：一方面，可以指明cmd_interpretor, 使用match_cmd_str_array_with_interpretors, 另一方面，却又不是通过parse_and_exec_command_in_gtk_thread来执行，通过调用cmd_interpretor的cmdTransformer来转换成 g_spawn_wrapper接受的形式。同时做了一个简单的把cmdTemplate中%s替换成查询结果文件名oneline的操作，这个替换既没使用build_cmd_vector中的文件名替换，又没使用parse_and_exec_command_in_gtk_thread中的选中文件名替换
-static int ProcessCmdOutputFromSearchResultWithFunction(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate, RFM_ChildAttribs* child_attribs, int (*func)(RFM_ChildAttribs*)){
+static int ProcessCmdOutputFromSearchResultWithFunction(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate, RFM_FileAttributes* fileAttributes, RFM_ChildAttribs* child_attribs, int (*func)(RFM_ChildAttribs*)){
    if (new_search){
-     CallDefaultSearchResultFunctionForNewSearch(oneline, TRUE, cmdtemplate, NULL, child_attribs);//TODO:pass arg, 这个还缺个fileAttribs,但多个函数指针
+     CallDefaultSearchResultFunctionForNewSearch(oneline, TRUE, cmdtemplate, fileAttributes, child_attribs);
      return 0;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
    }
 
