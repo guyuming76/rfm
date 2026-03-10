@@ -620,9 +620,9 @@ static gchar* stdout_read_by_search_result=NULL;
 static gboolean showSearchResultExtColumnsBasedOnHashTableValues_has_already_been_called_for_searchresult = FALSE;//方便用showcolumn命令手工调整SearchResult的列布局
 static void update_SearchResultFileNameList_and_refresh_store(RFM_ChildAttribs *childAttribs);
 static void showSearchResultExtColumnsBasedOnHashTableValues();
-static int ProcessOnelineForSearchResult(CALLER_OWN gchar *oneline, gboolean new_search);
+static int ProcessOnelineForSearchResult(CALLER_OWN gchar *oneline, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs);
 static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboolean new_search, int first_line_column_title);
-static int ProcessOnelineForSearchResult_with_title(CALLER_OWN char* oneline, gboolean new_search);
+static int ProcessOnelineForSearchResult_with_title(CALLER_OWN char* oneline, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs);
 static void CallDefaultSearchResultFunctionForNewSearch(CALLER_OWN char *one_line_in_search_result);
 int ProcessKeyValuePairInFilesFromSearchResult(CALLER_OWN char *oneline, gboolean new_search);
 int ProcessKeyValuePairInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char **cmdtemplate, RFM_FileAttributes* fileAttributes,RFM_ChildAttribs *childAttribs);
@@ -5607,13 +5607,13 @@ int main(int argc, char *argv[])
    return 0;
 }
 
-static int ProcessOnelineForSearchResult(CALLER_OWN char* oneline, gboolean new_search){
+static int ProcessOnelineForSearchResult(CALLER_OWN char* oneline, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs){
   FileNameIndexInColumnTitles = FALSE;
   if (search_result_type_withtitle_column_title_array) { g_strfreev(search_result_type_withtitle_column_title_array);search_result_type_withtitle_column_title_array=NULL; }
   return ProcessOnelineForSearchResult_internel(oneline, new_search, FileNameIndexInColumnTitles);
 }
 
-static int ProcessOnelineForSearchResult_with_title(CALLER_OWN char* oneline, gboolean new_search){
+static int ProcessOnelineForSearchResult_with_title(CALLER_OWN char* oneline, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs){
   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"ProcessOnelineForSearchResult_with_title(%s, new_search:%d) fileAttributeID:%d", oneline, new_search,fileAttributeID);
   if (SearchResultAsInput && !treeview){//iconview视图下面查询结果第一行不会导出文件名标题列(参见writeSearchResultIntoFD_in_gtk_thread)，所以读入的时候也如同没有 _with_title 一样。
     FileNameIndexInColumnTitles = FALSE;
@@ -5748,10 +5748,10 @@ static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboo
 
 static void CallDefaultSearchResultFunctionForNewSearch(CALLER_OWN char *one_line_in_search_result){
      if (fileAttributeID==1) {
-       currentSearchResultTypeStartingColumnTitleIndex = ProcessOnelineForSearchResult(one_line_in_search_result,TRUE);
+       currentSearchResultTypeStartingColumnTitleIndex = ProcessOnelineForSearchResult(one_line_in_search_result,TRUE, NULL,NULL,NULL);//TODO: pass arg
        currentPageStartingColumnTitleIndex = currentSearchResultTypeStartingColumnTitleIndex;
      //首行记录在  ProcessOnelineForSearchResult 里已经被分配掉的列序号
-     }else ProcessOnelineForSearchResult(one_line_in_search_result, TRUE);
+     }else ProcessOnelineForSearchResult(one_line_in_search_result, TRUE, NULL, NULL, NULL); //TODO: pass arg
 }
 
 // 处理存储键值对文件(类似INI)数据,每行一个文件,每个文件可包含不同的键
