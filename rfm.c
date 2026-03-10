@@ -634,7 +634,7 @@ static int ProcessGKeyfileStrWrapper(RFM_ChildAttribs *child_attribs);
 static int ProcessGKeyfileStr(CALLER_OWN gchar *cmdOutput);
 static int ProcessJsonStrWrapper(RFM_ChildAttribs *child_attribs);
 static int ProcessJsonStr(CALLER_OWN gchar* json_data);
-static int ProcessJsonFileFromSearchResult(CALLER_OWN char *oneline, gboolean new_search);
+static int ProcessJsonFileFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs);
 static int CallMatchingProcessorForSearchResultLine(char *oneline, gboolean new_search, char *cmdtemplate, RFM_FileAttributes* fileAttributes, RFM_ChildAttribs* childAttribs);
 static void cmdSearchResultColumnSeperator(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
 //matched search result type suffix will be removed from readlineResults
@@ -5868,9 +5868,9 @@ static int ProcessJsonStr(CALLER_OWN gchar* json_data){
     g_object_unref(parser);
 }
 
-static int ProcessJsonFileFromSearchResult(CALLER_OWN char *oneline, gboolean new_search){
+static int ProcessJsonFileFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs){
    if (new_search){
-     CallDefaultSearchResultFunctionForNewSearch(oneline, TRUE, NULL, NULL, NULL);//TODO:pass arg
+     CallDefaultSearchResultFunctionForNewSearch(oneline, TRUE, cmdTemplate, fileAttributes, childAttribs);
      return 0;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
    }
    gchar * absolute_address = g_canonicalize_filename(oneline, rfm_SearchResultPath);
