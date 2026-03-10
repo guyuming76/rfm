@@ -376,6 +376,7 @@ static void g_spawn_wrapper_for_selected_fileList_(FREE_FULL RFM_ChildAttribs *c
 /* caller should g_list_free(file_list), but usually not g_list_free_full, since the file char* is usually owned by rfm_fileattributes */
 /* callbackfuncUserData can be pointer of any type, but callbackfunc should take RFM_ChildAttribs* as input parameter, and retrieve callbackfuncUserData with (RFM_ChildAttribs *)->customCallbackUserData; */
 gboolean g_spawn_wrapper(CALLER_OWN const char **action, CALLER_OWN GList *file_list, const int run_opts, FREE const gchar** env, const char *dest_path, const gboolean async,const void(*callbackfunc)(gpointer),CALLER_OWN const gpointer callbackfuncUserData,const gboolean output_read_by_program);
+gboolean g_spawn_wrapper_wordexp(CALLER_OWN const char *cmd, CALLER_OWN GList *file_list, const int run_opts, FREE const gchar** env, const char *dest_path, const gboolean async,const void(*callbackfunc)(gpointer),CALLER_OWN const gpointer callbackfuncUserData,const gboolean output_read_by_program);
 /* call build_cmd_vector to create the argv parameter for g_spawn_* */
 /* call different g_spawn_* functions based on child_attribs->spawn_async and child_attribs->runOpts */
 gboolean g_spawn_wrapper_(CALLER_OWN GList *file_list, CALLER_OWN const char *dest_path, FREE_FULL RFM_ChildAttribs * childAttribs);
@@ -1427,7 +1428,6 @@ gboolean g_spawn_wrapper_(CALLER_OWN GList *file_list, CALLER_OWN const char *de
    return ret;
 }
 
-
 gboolean g_spawn_wrapper(CALLER_OWN const char **action, CALLER_OWN GList *file_list, const int run_opts, FREE const gchar** env, const char *dest_path, const gboolean async,const void(*callbackfunc)(gpointer),CALLER_OWN const gpointer callbackfuncUserData, const gboolean output_read_by_program){
   RFM_ChildAttribs *child_attribs=calloc(1,sizeof(RFM_ChildAttribs));
   child_attribs->customCallBackFunc=callbackfunc;
@@ -1442,6 +1442,17 @@ gboolean g_spawn_wrapper(CALLER_OWN const char **action, CALLER_OWN GList *file_
   child_attribs->env = env;
 	
   return g_spawn_wrapper_(file_list,dest_path,child_attribs);
+}
+
+gboolean g_spawn_wrapper_wordexp(CALLER_OWN const char *cmd, CALLER_OWN GList *file_list, const int run_opts, FREE const gchar** env, const char *dest_path, const gboolean async,const void(*callbackfunc)(gpointer),CALLER_OWN const gpointer callbackfuncUserData,const gboolean output_read_by_program){
+    gboolean success = FALSE;
+    wordexp_t parsed_msg;
+    int wordexp_retval = wordexp(cmd,&parsed_msg,0);
+    if (wordexp_retval==0){
+      success = g_spawn_wrapper(parsed_msg.we_wordv, file_list, run_opts, env, dest_path, async, callbackfunc, callbackfuncUserData, output_read_by_program);
+      wordfree(&parsed_msg);
+    }
+    return success;
 }
 
 //g_spawn 异步调用回调函数只支持一个参数,就做了这个wrapper;并且作为异步调用thumbData->thumbnail可能在本函数工作前就跟随thumbqueue被free了,这里thumbnail是strdup进来的,要释放
@@ -6647,13 +6658,7 @@ static gboolean compile_local_extension(RFM_ADDON* addon) {
 #endif
 
     gchar* rfm_local_c_compile_cmd = g_strdup_printf(rfm_local_c_compile_cmd_template, DCmarkTools, DGitIntegration, rfmLANGUAGE, RFM_SearchResultTypeNamePrefix, RFM_NEW_TERM_SUFFIX, RFM_selected_filename_placeholder, RFM_SEARCH_RESULT_AS_INPUT_PREFIX, addon->addon_so_fullpath, hash_define, addon->addon_c_fullpath);
-    gboolean success = FALSE;
-    wordexp_t parsed_msg;
-    int wordexp_retval = wordexp(rfm_local_c_compile_cmd,&parsed_msg,0);
-    if (wordexp_retval==0){
-      success = g_spawn_wrapper(parsed_msg.we_wordv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, FALSE, NULL, NULL, FALSE);
-      wordfree(&parsed_msg);
-    }
+    gboolean success = g_spawn_wrapper_wordexp(rfm_local_c_compile_cmd, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, FALSE, NULL, NULL, FALSE);
     g_free(rfm_local_c_compile_cmd);
     return success;
 }
