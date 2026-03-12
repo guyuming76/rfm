@@ -1450,7 +1450,7 @@ gboolean g_spawn_wrapper_wordexp(CALLER_OWN const char *cmd, CALLER_OWN GList *f
     if (wordexp_retval==0){
       success = g_spawn_wrapper(parsed_msg.we_wordv, file_list, run_opts, env, dest_path, async, callbackfunc, callbackfuncUserData, output_read_by_program);
       wordfree(&parsed_msg);
-    }
+    }else g_warning("g_spawn_wrapper_wordexp: wordexp return not 0 for %s",cmd);
     return success;
 }
 
@@ -5334,6 +5334,7 @@ static int setup()
    gtk_menu_shell_append(GTK_MENU_SHELL(columnHeaderMenu), InsertAfterMenuItem);
    }
 #ifdef RFM_AddOn
+   g_debug("%s md5 hash:%s",RFM_AddOn_H_filepath,RFM_AddOn);
   //TODO: 考虑partse_and_exec_cmd_in_gtk_thread里支持 类似callback, readoutput by program 这种机制, 也许可以和SearchResult那一块有交集.这会儿作为workaround,就为命令做了一个单独的bash脚本,一边可以在命令里有管道
    if (!disable_addon) {
      all_addon_definitions_by_dir = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_hash_table_destroy);
@@ -6656,7 +6657,7 @@ static gboolean compile_local_extension(RFM_ADDON* addon) {
     DCmarkTools = "-DCmarkTools";
 #endif
 
-    gchar* rfm_local_c_compile_cmd = g_strdup_printf(rfm_local_c_compile_cmd_template, DCmarkTools, DGitIntegration, rfmLANGUAGE, RFM_SearchResultTypeNamePrefix, RFM_NEW_TERM_SUFFIX, RFM_selected_filename_placeholder, RFM_SEARCH_RESULT_AS_INPUT_PREFIX, addon->addon_so_fullpath, hash_define, addon->addon_c_fullpath);
+    gchar* rfm_local_c_compile_cmd = g_strdup_printf(rfm_local_c_compile_cmd_template, RFM_AddOn_H_filepath, DCmarkTools, DGitIntegration, rfmLANGUAGE, RFM_SearchResultTypeNamePrefix, RFM_NEW_TERM_SUFFIX, RFM_selected_filename_placeholder, RFM_SEARCH_RESULT_AS_INPUT_PREFIX, addon->addon_so_fullpath, hash_define, addon->addon_c_fullpath);
     gboolean success = g_spawn_wrapper_wordexp(rfm_local_c_compile_cmd, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, FALSE, NULL, NULL, FALSE);
     g_free(rfm_local_c_compile_cmd);
     return success;

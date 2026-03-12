@@ -11,12 +11,7 @@ SONAME = librfm.so.1
 LIBNAME = ${LINKERNAME}
 LIBNAME := ${LIBNAME}.${VERSION}
 endif
-
-ifneq ($(RFM_AddOn),)
-    RFM_ADDON_SO_FILE := $(subst \",,$(RFM_AddOn))       # 移除所有转义双引号
-    RFM_ADDON_SO_FILE := $(subst -DRFM_AddOn=,,$(RFM_ADDON_SO_FILE)) # 移除开头的编译选项
-endif
-
+#TODO:上面LIBNAME, = := 的写法实在是诡异，deepseek建议用后面一种。git blame 里面显示 https://forums.gentoo.org/viewtopic-t-1147467-start-0.html 链接也想不起来咋回事了
 
 # Edit below for extra libs (e.g. for thumbnailers etc.)
 #LIBS = -L./libdcmthumb -lm -ldcmthumb
@@ -55,6 +50,7 @@ endif
 
 ifneq (${RFM_AddOn},)
 LDFLAGS += -rdynamic
+CPPFLAGS += -DRFM_AddOn_H_filepath=\"${DESTDIR}${PREFIX}/include/rfm_addon.h\"
 endif
 
 # compiler and linker
@@ -207,7 +203,7 @@ endif
 ifneq ($(CalledByEbuild),YES)
 # the CalledByEbuild variable is exported in rfm ebuild
 # there will be sandbox error in gentoo ebuild run
-	@cp -f rfm_addon.h /usr/include
+	@cp -f rfm_addon.h ${DESTDIR}${PREFIX}/include
 	-cp -f rfm.svg /usr/share/icons/hicolor/scalable/apps/rfm.svg
 	-gtk-update-icon-cache -f /usr/share/icons/hicolor
 	-cp -f rfm.desktop /usr/share/applications/rfm.desktop
@@ -263,14 +259,6 @@ else
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmShareDir.sh
 endif
 
-ifneq ($(RFM_AddOn),)
-	@echo
-	-locate $(RFM_ADDON_SO_FILE)
-	@echo "***please remove the files above returned by locate if any."
-#-locate $(RFM_ADDON_SO_FILE) | xargs rm -i
-#删除RFM_ADDON_SO_FILE, ADDON机制只会在rfm_local.c文件hash变化时重新编译，如果rfm_addon.h变了，rfm.c重新编译了，而rfm_local.c不重新编译，会出错
-endif
-
 uninstall:
 	@echo removing files from ${DESTDIR}${PREFIX}/{bin,lib}
 ifneq ($(RFM_FILE_CHOOSER),)
@@ -324,7 +312,7 @@ else
 endif
 
 ifneq ($(CalledByEbuild),YES)
-	@rm -f /usr/include/rfm_addon.h
+	@rm -f ${DESTDIR}${PREFIX}/include/rfm_addon.h
 	-xdg-desktop-menu uninstall rfm.desktop
 	-rm -f /usr/share/applications/rfm.desktop
 	-rm -f /usr/share/icons/hicolor/scalable/apps/rfm.svg

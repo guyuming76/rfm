@@ -73,7 +73,7 @@ const stdin_cmd_interpretor stdin_cmd_interpretors[] = {
 // rfm.c 和 rfm_local.c
 // 的命名同步。但我觉得命名同步意义不大，写死不变代码其实更简练易读
 // 留在这里 rfm.c 可以访问但rfm_local.c 编译时不能访问，我觉得也许可以通过单方面改变这里的定义值实现一些比如本地的版本升级控制，安全控制等，区分不同的 rfm_local.c, 名称和这个不同的就不能顺利加载。我并不是推荐这种容易造成混乱的方法，我觉得只是在不得已的情况下提供一种可能性。
-static const gchar *rfm_local_c_compile_cmd_template = "gcc -O0 -g -shared -fPIC $(pkg-config --cflags --libs gtk+-3.0 json-glib-1.0) %s %s -D%s -D'RFM_SearchResultTypeNamePrefix=\"%s\"' -D'RFM_NEW_TERM_SUFFIX=\"%s\"' -D'RFM_selected_filename_placeholder=\"%s\"' -D'RFM_SEARCH_RESULT_AS_INPUT_PREFIX=\"%s\"' -o %s %s %s";
+static const gchar *rfm_local_c_compile_cmd_template = "gcc -O0 -g -shared -fPIC $(pkg-config --cflags --libs gtk+-3.0 json-glib-1.0) -include '%s' %s %s -D%s -D'RFM_SearchResultTypeNamePrefix=\"%s\"' -D'RFM_NEW_TERM_SUFFIX=\"%s\"' -D'RFM_selected_filename_placeholder=\"%s\"' -D'RFM_SEARCH_RESULT_AS_INPUT_PREFIX=\"%s\"' -o %s %s %s";
 static const gchar *locate_addons[] = { stdin_cmd_interpretors[0].name, "locate --regex " RFM_ADDON_FILENAME_SUFFIX "$|xargs grep -H 'const enum RFM_ADDON_TYPE addon_type ='| awk -F: -v OFS=\"${RFM_SearchResultColumnSeperator:-:}\" '{print $1, $2}'" RFM_SearchResultTypeNamePrefix RFM_ADDON_FILENAME_SUFFIX, NULL }; //grep使用冒号为分割符，使用awk命令替换掉
 static const gchar *locate_all_addons[] = { stdin_cmd_interpretors[0].name, "locate  --regex " RFM_ADDON_FILENAME_SUFFIX "$|xargs grep -H \"^const enum RFM_ADDON_TYPE addon_type = \"", NULL };
 #endif
