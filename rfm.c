@@ -287,8 +287,7 @@ static char selected_filename_placeholder_in_quotation[34];   //"'%s'"  by defau
 static gboolean execStdinCmdInNewVT = FALSE;
 // since it's may be complicated if possible to update stdin prompt whenever the terminal window get focus, i just show ItemSelected prompt in new prompt, and user press two times to refresh gtk view.So, I need a way to recognize consecutive enter press.
 static time_t lastEnter;
-//used by exec_stdin_command and exec_stdin_command_builtin to share status
-static gboolean stdin_cmd_ending_space = FALSE;
+
 static gboolean stdin_cmd_leading_space = FALSE;
 static enum rfmTerminal rfmStartWithVirtualTerminal = INHERIT_TERMINAL;
 static guint stdin_command_Scheduler=0;
@@ -564,7 +563,7 @@ static gchar* getExtColumnValueFromHashTable(RFM_FileAttributes* fileAttribs, gu
 static NO_FREE RFM_FileAttributes *get_fileAttributes_byId(guint fileAttributeId);
 static void set_rfm_curPath(CALLER_OWN gchar *path);
 static void set_rfm_curPath_internal(CALLER_OWN const gchar* path);
-static void cmd_cd(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
+static void cmd_cd(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution, RFM_ChildAttribs* childAttribs);
 #ifdef GitIntegration
 // value " M " for modified
 // value "M " for staged
@@ -4738,7 +4737,7 @@ static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(CALLER_OWN wo
 	return TRUE; //execution reaches here if parsed_msg->we_wordv[0] matchs any keyword, and have finished the corresponding logic
 }
 
-static void cmd_cd(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution) {
+static void cmd_cd(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution, RFM_ChildAttribs* childAttribs) {
 	  if (parsed_msg->we_wordc==2){
 	    gchar * addr=parsed_msg->we_wordv[1];
 	    g_debug("cd %s", addr);
@@ -4769,7 +4768,7 @@ static void cmd_cd(wordexp_t *parsed_msg, GString *readline_result_string_after_
 	      g_free(full_addr);
 	    }
 	  }else if (parsed_msg->we_wordc==1){ // cd without parameter
-	      if (stdin_cmd_ending_space){
+	      if (childAttribs->stdin_cmd_ending_space){
 		if (ItemSelected==1){
 		  if (selected_file_mode_str[0]=='d'){
 		    set_rfm_curPath(rfm_selection_completion);//因为当前函数和selectionChanged函数运行在同一线程里，所以读取rfm_selection_completion不用加锁
@@ -4947,7 +4946,7 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
                 lastEnter=now_time;
 	}else{
             //在AI提示符状态下，期望builtin命令能够执行，而一条重要的buildin命令cd(带空格)执行cmd_cd,跳转到查询结果窗口当前选中文件的parent目录，就依赖stdin_cmd_ending_space, 所以把第一次的stdin_cmd_ending_space 判断提前否则如果cmd_interpretor_index ！= stdin_cmd_interpretor_index_for_AI，就直接被跳过了
-            stdin_cmd_ending_space = (len>=1 && readlineResult[len-1]==' ');
+            childAttribs->stdin_cmd_ending_space = (len>=1 && readlineResult[len-1]==' ');
             while (len >= 1 && readlineResult[len - 1] == ' ') {
               readlineResult[len - 1] = '\0';
               len--;
@@ -5030,7 +5029,7 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
 #endif
 
 	    //if we have searchresulttypesuffix in command, the ending space rule can be confusing: shall we have space after searchresulttype or before searchresulttype? Both will be considered as ending space!
-	    stdin_cmd_ending_space = (stdin_cmd_ending_space || (len>=1 && readlineResult[len-1]==' '));
+	    childAttribs->stdin_cmd_ending_space = (childAttribs->stdin_cmd_ending_space || (len>=1 && readlineResult[len-1]==' '));
 	    while (len>=1 && readlineResult[len-1]==' ') { readlineResult[len-1]='\0'; len--; } //remove ending space
 
 	    if (!execStdinCmdInNewVT && !(!from_stdin_readline && execCmdInNewVT)){
@@ -5038,7 +5037,7 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
 	      len = strlen(readlineResult);
 	    }
 
-	    stdin_cmd_ending_space = (stdin_cmd_ending_space || (len>=1 && readlineResult[len-1]==' '));
+	    childAttribs->stdin_cmd_ending_space = (childAttribs->stdin_cmd_ending_space || (len>=1 && readlineResult[len-1]==' '));
 	    while (len>=1 && readlineResult[len-1]==' ') { readlineResult[len-1]='\0'; len--; } //remove ending space
 
 	    if (g_str_has_prefix(readlineResult, RFM_SEARCH_RESULT_AS_INPUT_PREFIX)) {
@@ -5056,7 +5055,7 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
 #endif
             childAttribs->readlineResultString=g_string_new(strdup(readlineResult));
 
-            combine_command_with_selected_files_and_setenv(childAttribs->readlineResultString, stdin_cmd_ending_space,&(childAttribs->env), childAttribs->fullpath_list_as_RunCmd_parameters);
+            combine_command_with_selected_files_and_setenv(childAttribs->readlineResultString, childAttribs->stdin_cmd_ending_space,&(childAttribs->env), childAttribs->fullpath_list_as_RunCmd_parameters);
             
 #ifdef RFM_AddOn
 	    if (!execStdinCmdInNewVT && !(!from_stdin_readline && execCmdInNewVT) || Addon_Prompt){ //Addon_Prompt不为空实际上就相当于 current_stdin_cmd_interpretor_pointer == AI_Model
