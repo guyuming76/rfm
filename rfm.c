@@ -268,7 +268,8 @@ typedef struct {
 
 typedef struct {
   gchar *cmd;
-  void (*action)(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);//this point to function which takes two parameters, but in config.h, i assign it with function taking not parameter, it still works!
+  void (*action)(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution, RFM_ChildAttribs* childAttribs);//this point to function which takes three parameters, but in config.h, i assign it with function taking not parameter, it still works! Refer to comments in rfm_addon.h for explanation which mentions that GCC allows this.
+  //childAttribs参数是后加的，按理说可以把前两个参数合并到childAttribs成员里，这里只要一个参数就可以了。但这样要改现有的buildin_cmd，特别是我还不知道有没有别人在用这一块，所以就扩充一个参数，暂时不管冗余了
   gchar *help_msg;
 } RFM_builtinCMD;
 
@@ -336,7 +337,7 @@ static void combine_command_with_selected_files_and_setenv(CALLER_OWN GString* r
 gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboolean const from_stdin_readline, NO_FREE const stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs* childAttribs);
 static void parse_and_exec_stdin_command_in_gtk_thread(gchar *readlineResult);
 static void parse_and_exec_cmd_in_gtk_thread (gchar * cmd);
-static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * parsed_msg, GString* readline_result_string);
+static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * parsed_msg, GString* readline_result_string, RFM_ChildAttribs* childAttribs);
 static void toggle_exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread();
 static void add_history_timestamp();
 static void add_history_after_stdin_command_execution(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
@@ -4691,11 +4692,11 @@ static void rfmEdit(gchar* filepath) {
 
 
 //返回TRUE表示成功匹配为BuiltInCmd并被执行,无论执行成功与否,都不需要在调用Shell来执行了;返回false表示未能识别为builtInCmd,需要进一步处理. 返回true后, GString*参数内存被释放,但调用者仍需将其设为NULL,因为后续处理根据其是否为NULL来判断是否需要继续处理(比如是否需要发送到Shell执行)
-static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(CALLER_OWN wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution){
+static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(CALLER_OWN wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution, RFM_ChildAttribs* childAttribs){
 
         for(guint i=0;i<G_N_ELEMENTS(builtinCMD);i++){
 	  if (g_strcmp0(parsed_msg->we_wordv[0], builtinCMD[i].cmd)==0) {
-	        builtinCMD[i].action(parsed_msg,readline_result_string_after_file_name_substitution);
+	        builtinCMD[i].action(parsed_msg,readline_result_string_after_file_name_substitution, childAttribs);
 	        g_debug("builtin command %s run", builtinCMD[i].cmd);
 		add_history_after_stdin_command_execution(readline_result_string_after_file_name_substitution);
 		return TRUE;
@@ -5069,7 +5070,7 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
 #ifdef reedline
 					parse_rfmEdit(childAttribs->readlineResultString, childAttribs) ||
 #endif
-					parse_and_exec_stdin_builtin_command_in_gtk_thread(&parsed_msg, childAttribs->readlineResultString))){ //wordexp_retval 0 means success
+					parse_and_exec_stdin_builtin_command_in_gtk_thread(&parsed_msg, childAttribs->readlineResultString, childAttribs))){ //wordexp_retval 0 means success
 		childAttribs->readlineResultString=NULL; //since readlineInseperatethread function will check this, we must clear it here after cmd already been executed.
 	      }
 	      if (wordexp_retval == 0) wordfree(&parsed_msg);
