@@ -6379,6 +6379,7 @@ char** rfmFileChooser(enum rfmTerminal startWithVirtualTerminal, char* search_cm
 }
 
 static gchar** rfmFileChooser_CMD(enum rfmTerminal startWithVT, gchar* search_cmd, gchar** defaultFileSelection, gchar* rfmFileChooserReturnSelectionIntoFilename){
+    gchar* shell_cmd_buffer = calloc(ARG_MAX, sizeof(gchar));
     if (search_cmd == NULL || g_strcmp0(search_cmd,"")==0)
         snprintf(shell_cmd_buffer,PATH_MAX, "rfm.sh -r %s", rfmFileChooserReturnSelectionIntoFilename);
     else
@@ -6395,11 +6396,11 @@ static gchar** rfmFileChooser_CMD(enum rfmTerminal startWithVT, gchar* search_cm
     };
 
     if (startWithVT == NEW_TERMINAL){
-	return stdin_cmd_template_bash_newVT_nonHold;
+      return replace_shell_cmd_buffer(g_strdup(stdin_cmd_template_bash_newVT_nonHold), shell_cmd_buffer);
     }else if (startWithVT == NO_TERMINAL){
 	strcat(shell_cmd_buffer, " -t");
-        return stdin_cmd_template_bash;
-    }else return stdin_cmd_template_bash;
+        return replace_shell_cmd_buffer(g_strdup(stdin_cmd_template_bash), shell_cmd_buffer);
+    }else return replace_shell_cmd_buffer(g_strdup(stdin_cmd_template_bash), shell_cmd_buffer);
 }
 #endif
 
