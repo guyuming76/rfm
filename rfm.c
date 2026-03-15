@@ -6772,7 +6772,8 @@ static void load_addon(CALLER_OWN char* addon_fullpath){
 	     g_warning("Addon %s with the same hash already loaded , no need to load %s", addon_with_the_same_hash->addon_c_fullpath, addon->addon_c_fullpath);
 	     goto cleanup;
 	   }
-           gchar *so_hash = NULL;
+           gchar *addon_c_hash_in_SO = NULL;
+	   gchar *addon_h_hash_in_SO = NULL;
            void *temp_handle = dlopen(addon->addon_so_fullpath, RTLD_LAZY | RTLD_LOCAL);
 
            if (temp_handle) {
@@ -6780,20 +6781,23 @@ static void load_addon(CALLER_OWN char* addon_fullpath){
                dlerror();
                // Use void* for dlsym, then cast if needed
                void *symbol_ptr = dlsym(temp_handle, "rfm_addon_c_file_hash");
+	       void *symbol_ptr1 = dlsym(temp_handle, "rfm_addon_h_file_hash");
                dlsym_error = dlerror(); // Check error *after* calling dlsym
 
-               if (!dlsym_error && symbol_ptr) {
+               if (!dlsym_error && symbol_ptr && symbol_ptr1) {
                    // Cast to the correct type ONLY if symbol was found
                    const char * const * hash_ptr = (const char * const *)symbol_ptr;
-                   if (hash_ptr && *hash_ptr) { // Check if the pointer itself and the string it points to are valid
-                        so_hash = g_strdup(*hash_ptr);
-                        g_log(RFM_LOG_ADDON, G_LOG_LEVEL_DEBUG, "Found hash in SO: %s", so_hash);
+		   const char * const * hash_ptr1 = (const char * const *)symbol_ptr1;
+                   if (hash_ptr && *hash_ptr && hash_ptr1 && *hash_ptr1) { // Check if the pointer itself and the string it points to are valid
+                        addon_c_hash_in_SO = g_strdup(*hash_ptr);
+		        addon_h_hash_in_SO = g_strdup(*hash_ptr1);
+                        g_log(RFM_LOG_ADDON, G_LOG_LEVEL_DEBUG, "Found hash in SO, rfm_addon_c_file_hash:%s, rfm_addon_h_file_hash:%s", addon_c_hash_in_SO, addon_h_hash_in_SO);
                    } else {
-                        g_warning("Symbol 'rfm_addon_c_file_hash' found in %s but points to NULL. Recompiling.", addon->addon_so_fullpath);
+                        g_warning("Symbol 'rfm_addon_c_file_hash' or 'rfm_addon_h_file_hash' found in %s but points to NULL. Recompiling.", addon->addon_so_fullpath);
                         compile_needed = TRUE; // Force recompile if symbol is NULL
                    }
                } else {
-                    g_warning("Could not find symbol 'rfm_addon_c_file_hash' in %s: %s. Recompiling.", addon->addon_so_fullpath, dlsym_error ? dlsym_error : "(symbol not found)");
+                   g_warning("Could not find symbol 'rfm_addon_c_file_hash' or 'rfm_addon_h_file_hash' in %s: %s. Recompiling.", addon->addon_so_fullpath, dlsym_error ? dlsym_error : "(symbol not found)");
                     compile_needed = TRUE; // Force recompile if symbol not found
                }
                dlclose(temp_handle);
@@ -6802,11 +6806,14 @@ static void load_addon(CALLER_OWN char* addon_fullpath){
                compile_needed = TRUE; // Force recompile if .so can't be opened
            }
 
-           if (!compile_needed && addon->addon_hash && so_hash) {
-               if (g_strcmp0(addon->addon_hash, so_hash) != 0) {
-                   g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Hash mismatch for %s. Recompilation needed. (C: %s, SO: %s)", addon->addon_c_fullpath, addon->addon_hash, so_hash);
-                   compile_needed = TRUE;
-               } else {
+           if (!compile_needed && addon->addon_hash && addon_c_hash_in_SO && addon_h_hash_in_SO) {
+               if (g_strcmp0(addon->addon_hash, addon_c_hash_in_SO) != 0) {
+                   g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Hash mismatch for %s. Recompilation needed. (C: %s, SO: %s)", addon->addon_c_fullpath, addon->addon_hash, addon_c_hash_in_SO);
+                    compile_needed = TRUE;
+               }else if (g_strcmp0(RFM_AddOn, addon_h_hash_in_SO) != 0) {
+		    g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "rfm_addon.h hash mismatch for %s. Recompilation needed. (H: %s, SO: %s)", addon->addon_c_fullpath, RFM_AddOn, addon_h_hash_in_SO);
+                    compile_needed = TRUE;
+	       }else {
                     g_log(RFM_LOG_ADDON, G_LOG_LEVEL_DEBUG, "Hashes match for %s. No recompilation needed.", addon->addon_c_fullpath);
                }
            } else if (!compile_needed && !addon->addon_hash) {
@@ -6815,7 +6822,7 @@ static void load_addon(CALLER_OWN char* addon_fullpath){
            }
            // compile_needed might have been set true inside the dlopen/dlsym block
 
-           g_free(so_hash);
+           g_free(addon_c_hash_in_SO);
        }
 
         if (compile_needed) {
