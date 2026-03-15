@@ -239,4 +239,12 @@ enum RFM_ADDON_TYPE {
 
 #define RFM_LOG_ADDON "rfm-addon"
 
+// 使用编译时gcc -DRFM_ADDON_C_HASH=xxxxxx 传入的值来初始化这个常量指针
+// 这个变量会成为 .so 文件中的一个符号，可以被 dlsym 找到
+#ifdef RFM_ADDON_C_HASH
+  const char *const rfm_addon_c_file_hash = RFM_ADDON_C_HASH;
+#endif
+#ifdef RFM_ADDON_H_HASH
+  const char *const rfm_addon_h_file_hash = RFM_ADDON_H_HASH;
+#endif
 #endif

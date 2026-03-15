@@ -6645,7 +6645,7 @@ static gboolean compile_local_extension(RFM_ADDON* addon) {
     g_debug("Hash of %s: %s", addon->addon_c_fullpath, c_file_hash);
 
     // Prepare the hash definition for the compiler command
-    gchar *rfm_addon_C_hash_via_gcc = g_strdup_printf("-DRFM_LOCAL_C_HASH=\\\"%s\\\"", c_file_hash);
+    gchar *rfm_addon_C_hash_via_gcc = g_strdup_printf("-DRFM_ADDON_C_HASH=\\\"%s\\\"", c_file_hash);
     gchar *rfm_addon_H_hash_via_gcc = g_strdup_printf("-DRFM_ADDON_H_HASH=\\\"%s\\\"", RFM_AddOn);
     g_free(c_file_hash); // Free the calculated hash string
 
@@ -6779,7 +6779,7 @@ static void load_addon(CALLER_OWN char* addon_fullpath){
                // Clear any previous error before dlsym
                dlerror();
                // Use void* for dlsym, then cast if needed
-               void *symbol_ptr = dlsym(temp_handle, "rfm_local_c_file_hash");
+               void *symbol_ptr = dlsym(temp_handle, "rfm_addon_c_file_hash");
                dlsym_error = dlerror(); // Check error *after* calling dlsym
 
                if (!dlsym_error && symbol_ptr) {
@@ -6789,11 +6789,11 @@ static void load_addon(CALLER_OWN char* addon_fullpath){
                         so_hash = g_strdup(*hash_ptr);
                         g_log(RFM_LOG_ADDON, G_LOG_LEVEL_DEBUG, "Found hash in SO: %s", so_hash);
                    } else {
-                        g_warning("Symbol 'rfm_local_c_file_hash' found in %s but points to NULL. Recompiling.", addon->addon_so_fullpath);
+                        g_warning("Symbol 'rfm_addon_c_file_hash' found in %s but points to NULL. Recompiling.", addon->addon_so_fullpath);
                         compile_needed = TRUE; // Force recompile if symbol is NULL
                    }
                } else {
-                    g_warning("Could not find symbol 'rfm_local_c_file_hash' in %s: %s. Recompiling.", addon->addon_so_fullpath, dlsym_error ? dlsym_error : "(symbol not found)");
+                    g_warning("Could not find symbol 'rfm_addon_c_file_hash' in %s: %s. Recompiling.", addon->addon_so_fullpath, dlsym_error ? dlsym_error : "(symbol not found)");
                     compile_needed = TRUE; // Force recompile if symbol not found
                }
                dlclose(temp_handle);
