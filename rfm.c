@@ -6645,7 +6645,8 @@ static gboolean compile_local_extension(RFM_ADDON* addon) {
     g_debug("Hash of %s: %s", addon->addon_c_fullpath, c_file_hash);
 
     // Prepare the hash definition for the compiler command
-    gchar *hash_define = g_strdup_printf("-DRFM_LOCAL_C_HASH=\\\"%s\\\"", c_file_hash);
+    gchar *rfm_addon_C_hash_via_gcc = g_strdup_printf("-DRFM_LOCAL_C_HASH=\\\"%s\\\"", c_file_hash);
+    gchar *rfm_addon_H_hash_via_gcc = g_strdup_printf("-DRFM_ADDON_H_HASH=\\\"%s\\\"", RFM_AddOn);
     g_free(c_file_hash); // Free the calculated hash string
 
     gchar* DGitIntegration = "";
@@ -6657,9 +6658,9 @@ static gboolean compile_local_extension(RFM_ADDON* addon) {
     DCmarkTools = "-DCmarkTools";
 #endif
 
-    gchar* rfm_local_c_compile_cmd = g_strdup_printf(rfm_local_c_compile_cmd_template, RFM_AddOn_H_filepath, DCmarkTools, DGitIntegration, rfmLANGUAGE, RFM_SearchResultTypeNamePrefix, RFM_NEW_TERM_SUFFIX, RFM_selected_filename_placeholder, RFM_SEARCH_RESULT_AS_INPUT_PREFIX, addon->addon_so_fullpath, hash_define, addon->addon_c_fullpath);
+    gchar* rfm_local_c_compile_cmd = g_strdup_printf(rfm_local_c_compile_cmd_template, RFM_AddOn_H_filepath, DCmarkTools, DGitIntegration, rfmLANGUAGE, RFM_SearchResultTypeNamePrefix, RFM_NEW_TERM_SUFFIX, RFM_selected_filename_placeholder, RFM_SEARCH_RESULT_AS_INPUT_PREFIX, addon->addon_so_fullpath, rfm_addon_C_hash_via_gcc, addon->addon_c_fullpath, rfm_addon_H_hash_via_gcc);
     gboolean success = g_spawn_wrapper_wordexp(rfm_local_c_compile_cmd, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, FALSE, NULL, NULL, FALSE);
-    g_free(rfm_local_c_compile_cmd);
+    g_free(rfm_local_c_compile_cmd); g_free(rfm_addon_C_hash_via_gcc); g_free(rfm_addon_H_hash_via_gcc);
     return success;
 }
 
