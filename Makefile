@@ -8,10 +8,9 @@ VERSION = 2.80.0
 ifneq ($(RFM_FILE_CHOOSER),)
 LINKERNAME = librfm.so
 SONAME = librfm.so.1
-LIBNAME = ${LINKERNAME}
-LIBNAME := ${LIBNAME}.${VERSION}
+LIBNAME := ${LINKERNAME}.${VERSION}
 endif
-#TODO:上面LIBNAME, = := 的写法实在是诡异，deepseek建议用后面一种。git blame 里面显示 https://forums.gentoo.org/viewtopic-t-1147467-start-0.html 链接也想不起来咋回事了
+#git blame 里面显示 https://forums.gentoo.org/viewtopic-t-1147467-start-0.html ,soname 链接应由上游 Makefile/install 脚本创建，gentoo Portage 不负责生成
 
 # Edit below for extra libs (e.g. for thumbnailers etc.)
 #LIBS = -L./libdcmthumb -lm -ldcmthumb
