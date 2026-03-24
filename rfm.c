@@ -468,7 +468,7 @@ typedef struct {
   gchar *localAddress;
   gboolean use_getExtColumnValueFromHashTable;
 } DimensionProperties;
-
+static enum RFM_treeviewCol FirstDimensionCol = NUM_COLS;
 static GHashTable* DimensionPropertiesHashTable_name_asKey;// Key:ExtColumn Name. Value:struct DimensionProperties
 static GHashTable* DimensionPropertiesHashTable_localAddress_asKey;// Key:ExtColumn localAddress. Value:struct DimensionProperties
 static void refresh_DimensionPropertiesHashTable();
@@ -6164,7 +6164,7 @@ static void showSearchResultExtColumnsBasedOnHashTableValues(){
   }else if(SearchResultContainNonFilenameColumn){//只显示文件名和这些列,而不显示那些常规的如文件大小日期列,如要显示这些列,可在 showcolumn 里面指定.
          show_hide_treeview_columns_enum(3, INT_MAX,COL_FILENAME,INT_MAX);
 	 enum RFM_treeviewCol previousColumn = COL_FILENAME;
-	 for(int i=COL_Ext1; i<NUM_COLS;i++){
+	 for(int i=COL_Ext1; i<FirstDimensionCol;i++){ //DimensionColumn在dimProps->use_getExtColumnValueFromHashTable的情况下，总是会填充值的，及时.Show 属性值是false的情况下，并且，一般是不会把DimensionValue通过查询结果类型读入的，除非将来通过withTitle的方式，批次读入，用以批次更新 DimensionValue, 当前条件分支上一个分支内的TODO
 	   if (ExtColumnHashTable[i-COL_Ext1]!=NULL){
 	     show_hide_treeview_columns_enum(3, previousColumn,i,INT_MAX);//INT_MAX 结尾表示只显示指明的列,不显示其他默认显示常规列如文件大小日期.这样设计的出发点是:当我们在查询结果里只包含文件名时,我们希望显示文件名,大小,日期等如同目录视图一样的列. 而当查询结果包含除文件名之外的扩展列时,我们希望只显示文件名和这些扩展列,而不包括文件大小日期等常规列,以便让用户注意力能集中在这些扩展列上
 	     previousColumn = i;
@@ -6220,6 +6220,7 @@ static void update_SearchResultFileNameList_and_refresh_store(RFM_ChildAttribs *
     ExtColumnHashTable[i]=NULL;
     ExtColumnHashTable_keep_during_refresh[i]=FALSE;
   }
+  FirstDimensionCol = NUM_COLS;
   SearchResultContainNonFilenameColumn = FALSE;
   SearchResultViewInsteadOfDirectoryView = 1;
   memcpy(SearchResultViewColumnsLayout, treeviewColumns, sizeof(RFM_treeviewColumn)*G_N_ELEMENTS(treeviewColumns));
@@ -6454,6 +6455,7 @@ static gboolean SetViewColumnForDimension(DimensionProperties* dimProps){
 	      g_warning("Not enough COL_Exts for dimension %s",dimName);
 	      return FALSE;
 	    }else{
+	      if (current_Ext_Column<FirstDimensionCol) FirstDimensionCol = current_Ext_Column;
 	      char current_Ext_Column_Original_Title[10];
 	      snprintf(current_Ext_Column_Original_Title,10,"C%d", current_Ext_Column-COL_Ext1+1);
 	      col = get_treeviewColumnByTitle(current_Ext_Column_Original_Title);
