@@ -96,7 +96,7 @@
 #define BuiltInCmd_showcolumn                  "showcolumn"
 #define BuiltInCmd_showcolumn_Description      "显示或隐藏列(若当前在列表视图),以及改变列显示顺序, 并且当参数为空的时候,把当前列表视图列设置作为一条showcolumn命令加入命令历史,方便通过命令历史记录恢复当前列设置"
 #define BuiltInCmd_setenv                      "setenv"
-#define BuiltInCmd_setenv_Description          "设置rfm进程环境变量值,输入setenv命令查看使用方法"
+#define BuiltInCmd_setenv_Description          "设置rfm进程环境变量值,输入" BuiltInCmd_setenv "命令查看使用方法,特别是设置系统调试日志输出类别的方法"
 #define BuiltInCmd_cd                          "cd"
 #define BuiltInCmd_cd_Description              "\n" \
 "    cd 地址     跳转到地址, 注意 PWD 环境变量值不会改变.也可用来在rfm窗口选中地址对应的文件名.\n" \
@@ -216,11 +216,11 @@ BuiltInCmd_SearchResultColumnSeperator \
 "列号%d(%s)的值可能还没有加载,你可能需要刷新以便显示此列. 注意,如果切换列表/图标视图,此列可能出现在列表视图中,但如果不刷新,显示的可能是空数据\n"
 
 #define SETENV_USAGE \
-"用法:  setenv EnvVarName Value\n" \
-"例子:  setenv G_MESSAGES_DEBUG all\n" \
-"       setenv G_MESSAGES_DEBUG rfm\n" \
-"       setenv G_MESSAGES_DEBUG rfm,rfm-data,rfm-data-ext,rfm-data-thumbnail,rfm-data-search,rfm-data-git,rfm-gspawn,rfm-column,rfm-column-verbose,rfm-gtk,rfm-readline (分割符逗号不行就试空格，glib版本升级好像变过, rfm这些参数应该也要用双引号括起来吧？)\n" \
-"       setenv G_MESSAGES_DEBUG \"\"\n" \
+"用法:  "BuiltInCmd_setenv" EnvVarName Value\n" \
+"例子:  "BuiltInCmd_setenv" G_MESSAGES_DEBUG all\n" \
+"       "BuiltInCmd_setenv" G_MESSAGES_DEBUG rfm\n" \
+"       "BuiltInCmd_setenv" G_MESSAGES_DEBUG rfm,rfm-data,rfm-data-ext,rfm-data-thumbnail,rfm-data-search,rfm-data-git,rfm-gspawn,rfm-column,rfm-column-verbose,rfm-gtk,rfm-readline,rfm-addon (分割符逗号不行就试空格，glib版本升级好像变过, rfm这些参数应该也要用双引号括起来吧？)\n" \
+"       "BuiltInCmd_setenv" G_MESSAGES_DEBUG \"\"\n" \
 "获取当前值:\n" \
 "       env |grep G_MESSAGES_DEBUG\n" \
 "       注意,env命令实际是在子进程执行的,返回的实际上是子进程环境变量值.但每次命令执行都会创建子进程,并继承父进程的环境变量,因此可以通过子进程的环境变量值来推断父进程的值\n"

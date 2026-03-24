@@ -94,7 +94,7 @@
 #define BuiltInCmd_showcolumn                  "showcolumn"
 #define BuiltInCmd_showcolumn_Description      "show or hide column (if currently in listview), or change column displaying order; current treeview column layout will be added in to command history if no parameter follows showcolumn"
 #define BuiltInCmd_setenv                      "setenv"
-#define BuiltInCmd_setenv_Description          "set environment varaiable for rfm, input setenv to see usage"
+#define BuiltInCmd_setenv_Description          "set environment varaiable for rfm, input " BuiltInCmd_setenv " to see usage, especially to see system log output categories"
 #define BuiltInCmd_cd                          "cd"
 #define BuiltInCmd_cd_Description              "\n" \
 "    cd address  go to address, note that PWD is not changed, just open address in rfm. can also be used to select file in rfm window.\n" \
@@ -214,11 +214,11 @@ BuiltInCmd_SearchResultColumnSeperator \
 "Value for column %d(%s) may has not been loaded yet, refresh needed. Note that if you just switch list/icon view, the column will appear, but with empty value before data refreshed\n"
 
 #define SETENV_USAGE \
-"Usage:       setenv EnvVarName Value\n" \
-"For example: setenv G_MESSAGES_DEBUG all\n" \
-"             setenv G_MESSAGES_DEBUG rfm\n" \
-"             setenv G_MESSAGES_DEBUG rfm,rfm-data,rfm-data-ext,rfm-data-thumbnail,rfm-data-search,rfm-data-git,rfm-gspawn,rfm-column,rfm-column-verbose,rfm-gtk,rfm-readline（try space as seperator if comma does not work, and add double quotation）\n" \
-"             setenv G_MESSAGES_DEBUG \"\"\n" \
+"Usage:       "BuiltInCmd_setenv" EnvVarName Value\n" \
+"For example: "BuiltInCmd_setenv" G_MESSAGES_DEBUG all\n" \
+"             "BuiltInCmd_setenv" G_MESSAGES_DEBUG rfm\n" \
+"             "BuiltInCmd_setenv" G_MESSAGES_DEBUG rfm,rfm-data,rfm-data-ext,rfm-data-thumbnail,rfm-data-search,rfm-data-git,rfm-gspawn,rfm-column,rfm-column-verbose,rfm-gtk,rfm-readline,rfm-addon（try space as seperator if comma does not work, and add double quotation）\n" \
+"             "BuiltInCmd_setenv" G_MESSAGES_DEBUG \"\"\n" \
 "Get current value with:\n" \
 "             env |grep G_MESSAGES_DEBUG\n" \
 "             note that env command will be run in as subprocess, so it actually return the env value of subprocess. However, since a new subprocess is created for each command, inheriting the environment value of parent, we can know the value in parent process by checking value in subprocess\n"
