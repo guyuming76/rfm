@@ -115,7 +115,7 @@
 #define BuiltInCmd_Next_Description            "前进到历史路径，快捷键：ALT+右箭头"
 #define BuiltInCmd_add2search                  "添加完整路径文件名参数至查询结果视图，作用和文件上下文菜单中 \"" UnionSearchResult "\" 相同"
 #ifdef reedline
-	#define reedline_specific_help "    提示符后的'〉'表示当前用reedline库读取命令输入，支持多行编辑，ALT+Enter可以用来换行.\n"
+	#define reedline_specific_help "    提示符后的'〉'表示当前用reedline库读取命令输入，支持多行编辑，ALT+Enter可以用来换行;如果Alt+Enter被占用（比如动态平铺窗口管理器可能用其来移动窗口），可以使用Ctrl+j.\n"
 #else
 	#define reedline_specific_help ""
 #endif

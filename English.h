@@ -114,7 +114,7 @@
 #define BuiltInCmd_add2search                  "add fullpath filename as parameter into search result view, work the same way as the \"" UnionSearchResult "\" in contextual file menu"
 
 #ifdef reedline
-	#define reedline_specific_help "    The '〉' after the prompt shows that input is read with the reedline library，which supports multiline edit，and ALT+Enter can be used for new line.\n"
+	#define reedline_specific_help "    The '〉' after the prompt shows that input is read with the reedline library，which supports multiline edit，and ALT+Enter (or Ctrl+j) can be used for new line.\n"
 #else
 	#define reedline_specific_help ""
 #endif
