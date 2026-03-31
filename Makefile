@@ -43,8 +43,8 @@ CFLAGS += -g -Wall -std=c11 -O0 -fPIC -pie -Wno-error=incompatible-pointer-types
 LDFLAGS += -g ${LIBS}
 
 ifneq (${PythonEmbedded}, )
-CFLAGS += `python-config --cflags`
-LDFLAGS += `python-config --ldflags --embed`
+CFLAGS += `python3-config --cflags`
+LDFLAGS += `python3-config --ldflags --embed`
 endif
 
 ifneq (${RFM_AddOn},)
