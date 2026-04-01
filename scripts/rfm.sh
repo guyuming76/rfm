@@ -33,12 +33,18 @@ if [[ -z "$RFM_TERM" ]];then
 	done
 
 	export RFM_TERM=$(basename $(ps -p $current_pid -o cmd --no-header))
-        export RFM_TERM_E=""
 	echo "env RFM_TERM set to current terminal emulator:" $RFM_TERM  >&2
+
+	#如果环境变量 RFM_TERM_E 不存在，未定义，则 export RFM_TERM_E=“”
+	if [ -z "${RFM_TERM_E+x}" ]; then
+    		export RFM_TERM_E=""
+	fi
 	# 判断 RFM_TERM 是否等于 "alacritty" TODO: 用户如果还用其他终端模拟器使用 -e 参数或其他类似作用参数，可以这里添加
 	if [ "$RFM_TERM" = "alacritty" ]; then
     		# 如果是，则设置 RFM_TERM_E 的值为 "-e"
     		RFM_TERM_E="-e"
+	elif [ "$RFM_TERM" = "mate-terminal" ]; then
+		RFM_TERM_E="-x"
 	fi
 
 else
