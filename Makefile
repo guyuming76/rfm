@@ -2,9 +2,6 @@
 
 include config.mk
 
-VERSION = 2.80.0
-# I change version to 2.80 since it need glib >=2.80
-
 ifneq ($(RFM_FILE_CHOOSER),)
 LINKERNAME = librfm.so
 SONAME = librfm.so.1

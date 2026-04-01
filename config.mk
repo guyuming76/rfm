@@ -1,3 +1,6 @@
+VERSION = 2.80.0
+# I change version to 2.80 since it need glib >=2.80
+
 PREFIX = /usr/local
 # if installed with gentoo ebuild, the ebuild script will remove /local so that files will be installed into /usr/bin instead of /usr/local/bin
 
