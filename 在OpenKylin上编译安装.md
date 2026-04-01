@@ -1,6 +1,6 @@
 OpenKylin version 2.0 SP2 (nile)
 
-因为ostree的原因，默认没法通过apt在OpenKylin上安装软件。要先在 设置->关于 界面双击 logo， 会在关于下面出现 维护模式，在维护模式页面打开维护模式后才可以用sudo apt install
+因为ostree的原因，默认没法通过apt在OpenKylin上安装软件。要先在 设置->关于 界面点击5次 logo， 会在关于下面出现 维护模式，在维护模式页面打开维护模式后才可以用sudo apt install
 
 
 
