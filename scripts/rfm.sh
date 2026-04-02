@@ -56,25 +56,12 @@ export rfmFontCSS="* { font-size: 16px; }"
 #使用 GTK Inspector
 #export GTK_DEBUG=interactive
 
-# 检测是否在 XWayland 中运行
+# 检测是否在 XWayland 中运行.
 # 检查是否设置了 DISPLAY 环境变量（X11 的标志）
 if [[ -n "$DISPLAY" ]]; then
-    # 如果在 X11 环境中，强制使用 X11 后端
-    echo "检测到 X11 环境，强制 rfm 使用 X11 后端" >&2
-    
-    # 方法1：直接设置环境变量（推荐）
+    # 如果在 X11 环境中，强制使用 X11 后端，否则rfm窗口会显示在wayland窗口如dwl下面，而不是xwayland root窗口里面
+    echo "检测到设置了 DISPLAY 环境变量，强制 rfm 使用 GDK_BACKEND=x11" >&2
     export GDK_BACKEND=x11
-    export XDG_SESSION_TYPE=x11
-    export CLUTTER_BACKEND=x11
-    
-    # 方法2：取消可能指向 Wayland 的变量
-    unset WAYLAND_DISPLAY
-    unset QT_QPA_PLATFORM
-    unset SDL_VIDEODRIVER
-    unset MOZ_ENABLE_WAYLAND
-    
-    # 方法3：设置其他应用的 Wayland 标志
-    export MOZ_DISABLE_WAYLAND=1
 fi
 
 if [ -n "$VIRTUAL_ENV" ]; then
