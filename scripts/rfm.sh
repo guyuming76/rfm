@@ -16,6 +16,20 @@ function find_ppid_for_pid_and_update_current_pid(){
 	done
 }
 
+# 根据脚本所在目录设置 LD_LIBRARY_PATH
+SCRIPT_PATH=$(readlink -f "$0")
+SCRIPT_DIR=$(dirname "$SCRIPT_PATH")
+
+if [ "$SCRIPT_DIR" = "/usr/bin" ]; then
+    # 脚本位于 /usr/bin，添加 /usr/lib64 到 LD_LIBRARY_PATH
+    export LD_LIBRARY_PATH="/usr/lib64:$LD_LIBRARY_PATH"
+    echo "设置 LD_LIBRARY_PATH 包含 /usr/lib64" >&2
+elif [ "$SCRIPT_DIR" = "/usr/local/bin" ]; then
+    # 脚本位于 /usr/local/bin，添加 /usr/local/lib64 到 LD_LIBRARY_PATH
+    export LD_LIBRARY_PATH="/usr/local/lib64:$LD_LIBRARY_PATH"
+    echo "设置 LD_LIBRARY_PATH 包含 /usr/local/lib64" >&2
+fi
+
 #应用奔溃时生成coredump
 ulimit -c unlimited
 
