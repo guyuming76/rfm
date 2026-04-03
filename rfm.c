@@ -3779,8 +3779,10 @@ gchar** replace_shell_cmd_buffer(gchar **strv, gchar *buffer) {
 static NO_FREE gchar** stdin_command_bash(CALLER_OWN gchar* user_input_cmd, gboolean inNewVT) {
   gchar** ret;
   gchar* shell_cmd_buffer = calloc(ARG_MAX, sizeof(gchar));
+  gchar* rfm_alias = getenv("RFM_ALIAS");
   if (inNewVT){
-    snprintf(shell_cmd_buffer,PATH_MAX,"set -o history; %s;read -p '\033[33m%s\033[0m'; exit \$? 2>/dev/null", user_input_cmd, PRESS_ENTER_TO_CLOSE_WINDOW);
+    if (rfm_alias!=NULL && strcmp(rfm_alias,"")!=0) snprintf(shell_cmd_buffer,PATH_MAX,"%s; set -o history; %s;read -p '\033[33m%s\033[0m'; exit \$? 2>/dev/null", rfm_alias, user_input_cmd, PRESS_ENTER_TO_CLOSE_WINDOW);
+    else snprintf(shell_cmd_buffer,PATH_MAX,"set -o history; %s;read -p '\033[33m%s\033[0m'; exit \$? 2>/dev/null", user_input_cmd, PRESS_ENTER_TO_CLOSE_WINDOW);
     //without set -o history and "bash -i", bash builtin history command will not show results.
     //Seems to be by design, but why? for the nu shell, nu -c "history" just works
     //without exit, rfm will quit after commands such as ls, nano, but commands such as echo 1 will work. if you change exit to sleep 20, even echo 1 will make rfm terminate. Are there any race condition here?
@@ -3788,7 +3790,8 @@ static NO_FREE gchar** stdin_command_bash(CALLER_OWN gchar* user_input_cmd, gboo
     if (term_e!=NULL && strcmp(term_e,"")!=0) ret = g_strdupv(stdin_cmd_template_bash_newVT_nonHold_with_e);
     else ret = g_strdupv(stdin_cmd_template_bash_newVT_nonHold);
   }else {
-    snprintf(shell_cmd_buffer,PATH_MAX,"set -o history; %s; exit \$? 2>/dev/null",user_input_cmd);
+    if (rfm_alias!=NULL && strcmp(rfm_alias,"")!=0) snprintf(shell_cmd_buffer,PATH_MAX,"%s; set -o history; %s; exit \$? 2>/dev/null",rfm_alias, user_input_cmd);
+    else snprintf(shell_cmd_buffer,PATH_MAX,"set -o history; %s; exit \$? 2>/dev/null",user_input_cmd);
     ret = g_strdupv(stdin_cmd_template_bash);
   }
   return replace_shell_cmd_buffer(ret, shell_cmd_buffer);

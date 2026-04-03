@@ -78,6 +78,18 @@ if [[ -n "$DISPLAY" ]]; then
     export GDK_BACKEND=x11
 fi
 
+# 检查 imv 命令是否存在，如果不存在但 /usr/libexec/imv/imv 存在，则创建 alias
+if ! which imv > /dev/null 2>&1; then
+    if [ -x "/usr/libexec/imv/imv" ]; then
+        echo "在子进程创建 imv alias 指向 /usr/libexec/imv/imv" >&2
+        if [ -z "${RFM_ALIAS+x}" ]; then
+            export RFM_ALIAS="alias imv='/usr/libexec/imv/imv'"
+        else
+            RFM_ALIAS+=";alias imv='/usr/libexec/imv/imv'"
+	fi
+    fi
+fi
+
 if [ -n "$VIRTUAL_ENV" ]; then
     # 提取虚拟环境的名称，通常是路径的最后一部分
     venv_name=$(basename "$VIRTUAL_ENV")
