@@ -6,6 +6,18 @@ set -e
 
 echo "=== RFM .deb 包更新脚本 ==="
 
+# 检查 PREFIX 是否包含 /local
+echo "检查 PREFIX 配置..."
+PREFIX=$(grep "^PREFIX" config.mk | sed 's/.*= //')
+echo "当前 PREFIX: $PREFIX"
+
+if [[ "$PREFIX" == *"/local"* ]]; then
+    echo "错误: PREFIX 包含 /local，这会导致 deb 包安装到 /usr/local 目录"
+    echo "请修改 config.mk 文件中的 PREFIX 值，去掉 /local，例如将 '/usr/local' 改为 '/usr'"
+    echo "然后make clean, make 重新编译项目，再运行此脚本"
+    exit 1
+fi
+
 # 从 config.mk 文件中提取版本号
 echo "提取版本号..."
 VERSION=$(grep "^VERSION" config.mk | sed 's/.*= //')
