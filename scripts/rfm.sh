@@ -82,11 +82,8 @@ fi
 if ! which imv > /dev/null 2>&1; then
     if [ -x "/usr/libexec/imv/imv" ]; then
         echo "在子进程创建 imv alias 指向 /usr/libexec/imv/imv" >&2
-        if [ -z "${RFM_ALIAS+x}" ]; then
-            export RFM_ALIAS="alias imv='/usr/libexec/imv/imv'"
-        else
-            RFM_ALIAS+=";alias imv='/usr/libexec/imv/imv'"
-	fi
+        export RFM_ALIAS=$(mktemp --suffix _RFM_ALIAS.sh)
+        echo "alias imv='/usr/libexec/imv/imv'" >> $RFM_ALIAS
     fi
 fi
 
@@ -101,4 +98,3 @@ if [ -n "$VIRTUAL_ENV" ]; then
 else
     MALLOC_CHECK_=1 RUST_LOG=reedline_wrapper=warn rfm "$@"
 fi
-
