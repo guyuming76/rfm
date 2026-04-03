@@ -76,7 +76,7 @@ Version: ${VERSION}
 Architecture: amd64
 Maintainer: guyuming <gu_yu_ming@139.com>
 Depends: libgtk-3-0, libjson-glib-1.0-0, libreadline8, libcmark0.30.2, bash
-Recommends:git, python3, locate, gcc, jq, curl
+Recommends: git, python3, locate, gcc, jq, curl
 Suggests: imv, bat, mpv
 Section: utils
 Priority: optional
@@ -214,3 +214,5 @@ echo "\n=== .deb 包更新完成 ==="
 echo "可以使用以下命令安装："
 echo "sudo dpkg -i rfm_${VERSION}_amd64.deb"
 echo "sudo apt-get install -f  # 自动安装依赖项"
+echo "或:"
+echo "sudo apt install --install-recommends ./rfm_${VERSION}_amd64.deb"
