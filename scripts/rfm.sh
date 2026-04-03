@@ -87,6 +87,17 @@ if ! which imv > /dev/null 2>&1; then
     fi
 fi
 
+# 检查 bat 命令是否存在，如果不存在但 batcat 存在，则创建 alias
+if ! which bat > /dev/null 2>&1; then
+    if which batcat > /dev/null 2>&1; then
+        echo "在子进程创建 bat alias 指向 batcat" >&2
+        if [ -z "${RFM_ALIAS+x}" ]; then
+            export RFM_ALIAS=$(mktemp --suffix _RFM_ALIAS.sh)
+        fi
+        echo "alias bat='batcat'" >> $RFM_ALIAS
+    fi
+fi
+
 if [ -n "$VIRTUAL_ENV" ]; then
     # 提取虚拟环境的名称，通常是路径的最后一部分
     venv_name=$(basename "$VIRTUAL_ENV")
