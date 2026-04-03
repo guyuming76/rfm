@@ -12,7 +12,9 @@ imv_pid=$(ps -u|grep imv |grep for_rfm${PPID} |grep -v grep|tail -n1|awk '{print
 
 if test -z "$imv_pid"
 then
-	echo "$@" | xargs imv for_rfm${PPID}
+	# 避免使用 xargs，因为 xargs 会启动新进程，无法继承当前 shell 的 alias
+	# 直接使用 imv 命令，让当前 shell 解析 alias
+	imv for_rfm${PPID} "$@"
 else
     	imv-msg $imv_pid close all
 	imv-msg $imv_pid open "$@"
