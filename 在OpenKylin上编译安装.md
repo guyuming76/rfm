@@ -17,6 +17,8 @@ cd rfm
 
 # 安装AI addon（可选）
 git submodule update --init AI_model_API_config
+cd AI_model_API_config
+git checkout master
 
 #为AI模型配置APIkey：创建一个API_KEY.txt, 内容为key
 #cat AI_model_API_config/hosts/deepseek/API_KEY.txt
