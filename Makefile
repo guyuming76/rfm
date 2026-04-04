@@ -170,6 +170,7 @@ endif
 	@cp -f scripts/rfmFromClipboard.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmOpenWith_.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmTextEdit.sh ${DESTDIR}${PREFIX}/bin
+	@cp -f scripts/rfmTextOpen.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmCopyMoveToCurPath_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmCopyMoveToCurPath.sh
 	@cp -f scripts/rfmCreateSoftLink_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmCreateSoftLink.sh
 	@cp -f scripts/rfmFindLinksToTheSameFile_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmFindLinksToTheSameFile.sh
@@ -229,6 +230,7 @@ endif
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmFromClipboard.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmOpenWith_.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmTextEdit.sh
+	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmTextOpen.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmCopyMoveToCurPath.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmCreateSoftLink.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmFindLinksToTheSameFile.sh
@@ -281,6 +283,7 @@ endif
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmFromClipboard.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmOpenWith_.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmTextEdit.sh
+	@rm -f ${DESTDIR}${PREFIX}/bin/rfmTextOpen.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmCopyMoveToCurPath.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmCreateSoftLink.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmFindLinksToTheSameFile.sh

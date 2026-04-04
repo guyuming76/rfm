@@ -175,6 +175,7 @@ cp scripts/rfmToClipboard.sh ${PKG_NAME}/usr/bin/
 cp scripts/rfmFromClipboard.sh ${PKG_NAME}/usr/bin/
 cp scripts/rfmOpenWith_.sh ${PKG_NAME}/usr/bin/
 cp scripts/rfmTextEdit.sh ${PKG_NAME}/usr/bin/
+cp scripts/rfmTextOpen.sh ${PKG_NAME}/usr/bin/
 cp scripts/rfmCopyMoveToCurPath_${languageInclude}.sh ${PKG_NAME}/usr/bin/rfmCopyMoveToCurPath.sh
 cp scripts/rfmCreateSoftLink_${languageInclude}.sh ${PKG_NAME}/usr/bin/rfmCreateSoftLink.sh
 cp scripts/rfmFindLinksToTheSameFile_${languageInclude}.sh ${PKG_NAME}/usr/bin/rfmFindLinksToTheSameFile.sh
