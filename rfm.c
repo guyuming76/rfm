@@ -1306,12 +1306,12 @@ static MEM_ALLOC gchar **build_cmd_vector(CALLER_OWN const char **cmd, CALLER_OW
 	 g_warning("environment variable name %s is used, but NULL returned for value.",envName);
 	 free(v);
 	 return NULL;
-       }else{
+       }else if (strlen(envValue)>0){
 	 v[j]=strdup(envValue);
-       }
+       }else { continue; } //当环境变量值为空值“”，非NULL时,如RFM_TERM_E,跳过，也不增加j，否则 foot "" ls 这样的命令会报错
      }else if (strcmp(cmd[j],"")!=0){
        v[j]=(gchar*)cmd[j]; /* FIXME: gtk spawn functions require gchar*, but we have const gchar*; should probably g_strdup() and create a free_cmd_vector() function */
-     }
+     }//else { continue; } //走到这里表示cmd[j] 等于 ""，按照前面环境变量值为空非NULL时直接跳过并不增加j，这里似乎也应该这样处理，但有没有可能用户就是要放一个空字符串在这里？
      j++;
    }
    if (j==RFM_MX_ARGS) {
