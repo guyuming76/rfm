@@ -1,8 +1,10 @@
 #!/bin/bash
 
 if [[ ! -e "$(which imv-msg)" ]];then
-	xdg-open "$@"
-	exit
+	# 执行 xdg-open 并将其放入后台，避免 GLib 错误和退出码问题
+	xdg-open "$@" >/dev/null 2>&1 &
+	# 立即返回成功
+	exit 0
 fi
 
 # imv 有时启动子进程 imv-wayland 来显示图片，imv-msg需要和这个子进程号通信，所以我下面用了 tail -n1 来选取最后一个满足条件的进程
