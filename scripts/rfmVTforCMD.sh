@@ -9,7 +9,11 @@
 #done
 
 if [[ -n "$RFM_TERM" ]];then
-	$RFM_TERM rfmPressEnterToCloseWindowAfterCMD.sh "$@"
+	if [[ -n "$RFM_TERM_E" ]]; then
+		$RFM_TERM $RFM_TERM_E rfmPressEnterToCloseWindowAfterCMD.sh "$@"
+	else
+		$RFM_TERM rfmPressEnterToCloseWindowAfterCMD.sh "$@"
+	fi
 else
 	echo "environmental variable RFM_TERM is empty, please set it with terminial emulator name and parameters. You can set it automatically by launching rfm with rfm.sh" >&2
 	exit 1
