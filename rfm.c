@@ -18,6 +18,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/inotify.h>
+#include <termios.h>
 #include <errno.h>
 #include <time.h>
 #include <stdio.h>
@@ -325,6 +326,7 @@ int readlink_proc_self_fd_pipefd_and_confirm_pipefd_is_used_by_pipeline();
 void ensure_fd0_is_opened_for_stdin_inherited_from_parent_process_instead_of_used_by_pipeline_any_more();
 static gboolean startWithTerm();
 static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs);
+static void ensure_foreground_process(void);
 static void ReadFromPipeStdinIfAny(char *fd);
 static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *child_attribs);
 static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *childAttribs);
@@ -761,7 +763,7 @@ static gboolean mountpoint_mounted(RFM_FileAttributes *fileAttributes);
 static gboolean mountpoint_unmounted(RFM_FileAttributes *fileAttributes);
 static void cmd_handle_escape_key();
 static void g_idle_add_once_handle_escape_key(){ g_idle_add_once(cmd_handle_escape_key,NULL);}
-
+static gboolean window_focus_in_event(GtkWidget *widget, GdkEventFocus *event, gpointer user_data);
 #include "config.h"
 
 static stdin_cmd_interpretor * current_stdin_cmd_interpretor_pointer = &(stdin_cmd_interpretors[0]);
@@ -4138,6 +4140,31 @@ static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs) {
   }
 }
 
+
+static void ensure_foreground_process(void) {
+    int fd = open("/dev/tty", O_RDWR);
+    if (fd >= 0) {
+        pid_t current_pgid = getpgrp();
+        pid_t foreground_pgid = tcgetpgrp(fd);
+        // 判断是否在后台运行
+        if (current_pgid != foreground_pgid) {
+            g_warning("rfm is running in background (current PGID: %d, foreground PGID: %d), trying to bring to foreground", current_pgid, foreground_pgid);
+            // 尝试设置为前台进程
+            int result = tcsetpgrp(fd, current_pgid);
+            if (result == 0) {
+                g_debug("Successfully brought rfm to foreground");
+            } else {
+                g_warning("Failed to bring rfm to foreground: %s", strerror(errno));
+            }
+        } else {
+            g_debug("rfm is already in foreground (PGID: %d)", current_pgid);
+        }
+        close(fd);
+    } else {
+        g_warning("Could not open /dev/tty: %s", strerror(errno));
+    }
+}
+
 /**
  * @brief 显示 rfm 内置命令、命令解释器和搜索结果类型的帮助信息。
  *
@@ -5199,12 +5226,19 @@ static char** gnu_readline_completion(const char *text, int start, int end){
 }
 #endif
 
+
+static gboolean window_focus_in_event(GtkWidget *widget, GdkEventFocus *event, gpointer user_data) {
+    ensure_foreground_process();
+    return FALSE;
+}
+
 static int setup()
 {
    gtk_init(NULL, NULL);
    if (!no_window){
    window=gtk_window_new(GTK_WINDOW_TOPLEVEL);
    gtk_window_set_default_size(GTK_WINDOW(window), 640, 400);
+   g_signal_connect(window, "focus-in-event", G_CALLBACK(window_focus_in_event), NULL);
 
    if (getenv("rfmFontCSS")){//可以在rfm.sh里面设置字体环境变量
      GtkCssProvider *provider = gtk_css_provider_new();
