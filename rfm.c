@@ -5235,6 +5235,7 @@ static gboolean window_focus_in_event(GtkWidget *widget, GdkEventFocus *event, g
 static int setup()
 {
    gtk_init(NULL, NULL);
+   if (!no_window && showHelpOnStart && startWithTerm() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)) stdin_command_help(NULL,NULL);
    if (!no_window){
    window=gtk_window_new(GTK_WINDOW_TOPLEVEL);
    gtk_window_set_default_size(GTK_WINDOW(window), 640, 400);
@@ -5409,7 +5410,6 @@ static int setup()
    ReadFromPipeStdinIfAny(pipefd);
    if (no_window) writeSearchResultIntoFD_in_gtk_thread(STDOUT_FILENO, FALSE);
   
-   if (!no_window && showHelpOnStart && startWithTerm() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)) stdin_command_help(NULL,NULL);
    refresh_store();
    if(!no_window && startWithTerm() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)){
        readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);
