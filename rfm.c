@@ -5155,7 +5155,7 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
 							      || !(effective_cmd_interpretor_pointer->customCallBackFunc && !execCmdInNewVT && !execStdinCmdInNewVT)))) {
 #endif
               assert(readlineThread==NULL);
-              readlineThread=g_thread_new("readline", readlineInSeperateThread, from_stdin_readline?childAttribs:NULL);
+              if (window) readlineThread=g_thread_new("readline", readlineInSeperateThread, from_stdin_readline?childAttribs:NULL);
           }
 
         return ret;
@@ -5453,13 +5453,12 @@ static void cleanup()
 #ifdef GNU_readline
    rl_attempted_completion_function = OLD_rl_attempted_completion_function;
 #endif
-  
 #ifdef PythonEmbedded
    cmdStopShare(NULL, NULL);
    //endPythonEmbedding(); py_finializeex() cause sigsegv on my laptop
 #endif
-   
    gtk_main_quit();
+   window = NULL; //这里window 作为标志位，防止 quit 命令执行完cleanup后，继续新建 readlineThread
 }
 
 /* From http://dwm.suckless.org/ */
