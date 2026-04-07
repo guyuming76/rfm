@@ -743,6 +743,7 @@ static void refresh_view(gboolean switch_view);
 static void switch_iconview_treeview();
 gboolean InIconView(){ return !treeview; }
 static gboolean InTreeView(){ return treeview; }
+static void msgbox_response_handler(GtkDialog *dialog, gint response_id, gpointer user_data);
 static gboolean show_msgbox_in_main_thread(MsgBoxData *msg_data);
 static void show_msgbox(gchar *msg, gchar *title, gint type);
 static void Switch_SearchResultView_DirectoryView();
@@ -1240,10 +1241,29 @@ static RFM_defaultPixbufs *load_default_pixbufs(void)
    return defaultPixbufs;
 }
 
+
+// 对话框关闭时的回调函数，增加计数
+static void msgbox_response_handler(GtkDialog *dialog, gint response_id, gpointer user_data) {
+    RFM_msgbox_throttle++;
+    if (RFM_msgbox_throttle == 0) RFM_msgbox_throttle++;
+    g_debug("Message box closed, current RFM_msgbox_throttle: %d", RFM_msgbox_throttle);
+    gtk_widget_destroy(GTK_WIDGET(dialog));
+}
+
 static gboolean show_msgbox_in_main_thread(MsgBoxData *msg_data) {
-    if (window) { // 检查 window 是否有效
-        GtkWidget *dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_DESTROY_WITH_PARENT, msg_data->type, GTK_BUTTONS_OK, "%s", msg_data->msg);
-        g_signal_connect_swapped(dialog, "response", G_CALLBACK(gtk_widget_destroy), dialog);
+    GtkWidget *dialog = NULL;
+    if (window && RFM_msgbox_throttle > 0) {
+        dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_DESTROY_WITH_PARENT, msg_data->type, GTK_BUTTONS_OK, "%s", msg_data->msg);
+        g_signal_connect(dialog, "response", G_CALLBACK(msgbox_response_handler), NULL);
+    }else {
+      g_log(G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, "%s", msg_data->msg);//TODO: 把原本的LOG DOMAIN 和LOG_LEVEL 传进来，把g_log和show_msgboxt统一起来。比如加一个g_log_wrapper函数
+      if (window && RFM_msgbox_throttle == 0) {
+          dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_DESTROY_WITH_PARENT, GTK_MESSAGE_WARNING, GTK_BUTTONS_OK, RFM_MSGBOX_THROTTLE_WARNING);
+          g_signal_connect_swapped(dialog, "response", G_CALLBACK(gtk_widget_destroy), dialog);
+      }
+    }
+    if (dialog){
+        RFM_msgbox_throttle--;
         gtk_dialog_run(GTK_DIALOG(dialog));
     }
     g_free(msg_data->msg); g_free(msg_data->title); g_free(msg_data);

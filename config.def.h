@@ -45,6 +45,7 @@
 #define RFM_LOG_READLINE "rfm-readline"
 #define RFM_LOG_DIMENSION "rfm-dimension"
 
+static int RFM_msgbox_throttle = 5;/* Maximum number of concurrent message boxes */
 static gint RFM_THUMBNAIL_SIZE = 128; /* Maximum size for thumb dir normal is 128 */
 static gboolean UseTargetAddressWhenEnterSymbloicLinkForDir=TRUE;
 static gboolean exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread = TRUE;
