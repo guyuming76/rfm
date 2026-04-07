@@ -58,7 +58,6 @@ static struct sigaction ignore_SIGINT;
 
 static GtkWidget *icon_or_tree_view = NULL; //this should be in the gtk ui section, however, it does not compile if moved there
 static gboolean treeview=FALSE; //在commit 4960886ed663d74170940ea2ff299ba5ba0199cc 里，可能就是为了代码好看，把这一行随手挪下面去了，结果rfmFileChooser.h就编译不了了
-static void show_msgbox(gchar *msg, gchar *title, gint type);
 static void die(const char *errstr, ...);
 static int setup();
 static void cleanup();
@@ -711,6 +710,12 @@ static gchar** rfmFileChooser_CMD(enum rfmTerminal startWithVT, gchar* search_cm
 /******FileChooser related definitions end***********/
 /********************************************************************/
 /**************gtk UI, filemenu, toolbar*****************************/
+typedef struct {
+    gchar *msg;
+    gchar *title;
+    gint type;
+} MsgBoxData;
+
 static gboolean no_window=FALSE;    // for the --no-gui command line parameter
 static GtkWidget *window=NULL;      /* Main window */
 static GtkWidget *rfm_main_box;
@@ -738,6 +743,8 @@ static void refresh_view(gboolean switch_view);
 static void switch_iconview_treeview();
 gboolean InIconView(){ return !treeview; }
 static gboolean InTreeView(){ return treeview; }
+static gboolean show_msgbox_in_main_thread(MsgBoxData *msg_data);
+static void show_msgbox(gchar *msg, gchar *title, gint type);
 static void Switch_SearchResultView_DirectoryView();
 /* callback function for toolbar buttons. Its possible to make function such as home_clicked as callback directly, instead of use toolbar_button_exec as a wrapper. However,i would add GtkToolItems as first parameter for so many different callback functions then. */
 /* since g_spawn_wrapper will free child_attribs, and we don't want the childAttribs object associated with UI interface item to be freed, we duplicate childAttribs here. */
@@ -789,6 +796,8 @@ static size_t TREEVIEW_COLUMNS_array_size = G_N_ELEMENTS(treeviewColumns);
 #define TREEVIEW_COLUMNS ViewColumnsLayouts[SearchResultViewInsteadOfDirectoryView]
 
 #define SHOW_TOOLBAR_BUTTON(x,i) (((SearchResultViewInsteadOfDirectoryView && x[i].showInSearchResultView) || (!SearchResultViewInsteadOfDirectoryView && x[i].showInDirectoryView)) && (x[i].showCondition == NULL || x[i].showCondition()))
+/**************gtk UI, filemenu, toolbar end**************************/
+/************** Addon begin ******************************************/
 
 #ifdef RFM_AddOn
 typedef struct {
@@ -823,7 +832,7 @@ static gchar* calculate_file_hash(const gchar *filepath);
 static void find_and_unload_addons_before_leaving_current_directory(CALLER_OWN const gchar* path);
 #endif
 
-/**************gtk UI, filemenu, toolbar end**************************/
+/**************Addon end********************************/
 
 char* quote_path(char** path) {
     if (path == NULL || *path == NULL) return NULL;
@@ -1231,13 +1240,25 @@ static RFM_defaultPixbufs *load_default_pixbufs(void)
    return defaultPixbufs;
 }
 
+static gboolean show_msgbox_in_main_thread(MsgBoxData *msg_data) {
+    if (window) { // 检查 window 是否有效
+        GtkWidget *dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_DESTROY_WITH_PARENT, msg_data->type, GTK_BUTTONS_OK, "%s", msg_data->msg);
+        g_signal_connect_swapped(dialog, "response", G_CALLBACK(gtk_widget_destroy), dialog);
+        gtk_dialog_run(GTK_DIALOG(dialog));
+    }
+    g_free(msg_data->msg); g_free(msg_data->title); g_free(msg_data);
+    return FALSE;
+}
 
 static void show_msgbox(gchar *msg, gchar *title, gint type)
 {
-   GtkWidget *dialog=gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_DESTROY_WITH_PARENT, type, GTK_BUTTONS_OK, "%s", msg);
-   //gtk_window_set_title(GTK_WINDOW(dialog), title);
-   g_signal_connect_swapped (dialog, "response", G_CALLBACK(gtk_widget_destroy), dialog);
-   gtk_dialog_run(GTK_DIALOG(dialog)); /* Show a modal dialog for errors/warnings */
+  MsgBoxData *data = g_new(MsgBoxData, 1);
+  data->msg = g_strdup(msg);
+  data->title = g_strdup(title);
+  data->type = type;
+  // 检查是否在主线程中
+  if (g_main_context_is_owner(g_main_context_default())) show_msgbox_in_main_thread(data);
+  else g_idle_add(show_msgbox_in_main_thread, data);
 }
 
 
