@@ -226,7 +226,7 @@ dpkg-deb --build ${PKG_NAME}
 echo "检查创建的 deb 包..."
 ls -la ${PKG_NAME}.deb
 
-echo "\n=== .deb 包更新完成 ==="
+echo "=== .deb 包更新完成 ==="
 echo "可以使用以下命令安装："
 echo "sudo dpkg -i ${PKG_NAME}.deb"
 echo "sudo apt-get install -f  # 自动安装依赖项"
