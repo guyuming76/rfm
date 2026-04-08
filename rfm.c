@@ -1110,12 +1110,12 @@ static void show_child_output(CALLER_OWN RFM_ChildAttribs *child_attribs)
    if (child_attribs->stdOut!=NULL && child_attribs->stdOut[0]!=0) {
      if (startWithTerm()){
        printf("%s",child_attribs->stdOut);
-       g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_DEBUG, "output of strlen %ld from child PID %d shown", strlen(child_attribs->stdOut), child_attribs->pid);
+       g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_DEBUG, "output of strlen %ld from child PID %d (0 if called sync) shown", strlen(child_attribs->stdOut), child_attribs->pid);
        //TODO: if not startwithVT(), user won't see printf, but user also will not see all those g_warnings. maybe we can add some indicator on UI and guide user to some log file. When not startwithVT, redirect stdout and stderr to some log file
      }else if (strlen(child_attribs->stdOut) <= RFM_MX_MSGBOX_CHARS)
          show_msgbox(child_attribs->stdOut, child_attribs->name, GTK_MESSAGE_INFO);
      else{
-         msg=g_strdup_printf("output of strlen %ld from child PID %d greater that RFM_MX_MSGBOX_CHARS %d, cannot show in msgbox", strlen(child_attribs->stdOut), child_attribs->pid,RFM_MX_MSGBOX_CHARS);
+         msg=g_strdup_printf("output of strlen %ld from child PID %d (0 if called sync) greater that RFM_MX_MSGBOX_CHARS %d, cannot show in msgbox", strlen(child_attribs->stdOut), child_attribs->pid,RFM_MX_MSGBOX_CHARS);
 	 show_msgbox(msg, child_attribs->name, GTK_MESSAGE_WARNING);
 	 g_free(msg);
      }
@@ -1138,7 +1138,7 @@ static void show_child_output(CALLER_OWN RFM_ChildAttribs *child_attribs)
      }else if (strlen(child_attribs->stdErr) <= RFM_MX_MSGBOX_CHARS)
          show_msgbox(child_attribs->stdErr, child_attribs->name, GTK_MESSAGE_INFO);
      else{
-         msg=g_strdup_printf("error of strlen %ld from child PID %d greater that RFM_MX_MSGBOX_CHARS %d, cannot show in msgbox", strlen(child_attribs->stdErr), child_attribs->pid,RFM_MX_MSGBOX_CHARS);
+         msg=g_strdup_printf("error of strlen %ld from child PID %d (0 if called sync) greater that RFM_MX_MSGBOX_CHARS %d, cannot show in msgbox", strlen(child_attribs->stdErr), child_attribs->pid,RFM_MX_MSGBOX_CHARS);
 	 show_msgbox(msg, child_attribs->name, GTK_MESSAGE_WARNING);
 	 g_free(msg);
      }
