@@ -4253,7 +4253,13 @@ static void stdin_command_help(wordexp_t * parsed_msg, GString* readline_result_
           printf("    \033[34m%s\033[0m   %s\n",searchresultTypes[i].name,searchresultTypes[i].Description); // \033[34m 是蓝色
         }
       }
-
+#ifdef RFM_AddOn
+      if (!for_specific_command){
+        // 打印搜索结果类型的段落标题（绿色高亮）和通用说明文本 (通常定义在 config.h)
+        printf("\n\033[32m %s\033[0m\n","AddOn"); // \033[32m 是绿色
+        printf("%s\n", RFM_AddOn_HELP);
+      }
+#endif
       // --- 打印去除颜色代码的提示 ---
       // 提供一个示例命令，用户可以使用它来查看不带 ANSI 颜色代码的帮助输出
       printf("\n\n \033[33muse command follows to output current help without color:");

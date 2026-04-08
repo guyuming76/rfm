@@ -251,3 +251,5 @@ BuiltInCmd_SearchResultColumnSeperator \
 "      SearchResult|head -n2>withTitle"
 
 #define SearchResultType_current "use the same type as in current search result view. use default if current is empty"
+
+#define RFM_AddOn_HELP ""

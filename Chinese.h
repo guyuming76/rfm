@@ -255,3 +255,6 @@ BuiltInCmd_SearchResultColumnSeperator \
 "      SearchResult|head -n2>withTitle\n"
 
 #define SearchResultType_current "当前查询结果视图的类型，如果当前为空，则使用默认类型"
+
+
+#define RFM_AddOn_HELP ""
