@@ -1103,21 +1103,13 @@ static void set_finished_status_for_child_supervisor(const GPid pid, const gint 
 
 //显示完 child_attribs->stdOut, stdErr后，会将其置为空字符串
 static void show_child_output(CALLER_OWN RFM_ChildAttribs *child_attribs)
-{
-   gchar *msg=NULL;
-   
+{  
    /* Show any output we have regardless of error status */
    if (child_attribs->stdOut!=NULL && child_attribs->stdOut[0]!=0) {
-     if (startWithTerm()){
-       printf("%s",child_attribs->stdOut);
-       g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_DEBUG, "output of strlen %ld from child PID %d (0 if called sync) shown", strlen(child_attribs->stdOut), child_attribs->pid);
-     }else if (strlen(child_attribs->stdOut) <= RFM_MX_MSGBOX_CHARS)
-         show_msgbox(child_attribs->stdOut, child_attribs->name, GTK_MESSAGE_INFO);
-     else{
-         msg=g_strdup_printf("output of strlen %ld from child PID %d (0 if called sync) greater that RFM_MX_MSGBOX_CHARS %d, cannot show in msgbox", strlen(child_attribs->stdOut), child_attribs->pid,RFM_MX_MSGBOX_CHARS);
-	 show_msgbox(msg, child_attribs->name, GTK_MESSAGE_WARNING);
-	 g_free(msg);
-     }
+     if (startWithTerm()) printf("%s",child_attribs->stdOut);
+     else show_msgbox(child_attribs->stdOut, child_attribs->name, GTK_MESSAGE_INFO);
+     g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_DEBUG, "output of strlen %ld from child PID %d (0 if called sync) shown", strlen(child_attribs->stdOut), child_attribs->pid);
+     
      if (child_attribs->keep_total_buffer_in_show_child_output){
        if (child_attribs->total_stdOut)
          child_attribs->total_stdOut=g_strconcat(child_attribs->total_stdOut,child_attribs->stdOut, NULL);
@@ -1128,18 +1120,12 @@ static void show_child_output(CALLER_OWN RFM_ChildAttribs *child_attribs)
    }else{ g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_DEBUG, "empty child_attribs->stdOut in show_child_output"); }
 
    if (child_attribs->stdErr!=NULL && child_attribs->stdErr[0]!=0) {
-     if (startWithTerm()){
-       fprintf(stderr, "%s",child_attribs->stdErr);
-       g_log(RFM_LOG_GSPAWN,
+     if (startWithTerm()) fprintf(stderr, "%s",child_attribs->stdErr);
+     else show_msgbox(child_attribs->stdErr, child_attribs->name, GTK_MESSAGE_ERROR);
+     g_log(RFM_LOG_GSPAWN,
 	     ((child_attribs->runOpts & G_SPAWN_CHILD_INHERITS_STDIN)==G_SPAWN_CHILD_INHERITS_STDIN) ? G_LOG_LEVEL_DEBUG : G_LOG_LEVEL_WARNING // bash read 命令会把输出的提示通过stderr显示，而不是stdout, 若要使用read, 应该是inherit_stdin的，通过这个判断,防止在read的时候输出warning
-	       ,"error of strlen %ld from child PID %d shown", strlen(child_attribs->stdErr), child_attribs->pid);
-     }else if (strlen(child_attribs->stdErr) <= RFM_MX_MSGBOX_CHARS)
-         show_msgbox(child_attribs->stdErr, child_attribs->name, GTK_MESSAGE_INFO);
-     else{
-         msg=g_strdup_printf("error of strlen %ld from child PID %d (0 if called sync) greater that RFM_MX_MSGBOX_CHARS %d, cannot show in msgbox", strlen(child_attribs->stdErr), child_attribs->pid,RFM_MX_MSGBOX_CHARS);
-	 show_msgbox(msg, child_attribs->name, GTK_MESSAGE_WARNING);
-	 g_free(msg);
-     }
+	     ,"error of strlen %ld from child PID %d (0 if called sync) shown", strlen(child_attribs->stdErr), child_attribs->pid);
+
      if (child_attribs->keep_total_buffer_in_show_child_output){
        if (child_attribs->total_stdErr)
          child_attribs->total_stdErr=g_strconcat(child_attribs->total_stdErr,child_attribs->stdErr, NULL);
@@ -1243,19 +1229,24 @@ static RFM_defaultPixbufs *load_default_pixbufs(void)
 // 对话框关闭时的回调函数，增加计数
 static void msgbox_response_handler(GtkDialog *dialog, gint response_id, gpointer user_data) {
     RFM_msgbox_throttle++;
-    if (RFM_msgbox_throttle == 0) RFM_msgbox_throttle++;
+    if (RFM_msgbox_throttle == 0) RFM_msgbox_throttle++;//可以理解成这个等于0的点弹的是超限警示窗
     g_debug("Message box closed, current RFM_msgbox_throttle: %d", RFM_msgbox_throttle);
     gtk_widget_destroy(GTK_WIDGET(dialog));
 }
 
+//如果因为弹窗限量，或者消息内容过长导致不能完整显示在弹窗，则记入g_log
 static gboolean show_msgbox_in_main_thread(MsgBoxData *msg_data) {
     GtkWidget *dialog = NULL;
-    if (window && RFM_msgbox_throttle > 0) {
+    if (window && RFM_msgbox_throttle > 0) { //未到弹窗限量
+        if (strlen(msg_data->msg) > RFM_MX_MSGBOX_CHARS) {
+	  g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "%s", msg_data->msg);
+	  msg_data->msg[RFM_MX_MSGBOX_CHARS] = '\0';//截断超长内容
+	}
         dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_DESTROY_WITH_PARENT, msg_data->type, GTK_BUTTONS_OK, "%s", msg_data->msg);
         g_signal_connect(dialog, "response", G_CALLBACK(msgbox_response_handler), NULL);
-    }else {
-      g_log(G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, "%s", msg_data->msg);//TODO: 把原本的LOG DOMAIN 和LOG_LEVEL 传进来，把g_log和show_msgboxt统一起来。比如加一个g_log_wrapper函数
-      if (window && RFM_msgbox_throttle == 0) {
+    }else {//弹窗限量
+      g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "%s", msg_data->msg);
+      if (window && RFM_msgbox_throttle == 0) { //在刚到限量的这个点上弹窗警示用户
           dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_DESTROY_WITH_PARENT, GTK_MESSAGE_WARNING, GTK_BUTTONS_OK, RFM_MSGBOX_THROTTLE_WARNING);
           g_signal_connect_swapped(dialog, "response", G_CALLBACK(gtk_widget_destroy), dialog);
       }
