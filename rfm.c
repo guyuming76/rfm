@@ -713,8 +713,9 @@ static gchar** rfmFileChooser_CMD(enum rfmTerminal startWithVT, gchar* search_cm
 typedef struct {
     gchar *msg;
     gchar *title;
-    gint type;
-} MsgBoxData;
+    GtkMessageType type;
+    GtkButtonsType buttons;
+} MsgBoxData; //deepwiki 说gtk 内没有这个数据结构，参见 gtk-demo/dialog.c;且gtk4有变化
 
 static gboolean no_window=FALSE;    // for the --no-gui command line parameter
 static GtkWidget *window=NULL;      /* Main window */
@@ -744,8 +745,8 @@ static void switch_iconview_treeview();
 gboolean InIconView(){ return !treeview; }
 static gboolean InTreeView(){ return treeview; }
 static void msgbox_response_handler(GtkDialog *dialog, gint response_id, gpointer user_data);
-static gboolean show_msgbox_in_main_thread(MsgBoxData *msg_data);
-static void show_msgbox(gchar *msg, gchar *title, gint type);
+static GtkResponseType show_msgbox_in_main_thread(MsgBoxData *msg_data);
+static void show_msgbox(gchar *msg, gchar *title, GtkMessageType type);
 static void Switch_SearchResultView_DirectoryView();
 /* callback function for toolbar buttons. Its possible to make function such as home_clicked as callback directly, instead of use toolbar_button_exec as a wrapper. However,i would add GtkToolItems as first parameter for so many different callback functions then. */
 /* since g_spawn_wrapper will free child_attribs, and we don't want the childAttribs object associated with UI interface item to be freed, we duplicate childAttribs here. */
@@ -1235,14 +1236,14 @@ static void msgbox_response_handler(GtkDialog *dialog, gint response_id, gpointe
 }
 
 //如果因为弹窗限量，或者消息内容过长导致不能完整显示在弹窗，则记入g_log
-static gboolean show_msgbox_in_main_thread(MsgBoxData *msg_data) {
+static GtkResponseType show_msgbox_in_main_thread(MsgBoxData *msg_data) {
     GtkWidget *dialog = NULL;
     if (window && RFM_msgbox_throttle > 0) { //未到弹窗限量
         if (strlen(msg_data->msg) > RFM_MX_MSGBOX_CHARS) {
 	  g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "%s", msg_data->msg);
 	  msg_data->msg[RFM_MX_MSGBOX_CHARS] = '\0';//截断超长内容
 	}
-        dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_DESTROY_WITH_PARENT, msg_data->type, GTK_BUTTONS_OK, "%s", msg_data->msg);
+        dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_DESTROY_WITH_PARENT, msg_data->type, msg_data->buttons, "%s", msg_data->msg);
         g_signal_connect(dialog, "response", G_CALLBACK(msgbox_response_handler), NULL);
     }else {//弹窗限量
       g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "%s", msg_data->msg);
@@ -1251,20 +1252,21 @@ static gboolean show_msgbox_in_main_thread(MsgBoxData *msg_data) {
           g_signal_connect_swapped(dialog, "response", G_CALLBACK(gtk_widget_destroy), dialog);
       }
     }
+    g_free(msg_data->msg); g_free(msg_data->title); g_free(msg_data);
     if (dialog){
         RFM_msgbox_throttle--;
-        gtk_dialog_run(GTK_DIALOG(dialog));
+        return gtk_dialog_run(GTK_DIALOG(dialog));
     }
-    g_free(msg_data->msg); g_free(msg_data->title); g_free(msg_data);
-    return FALSE;
+    return GTK_RESPONSE_NONE;
 }
 
-static void show_msgbox(gchar *msg, gchar *title, gint type)
+static void show_msgbox(gchar *msg, gchar *title, GtkMessageType type)
 {
   MsgBoxData *data = g_new(MsgBoxData, 1);
   data->msg = g_strdup(msg);
   data->title = g_strdup(title);
   data->type = type;
+  data->buttons = GTK_BUTTONS_OK;
   // 检查是否在主线程中
   if (g_main_context_is_owner(g_main_context_default())) show_msgbox_in_main_thread(data);
   else g_idle_add(show_msgbox_in_main_thread, data);
