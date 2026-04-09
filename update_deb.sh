@@ -6,16 +6,22 @@ set -e
 
 echo "=== RFM .deb 包更新脚本 ==="
 
-# 检查 PREFIX 是否包含 /local
-echo "检查 PREFIX 配置..."
+# 从 config.mk 文件中提取 PREFIX
 PREFIX=$(grep "^PREFIX" config.mk | sed 's/.*= //')
 echo "当前 PREFIX: $PREFIX"
 
+# 检查 PREFIX 是否包含 /local
+echo "检查 PREFIX 配置..."
 if [[ "$PREFIX" == *"/local"* ]]; then
-    echo "错误: PREFIX 包含 /local，这会导致 deb 包安装到 /usr/local 目录"
-    echo "请修改 config.mk 文件中的 PREFIX 值，去掉 /local，例如将 '/usr/local' 改为 '/usr'"
-    echo "然后make clean, make 重新编译项目，再运行此脚本"
-    exit 1
+    echo "警告: PREFIX 包含 /local，这会导致 deb 包安装到 /usr/local 目录"
+    echo "对于 deb 包安装，建议使用 /usr 作为 PREFIX"
+    echo "是否继续? (y/n)"
+    read -r response
+    if [[ "$response" != "y" && "$response" != "Y" ]]; then
+        echo "请修改 config.mk 文件中的 PREFIX 值，例如将 '/usr/local' 改为 '/usr'"
+        echo "然后 make clean, make 重新编译项目，再运行此脚本"
+        exit 1
+    fi
 fi
 
 # 从 config.mk 文件中提取版本号
@@ -78,9 +84,9 @@ fi
 # 创建 deb 包目录结构
 echo "创建 deb 包目录结构..."
 mkdir -p ${PKG_NAME}/DEBIAN \
-         ${PKG_NAME}/usr/bin \
-         ${PKG_NAME}/usr/lib64 \
-         ${PKG_NAME}/usr/include \
+         ${PKG_NAME}${PREFIX}/bin \
+         ${PKG_NAME}${PREFIX}/lib64 \
+         ${PKG_NAME}${PREFIX}/include \
          ${PKG_NAME}/usr/share/icons/hicolor/scalable/apps \
          ${PKG_NAME}/usr/share/applications
 
@@ -128,36 +134,36 @@ echo "  PythonEmbedded: $PythonEmbedded"
 echo "复制文件到 deb 包目录..."
 
 # 复制主可执行文件
-cp rfm ${PKG_NAME}/usr/bin/
+cp rfm ${PKG_NAME}${PREFIX}/bin/
 
 # 复制库文件（如果 RFM_FILE_CHOOSER 启用）
 if [ ! -z "$RFM_FILE_CHOOSER" ]; then
-    cp librfm.so.${VERSION} ${PKG_NAME}/usr/lib64/
-    ln -s librfm.so.${VERSION} ${PKG_NAME}/usr/lib64/librfm.so.1
-    ln -s librfm.so.${VERSION} ${PKG_NAME}/usr/lib64/librfm.so
+    cp librfm.so.${VERSION} ${PKG_NAME}${PREFIX}/lib64/
+    ln -s librfm.so.${VERSION} ${PKG_NAME}${PREFIX}/lib64/librfm.so.1
+    ln -s librfm.so.${VERSION} ${PKG_NAME}${PREFIX}/lib64/librfm.so
 fi
 
 # 复制 Reedline 相关文件（如果 READLINE_LIB 为 -Dreedline）
 if [ "$READLINE_LIB" = "-Dreedline" ]; then
     if [ $REEDLINE_AVAILABLE -eq 1 ]; then
-        cp reedline_wrapper/target/debug/libreedline_wrapper.so ${PKG_NAME}/usr/lib64/
+        cp reedline_wrapper/target/debug/libreedline_wrapper.so ${PKG_NAME}${PREFIX}/lib64/
     fi
     if [ $RFMREEDLINE_AVAILABLE -eq 1 ]; then
-        cp rfmReedline/target/debug/rfmReedline ${PKG_NAME}/usr/bin/
+        cp rfmReedline/target/debug/rfmReedline ${PKG_NAME}${PREFIX}/bin/
     fi
-    cp scripts/rfmReedlineWithSpecificHistoryFile.sh ${PKG_NAME}/usr/bin/rfmReadlineWithSpecificHistoryFile.sh
+    cp scripts/rfmReedlineWithSpecificHistoryFile.sh ${PKG_NAME}${PREFIX}/bin/rfmReadlineWithSpecificHistoryFile.sh
 else
-    cp scripts/rfmBashReadWithSpecificHistoryFile.sh ${PKG_NAME}/usr/bin/rfmReadlineWithSpecificHistoryFile.sh
+    cp scripts/rfmBashReadWithSpecificHistoryFile.sh ${PKG_NAME}${PREFIX}/bin/rfmReadlineWithSpecificHistoryFile.sh
 fi
 
 # 复制 Bash 读取脚本
-cp scripts/rfmBashReadWithSpecificHistoryFile.sh ${PKG_NAME}/usr/bin/
+cp scripts/rfmBashReadWithSpecificHistoryFile.sh ${PKG_NAME}${PREFIX}/bin/
 
 # 复制 Cmark 工具（如果 CmarkTools 启用）
 if [ ! -z "$CmarkTools" ]; then
     for tool in extractKeyValuePairFromMarkdown extractContentFromMarkdownRecursive extractJsonFromMarkdown; do
         if [ -f "$tool" ]; then
-            cp "$tool" ${PKG_NAME}/usr/bin/
+            cp "$tool" ${PKG_NAME}${PREFIX}/bin/
         else
             echo "警告: $tool 不存在，将跳过"
         fi
@@ -165,55 +171,55 @@ if [ ! -z "$CmarkTools" ]; then
 fi
 
 # 复制脚本文件
-cp scripts/rfm.sh ${PKG_NAME}/usr/bin/
-cp scripts/rfmRefreshImage.sh ${PKG_NAME}/usr/bin/
-cp scripts/rfmVTforCMD.sh ${PKG_NAME}/usr/bin/
-cp scripts/rfmCopyMove_${languageInclude}.sh ${PKG_NAME}/usr/bin/rfmCopyMove.sh
-cp scripts/rfmRemove_${languageInclude}.sh ${PKG_NAME}/usr/bin/rfmRemove.sh
-cp scripts/rfmProperties.sh ${PKG_NAME}/usr/bin/
-cp scripts/rfmToClipboard.sh ${PKG_NAME}/usr/bin/
-cp scripts/rfmFromClipboard.sh ${PKG_NAME}/usr/bin/
-cp scripts/rfmOpenWith_.sh ${PKG_NAME}/usr/bin/
-cp scripts/rfmTextEdit.sh ${PKG_NAME}/usr/bin/
-cp scripts/rfmTextOpen.sh ${PKG_NAME}/usr/bin/
-cp scripts/rfmCopyMoveToCurPath_${languageInclude}.sh ${PKG_NAME}/usr/bin/rfmCopyMoveToCurPath.sh
-cp scripts/rfmCreateSoftLink_${languageInclude}.sh ${PKG_NAME}/usr/bin/rfmCreateSoftLink.sh
-cp scripts/rfmFindLinksToTheSameFile_${languageInclude}.sh ${PKG_NAME}/usr/bin/rfmFindLinksToTheSameFile.sh
-cp scripts/rfmGitCommit_${languageInclude}.sh ${PKG_NAME}/usr/bin/rfmGitCommit.sh
-cp scripts/rfmChangeOwner_${languageInclude}.sh ${PKG_NAME}/usr/bin/rfmChangeOwner.sh
-cp scripts/rfmFindFilesWithTheSameName_${languageInclude}.sh ${PKG_NAME}/usr/bin/rfmFindFilesWithTheSameName.sh
-cp scripts/rfmPressEnterToCloseWindowAfterCMD.sh ${PKG_NAME}/usr/bin/
-cp scripts/rfmExtractArchive_${languageInclude}.sh ${PKG_NAME}/usr/bin/rfmExtractArchive.sh
-cp scripts/rfmMakeThumbnailForGGB.sh ${PKG_NAME}/usr/bin/
-cp scripts/rfmMoveDirAndUpdateSymbolicLinks.sh ${PKG_NAME}/usr/bin/
-cp scripts/rfmCopyDirAndUpdateSymbolicLinks.sh ${PKG_NAME}/usr/bin/
-cp scripts/rfm_Update_affected_SymbolicLinks_for_move_or_copy.sh ${PKG_NAME}/usr/bin/
-cp scripts/rfm_mkdir_and_move_selected_files_into_it_${languageInclude}.sh ${PKG_NAME}/usr/bin/rfm_mkdir_and_move_selected_files_into_it.sh
-cp scripts/rfmSaveSearchResultToFile_${languageInclude}.sh ${PKG_NAME}/usr/bin/rfmSaveSearchResultToFile.sh
-cp scripts/rfmFindDimensionValueForFile.sh ${PKG_NAME}/usr/bin/
-cp scripts/rfmShowAllValuesForOneDimension.sh ${PKG_NAME}/usr/bin/
-cp scripts/rfmMount_${languageInclude}.sh ${PKG_NAME}/usr/bin/rfmMount.sh
-cp scripts/rfmFind_DIMENSION_PROPERTIES_FILEs.sh ${PKG_NAME}/usr/bin/
+cp scripts/rfm.sh ${PKG_NAME}${PREFIX}/bin/
+cp scripts/rfmRefreshImage.sh ${PKG_NAME}${PREFIX}/bin/
+cp scripts/rfmVTforCMD.sh ${PKG_NAME}${PREFIX}/bin/
+cp scripts/rfmCopyMove_${languageInclude}.sh ${PKG_NAME}${PREFIX}/bin/rfmCopyMove.sh
+cp scripts/rfmRemove_${languageInclude}.sh ${PKG_NAME}${PREFIX}/bin/rfmRemove.sh
+cp scripts/rfmProperties.sh ${PKG_NAME}${PREFIX}/bin/
+cp scripts/rfmToClipboard.sh ${PKG_NAME}${PREFIX}/bin/
+cp scripts/rfmFromClipboard.sh ${PKG_NAME}${PREFIX}/bin/
+cp scripts/rfmOpenWith_.sh ${PKG_NAME}${PREFIX}/bin/
+cp scripts/rfmTextEdit.sh ${PKG_NAME}${PREFIX}/bin/
+cp scripts/rfmTextOpen.sh ${PKG_NAME}${PREFIX}/bin/
+cp scripts/rfmCopyMoveToCurPath_${languageInclude}.sh ${PKG_NAME}${PREFIX}/bin/rfmCopyMoveToCurPath.sh
+cp scripts/rfmCreateSoftLink_${languageInclude}.sh ${PKG_NAME}${PREFIX}/bin/rfmCreateSoftLink.sh
+cp scripts/rfmFindLinksToTheSameFile_${languageInclude}.sh ${PKG_NAME}${PREFIX}/bin/rfmFindLinksToTheSameFile.sh
+cp scripts/rfmGitCommit_${languageInclude}.sh ${PKG_NAME}${PREFIX}/bin/rfmGitCommit.sh
+cp scripts/rfmChangeOwner_${languageInclude}.sh ${PKG_NAME}${PREFIX}/bin/rfmChangeOwner.sh
+cp scripts/rfmFindFilesWithTheSameName_${languageInclude}.sh ${PKG_NAME}${PREFIX}/bin/rfmFindFilesWithTheSameName.sh
+cp scripts/rfmPressEnterToCloseWindowAfterCMD.sh ${PKG_NAME}${PREFIX}/bin/
+cp scripts/rfmExtractArchive_${languageInclude}.sh ${PKG_NAME}${PREFIX}/bin/rfmExtractArchive.sh
+cp scripts/rfmMakeThumbnailForGGB.sh ${PKG_NAME}${PREFIX}/bin/
+cp scripts/rfmMoveDirAndUpdateSymbolicLinks.sh ${PKG_NAME}${PREFIX}/bin/
+cp scripts/rfmCopyDirAndUpdateSymbolicLinks.sh ${PKG_NAME}${PREFIX}/bin/
+cp scripts/rfm_Update_affected_SymbolicLinks_for_move_or_copy.sh ${PKG_NAME}${PREFIX}/bin/
+cp scripts/rfm_mkdir_and_move_selected_files_into_it_${languageInclude}.sh ${PKG_NAME}${PREFIX}/bin/rfm_mkdir_and_move_selected_files_into_it.sh
+cp scripts/rfmSaveSearchResultToFile_${languageInclude}.sh ${PKG_NAME}${PREFIX}/bin/rfmSaveSearchResultToFile.sh
+cp scripts/rfmFindDimensionValueForFile.sh ${PKG_NAME}${PREFIX}/bin/
+cp scripts/rfmShowAllValuesForOneDimension.sh ${PKG_NAME}${PREFIX}/bin/
+cp scripts/rfmMount_${languageInclude}.sh ${PKG_NAME}${PREFIX}/bin/rfmMount.sh
+cp scripts/rfmFind_DIMENSION_PROPERTIES_FILEs.sh ${PKG_NAME}${PREFIX}/bin/
 
 # 复制共享目录脚本（根据 PythonEmbedded 是否启用）
 if [ ! -z "$PythonEmbedded" ]; then
-    cp scripts/rfmShareDir.py ${PKG_NAME}/usr/bin/
+    cp scripts/rfmShareDir.py ${PKG_NAME}${PREFIX}/bin/
 else
-    cp scripts/rfmShareDir.sh ${PKG_NAME}/usr/bin/
+    cp scripts/rfmShareDir.sh ${PKG_NAME}${PREFIX}/bin/
 fi
 
 # 复制头文件
-cp rfm_addon.h ${PKG_NAME}/usr/include/
+cp rfm_addon.h ${PKG_NAME}${PREFIX}/include/
 
-# 复制桌面文件和图标
+# 复制桌面文件和图标（这些通常安装在 /usr/share，不受 PREFIX 影响）
 cp rfm.svg ${PKG_NAME}/usr/share/icons/hicolor/scalable/apps/
 cp rfm.desktop ${PKG_NAME}/usr/share/applications/
 
 # 设置权限
 echo "设置权限..."
-chmod 755 ${PKG_NAME}/usr/bin/*
-chmod 755 ${PKG_NAME}/usr/lib64/*
-chmod 644 ${PKG_NAME}/usr/include/*
+chmod 755 ${PKG_NAME}${PREFIX}/bin/*
+chmod 755 ${PKG_NAME}${PREFIX}/lib64/*
+chmod 644 ${PKG_NAME}${PREFIX}/include/*
 chmod 644 ${PKG_NAME}/usr/share/icons/hicolor/scalable/apps/*
 chmod 644 ${PKG_NAME}/usr/share/applications/*
 chmod 644 ${PKG_NAME}/DEBIAN/control
