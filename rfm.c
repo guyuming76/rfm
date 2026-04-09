@@ -1272,7 +1272,6 @@ static void show_msgbox(gchar *msg, gchar *title, GtkMessageType type)
   else g_idle_add(show_msgbox_in_main_thread, data);
 }
 
-
 static gboolean g_spawn_async_with_pipes_wrapper(CALLER_OWN gchar **v, RFM_ChildAttribs *child_attribs)
 {
    gboolean rv=FALSE;
@@ -6921,6 +6920,28 @@ static void load_addon(CALLER_OWN char* addon_fullpath){
        }
 
         if (compile_needed) {
+            // 需要编译，显示确认对话框
+            gchar *confirm_msg = g_strdup_printf(RFM_ConfirmAddOnLoading, addon_fullpath);
+            
+            // 创建 MsgBoxData 结构
+            MsgBoxData *data = g_new(MsgBoxData, 1);
+            data->msg = g_strdup(confirm_msg);
+            data->title = g_strdup("Load Addon");
+            data->type = GTK_MESSAGE_QUESTION;
+            data->buttons = GTK_BUTTONS_YES_NO;
+            
+            // 显示确认对话框（同步）
+            gint response = show_msgbox_in_main_thread(data);
+            g_free(confirm_msg);
+            
+            // 检查用户响应
+            if (response != GTK_RESPONSE_YES) {
+                // 用户取消，放弃加载
+                g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "User cancelled loading addon: %s", addon_fullpath);
+                goto cleanup;
+            }
+            
+            // 用户确认，继续编译
             if (!compile_local_extension(addon)) {
                 g_warning("Compilation failed, cannot load local extension.");
                 goto cleanup;
