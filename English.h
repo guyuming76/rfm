@@ -7,6 +7,8 @@
 #define RFM_DIMENSION_LOCAL_PATH "RemoteAddress"
 
 #define RFM_MSGBOX_THROTTLE_WARNING "System messagebox throttle warning, please check system log"
+#define RFM_ConfirmAddOnLoading "Do you want to load %s addon?"
+
 #define SrchRsltType_multitype "multitype"
 #define SrchRsltType_current "currenttype"
 #define MSG_cannot_enter_directory "\n\nCan't enter directory!"

@@ -8,6 +8,8 @@
 #define RFM_DIMENSION_LOCAL_PATH "远程地址"
 
 #define RFM_MSGBOX_THROTTLE_WARNING "系统显示对话框数量超限额，请查看系统日志"
+#define RFM_ConfirmAddOnLoading "是否加载 %s 插件？"
+
 #define SrchRsltType_multitype "multitype"
 #define SrchRsltType_current "currenttype"
 #define MSG_cannot_enter_directory "\n\n不能进入目录!"
