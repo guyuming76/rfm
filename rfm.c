@@ -1229,15 +1229,13 @@ static RFM_defaultPixbufs *load_default_pixbufs(void)
 
 // 对话框关闭时的回调函数，增加计数
 static void msgbox_response_handler(GtkDialog *dialog, gint response_id, gpointer user_data) {
-    if (user_data == NULL){
-      RFM_msgbox_throttle++;
-      if (RFM_msgbox_throttle == 0) RFM_msgbox_throttle++;//可以理解成这个等于0的点弹的是超限警示窗
-      g_debug("Message box closed, current RFM_msgbox_throttle: %d", RFM_msgbox_throttle);
-    }
+    RFM_msgbox_throttle++;
+    if (RFM_msgbox_throttle == 0) RFM_msgbox_throttle++;//可以理解成这个等于0的点弹的是超限警示窗
+    g_debug("Message box closed, current RFM_msgbox_throttle: %d", RFM_msgbox_throttle);
     gtk_widget_destroy(GTK_WIDGET(dialog));
 }
 
-//如果因为弹窗限量，或者消息内容过长导致不能完整显示在弹窗，则记入g_log
+//如果因为弹窗限量，或者消息内容过长导致不能完整显示在弹窗，则记入g_log. GTK_MESSAGE_QUESTION 类型是同步，且不计入,不受控于RFM_msgbox_throttle，否则是异步
 static GtkResponseType show_msgbox_in_main_thread(MsgBoxData *msg_data) {
     GtkWidget *dialog = NULL;
     if (window && (RFM_msgbox_throttle > 0 || msg_data->type == GTK_MESSAGE_QUESTION)) { //未到弹窗限量。 或者 问题对话框，通常不容错过。可忽略的问题，直接在终端里面问不是更好吗？
@@ -1246,7 +1244,7 @@ static GtkResponseType show_msgbox_in_main_thread(MsgBoxData *msg_data) {
 	  msg_data->msg[RFM_MX_MSGBOX_CHARS] = '\0';//截断超长内容
 	}
         dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_DESTROY_WITH_PARENT, msg_data->type, msg_data->buttons, "%s", msg_data->msg);
-        g_signal_connect(dialog, "response", G_CALLBACK(msgbox_response_handler), msg_data->type == GTK_MESSAGE_QUESTION ? window : NULL);//这里最后一个window参数只是用作一个非NULL的标志，是window 还是别的非空指针关系不大
+        if (msg_data->type != GTK_MESSAGE_QUESTION) g_signal_connect(dialog, "response", G_CALLBACK(msgbox_response_handler), NULL);
     }else {//弹窗限量
       g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "%s", msg_data->msg);
       if (window && RFM_msgbox_throttle == 0) { //在刚到限量的这个点上弹窗警示用户
@@ -1256,8 +1254,11 @@ static GtkResponseType show_msgbox_in_main_thread(MsgBoxData *msg_data) {
     }
     g_free(msg_data->msg); g_free(msg_data->title); g_free(msg_data);
     if (dialog){
-      if (msg_data->type != GTK_MESSAGE_QUESTION) RFM_msgbox_throttle--;
-        return gtk_dialog_run(GTK_DIALOG(dialog));
+      if (msg_data->type == GTK_MESSAGE_QUESTION) {
+        GtkResponseType ret = gtk_dialog_run(GTK_DIALOG(dialog));
+	gtk_widget_destroy(GTK_WIDGET(dialog));
+	return ret;
+      }else RFM_msgbox_throttle--;
     }
     return GTK_RESPONSE_NONE;
 }
