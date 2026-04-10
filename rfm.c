@@ -6859,16 +6859,18 @@ static void load_addon(CALLER_OWN char* addon_fullpath){
            goto cleanup;
          }
        }
+
+        // Compare hashes instead of timestamps
+	RFM_ADDON* addon_with_the_same_hash = g_hash_table_lookup(addons_hash, addon->addon_hash);
+	if (addon_with_the_same_hash){
+	     g_warning("Addon %s with the same hash already loaded , no need to load %s", addon_with_the_same_hash->addon_c_fullpath, addon->addon_c_fullpath);
+	     goto cleanup;
+	}
+      
        if (!g_file_test(addon->addon_so_fullpath, G_FILE_TEST_EXISTS)) {
            g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "%s not found, compilation needed.", addon->addon_so_fullpath);
            compile_needed = TRUE;
        } else {
-           // Compare hashes instead of timestamps
-	   RFM_ADDON* addon_with_the_same_hash = g_hash_table_lookup(addons_hash, addon->addon_hash);
-	   if (addon_with_the_same_hash){
-	     g_warning("Addon %s with the same hash already loaded , no need to load %s", addon_with_the_same_hash->addon_c_fullpath, addon->addon_c_fullpath);
-	     goto cleanup;
-	   }
            gchar *addon_c_hash_in_SO = NULL;
 	   gchar *addon_h_hash_in_SO = NULL;
            void *temp_handle = dlopen(addon->addon_so_fullpath, RTLD_LAZY | RTLD_LOCAL);
