@@ -6712,18 +6712,37 @@ static void free_DimensionProperties(DimensionProperties *dimProp) {
 }
 #ifdef RFM_AddOn
 
-// Helper function to calculate MD5 hash of a file
 static gchar* calculate_file_hash(const gchar *filepath) {
     GError *error = NULL;
     gchar *contents = NULL;
     gsize length = 0;
+    // 1. 读取 /etc/machine-id, 出错只是警告而已。TODO:根据情况调整安全要求等级
+    gchar *machine_id = NULL;
+    gsize machine_id_len = 0;
+
+    if (!g_file_get_contents("/etc/machine-id", &machine_id, &machine_id_len, &error)) {
+        g_warning("Failed to read /etc/machine-id: %s", error->message);
+        g_error_free(error);
+        error = NULL;
+    }
+    // 2. 读取源码文件内容
     if (!g_file_get_contents(filepath, &contents, &length, &error)) {
         g_warning("Failed to read file %s: %s", filepath, error->message);
         g_error_free(error);
+        g_free(machine_id);
         return NULL;
     }
-    gchar *hash_str = g_compute_checksum_for_string(G_CHECKSUM_MD5, contents, length);
+    // 4. 合并 machine-id 和文件内容
+    gchar *combined_content = g_malloc(machine_id_len + length + 1);
+    memcpy(combined_content, machine_id, machine_id_len);
+    memcpy(combined_content + machine_id_len, contents, length);
+    combined_content[machine_id_len + length] = '\0';
+    // 5. 计算合并后内容的 hash（使用 SHA256 更安全）
+    gchar *hash_str = g_compute_checksum_for_string(G_CHECKSUM_SHA256,combined_content,machine_id_len + length);
+    // 6. 清理内存
+    g_free(combined_content);
     g_free(contents);
+    g_free(machine_id);
     return hash_str;
 }
 
