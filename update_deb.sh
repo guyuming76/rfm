@@ -100,7 +100,7 @@ Architecture: amd64
 Maintainer: guyuming <gu_yu_ming@139.com>
 Depends: libgtk-3-0, libjson-glib-1.0-0, libreadline8, libcmark0.30.2, bash
 Recommends: git, python3, locate, gcc, jq, curl
-Suggests: imv, bat, mpv
+Suggests: imv, bat, mpv, python3-pyftpdlib
 Section: utils
 Priority: optional
 Homepage: https://gitee.com/guyuming76/rfm
