@@ -190,11 +190,12 @@ endif
 	@cp -f scripts/rfmFindDimensionValueForFile.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmShowAllValuesForOneDimension.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmMount_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmMount.sh
-	@cp -f scripts/rfmFind_DIMENSION_PROPERTIES_FILEs.sh ${DESTDIR}${PREFIX}/bin
+	@cp -f scripts/rfmFind_DIMENSION_PROPERTIES_FILEs.sh ${DESTDIR}${PREFIX}/bin/
+	@cp -f scripts/rfmConcatVideos.sh ${DESTDIR}${PREFIX}/bin/
 ifneq (${PythonEmbedded}, )
-	@cp -f scripts/rfmShareDir.py ${DESTDIR}${PREFIX}/bin
+	@cp -f scripts/rfmShareDir.py ${DESTDIR}${PREFIX}/bin/
 else
-	@cp -f scripts/rfmShareDir.sh ${DESTDIR}${PREFIX}/bin
+	@cp -f scripts/rfmShareDir.sh ${DESTDIR}${PREFIX}/bin/
 endif
 
 ifneq ($(CalledByEbuild),YES)
@@ -251,6 +252,7 @@ endif
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmShowAllValuesForOneDimension.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmMount.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmFind_DIMENSION_PROPERTIES_FILEs.sh
+	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmConcatVideos.sh
 ifneq (${PythonEmbedded}, )
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmShareDir.py
 else
@@ -304,6 +306,7 @@ endif
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmShowAllValuesForOneDimension.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmMount.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmFind_DIMENSION_PROPERTIES_FILEs.sh
+	@rm -f ${DESTDIR}${PREFIX}/bin/rfmConcatVideos.sh
 ifneq (${PythonEmbedded}, )
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmShareDir.py
 else

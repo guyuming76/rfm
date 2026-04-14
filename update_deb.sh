@@ -200,6 +200,7 @@ cp scripts/rfmFindDimensionValueForFile.sh ${PKG_NAME}${PREFIX}/bin/
 cp scripts/rfmShowAllValuesForOneDimension.sh ${PKG_NAME}${PREFIX}/bin/
 cp scripts/rfmMount_${languageInclude}.sh ${PKG_NAME}${PREFIX}/bin/rfmMount.sh
 cp scripts/rfmFind_DIMENSION_PROPERTIES_FILEs.sh ${PKG_NAME}${PREFIX}/bin/
+cp scripts/rfmConcatVideos.sh ${PKG_NAME}${PREFIX}/bin/
 
 # 复制共享目录脚本（根据 PythonEmbedded 是否启用）
 if [ ! -z "$PythonEmbedded" ]; then
