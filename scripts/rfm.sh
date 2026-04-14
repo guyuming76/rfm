@@ -16,6 +16,24 @@ function find_ppid_for_pid_and_update_current_pid(){
 	done
 }
 
+# TODO: 这个函数写死了一堆终端模拟器名称，总是不好，是否可以换成沿着当前进程父子链往上找，直到找到第一个tty为空的进程，我在htop 里观察，终端模拟器下的bash进程一般tty是pts/x,而到了终端模拟器进程本身，tty就为空了
+get_terminal_emulator() {
+    local pid=$$
+    while [ "$pid" != "1" ]; do
+        cmd=$(ps -o comm= -p "$pid" 2>/dev/null | tr -d ' ')
+        case "$cmd" in
+            gnome-terminal|kgx|konsole|qterminal|xterm|urxvt|alacritty|kitty|wezterm|terminator|mate-terminal|xfce4-terminal|foot|st)
+                echo "$cmd"
+                return 0
+                ;;
+        esac
+        pid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ')
+        [ -z "$pid" ] && break
+    done
+    echo "unknown"
+}
+
+
 # 根据脚本所在目录设置 LD_LIBRARY_PATH
 SCRIPT_PATH=$(readlink -f "$0")
 SCRIPT_DIR=$(dirname "$SCRIPT_PATH")
@@ -36,17 +54,19 @@ ulimit -c unlimited
 #获取行数组
 readarray pid_ppid_row_array < <(ps -o pid -o ppid --no-header)
 
-current_pid=$$
-pid_found_in_ppids=1
+####current_pid=$$
+####pid_found_in_ppids=1
 #因为$$总是可以被找到的，所以直接初始化为１，下面while;do相当于do while,bash里貌似没有do while
 
 if [[ -z "$RFM_TERM" ]];then
 	#从当前进程$$,开始，根据pid对应ppid关系，循环查找，直到找不到，最后一个pid就是terminal emulator对应pid
-	while [ $pid_found_in_ppids == 1 ];do
-		find_ppid_for_pid_and_update_current_pid
-	done
+	####while [ $pid_found_in_ppids == 1 ];do
+	####	find_ppid_for_pid_and_update_current_pid
+	####done
 
-	export RFM_TERM=$(basename $(ps -p $current_pid -o cmd --no-header))
+	####export RFM_TERM=$(basename $(ps -p $current_pid -o cmd --no-header))
+        # 在OpenKylin 上面，使用find_ppid_for_pid_and_update_current_pid 方法不行，所以换成下面使用get_terminal_emulator.
+        export RFM_TERM=$(get_terminal_emulator)
 	echo "env RFM_TERM set to current terminal emulator:" $RFM_TERM  >&2
 
 	#如果环境变量 RFM_TERM_E 不存在，未定义，则 export RFM_TERM_E=“”
