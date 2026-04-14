@@ -5896,7 +5896,10 @@ static void ProcessKeyValuePair(CALLER_OWN gchar *key, OWNER_CHANGE gchar* curre
 
 	  int currentExtColumnHashTableIndex = current_Ext_Column - COL_Ext1;
           if (currentExtColumnHashTableIndex<0) { g_warning("ExtColumn name conflict with builtin column name:%s",col->title); return; };
-	  if (ExtColumnHashTable[currentExtColumnHashTableIndex]==NULL) ExtColumnHashTable[currentExtColumnHashTableIndex] = g_hash_table_new_full(g_str_hash, g_str_equal,g_free, g_free);
+	  if (ExtColumnHashTable[currentExtColumnHashTableIndex]==NULL) {
+	    ExtColumnHashTable[currentExtColumnHashTableIndex] = g_hash_table_new_full(g_str_hash, g_str_equal,g_free, g_free);
+	    SearchResultContainNonFilenameColumn = TRUE;
+	  }
 
 	  char* strFileAttributeID=calloc(10, sizeof(char));
 	  snprintf(strFileAttributeID,10, "%d", fileAttributeID);
