@@ -118,14 +118,31 @@ if ! which bat > /dev/null 2>&1; then
     fi
 fi
 
+# 打印收到的参数（调试信息）
+echo "rfm.sh 收到的参数: $@" >&2
+
+# 处理 file:// 开头的参数,在deepin23上社区版上，通过桌面快捷方式鼠标右键选取rfm（rfm.desktop）打开目录，就会获得这样的参数
+processed_args=()
+for arg in "$@"; do
+    if [[ "$arg" == file://* ]]; then
+        # 移除 file:// 前缀
+        path="${arg#file://}"
+        # 添加 -d 选项
+        processed_args+=("-d" "$path")
+        echo "转换 file:// 参数为: -d $path" >&2
+    else
+        processed_args+=("$arg")
+    fi
+done
+
 if [ -n "$VIRTUAL_ENV" ]; then
     # 提取虚拟环境的名称，通常是路径的最后一部分
     venv_name=$(basename "$VIRTUAL_ENV")
     echo "The current python virtual environment is named '$venv_name'." >&2
     # valgrind --tool=memcheck rfm
 
-    # MALLOC_CHECK_=1 RUST_LOG=rfm=warn rfm "$@" --InheritedPrompt "($venv_name) "
-    MALLOC_CHECK_=1 RUST_LOG=reedline_wrapper=warn rfm "$@" --InheritedPrompt "($venv_name) "
+    # MALLOC_CHECK_=1 RUST_LOG=rfm=warn rfm "${processed_args[@]}" --InheritedPrompt "($venv_name) "
+    MALLOC_CHECK_=1 RUST_LOG=reedline_wrapper=warn rfm "${processed_args[@]}" --InheritedPrompt "($venv_name) "
 else
-    MALLOC_CHECK_=1 RUST_LOG=reedline_wrapper=warn rfm "$@"
+    MALLOC_CHECK_=1 RUST_LOG=reedline_wrapper=warn rfm "${processed_args[@]}"
 fi
