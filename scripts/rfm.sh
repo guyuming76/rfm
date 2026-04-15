@@ -22,7 +22,7 @@ get_terminal_emulator() {
     while [ "$pid" != "1" ]; do
         cmd=$(ps -o comm= -p "$pid" 2>/dev/null | tr -d ' ')
         case "$cmd" in
-            gnome-terminal|kgx|konsole|qterminal|xterm|urxvt|alacritty|kitty|wezterm|terminator|mate-terminal|xfce4-terminal|foot|st)
+            gnome-terminal|kgx|konsole|qterminal|xterm|urxvt|alacritty|kitty|wezterm|terminator|mate-terminal|xfce4-terminal|foot|st|deepin-terminal)
                 echo "$cmd"
                 return 0
                 ;;
