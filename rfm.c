@@ -768,8 +768,8 @@ void add_file_menuitems(GtkWidget ***menuitems, const RFM_MenuItem menuitem_defi
  * If all files are the same mime root but different sub, then selection_mimeSub is set to NULL
  * If all the files are completely different types, both root and sub types are set to NULL
  */
-static gboolean popup_file_menu(GdkEvent *event);
-static void show_hide_file_menu_item(GtkWidget ***menuitems, RFM_MenuItem menuitem_definitions[],size_t menuitem_definitions_size, gboolean match_mimeRoot, gboolean match_mimeSub, RFM_FileAttributes* first_selection_fileAttributes, GList *selectionList);
+static gboolean popup_file_menu(GdkEvent *event, GPtrArray* menu_completion);
+static void show_hide_file_menu_item(GtkWidget ***menuitems, RFM_MenuItem menuitem_definitions[],size_t menuitem_definitions_size, gboolean match_mimeRoot, gboolean match_mimeSub, RFM_FileAttributes* first_selection_fileAttributes, GList *selectionList, GPtrArray* menu_completion);
 
 static gboolean mountpoint_mounted(RFM_FileAttributes *fileAttributes);
 static gboolean mountpoint_unmounted(RFM_FileAttributes *fileAttributes);
@@ -3132,7 +3132,7 @@ void remove_file_menuitems(FREE GtkWidget ***menuitems, const size_t size) {
 }
 #endif
 
-static void show_hide_file_menu_item(GtkWidget ***menuitems, RFM_MenuItem menuitem_definitions[],size_t menuitem_definitions_size, gboolean match_mimeRoot, gboolean match_mimeSub, RFM_FileAttributes* first_selection_fileAttributes, GList *selectionList) {
+static void show_hide_file_menu_item(GtkWidget ***menuitems, RFM_MenuItem menuitem_definitions[],size_t menuitem_definitions_size, gboolean match_mimeRoot, gboolean match_mimeSub, RFM_FileAttributes* first_selection_fileAttributes, GList *selectionList, GPtrArray* menu_completion) {
    int *showMenuItem = calloc(menuitem_definitions_size, sizeof(int));
    GtkTreeIter iter;
    RFM_FileAttributes *fileAttributes;
@@ -3164,16 +3164,20 @@ static void show_hide_file_menu_item(GtkWidget ***menuitems, RFM_MenuItem menuit
    }
 
    for(int i=0; i<menuitem_definitions_size; i++) {
-      if (showMenuItem[i]>0 && (menuitem_definitions[i].showCondition == NULL || menuitem_definitions[i].showCondition(fileAttributes)))
+      if (showMenuItem[i]>0 && (menuitem_definitions[i].showCondition == NULL || menuitem_definitions[i].showCondition(fileAttributes))) {
          gtk_widget_show((*menuitems)[i]);
-      else
+         if (menu_completion != NULL) {
+            g_ptr_array_add(menu_completion, g_strdup(menuitem_definitions[i].runName));
+         }
+      } else {
          gtk_widget_hide((*menuitems)[i]);
+      }
    }
 
    free(showMenuItem);
 }
 
-static gboolean popup_file_menu(GdkEvent *event)
+static gboolean popup_file_menu(GdkEvent *event, GPtrArray* menu_completion)
 {
    GtkTreeIter iter;
    GList *selectionList;
@@ -3205,7 +3209,7 @@ static gboolean popup_file_menu(GdkEvent *event)
       listElement=g_list_next(listElement);
    }
 
-   show_hide_file_menu_item(&menuItem, run_actions, G_N_ELEMENTS(run_actions), match_mimeRoot, match_mimeSub, fileAttributes_of_the_first_selected_file, selectionList);
+   show_hide_file_menu_item(&menuItem, run_actions, G_N_ELEMENTS(run_actions), match_mimeRoot, match_mimeSub, fileAttributes_of_the_first_selected_file, selectionList, menu_completion);
 #ifdef RFM_AddOn
    GHashTableIter ht_iter;
    gchar *key;
@@ -3213,10 +3217,12 @@ static gboolean popup_file_menu(GdkEvent *event)
    g_hash_table_iter_init(&ht_iter, addons);
    while (g_hash_table_iter_next(&ht_iter, &key, &value)){
      RFM_ADDON_RESOURCE_TYPE* addon_resource = value->resource_managed_by_addon;
-     if (addon_resource->file_menuitem_definitions_local_array_size>0) show_hide_file_menu_item(&(addon_resource->menuItems_local), addon_resource->file_menuitem_definitions_local, addon_resource->file_menuitem_definitions_local_array_size, match_mimeRoot, match_mimeSub, fileAttributes_of_the_first_selected_file, selectionList);
+     if (addon_resource->file_menuitem_definitions_local_array_size>0) show_hide_file_menu_item(&(addon_resource->menuItems_local), addon_resource->file_menuitem_definitions_local, addon_resource->file_menuitem_definitions_local_array_size, match_mimeRoot, match_mimeSub, fileAttributes_of_the_first_selected_file, selectionList, menu_completion);
    }
 #endif
-   gtk_menu_popup_at_pointer(GTK_MENU(menu), event);
+   if (menu_completion == NULL) {
+      gtk_menu_popup_at_pointer(GTK_MENU(menu), event);
+   }
    g_list_free_full(selectionList, (GDestroyNotify)gtk_tree_path_free);
    return TRUE;
 }
@@ -3326,7 +3332,7 @@ static void cmd_handle_escape_key() {
 static gboolean view_key_press(GtkWidget *widget, GdkEvent *event) {
   GdkEventKey *ek=(GdkEventKey *)event;
   if (ek->keyval==GDK_KEY_Menu){
-    if (!popup_file_menu(event)){
+    if (!popup_file_menu(event, NULL)){
       //TODO: 当没有文件选中，popup_file_menu返回false. 找到tool_bar 中包含的因为宽度不够而显示的溢出按钮，并调用点击。但问题是，工具栏（GtkToolbar）内部有一个容器（可能是GtkBox）来存放工具项，而溢出按钮可能是在这个容器内，但并不是通过gtk_container_get_children()返回的直接子控件。deepseek给出的代码使用gtk_contain_get_children返回工具栏的children,但总是找不到这个按钮。问题是 gtk Inspector 为啥可以列出这个按钮，也许要查阅gtk Inspector源代码. 另一方面，gtk4 好像对工具栏改动比较大
     }else return TRUE;
   } else if (ek->keyval==GDK_KEY_q){
@@ -3410,7 +3416,7 @@ static gboolean view_button_press(GtkWidget *widget, GdkEvent *event)
                gtk_icon_view_select_path(GTK_ICON_VIEW(widget), tree_path);
              }
             }
-            popup_file_menu(event);
+            popup_file_menu(event, NULL);
             ret_val=TRUE;
          }
          else {
@@ -5244,19 +5250,40 @@ static GPtrArray* rfm_menu_completion(const char *text, int *count){
   GPtrArray* ret = g_ptr_array_new();
   g_debug("rfm_menu_completion called");
   if (ItemSelected > 0) {
-    // 有文件选中，提供文件上下文菜单项
-    for (guint i = 0; i < G_N_ELEMENTS(run_actions); i++) {
-      if (text == NULL || g_str_has_prefix(run_actions[i].runName, text)) {
-        g_ptr_array_add(ret, g_strdup(run_actions[i].runName));
+    // 有文件选中，通过 popup_file_menu 获取应该显示的菜单项
+    GPtrArray* all_items = g_ptr_array_new();
+    popup_file_menu(NULL, all_items);
+    
+    // 过滤出匹配 text 的项
+    for (guint i = 0; i < all_items->len; i++) {
+      gchar* name = g_ptr_array_index(all_items, i);
+      if (text == NULL || g_str_has_prefix(name, text)) {
+        g_ptr_array_add(ret, g_strdup(name));
       }
+      g_free(name);
     }
+    g_ptr_array_free(all_items, FALSE);
   } else {
-    // 无文件选中，提供工具栏按钮名称
+    // 无文件选中，提供当前显示的工具栏按钮名称
     for (guint i = 0; i < G_N_ELEMENTS(tool_buttons); i++) {
-      if (text == NULL || g_str_has_prefix(tool_buttons[i].buttonName, text)) {
+      if (SHOW_TOOLBAR_BUTTON(tool_buttons, i) && (text == NULL || g_str_has_prefix(tool_buttons[i].buttonName, text))) {
         g_ptr_array_add(ret, g_strdup(tool_buttons[i].buttonName));
       }
     }
+#ifdef RFM_AddOn
+    GHashTableIter iter;
+    gchar *key;
+    RFM_ADDON *value;
+    g_hash_table_iter_init(&iter, addons);
+    while (g_hash_table_iter_next(&iter, &key, &value)) {
+      RFM_ADDON_RESOURCE_TYPE* addon_resource = value->resource_managed_by_addon;
+      for (guint i = 0; i < addon_resource->toolbar_button_definitions_local_array_size; i++) {
+        if (SHOW_TOOLBAR_BUTTON(addon_resource->toolbar_button_definitions_local, i) && (text == NULL || g_str_has_prefix(addon_resource->toolbar_button_definitions_local[i].buttonName, text))) {
+          g_ptr_array_add(ret, g_strdup(addon_resource->toolbar_button_definitions_local[i].buttonName));
+        }
+      }
+    }
+#endif
   }
   
   if (count) {
