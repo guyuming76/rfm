@@ -345,6 +345,7 @@ void load_history_for_prompt();
 void save_current_history();
 static void stdin_command_help(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
 static void cmd_glog(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
+static gboolean cmd_GUI_cmd_wrapper(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
 static void cmd_setenv(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
 #ifdef reedline
 static gboolean In_rfm_editor = FALSE;
@@ -752,9 +753,11 @@ static void Switch_SearchResultView_DirectoryView();
 /* since g_spawn_wrapper will free child_attribs, and we don't want the childAttribs object associated with UI interface item to be freed, we duplicate childAttribs here. */
 /* tool_buttons actions are basically defined at current directory level, or current view level, for example: to go to parent directory, or to switch between icon or tree view */
 static void toolbar_button_exec(GtkToolItem *item, RFM_ToolButton *button_definition);
+static void toolbar_button_exec_by_g_idle_add(RFM_MenuItem *button_definition){ toolbar_button_exec(NULL, button_definition);}
 /* callback function for contextual file menu, which appear after mouse right click on selected file, or the after the menu key on keyboard pressed */
 /* since g_spawn_wrapper will free child_attribs, and we don't want the childAttribs object associated with UI interface item to be freed, we duplicate childAttribs here. */
 static void file_menu_exec(GtkMenuItem *menuitem, RFM_MenuItem *file_menu_item_definition);
+static void file_menu_exec_by_g_idle_add(RFM_MenuItem *file_menu_item_definition){ file_menu_exec(NULL, file_menu_item_definition);}
 /* Every action defined in config.h is added to the menu here; each menu item is associated with
  * the corresponding index in the run_actions_array.
  * Items are shown or hidden in popup_file_menu() depending on the selected files mime types.
@@ -4639,6 +4642,27 @@ static void cmd_setenv(wordexp_t *parsed_msg, GString *readline_result_string_af
   }else printf(SETENV_USAGE);
 }
 
+static gboolean cmd_GUI_cmd_wrapper(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution) {
+  if (parsed_msg->we_wordc < 1) return FALSE;
+  const char *cmd_name = parsed_msg->we_wordv[0];
+  if (ItemSelected > 0) {// 有文件选中，在 run_actions 中查找
+    for (guint i = 0; i < G_N_ELEMENTS(run_actions); i++) {
+      if (g_strcmp0(cmd_name, run_actions[i].runName) == 0) {
+        g_idle_add_once(file_menu_exec_by_g_idle_add, &run_actions[i]);
+        return TRUE;
+      }
+    }
+  } else {// 无文件选中，在 tool_buttons 中查找
+    for (guint i = 0; i < G_N_ELEMENTS(tool_buttons); i++) {
+      if (g_strcmp0(cmd_name, tool_buttons[i].buttonName) == 0) {
+        g_idle_add_once(toolbar_button_exec_by_g_idle_add, &tool_buttons[i]);
+        return TRUE;
+      }
+    }
+  }
+  return FALSE;
+}
+
 void addToSearchResult(FREE char *fileFullpath) {
         RFM_ChildAttribs *child_attribs=calloc(1, sizeof(RFM_ChildAttribs));
         child_attribs->RunCmd = g_strdupv(Union_SearchResult);
@@ -4820,7 +4844,7 @@ static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(CALLER_OWN wo
 	      }
 	    }
 	  }
-	  return FALSE; // parsed_msg->we_wordv[0] does not match any build command
+	  return cmd_GUI_cmd_wrapper(parsed_msg, readline_result_string_after_file_name_substitution); // parsed_msg->we_wordv[0] does not match any build command
 	}
 	g_string_free(readline_result_string_after_file_name_substitution,TRUE);
 	return TRUE; //execution reaches here if parsed_msg->we_wordv[0] matchs any keyword, and have finished the corresponding logic
