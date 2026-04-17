@@ -358,6 +358,12 @@ pub extern "C" fn reedline_create(rfm_functions: *const rfmFunctions) -> *mut Re
         KeyCode::Menu,
         ReedlineEvent::Menu("menu_menu".to_string())
     );
+    //上面的Menu键不工作，不知道是终端模拟器还是reedline使用的crossterm库的原因，SHIFT+TAB 也不行，这里就用F2做个替代
+    keybindings.add_binding(
+        KeyModifiers::NONE,
+        KeyCode::F(2),
+        ReedlineEvent::Menu("menu_menu".to_string())
+    );
 
     let engine_builder = Reedline::create()
         .use_bracketed_paste(true) //复制粘贴处理 \r\n,需要terminal支持
