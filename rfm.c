@@ -5240,9 +5240,36 @@ static void parse_and_exec_cmd_in_gtk_thread (gchar * cmd){
   //rl_callback_handler_install(prompt, readline_callback);
 }
 
+static GPtrArray* rfm_menu_completion(const char *text, int *count){
+  GPtrArray* ret = g_ptr_array_new();
+  g_debug("rfm_menu_completion called");
+  if (ItemSelected > 0) {
+    // 有文件选中，提供文件上下文菜单项
+    for (guint i = 0; i < G_N_ELEMENTS(run_actions); i++) {
+      if (text == NULL || g_str_has_prefix(run_actions[i].runName, text)) {
+        g_ptr_array_add(ret, g_strdup(run_actions[i].runName));
+      }
+    }
+  } else {
+    // 无文件选中，提供工具栏按钮名称
+    for (guint i = 0; i < G_N_ELEMENTS(tool_buttons); i++) {
+      if (text == NULL || g_str_has_prefix(tool_buttons[i].buttonName, text)) {
+        g_ptr_array_add(ret, g_strdup(tool_buttons[i].buttonName));
+      }
+    }
+  }
+  
+  if (count) {
+    *count = ret->len;
+  }
+  
+  return ret;
+}
+
 #ifdef GNU_readline
 static char** rfm_filename_completion(const char *text, int *count){
 #endif
+
 #ifdef reedline
 static GPtrArray* rfm_filename_completion(const char *text, int *count){
   if (g_strcmp0(text, BuiltInCmd_dimension)==0){
@@ -5436,6 +5463,7 @@ static int setup()
 #endif
 #ifdef reedline
   functionPointersForReedlineWrapper.get_completion_fn = rfm_filename_completion;
+  functionPointersForReedlineWrapper.get_menu_completion_fn = rfm_menu_completion;
   functionPointersForReedlineWrapper.g_idle_add_once_handle_escape = g_idle_add_once_handle_escape_key;
   reedline_handle = reedline_create(&functionPointersForReedlineWrapper);
   if (!reedline_handle) g_error("reedline_create return NULL handle");

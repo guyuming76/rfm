@@ -11,6 +11,7 @@ typedef const void (*EscapeHandler)();
 // 定义与Rust中RfmFunctions匹配的结构体
 typedef struct {
     GetCompletionFn get_completion_fn;
+    GetCompletionFn get_menu_completion_fn;
     // 其他函数指针可以在这里添加
     EscapeHandler g_idle_add_once_handle_escape;
 } rfmFunctions;

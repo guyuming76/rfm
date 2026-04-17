@@ -66,12 +66,14 @@ fn context_for_cursor(line: &str, pos: usize, completion_start_pos: &mut usize) 
 
 // 定义 C 函数指针类型  
 type GetCompletionFn = extern "C" fn(*const i8, *mut i32) -> *const GPtrArray;
+type GetMenuCompletionFn = extern "C" fn(*const i8, *mut i32) -> *const GPtrArray;
 type EscapeHandler = extern "C" fn();
 //type GNUFileCompleteWrapperFn = extern "C" fn(*const i8) -> *mut *mut i8;
 // 添加 repr(C) 确保内存布局与C兼容
 #[repr(C)]
 pub struct rfmFunctions {
     pub get_completion_fn:GetCompletionFn,
+    pub get_menu_completion_fn:GetMenuCompletionFn,
     // 其他函数...
     pub g_idle_add_once_handle_escape:EscapeHandler,
 }
@@ -87,6 +89,19 @@ impl CCompleter {
         Self {
             get_completion_fn: (*rfm_functions).get_completion_fn,
             use_relative_path
+        }
+    }
+}
+
+// c 语言菜单补全器，补全菜单和工具栏命令
+pub struct MenuCompleter {
+    get_menu_completion_fn: GetMenuCompletionFn,
+}
+
+impl MenuCompleter {
+    pub fn new(rfm_functions: &rfmFunctions) -> Self {
+        Self {
+            get_menu_completion_fn: (*rfm_functions).get_menu_completion_fn,
         }
     }
 }
@@ -156,7 +171,7 @@ impl Completer for CCompleter {
                                     // 获取文件所在目录作为基准路径
                                     let base_dir = Path::new(file_path).parent()
                                         .unwrap_or_else(|| Path::new(".")); // 如果无法获取目录则使用当前目录
-                                
+                                    
                                     match pathdiff::diff_paths(abs_path, base_dir) {
                                         Some(rel_path) => rel_path.to_string_lossy().into_owned(),
                                         None => result.to_string(),
@@ -174,6 +189,51 @@ impl Completer for CCompleter {
                                 ..Default::default()
                             });
                         }
+                    }
+                }
+            }
+
+            suggestions
+        }
+    }
+}
+
+impl Completer for MenuCompleter {
+    fn complete(&mut self, line: &str, pos: usize) -> Vec<Suggestion> {
+        let mut count: i32 = 0;
+        let before_cursor = &line[..pos];
+        let _last_space_pos = before_cursor.rfind(' ').map(|p| p + 1).unwrap_or(0);
+
+        unsafe {
+            let mut start_pos: usize = 0;
+            let context = context_for_cursor(line, pos, &mut start_pos);
+            let result_ptr = (self.get_menu_completion_fn)(context.as_ptr(), &mut count);
+
+            if result_ptr.is_null() {
+                return vec![];
+            }
+
+            let result_array = &*result_ptr;
+            let len = result_array.len as usize;
+            let mut suggestions = Vec::new();
+
+            // 遍历所有补全建议
+            for i in 0..len {
+                let item_ptr = *result_array.pdata.add(i) as *const c_char;
+                if item_ptr.is_null() { continue; }
+
+                let c_str = CStr::from_ptr(item_ptr);
+                if let Ok(result) = c_str.to_str() {
+                    if !result.is_empty() {
+                        suggestions.push(Suggestion {
+                            value: result.to_string(),
+                            description: None,
+                            style: Some(Style::new().fg(Color::Blue)),
+                            extra: None,
+                            span: Span::new(start_pos, pos),
+                            append_whitespace: false,
+                            ..Default::default()
+                        });
                     }
                 }
             }
@@ -275,21 +335,34 @@ pub extern "C" fn reedline_create(rfm_functions: *const rfmFunctions) -> *mut Re
     keybindings.add_binding(KeyModifiers::ALT, KeyCode::Left, ReedlineEvent::ExecuteHostCommand("l".to_string())); //Previous命令
     keybindings.add_binding(KeyModifiers::ALT, KeyCode::Right, ReedlineEvent::ExecuteHostCommand("r".to_string())); //Next命令
 
-    // 配置菜单（即使您不想显示菜单，也需要配置）
-    let completion_menu = Box::new(ColumnarMenu::default().with_name("completion_menu"));
+    let TAB_menu = ReedlineMenu::WithCompleter {
+        menu: Box::new(ColumnarMenu::default().with_name("tab_menu")),
+        completer:Box::new(CombinedCompleter::new(CCompleter::new(rfm_functions, None))),
+    };
+    let MENU_menu = ReedlineMenu::WithCompleter {
+        menu: Box::new(ColumnarMenu::default().with_name("menu_menu")),
+        completer:Box::new(MenuCompleter::new(rfm_functions)),
+    };
 
     // 配置 Tab 键绑定
     keybindings.add_binding(KeyModifiers::NONE, KeyCode::Tab,
 	ReedlineEvent::UntilFound(vec![
-		ReedlineEvent::Menu("completion_menu".to_string()),
-        	ReedlineEvent::MenuNext,
-    		]),
-    	);
+		ReedlineEvent::Menu("tab_menu".to_string()),
+        ReedlineEvent::MenuNext,
+    	]),
+    );
+
+    // 绑定 Menu 键到菜单补全菜单
+    keybindings.add_binding(
+        KeyModifiers::NONE,
+        KeyCode::Menu,
+        ReedlineEvent::Menu("menu_menu".to_string())
+    );
 
     let engine_builder = Reedline::create()
         .use_bracketed_paste(true) //复制粘贴处理 \r\n,需要terminal支持
-        .with_completer(Box::new(CombinedCompleter::new(CCompleter::new(rfm_functions, None))))
-        .with_menu(ReedlineMenu::EngineCompleter(completion_menu))
+        .with_menu(TAB_menu)
+        .with_menu(MENU_menu)
         .with_validator(Box::new(AlwaysIncompleteValidator))
         .with_edit_mode(Box::new(Emacs::new(keybindings)))
         .with_quick_completions(true)
