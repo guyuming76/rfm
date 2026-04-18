@@ -5246,19 +5246,26 @@ static void parse_and_exec_cmd_in_gtk_thread (gchar * cmd){
   //rl_callback_handler_install(prompt, readline_callback);
 }
 
-static GPtrArray* rfm_menu_completion(const char *text, int *count){
-  GPtrArray* ret = g_ptr_array_new();
-  g_debug("rfm_menu_completion called");
+typedef struct {
+  const char *text;
+  int *count;
+  GPtrArray *result;
+  GMutex mutex;
+  GCond cond;
+  gboolean completed;
+} RFM_MenuCompletionData;
+
+static gboolean rfm_menu_completion_in_gtk_thread(RFM_MenuCompletionData *data) {
+  GPtrArray* result = g_ptr_array_new();
+  
   if (ItemSelected > 0) {
-    // 有文件选中，通过 popup_file_menu 获取应该显示的菜单项
     GPtrArray* all_items = g_ptr_array_new();
     popup_file_menu(NULL, all_items);
     
-    // 过滤出匹配 text 的项
     for (guint i = 0; i < all_items->len; i++) {
       gchar* name = g_ptr_array_index(all_items, i);
-      if (text == NULL || g_str_has_prefix(name, text)) {
-        g_ptr_array_add(ret, g_strdup(name));
+      if (data->text == NULL || g_str_has_prefix(name, data->text)) {
+        g_ptr_array_add(result, g_strdup(name));
       }
       g_free(name);
     }
@@ -5266,8 +5273,8 @@ static GPtrArray* rfm_menu_completion(const char *text, int *count){
   } else {
     // 无文件选中，提供当前显示的工具栏按钮名称
     for (guint i = 0; i < G_N_ELEMENTS(tool_buttons); i++) {
-      if (SHOW_TOOLBAR_BUTTON(tool_buttons, i) && (text == NULL || g_str_has_prefix(tool_buttons[i].buttonName, text))) {
-        g_ptr_array_add(ret, g_strdup(tool_buttons[i].buttonName));
+      if (SHOW_TOOLBAR_BUTTON(tool_buttons, i) && (data->text == NULL || g_str_has_prefix(tool_buttons[i].buttonName, data->text))) {
+        g_ptr_array_add(result, g_strdup(tool_buttons[i].buttonName));
       }
     }
 #ifdef RFM_AddOn
@@ -5278,17 +5285,47 @@ static GPtrArray* rfm_menu_completion(const char *text, int *count){
     while (g_hash_table_iter_next(&iter, &key, &value)) {
       RFM_ADDON_RESOURCE_TYPE* addon_resource = value->resource_managed_by_addon;
       for (guint i = 0; i < addon_resource->toolbar_button_definitions_local_array_size; i++) {
-        if (SHOW_TOOLBAR_BUTTON(addon_resource->toolbar_button_definitions_local, i) && (text == NULL || g_str_has_prefix(addon_resource->toolbar_button_definitions_local[i].buttonName, text))) {
-          g_ptr_array_add(ret, g_strdup(addon_resource->toolbar_button_definitions_local[i].buttonName));
+        if (SHOW_TOOLBAR_BUTTON(addon_resource->toolbar_button_definitions_local, i) && (data->text == NULL || g_str_has_prefix(addon_resource->toolbar_button_definitions_local[i].buttonName, data->text))) {
+          g_ptr_array_add(result, g_strdup(addon_resource->toolbar_button_definitions_local[i].buttonName));
         }
       }
     }
 #endif
   }
   
-  if (count) {
-    *count = ret->len;
+  data->result = result;
+  if (data->count) *data->count = result->len;
+  
+  g_mutex_lock(&data->mutex);
+  data->completed = TRUE;
+  g_cond_signal(&data->cond);
+  g_mutex_unlock(&data->mutex);
+  return G_SOURCE_REMOVE;
+}
+
+static GPtrArray* rfm_menu_completion(const char *text, int *count){
+  g_debug("rfm_menu_completion called");
+  
+  RFM_MenuCompletionData *data = g_malloc(sizeof(RFM_MenuCompletionData));
+  data->text = text;
+  data->count = count;
+  data->result = NULL;
+  data->completed = FALSE;
+  g_mutex_init(&data->mutex);
+  g_cond_init(&data->cond);
+  
+  g_idle_add_once((GSourceFunc)rfm_menu_completion_in_gtk_thread, data);
+  
+  g_mutex_lock(&data->mutex);
+  while (!data->completed) {
+    g_cond_wait(&data->cond, &data->mutex);
   }
+  g_mutex_unlock(&data->mutex);
+  
+  GPtrArray* ret = data->result ? data->result : g_ptr_array_new();
+  g_mutex_clear(&data->mutex);
+  g_cond_clear(&data->cond);
+  g_free(data);
   
   return ret;
 }
