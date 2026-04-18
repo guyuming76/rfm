@@ -11,7 +11,10 @@ use std::path::{PathBuf, Path};
 use dirs::home_dir;
 use log::{warn, debug}; // 导入日志宏
 use glib_sys::{GPtrArray};
-
+use std::io::{stdout, Write};
+use crossterm::execute;
+use crossterm::terminal::supports_keyboard_enhancement;
+use crossterm::event::{PushKeyboardEnhancementFlags, KeyboardEnhancementFlags, PopKeyboardEnhancementFlags};
 // deepwiki 回答说 line 只包含光标前的字符串，光标及其后面字符都不包含，输入abcd,然后光标向左一道c下，则line只包含ab. 也就是说代码里检查cursor_and_after后面的部分貌似目前都没有用，但还是留着。
 fn context_for_cursor(line: &str, pos: usize, completion_start_pos: &mut usize) -> CString {
     // 创建 C 兼容的空字符串
@@ -310,7 +313,12 @@ pub extern "C" fn reedline_create(rfm_functions: *const rfmFunctions) -> *mut Re
 //     ‌*f‌：首先解引用原始指针f（假设f是*const T或*mut T类型），这会访问指针指向的内存数据。由于Rust无法保证原始指针的安全性（可能为空或悬垂），此操作必须包裹在unsafe块中。
 //     ‌&*f‌：解引用后，通过&获取数据的不可变引用（类型为&T）。此时Rust会将其视为安全引用，后续使用时受借用检查器保护。
 //     ‌unsafe块‌：整个操作需在unsafe上下文中执行，因为直接解引用原始指针可能引发未定义行为（如指针无效或数据竞争）。开发者需自行确保指针有效性
-    
+
+
+    if supports_keyboard_enhancement().unwrap_or(false) {
+        // 启用键盘增强协议,以便使用Menu键
+        execute!(stdout(), PushKeyboardEnhancementFlags(KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES));
+    }else{ warn!("crossterm KeyboardEnhancement not supported for MENU key"); }
     // 创建自定义键绑定
     let mut keybindings = default_emacs_keybindings();
     
@@ -444,6 +452,9 @@ pub extern "C" fn string_free(s: *mut c_char) {
 
 #[no_mangle]
 pub extern "C" fn reedline_free(handle: *mut ReedlineHandle) {
+    if supports_keyboard_enhancement().unwrap_or(false) {
+        execute!(stdout(), PopKeyboardEnhancementFlags);
+    }
     if !handle.is_null() {
         unsafe { let _ = Box::from_raw(handle); };
     }

@@ -16,3 +16,4 @@ env_logger = "0.11"   # 日志实现
 pathdiff = "0.2"
 #glib = { version = "0.10.3", features = ["v2_60", "c_glib"] } 
 glib-sys = "0.15"
+crossterm = "0.29.0"
