@@ -5258,6 +5258,7 @@ typedef struct {
 static gboolean rfm_menu_completion_in_gtk_thread(RFM_MenuCompletionData *data) {
   GPtrArray* result = g_ptr_array_new();
   
+  // Always add file menu items with "*" prefix
   if (ItemSelected > 0) {
     GPtrArray* all_items = g_ptr_array_new();
     popup_file_menu(NULL, all_items);
@@ -5265,32 +5266,54 @@ static gboolean rfm_menu_completion_in_gtk_thread(RFM_MenuCompletionData *data) 
     for (guint i = 0; i < all_items->len; i++) {
       gchar* name = g_ptr_array_index(all_items, i);
       if (data->text == NULL || g_str_has_prefix(name, data->text)) {
-        g_ptr_array_add(result, g_strdup(name));
+        g_ptr_array_add(result, g_strdup_printf("*%s", name));
       }
       g_free(name);
     }
     g_ptr_array_free(all_items, FALSE);
-  } else {
-    // 无文件选中，提供当前显示的工具栏按钮名称
-    for (guint i = 0; i < G_N_ELEMENTS(tool_buttons); i++) {
-      if (SHOW_TOOLBAR_BUTTON(tool_buttons, i) && (data->text == NULL || g_str_has_prefix(tool_buttons[i].buttonName, data->text))) {
-        g_ptr_array_add(result, g_strdup(tool_buttons[i].buttonName));
-      }
+  }
+  
+  // Add toolbar buttons with "*" prefix
+  for (guint i = 0; i < G_N_ELEMENTS(tool_buttons); i++) {
+    if (SHOW_TOOLBAR_BUTTON(tool_buttons, i) && (data->text == NULL || g_str_has_prefix(tool_buttons[i].buttonName, data->text))) {
+      g_ptr_array_add(result, g_strdup_printf("*%s", tool_buttons[i].buttonName));
     }
+  }
 #ifdef RFM_AddOn
-    GHashTableIter iter;
-    gchar *key;
-    RFM_ADDON *value;
-    g_hash_table_iter_init(&iter, addons);
-    while (g_hash_table_iter_next(&iter, &key, &value)) {
-      RFM_ADDON_RESOURCE_TYPE* addon_resource = value->resource_managed_by_addon;
-      for (guint i = 0; i < addon_resource->toolbar_button_definitions_local_array_size; i++) {
-        if (SHOW_TOOLBAR_BUTTON(addon_resource->toolbar_button_definitions_local, i) && (data->text == NULL || g_str_has_prefix(addon_resource->toolbar_button_definitions_local[i].buttonName, data->text))) {
-          g_ptr_array_add(result, g_strdup(addon_resource->toolbar_button_definitions_local[i].buttonName));
-        }
+  GHashTableIter iter;
+  gchar *key;
+  RFM_ADDON *value;
+  g_hash_table_iter_init(&iter, addons);
+  while (g_hash_table_iter_next(&iter, &key, &value)) {
+    RFM_ADDON_RESOURCE_TYPE* addon_resource = value->resource_managed_by_addon;
+    for (guint i = 0; i < addon_resource->toolbar_button_definitions_local_array_size; i++) {
+      if (SHOW_TOOLBAR_BUTTON(addon_resource->toolbar_button_definitions_local, i) && (data->text == NULL || g_str_has_prefix(addon_resource->toolbar_button_definitions_local[i].buttonName, data->text))) {
+        g_ptr_array_add(result, g_strdup_printf("*%s", addon_resource->toolbar_button_definitions_local[i].buttonName));
       }
     }
+  }
 #endif
+  
+  // Add builtin commands from builtinCMD array with "#" prefix
+  for (guint i = 0; i < G_N_ELEMENTS(builtinCMD); i++) {
+    if (data->text == NULL || g_str_has_prefix(builtinCMD[i].cmd, data->text)) {
+      g_ptr_array_add(result, g_strdup_printf("#%s", builtinCMD[i].cmd));
+    }
+  }
+  
+  // Add hardcoded builtin commands with "#" prefix
+  const char* hardcoded_cmds[] = {"setpwd", "pwd", "quit", "/", "//"};
+  for (guint i = 0; i < G_N_ELEMENTS(hardcoded_cmds); i++) {
+    gboolean found = FALSE;
+    for (guint j = 0; j < G_N_ELEMENTS(builtinCMD); j++) {
+      if (g_strcmp0(hardcoded_cmds[i], builtinCMD[j].cmd) == 0) {
+        found = TRUE;
+        break;
+      }
+    }
+    if (!found && (data->text == NULL || g_str_has_prefix(hardcoded_cmds[i], data->text))) {
+      g_ptr_array_add(result, g_strdup_printf("#%s", hardcoded_cmds[i]));
+    }
   }
   
   data->result = result;

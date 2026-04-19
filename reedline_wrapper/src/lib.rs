@@ -228,10 +228,18 @@ impl Completer for MenuCompleter {
                 let c_str = CStr::from_ptr(item_ptr);
                 if let Ok(result) = c_str.to_str() {
                     if !result.is_empty() {
+                        // 根据前缀决定颜色：* = 黄色 (toolbar/file menu), # = 绿色 (builtin command), 无 = 蓝色 (默认)
+                        let (display_value, style) = if result.starts_with('*') {
+                            (&result[1..], Style::new().fg(Color::Yellow))
+                        } else if result.starts_with('#') {
+                            (&result[1..], Style::new().fg(Color::Green))
+                        } else {
+                            (result.as_ref(), Style::new().fg(Color::Blue))
+                        };
                         suggestions.push(Suggestion {
-                            value: result.to_string(),
+                            value: display_value.to_string(),
                             description: None,
-                            style: Some(Style::new().fg(Color::Blue)),
+                            style: Some(style),
                             extra: None,
                             span: Span::new(start_pos, pos),
                             append_whitespace: false,
