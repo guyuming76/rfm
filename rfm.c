@@ -4886,7 +4886,7 @@ static void cmd_cd(wordexp_t *parsed_msg, GString *readline_result_string_after_
 	    }else if (g_strcmp0(addr, "-")==0){
 	      set_rfm_curPath(getenv("OLDPWD"));
 	    }else{
-	      gchar* full_addr = (addr[0]=='/') ? strdup(addr) : g_build_filename(rfm_curPath, strdup(addr), NULL);
+	      gchar* full_addr = (addr[0]=='/') ? strdup(addr) : g_build_filename(rfm_curPath, addr, NULL);
 	      struct stat statbuf;
               if (stat(full_addr,&statbuf)!=0){
 		g_warning("Can't stat %s\n", full_addr);
