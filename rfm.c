@@ -315,6 +315,7 @@ static void unload_addon_filemenu_func();
 #ifdef reedline
 static GPtrArray *rfm_filename_completion(const char *text, int *count);
 #endif
+static char* rfm_custom_filename_completion(const char *text, int state);
 #ifdef GNU_readline
 extern int rl_done;
 int rl_event_hook_to_help_terminate_readline(void){return 0;}
@@ -5354,6 +5355,114 @@ static GPtrArray* rfm_menu_completion(const char *text, int *count){
   return ret;
 }
 
+// Custom filename completion function for case-insensitive substring matching
+static char* rfm_custom_filename_completion(const char *text, int state) {
+  static int list_index, len;
+  static char **matches = NULL;
+  char *match;
+
+  if (!state) {
+    // First call, initialize
+    len = strlen(text);
+    list_index = 0;
+    
+    // Free previous matches if any
+    if (matches) {
+      for (int i = 0; matches[i]; i++)
+        free(matches[i]);
+      free(matches);
+      matches = NULL;
+    }
+
+    // Get directory and base name
+    char *dir = NULL, *base = NULL;
+    if (text[0] == '/') {
+      // Absolute path
+      dir = strdup(text);
+      char *last_slash = strrchr(dir, '/');
+      if (last_slash) {
+        *last_slash = '\0';
+        base = last_slash + 1;
+      } else {
+        base = dir;
+        dir = strdup("/");
+      }
+    } else if (strchr(text, '/')) {
+      // Relative path with directory
+      dir = strdup(text);
+      char *last_slash = strrchr(dir, '/');
+      *last_slash = '\0';
+      base = last_slash + 1;
+    } else {
+      // Current directory
+      dir = strdup(".");
+      base = (char *)text;
+    }
+
+    // Open directory
+    DIR *dp = opendir(dir);
+    if (dp) {
+      struct dirent *ep;
+      int count = 0;
+      
+      // Count matching entries
+      while ((ep = readdir(dp)) != NULL) {
+        if (ep->d_name[0] == '.' && !base[0])
+          continue; // Skip hidden files if no base
+        if (strcasestr(ep->d_name, base))
+          count++;
+      }
+      
+      // Allocate matches array
+      if (count > 0) {
+        matches = calloc(count + 1, sizeof(char *));
+        if (matches) {
+          // Rewind directory
+          rewinddir(dp);
+          count = 0;
+          
+          // Add matching entries
+          while ((ep = readdir(dp)) != NULL) {
+            if (ep->d_name[0] == '.' && !base[0])
+              continue;
+            if (strcasestr(ep->d_name, base)) {
+              if (dir[0] == '/' && strcmp(dir, "/") == 0) {
+                // Absolute path
+                asprintf(&matches[count], "/%s", ep->d_name);
+              } else if (strcmp(dir, ".") == 0) {
+                // Current directory
+                matches[count] = strdup(ep->d_name);
+              } else {
+                // Relative path
+                asprintf(&matches[count], "%s/%s", dir, ep->d_name);
+              }
+              count++;
+            }
+          }
+        }
+      }
+      closedir(dp);
+    }
+    
+    free(dir);
+  }
+
+  // Return next match
+  match = NULL;
+  if (matches && matches[list_index])
+    match = strdup(matches[list_index++]);
+  
+  // Free matches when done
+  if (!match && matches) {
+    for (int i = 0; matches[i]; i++)
+      free(matches[i]);
+    free(matches);
+    matches = NULL;
+  }
+
+  return match;
+}
+
 #ifdef GNU_readline
 static char** rfm_filename_completion(const char *text, int *count){
 #endif
@@ -5380,7 +5489,7 @@ static GPtrArray* rfm_filename_completion(const char *text, int *count){
   }else { //没有文件被选中，或光标前有非空字符
     GPtrArray* ret = rfm_editor_completion_based_on_search_result(text);
     g_ptr_array_extend(ret, rfm_completion_based_on_dimensions(text),NULL,NULL);
-    char** tmp=rl_completion_matches(text, rl_filename_completion_function);
+    char** tmp=rl_completion_matches(text, rfm_custom_filename_completion);
     g_ptr_array_extend(ret, g_ptr_array_new_from_array(tmp,g_strv_length(tmp),NULL,NULL,(GDestroyNotify)g_free), NULL,NULL);
     return ret;
   }
