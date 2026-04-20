@@ -46,6 +46,8 @@
 
 #define INOTIFY_MASK IN_MOVE|IN_CREATE|IN_CLOSE_WRITE|IN_DELETE|IN_DELETE_SELF|IN_MOVE_SELF
 #define PIPE_SZ 65535      /* Kernel pipe size */
+// Returns TRUE if haystack contains needle (case-insensitive)
+#define MATCH_CONTAINS(haystack, needle) (needle == NULL || strlen(needle) == 0 || (haystack != NULL && strcasestr(haystack, needle) != NULL))
 
 static RFM_ChildAttribs *childAttribsForCurrentDisplayingSearchResult=NULL;//这个用来保持查询视图当前查询运行时的值，查询刷新时使用
 static GUnixMountMonitor *rfm_mountMonitor=NULL;   /* Reference for monitor mount events */
@@ -5256,8 +5258,7 @@ typedef struct {
 } RFM_MenuCompletionData;
 
 static gboolean rfm_menu_completion_in_gtk_thread(RFM_MenuCompletionData *data) {
-  GPtrArray* result = g_ptr_array_new();
-  
+  GPtrArray* result = g_ptr_array_new();  
   // Always add file menu items with "*" prefix
   if (ItemSelected > 0) {
     GPtrArray* all_items = g_ptr_array_new();
@@ -5265,7 +5266,7 @@ static gboolean rfm_menu_completion_in_gtk_thread(RFM_MenuCompletionData *data) 
     
     for (guint i = 0; i < all_items->len; i++) {
       gchar* name = g_ptr_array_index(all_items, i);
-      if (data->text == NULL || g_str_has_prefix(name, data->text)) {
+      if (MATCH_CONTAINS(name, data->text)) {
         g_ptr_array_add(result, g_strdup_printf("*%s", name));
       }
       g_free(name);
@@ -5275,7 +5276,7 @@ static gboolean rfm_menu_completion_in_gtk_thread(RFM_MenuCompletionData *data) 
   
   // Add toolbar buttons with "*" prefix
   for (guint i = 0; i < G_N_ELEMENTS(tool_buttons); i++) {
-    if (SHOW_TOOLBAR_BUTTON(tool_buttons, i) && (data->text == NULL || g_str_has_prefix(tool_buttons[i].buttonName, data->text))) {
+    if (SHOW_TOOLBAR_BUTTON(tool_buttons, i) && MATCH_CONTAINS(tool_buttons[i].buttonName, data->text)) {
       g_ptr_array_add(result, g_strdup_printf("*%s", tool_buttons[i].buttonName));
     }
   }
@@ -5287,7 +5288,7 @@ static gboolean rfm_menu_completion_in_gtk_thread(RFM_MenuCompletionData *data) 
   while (g_hash_table_iter_next(&iter, &key, &value)) {
     RFM_ADDON_RESOURCE_TYPE* addon_resource = value->resource_managed_by_addon;
     for (guint i = 0; i < addon_resource->toolbar_button_definitions_local_array_size; i++) {
-      if (SHOW_TOOLBAR_BUTTON(addon_resource->toolbar_button_definitions_local, i) && (data->text == NULL || g_str_has_prefix(addon_resource->toolbar_button_definitions_local[i].buttonName, data->text))) {
+      if (SHOW_TOOLBAR_BUTTON(addon_resource->toolbar_button_definitions_local, i) && MATCH_CONTAINS(addon_resource->toolbar_button_definitions_local[i].buttonName, data->text)) {
         g_ptr_array_add(result, g_strdup_printf("*%s", addon_resource->toolbar_button_definitions_local[i].buttonName));
       }
     }
@@ -5296,7 +5297,7 @@ static gboolean rfm_menu_completion_in_gtk_thread(RFM_MenuCompletionData *data) 
   
   // Add builtin commands from builtinCMD array with "#" prefix
   for (guint i = 0; i < G_N_ELEMENTS(builtinCMD); i++) {
-    if (data->text == NULL || g_str_has_prefix(builtinCMD[i].cmd, data->text)) {
+    if (MATCH_CONTAINS(builtinCMD[i].cmd, data->text)) {
       g_ptr_array_add(result, g_strdup_printf("#%s", builtinCMD[i].cmd));
     }
   }
@@ -5311,7 +5312,7 @@ static gboolean rfm_menu_completion_in_gtk_thread(RFM_MenuCompletionData *data) 
         break;
       }
     }
-    if (!found && (data->text == NULL || g_str_has_prefix(hardcoded_cmds[i], data->text))) {
+    if (!found && MATCH_CONTAINS(hardcoded_cmds[i], data->text)) {
       g_ptr_array_add(result, g_strdup_printf("#%s", hardcoded_cmds[i]));
     }
   }
