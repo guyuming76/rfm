@@ -8,6 +8,7 @@ use libc::c_char;
 use std::ffi::{CStr, CString};
 use std::ptr;
 use std::path::{PathBuf, Path};
+use std::os::unix::fs::PermissionsExt;
 use dirs::home_dir;
 use log::{warn, debug}; // 导入日志宏
 use glib_sys::{GPtrArray};
@@ -182,10 +183,39 @@ impl Completer for CCompleter {
                                 }
                                 None => result.to_string(),
                             };
+                            // Determine color based on file type (ls-like coloring)
+                            let style = {
+                                let path = Path::new(result);
+                                if path.is_dir() {
+                                    Style::new().fg(Color::Blue) // Blue for directories
+                                } else if path.symlink_metadata().map_or(false, |m| m.file_type().is_symlink()) {
+                                    Style::new().fg(Color::Cyan) // Cyan for symlinks
+                                } else if path.metadata().map_or(false, |m| {
+                                    m.permissions().mode() & 0o111 != 0
+                                }) {
+                                    Style::new().fg(Color::Green) // Green for executables
+                                } else if let Some(ext) = path.extension() {
+                                    let ext_str = ext.to_str().unwrap_or("").to_lowercase();
+                                    match ext_str.as_str() {
+                                        "txt" | "md" | "log" | "conf" => 
+                                            Style::new().fg(Color::White), // White for text files
+                                        "jpg" | "jpeg" | "png" | "gif" | "bmp" => 
+                                            Style::new().fg(Color::Magenta), // Magenta for image files
+                                        "pdf" => 
+                                            Style::new().fg(Color::Red), // Red for PDFs
+                                        "zip" | "tar" | "gz" | "bz2" | "rar" => 
+                                            Style::new().fg(Color::Yellow), // Yellow for archives
+                                        _ => 
+                                            Style::new().fg(Color::Green) // Default color
+                                    }
+                                } else {
+                                    Style::new().fg(Color::Green) // Default color
+                                }
+                            };
                             suggestions.push(Suggestion {
                                 value: final_path,
                                 description: None,
-                                style: Some(Style::new().fg(Color::Green)),
+                                style: Some(style),
                                 extra: None,
                                 span: Span::new(start_pos, pos),
                                 append_whitespace: false,
