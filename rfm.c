@@ -4897,7 +4897,9 @@ static void cmd_cd(wordexp_t *parsed_msg, GString *readline_result_string_after_
 		  addr = g_path_get_dirname(full_addr);
 		  g_list_free_full(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView],(GDestroyNotify)g_free);
 		  filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView] = NULL;
-		  filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView] = g_list_prepend(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView], strdup(full_addr));
+		  // Use the same canonicalization as set_rfm_curPath, 如果不规范化，使用相对路径(文件名补全自动使用相对路径)　cd ./矿物名称/白钨/矿物属性　进入目录后，矿物属性　文件不会自动选中，但如果cd后面跟绝对路径就没问题
+		  gchar* canonical_file = UseTargetAddressWhenEnterSymbloicLinkForDir? canonicalize_file_name(full_addr) : strdup(full_addr);
+		  filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView] = g_list_prepend(filepath_lists_for_selection_on_view[SearchResultViewInsteadOfDirectoryView], canonical_file);
 		  //note that if user type "cd " with no parameter in searchresultview, we will switch to dir view as code serveral lines bellow. But we won't switch to dir view here.
 		}
 		set_rfm_curPath(addr);
