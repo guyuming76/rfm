@@ -274,7 +274,14 @@ typedef struct {
   //childAttribs参数是后加的，按理说可以把前两个参数合并到childAttribs成员里，这里只要一个参数就可以了。但这样要改现有的buildin_cmd，特别是我还不知道有没有别人在用这一块，所以就扩充一个参数，暂时不管冗余了
   gchar *help_msg;
 } RFM_builtinCMD;
-
+typedef struct {
+  const char *text;
+  int *count;
+  GPtrArray *result;
+  GMutex mutex;
+  GCond cond;
+  gboolean completed;
+} RFM_MenuCompletionData;
 
 static char* pipefd="0";
 static FILE *pipeStream=NULL;
@@ -316,6 +323,8 @@ static void unload_addon_filemenu_func();
 static GPtrArray *rfm_filename_completion(const char *text, int *count);
 #endif
 static char* rfm_custom_filename_completion(const char *text, int state);
+static GPtrArray* rfm_menu_completion(const char *text, int *count);
+static gboolean rfm_menu_completion_in_gtk_thread(RFM_MenuCompletionData *data);
 #ifdef GNU_readline
 extern int rl_done;
 int rl_event_hook_to_help_terminate_readline(void){return 0;}
@@ -5248,15 +5257,6 @@ static void parse_and_exec_cmd_in_gtk_thread (gchar * cmd){
   // 子进程结束后恢复
   //rl_callback_handler_install(prompt, readline_callback);
 }
-
-typedef struct {
-  const char *text;
-  int *count;
-  GPtrArray *result;
-  GMutex mutex;
-  GCond cond;
-  gboolean completed;
-} RFM_MenuCompletionData;
 
 static gboolean rfm_menu_completion_in_gtk_thread(RFM_MenuCompletionData *data) {
   GPtrArray* result = g_ptr_array_new();  
