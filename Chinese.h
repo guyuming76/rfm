@@ -91,6 +91,8 @@
 #define BuiltInCmd_thumbnailsize_Description  "设置文件图标(缩略图)大小,接受整数参数,如64,128或256"
 #define BuiltInCmd_toggleInotifyHandler        "toggleInotifyHandler"
 #define BuiltInCmd_toggleInotifyHandler_Description  "关/开自动刷新,比如当你浏览/dev目录时"
+#define BuiltInCmd_toggleRecursiveCompletion        "toggleRecursiveCompletion"
+#define BuiltInCmd_toggleRecursiveCompletion_Description  "关/开递归文件名补全,开启后会搜索子目录中的文件"
 #define BuiltInCmd_pagesize                    "pagesize"
 #define BuiltInCmd_pagesize_Description        "设置文件搜素结果视图每葉文件数, 如 pagesize 100"
 #define BuiltInCmd_sort                        "sortby"

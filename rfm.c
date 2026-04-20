@@ -323,6 +323,7 @@ static void unload_addon_filemenu_func();
 static GPtrArray *rfm_filename_completion(const char *text, int *count);
 #endif
 static char* rfm_custom_filename_completion(const char *text, int state);
+static void rfm_collect_matching_files(const char *dir, const char *base, GPtrArray *matches);
 static GPtrArray* rfm_menu_completion(const char *text, int *count);
 static gboolean rfm_menu_completion_in_gtk_thread(RFM_MenuCompletionData *data);
 #ifdef GNU_readline
@@ -607,6 +608,7 @@ static gboolean DirectoryView_onebyone_Off_iterate_through_store_to_load_latest_
 static void set_terminal_window_title(CALLER_OWN const char* title);
 static void set_Titles(CALLER_OWN const gchar * title);
 static void cmdToggleInotifyHandler(wordexp_t *parsed_msg,GString *readline_result_string_after_file_name_substitution);
+static void cmdToggleRecursiveCompletion(wordexp_t *parsed_msg,GString *readline_result_string_after_file_name_substitution);
 /******GtkListStore and refresh definitions end******/
 /****************************************************/
 /******Search Result related definitions*************/
@@ -4612,6 +4614,11 @@ static void cmdToggleInotifyHandler(wordexp_t *parsed_msg,GString *readline_resu
 	  if (pauseInotifyHandler) printf("InotifyHandler Off\n"); else printf("InotifyHandler On\n");        
 }
 
+static void cmdToggleRecursiveCompletion(wordexp_t *parsed_msg,GString *readline_result_string_after_file_name_substitution) {
+	  rfm_custom_filename_completion_recursive = !rfm_custom_filename_completion_recursive;
+	  if (rfm_custom_filename_completion_recursive) printf("Recursive filename completion On\n"); else printf("Recursive filename completion Off\n");
+}
+
 static void cmdPagesize(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution){
         if (parsed_msg->we_wordc==2){
 	  set_pagesize_for_searchresultview(parsed_msg->we_wordv[1]);
@@ -5355,6 +5362,43 @@ static GPtrArray* rfm_menu_completion(const char *text, int *count){
   return ret;
 }
 
+// Helper function to recursively collect matching files
+static void rfm_collect_matching_files(const char *dir, const char *base, GPtrArray *matches) {
+  DIR *dp = opendir(dir);
+  if (!dp) return;
+
+  struct dirent *ep;
+  while ((ep = readdir(dp)) != NULL) {
+    if (ep->d_name[0] == '.' && !base[0])
+      continue; // Skip hidden files if no base
+    
+    // Check if matches
+    if (strcasestr(ep->d_name, base)) {
+      char *full_path;
+      if (strcmp(dir, "/") == 0) {
+        asprintf(&full_path, "/%s", ep->d_name);
+      } else {
+        asprintf(&full_path, "%s/%s", dir, ep->d_name);
+      }
+      g_ptr_array_add(matches, full_path);
+    }
+    
+    // If recursive and is directory, recurse
+    if (rfm_custom_filename_completion_recursive) {
+      char *entry_path;
+      asprintf(&entry_path, "%s/%s", dir, ep->d_name);
+      
+      struct stat statbuf;
+      if (lstat(entry_path, &statbuf) == 0 && S_ISDIR(statbuf.st_mode) && 
+          strcmp(ep->d_name, ".") != 0 && strcmp(ep->d_name, "..") != 0) {
+        rfm_collect_matching_files(entry_path, base, matches);
+      }
+      free(entry_path);
+    }
+  }
+  closedir(dp);
+}
+
 // Custom filename completion function for case-insensitive substring matching
 static char* rfm_custom_filename_completion(const char *text, int state) {
   static int list_index, len;
@@ -5399,51 +5443,22 @@ static char* rfm_custom_filename_completion(const char *text, int state) {
       base = (char *)text;
     }
 
-    // Open directory
-    DIR *dp = opendir(dir);
-    if (dp) {
-      struct dirent *ep;
-      int count = 0;
-      
-      // Count matching entries
-      while ((ep = readdir(dp)) != NULL) {
-        if (ep->d_name[0] == '.' && !base[0])
-          continue; // Skip hidden files if no base
-        if (strcasestr(ep->d_name, base))
-          count++;
-      }
-      
-      // Allocate matches array
-      if (count > 0) {
-        matches = calloc(count + 1, sizeof(char *));
-        if (matches) {
-          // Rewind directory
-          rewinddir(dp);
-          count = 0;
-          
-          // Add matching entries
-          while ((ep = readdir(dp)) != NULL) {
-            if (ep->d_name[0] == '.' && !base[0])
-              continue;
-            if (strcasestr(ep->d_name, base)) {
-              if (dir[0] == '/' && strcmp(dir, "/") == 0) {
-                // Absolute path
-                asprintf(&matches[count], "/%s", ep->d_name);
-              } else if (strcmp(dir, ".") == 0) {
-                // Current directory
-                matches[count] = strdup(ep->d_name);
-              } else {
-                // Relative path
-                asprintf(&matches[count], "%s/%s", dir, ep->d_name);
-              }
-              count++;
-            }
-          }
+    // Collect matching files
+    GPtrArray *all_matches = g_ptr_array_new();
+    rfm_collect_matching_files(dir, base, all_matches);
+    
+    // Convert GPtrArray to char**
+    if (all_matches->len > 0) {
+      matches = calloc(all_matches->len + 1, sizeof(char *));
+      if (matches) {
+        for (guint i = 0; i < all_matches->len; i++) {
+          matches[i] = g_ptr_array_index(all_matches, i);
         }
+        matches[all_matches->len] = NULL;
       }
-      closedir(dp);
     }
     
+    g_ptr_array_free(all_matches, FALSE); // Don't free the strings, they're now in matches
     free(dir);
   }
 

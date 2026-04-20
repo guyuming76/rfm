@@ -49,6 +49,7 @@ static int RFM_msgbox_throttle = 5;/* Maximum number of concurrent message boxes
 static gint RFM_THUMBNAIL_SIZE = 128; /* Maximum size for thumb dir normal is 128 */
 static gboolean UseTargetAddressWhenEnterSymbloicLinkForDir=TRUE;
 static gboolean exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread = TRUE;
+static gboolean rfm_custom_filename_completion_recursive = FALSE; /* Whether to recursively search subdirectories for filename completion */
 static gboolean keep_selection_on_view_across_refresh = TRUE;
 static gchar* dumb_keyfile_groupname = "https://discourse.gnome.org/t/gkeyfile-to-handle-conf-without-groupname/23080/3";
 
@@ -216,6 +217,7 @@ static RFM_builtinCMD builtinCMD[] = {
 	{"toggleBlockGUI", toggle_exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread, BuiltInCmd_toggleBlockGUI_Description},
 	{BuiltInCmd_thumbnailsize,              cmdThumbnailsize,                       BuiltInCmd_thumbnailsize_Description},
 	{BuiltInCmd_toggleInotifyHandler,       cmdToggleInotifyHandler,                BuiltInCmd_toggleInotifyHandler_Description},
+	{BuiltInCmd_toggleRecursiveCompletion, cmdToggleRecursiveCompletion,          BuiltInCmd_toggleRecursiveCompletion_Description},
 	{BuiltInCmd_pagesize,                   cmdPagesize,                            BuiltInCmd_pagesize_Description},
 	{BuiltInCmd_sort,                       cmdSort,                                BuiltInCmd_sort_Description},
 	{BuiltInCmd_glog,                       cmd_glog,                               BuiltInCmd_glog_Description},

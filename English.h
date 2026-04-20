@@ -89,6 +89,8 @@
 #define BuiltInCmd_thumbnailsize_Description  "set thumbnail size in icon view with integer such as 64,128 or 256"
 #define BuiltInCmd_toggleInotifyHandler        "toggleInotifyHandler"
 #define BuiltInCmd_toggleInotifyHandler_Description  "stop/start auto refresh, when you are view /dev directory for example"
+#define BuiltInCmd_toggleRecursiveCompletion        "toggleRecursiveCompletion"
+#define BuiltInCmd_toggleRecursiveCompletion_Description  "stop/start recursive filename completion, when enabled will search files in subdirectories"
 #define BuiltInCmd_pagesize                    "pagesize"
 #define BuiltInCmd_pagesize_Description        "set files shown per page in search result view. for example, pagesize 100"
 #define BuiltInCmd_sort                        "sortby"
