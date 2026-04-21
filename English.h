@@ -159,6 +159,8 @@ reedline_specific_help \
 "        在文件目录内加入名为 " RFM_DIMENSION_PROPERTIES_FILE_NAME " 的文件，则此目录会被rfm定义唯一维度，其下子目录名都是此维度的成员。\n" \
 "        维度名和成员在TAB补全菜单中显示为\033[33m黄色\033[0m。\n" \
 "        TAB补全完成维度名输入后，接着按TAB键，会出现相应维度成员值补全内容，值前会自动加等号分隔，不要手工输入。\n" \
+"\n\033[32m Menu键补全: \033[0m\n" \
+"    在config.mk中使用reedline库编译rfm。在终端按Menu键，则会根据当前rfm图形窗口有无文件选中，相应弹出文件上下文菜单补全或工具栏按钮补全菜单，黄色显示，后面绿色项是内置命令列表。可以不离开终端窗口执行图形界面操作。\n" \
 "\n\033[32m command history: \033[0m\n" \
 "    command history is saved in file ~/.rfm_history. command history for current running rfm is kept in memory and saved into file on quit, and will be read into memory on next launch.\n" \
 "    commond in history will be shown with uppper/down arrow key. enter command prefix can narrow down the scope.\n" \
