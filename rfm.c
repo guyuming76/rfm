@@ -609,7 +609,7 @@ static gboolean DirectoryView_onebyone_Off_iterate_through_store_to_load_latest_
 static void set_terminal_window_title(CALLER_OWN const char* title);
 static void set_Titles(CALLER_OWN const gchar * title);
 static void cmdToggleInotifyHandler(wordexp_t *parsed_msg,GString *readline_result_string_after_file_name_substitution);
-static void cmdToggleRecursiveCompletion(wordexp_t *parsed_msg,GString *readline_result_string_after_file_name_substitution);
+static void cmdToggleFileNameCompletionCaseSensitive(wordexp_t *parsed_msg,GString *readline_result_string_after_file_name_substitution);
 /******GtkListStore and refresh definitions end******/
 /****************************************************/
 /******Search Result related definitions*************/
@@ -4615,9 +4615,9 @@ static void cmdToggleInotifyHandler(wordexp_t *parsed_msg,GString *readline_resu
 	  if (pauseInotifyHandler) printf("InotifyHandler Off\n"); else printf("InotifyHandler On\n");        
 }
 
-static void cmdToggleRecursiveCompletion(wordexp_t *parsed_msg,GString *readline_result_string_after_file_name_substitution) {
-	  rfm_custom_filename_completion_recursive = !rfm_custom_filename_completion_recursive;
-	  if (rfm_custom_filename_completion_recursive) printf("Recursive filename completion On\n"); else printf("Recursive filename completion Off\n");
+static void cmdToggleFileNameCompletionCaseSensitive(wordexp_t *parsed_msg,GString *readline_result_string_after_file_name_substitution) {
+	  rfm_custom_filename_completion_case_sensitive = !rfm_custom_filename_completion_case_sensitive;
+	  if (rfm_custom_filename_completion_case_sensitive) printf("Case sensitive filename completion On\n"); else printf("Case sensitive filename completion Off\n");
 }
 
 static void cmdPagesize(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution){
@@ -5375,8 +5375,11 @@ static void rfm_collect_matching_files(const char *dir, const char *base, GPtrAr
     if (ep->d_name[0] == '.' && !base[0])
       continue; // Skip hidden files if no base
     
-    // Check if matches
-    if (strcasestr(ep->d_name, base)) {
+    // Check if matches (case-sensitive or case-insensitive based on rfm_custom_filename_completion_case_sensitive)
+    gboolean match_found = rfm_custom_filename_completion_case_sensitive ?
+      (strstr(ep->d_name, base) != NULL) :
+      (strcasestr(ep->d_name, base) != NULL);
+    if (match_found) {
       char *full_path;
       if (strcmp(dir, "/") == 0) {
         asprintf(&full_path, "/%s", ep->d_name);
