@@ -262,4 +262,31 @@ BuiltInCmd_SearchResultColumnSeperator \
 #define SearchResultType_current "当前查询结果视图的类型，如果当前为空，则使用默认类型"
 
 
-#define RFM_AddOn_HELP ""
+#define RFM_AddOn_HELP "  rfm 使用符合命名规范的 .c 源码作为 AddOn 插件，提供界面定制和功能扩展。请使用工具栏中\033[33maddons\033[0m按钮来查看插件列表\n" \
+"  插件类型：\n" \
+"    - Global：全局插件，可在任何目录使用. 系统启动时使用 locate 命令在整个系统中查找符合命名规范的 .c 文件\n" \
+"    - Directory：目录插件，只在特定目录生效。当进入特定目录时，检查该目录中是否存在符合命名规范的 .c 文件\n" \
+"  编译时机：\n" \
+"    - 首次发现 .c 文件时\n" \
+"    - .c 文件内容修改后（通过哈希值检测）\n" \
+"    - rfm_addon.h 头文件修改后(通过安装新版本的rfm)\n" \
+"  加载过程：\n" \
+"    1. 检测 .c 文件并计算哈希值\n" \
+"    2. 检查是否存在对应的 .so 文件\n" \
+"    3. 如需编译，显示确认对话框\n" \
+"    4. 编译生成 .so 文件\n" \
+"    5. 加载 .so 文件并调用 enter 函数\n" \
+"  插件功能：\n" \
+"    - 定制界面（添加列、菜单等）\n" \
+"    - 扩展功能（添加新命令、处理特定文件类型等）\n" \
+"    - 目录特定操作（针对特定目录的自定义行为）\n" \
+"  命名规范：\n" \
+"    - 在 config.h 用 RFM_ADDON_FILENAME_SUFFIX 定义插件文件名后缀\n" \
+"    - 当前值是:" RFM_ADDON_FILENAME_SUFFIX "\n" \
+"  Hash 计算：\n" \
+"    - 读取 /etc/machine-id 获取机器唯一标识\n" \
+"    - 读取 .c 文件内容\n" \
+"    - 合并 machine-id 和文件内容\n" \
+"    - 计算 SHA256 hash\n" \
+"    - 同一 .c 文件在不同机器上会有不同的 hash\n" \
+"    - 更换机器后，即使 .so 文件存在也会重新编译\n"

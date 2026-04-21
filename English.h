@@ -257,4 +257,32 @@ BuiltInCmd_SearchResultColumnSeperator \
 
 #define SearchResultType_current "use the same type as in current search result view. use default if current is empty"
 
-#define RFM_AddOn_HELP ""
+#define RFM_AddOn_HELP "  rfm uses .c source files that follow naming conventions as AddOns, which can be listed with the \033[33maddons\033[0m toolbar button\n" \
+"  interface customization and functionality extensions.\n" \
+"  Plugin Types:\n" \
+"    - Global: Global plugins that can be used in any directory. Uses locate command to find .c files matching naming convention in the entire system when system start\n" \
+"    - Directory: Directory-specific plugins that only work in specific directories. When entering a specific directory, checks if there are .c files matching naming convention in that directory\n" \
+"  Compilation Timing:\n" \
+"    - When .c files are first discovered\n" \
+"    - When .c file content changes (detected by hash value)\n" \
+"    - When rfm_addon.h header file changes(with new version of rfm)\n" \
+"  Loading Process:\n" \
+"    1. Detect .c file and calculate hash value\n" \
+"    2. Check if corresponding .so file exists\n" \
+"    3. If compilation is needed, show confirmation dialog\n" \
+"    4. Compile to generate .so file\n" \
+"    5. Load .so file and call enter function\n" \
+"  Plugin Features:\n" \
+"    - Customize interface (add columns, menus, etc.)\n" \
+"    - Extend functionality (add new commands, handle specific file types, etc.)\n" \
+"    - Directory-specific operations (custom behavior for specific directories)\n" \
+"  Naming Conventions:\n" \
+"    - addon filename suffix is defined in config.h with RFM_ADDON_FILENAME_SUFFIX\n" \
+"    - current value is:" RFM_ADDON_FILENAME_SUFFIX "\n" \
+"  Hash Calculation:\n" \
+"    - Reads /etc/machine-id to get machine unique identifier\n" \
+"    - Reads .c file content\n" \
+"    - Merges machine-id and file content\n" \
+"    - Calculates SHA256 hash\n" \
+"    - The same .c file will have different hash on different machines\n" \
+"    - After changing machine, even if .so file exists, it will be recompiled\n"
