@@ -7,10 +7,19 @@ if [ $# -eq 0 ]; then
     exit 1
 fi
 
+# 将参数存储到数组并排序
+videos=()
+for video in "$@"; do
+    videos+=("$video")
+done
+# 按文件名升序排序
+IFS=$'\n' sorted_videos=($(sort <<< "${videos[*]}"))
+unset IFS
+
 # 输出接收到的文件名列表
 echo "您输入的待合并视频文件列表:"
 echo "=========================="
-for i in "$@"; do
+for i in "${sorted_videos[@]}"; do
     echo "$i"
 done
 echo "=========================="
@@ -38,9 +47,9 @@ temp_file=$(mktemp /tmp/videolist_XXXXXX.txt)
 echo "正在创建临时列表文件: $temp_file"
 
 # 将文件列表写入临时文件
-for video in "$@"; do
+for video in "${sorted_videos[@]}"; do
     # 确保路径中的单引号被正确处理（转义单引号）
-    safe_video=$(echo "$video" | sed "s/'/'\\\\''/g")
+    safe_video=$(echo "$video" | sed "s/'/'\\''/g")
     echo "file '$safe_video'" >> "$temp_file"
 done
 
