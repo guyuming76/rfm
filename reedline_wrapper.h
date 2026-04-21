@@ -8,12 +8,14 @@ typedef void ReedlineHandle;
 // 函数指针类型定义，对应函数 rfm_filename_completion
 typedef const GPtrArray* (*GetCompletionFn)(const char* input, int *count);
 typedef const void (*EscapeHandler)();
+typedef void (*ToggleRecursiveCompletionFn)();
 // 定义与Rust中RfmFunctions匹配的结构体
 typedef struct {
     GetCompletionFn get_completion_fn;
     GetCompletionFn get_menu_completion_fn;
     // 其他函数指针可以在这里添加
     EscapeHandler g_idle_add_once_handle_escape;
+    ToggleRecursiveCompletionFn toggle_recursive_completion_fn;
 } rfmFunctions;
 
 // 创建Reedline实例

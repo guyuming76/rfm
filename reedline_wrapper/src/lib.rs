@@ -72,6 +72,7 @@ fn context_for_cursor(line: &str, pos: usize, completion_start_pos: &mut usize) 
 type GetCompletionFn = extern "C" fn(*const i8, *mut i32) -> *const GPtrArray;
 type GetMenuCompletionFn = extern "C" fn(*const i8, *mut i32) -> *const GPtrArray;
 type EscapeHandler = extern "C" fn();
+type ToggleRecursiveCompletionFn = extern "C" fn();
 //type GNUFileCompleteWrapperFn = extern "C" fn(*const i8) -> *mut *mut i8;
 // 添加 repr(C) 确保内存布局与C兼容
 #[repr(C)]
@@ -80,6 +81,7 @@ pub struct rfmFunctions {
     pub get_menu_completion_fn:GetMenuCompletionFn,
     // 其他函数...
     pub g_idle_add_once_handle_escape:EscapeHandler,
+    pub toggle_recursive_completion_fn:ToggleRecursiveCompletionFn,
 }
 
 // c 语言tab补全器，补全rfm当前选中文件
@@ -107,6 +109,36 @@ impl MenuCompleter {
         Self {
             get_menu_completion_fn: (*rfm_functions).get_menu_completion_fn,
         }
+    }
+}
+
+// Shift+Tab 补全器，用于临时切换递归补全模式
+pub struct ShiftTabCompleter {
+    c_completer: CCompleter,
+    toggle_recursive_completion_fn: ToggleRecursiveCompletionFn,
+}
+
+impl ShiftTabCompleter {
+    pub fn new(rfm_functions: &rfmFunctions) -> Self {
+        Self {
+            c_completer: CCompleter::new(rfm_functions, None),
+            toggle_recursive_completion_fn: (*rfm_functions).toggle_recursive_completion_fn,
+        }
+    }
+}
+
+impl Completer for ShiftTabCompleter {
+    fn complete(&mut self, line: &str, pos: usize) -> Vec<Suggestion> {
+        // Toggle recursive completion mode
+        (self.toggle_recursive_completion_fn)();
+        
+        // Call the C completer
+        let suggestions = self.c_completer.complete(line, pos);
+        
+        // Toggle back to restore original mode
+        (self.toggle_recursive_completion_fn)();
+        
+        suggestions
     }
 }
 
@@ -389,6 +421,10 @@ pub extern "C" fn reedline_create(rfm_functions: *const rfmFunctions) -> *mut Re
         menu: Box::new(ColumnarMenu::default().with_name("menu_menu")),
         completer:Box::new(MenuCompleter::new(rfm_functions)),
     };
+    let SHIFT_TAB_menu = ReedlineMenu::WithCompleter {
+        menu: Box::new(ColumnarMenu::default().with_name("shift_tab_menu")),
+        completer:Box::new(ShiftTabCompleter::new(rfm_functions)),
+    };
 
     // 配置 Tab 键绑定
     keybindings.add_binding(KeyModifiers::NONE, KeyCode::Tab,
@@ -410,11 +446,18 @@ pub extern "C" fn reedline_create(rfm_functions: *const rfmFunctions) -> *mut Re
         KeyCode::F(2),
         ReedlineEvent::Menu("menu_menu".to_string())
     );
+    // 绑定 Shift+Tab 到递归补全菜单
+    keybindings.add_binding(
+        KeyModifiers::SHIFT,
+        KeyCode::BackTab,
+        ReedlineEvent::Menu("shift_tab_menu".to_string())
+    );
 
     let engine_builder = Reedline::create()
         .use_bracketed_paste(true) //复制粘贴处理 \r\n,需要terminal支持
         .with_menu(TAB_menu)
         .with_menu(MENU_menu)
+        .with_menu(SHIFT_TAB_menu)
         .with_validator(Box::new(AlwaysIncompleteValidator))
         .with_edit_mode(Box::new(Emacs::new(keybindings)))
         .with_quick_completions(true)

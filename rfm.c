@@ -324,6 +324,7 @@ static GPtrArray *rfm_filename_completion(const char *text, int *count);
 #endif
 static char* rfm_custom_filename_completion(const char *text, int state);
 static void rfm_collect_matching_files(const char *dir, const char *base, GPtrArray *matches);
+static void toggle_rfm_custom_filename_completion_recursive(void);
 static GPtrArray* rfm_menu_completion(const char *text, int *count);
 static gboolean rfm_menu_completion_in_gtk_thread(RFM_MenuCompletionData *data);
 #ifdef GNU_readline
@@ -5401,6 +5402,12 @@ static void rfm_collect_matching_files(const char *dir, const char *base, GPtrAr
   closedir(dp);
 }
 
+// Toggle the recursive filename completion flag
+// This is called from Rust when Shift+Tab is pressed
+static void toggle_rfm_custom_filename_completion_recursive(void) {
+  rfm_custom_filename_completion_recursive = !rfm_custom_filename_completion_recursive;
+}
+
 // Custom filename completion function for case-insensitive substring matching
 static char* rfm_custom_filename_completion(const char *text, int state) {
   static int list_index, len;
@@ -5679,6 +5686,7 @@ static int setup()
   functionPointersForReedlineWrapper.get_completion_fn = rfm_filename_completion;
   functionPointersForReedlineWrapper.get_menu_completion_fn = rfm_menu_completion;
   functionPointersForReedlineWrapper.g_idle_add_once_handle_escape = g_idle_add_once_handle_escape_key;
+  functionPointersForReedlineWrapper.toggle_recursive_completion_fn = toggle_rfm_custom_filename_completion_recursive;
   reedline_handle = reedline_create(&functionPointersForReedlineWrapper);
   if (!reedline_handle) g_error("reedline_create return NULL handle");
 #endif
