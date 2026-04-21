@@ -147,20 +147,19 @@
 reedline_specific_help \
 "    ctrl-z in command window will send rfm.sh to background, and the command prompt will change to the shell prompt before rfm.sh launch. fg command can bring rfm.sh back to foreground the the command prompt will change to rfm prompt described above.\n" \
 "\n\033[32m TAB completion: \033[0m\n" \
-"    在config.mk中使用reedline库编译rfm,补全菜单交互较方便\n" \
-"    1. 基于当前选中文件\n" \
-"        当前有文件被选中，且光标前字符为空时，TAB不提示补全菜单，自动补全当前选中文件（若多选，只有一个有效）.\n" \
-"    2.\033[32m文件名补全\033[0m\n" \
-"        若没有文件选中，则显示文件名补全菜单，使用类似ls命令返回内容的颜色方案。默认内容来自当前目录， shift+TAB 则补全内容来自当前目录及子目录。可以使用"BuiltInCmd_toggleFileNameCompletionCaseSensitive"命令切换匹配文件名时是否区分大小写。同时补全菜单还会同时包含下面描述的黄色和红色内容\n" \
-"    3.\033[31m基于查询结果页面的列标题和值\033[0m\n" \
-"        当前为查询结果页面时，且包含config.h中定义的取值函数为getExtColumnValueFromHashTable的扩展列，当输入行光标前为空的时候，TAB补全菜单会出现\033[31m红色\033[0m内容的扩展标题列名。选中
-红色标题列名补全后，再继续TAB补全，则会出现红色的此列值的补全内容。在补全输入列标题名后，可以手工输入其他符号如等号(=),然后再按TAB补全列值。\n" \
-"    4.\033[33m基于维度定义\033[0m\n" \
-"        在文件目录内加入名为 " RFM_DIMENSION_PROPERTIES_FILE_NAME " 的文件，则此目录会被rfm定义唯一维度，其下子目录名都是此维度的成员。\n" \
-"        维度名和成员在TAB补全菜单中显示为\033[33m黄色\033[0m。\n" \
-"        TAB补全完成维度名输入后，接着按TAB键，会出现相应维度成员值补全内容，值前会自动加等号分隔，不要手工输入。\n" \
-"\n\033[32m Menu键补全: \033[0m\n" \
-"    在config.mk中使用reedline库编译rfm。在终端按Menu键，则会根据当前rfm图形窗口有无文件选中，相应弹出文件上下文菜单补全或工具栏按钮补全菜单，黄色显示，后面绿色项是内置命令列表。可以不离开终端窗口执行图形界面操作。\n" \
+"    Compile rfm with reedline library in config.mk for more convenient completion menu interaction\n" \
+"    1. Based on currently selected files\n" \
+"        When files are selected and there are no characters before the cursor, TAB will automatically complete with the currently selected file (only one valid if multiple selected) without showing the completion menu.\n" \
+"    2.\033[32mFilename completion\033[0m\n" \
+"        If no files are selected, filename completion menu will be displayed with color scheme similar to ls command output. By default, content is from current directory; shift+TAB will include subdirectories. Use "BuiltInCmd_toggleFileNameCompletionCaseSensitive" command to toggle case sensitivity for filename matching. The completion menu will also include the yellow and red items described below.\n" \
+"    3.\033[31mBased on search result page column titles and values\033[0m\n" \
+"        When in search result page and containing extension columns defined in config.h with value function getExtColumnValueFromHashTable, TAB completion menu will show \033[31mred\033[0m extension column titles when there are no characters before the cursor. After completing a red column title, continue pressing TAB to see red column value completions. After completing the column title, you can manually enter other symbols like equals sign (=), then press TAB to complete column values.\n" \
+"    4.\033[33mBased on dimension definitions\033[0m\n" \
+"        Add a file named " RFM_DIMENSION_PROPERTIES_FILE_NAME " in a directory, and rfm will define a unique dimension for that directory, with subdirectory names as members of this dimension.\n" \
+"        Dimension names and members are displayed in \033[33myellow\033[0m in the TAB completion menu.\n" \
+"        After completing a dimension name with TAB, press TAB again to see corresponding dimension member value completions, with equals sign automatically added before values - no manual input needed.\n" \
+"\n\033[32m Menu key completion: \033[0m\n" \
+"    Compile rfm with reedline library in config.mk. Press Menu key in terminal, and based on whether files are selected in rfm graphical window, file context menu completion or toolbar button completion menu will pop up, displayed in yellow, followed by green built-in command list. You can execute graphical interface operations without leaving the terminal window.\n" \
 "\n\033[32m command history: \033[0m\n" \
 "    command history is saved in file ~/.rfm_history. command history for current running rfm is kept in memory and saved into file on quit, and will be read into memory on next launch.\n" \
 "    commond in history will be shown with uppper/down arrow key. enter command prefix can narrow down the scope.\n" \
@@ -247,7 +246,7 @@ BuiltInCmd_SearchResultColumnSeperator \
 "      find -name *.TODO.md>.md"
 
 
-#define SearchResultType_TODO_md "work in the same way as .md search result type except that only level one title '简述' and '问题状态' will be queried. For example:\n" \
+#define SearchResultType_TODO_md "work in the same way as .md search result type except that only level one title 'Summary' and 'Status' will be queried. For example:\n" \
 "      locate .rfmTODO.md>TODO.md"
 
 #define SearchResultType_multitype "default search result type will be called first to get command output, MIME type and filename suffix will be used to match search result type, and matched search result type will be called to process this row of search result. With this type, we can display content of different file formats in same view. For example:\n" \
