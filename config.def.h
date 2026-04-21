@@ -218,7 +218,7 @@ static RFM_builtinCMD builtinCMD[] = {
 	{"toggleBlockGUI", toggle_exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread, BuiltInCmd_toggleBlockGUI_Description},
 	{BuiltInCmd_thumbnailsize,              cmdThumbnailsize,                       BuiltInCmd_thumbnailsize_Description},
 	{BuiltInCmd_toggleInotifyHandler,       cmdToggleInotifyHandler,                BuiltInCmd_toggleInotifyHandler_Description},
-	{BuiltInCmd_toggleRecursiveCompletion, cmdToggleRecursiveCompletion,          BuiltInCmd_toggleRecursiveCompletion_Description},
+	{BuiltInCmd_toggleFileNameCompletionCaseSensitive, cmdToggleFileNameCompletionCaseSensitive,BuiltInCmd_toggleFileNameCompletionCaseSensitive_Description},
 	{BuiltInCmd_pagesize,                   cmdPagesize,                            BuiltInCmd_pagesize_Description},
 	{BuiltInCmd_sort,                       cmdSort,                                BuiltInCmd_sort_Description},
 	{BuiltInCmd_glog,                       cmd_glog,                               BuiltInCmd_glog_Description},
