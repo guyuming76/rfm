@@ -6330,15 +6330,37 @@ static int ProcessGKeyfileStr(CALLER_OWN gchar *cmdOutput){
      }
 }
 
-static int ProcessKeyValuePairInData(GKeyFile *keyfile, char* groupname){
+static void process_keys_in_group(GKeyFile *keyfile, const gchar *groupname, const gchar *currentColumnOriginalTitle, gboolean add_group_prefix){
    gsize size=0;
    gchar** keys=NULL;
    GError *error=NULL;
+   
+   keys = g_key_file_get_keys(keyfile, groupname, &size, &error);
+   g_log(RFM_LOG_DATA, G_LOG_LEVEL_DEBUG, "number of keys in group %s: %ld", groupname, size);
+   
+   for(gsize i=0; i<size; i++){
+       gchar* currentExtColumnValue = g_key_file_get_string(keyfile, groupname, keys[i], &error);
+       if (currentExtColumnValue==NULL){
+           g_warning("process_keys_in_group. groupname %s, keyvalue %s, not found, error:%s", groupname, keys[i], error? error->message:"");
+           g_error_free(error); error=NULL; continue;
+       } else {
+           if (add_group_prefix) {
+               gchar* group_key = g_strdup_printf("[%s]%s", groupname, keys[i]);
+               ProcessKeyValuePair(group_key, currentExtColumnValue, currentColumnOriginalTitle);
+               g_free(group_key);
+           } else {
+               ProcessKeyValuePair(keys[i], currentExtColumnValue, currentColumnOriginalTitle);
+           }
+       }
+   }
+   g_strfreev(keys);
+}
+
+static int ProcessKeyValuePairInData(GKeyFile *keyfile, char* groupname){
    char currentColumnOriginalTitle[10];
    snprintf(currentColumnOriginalTitle,10,"C%d", currentPageStartingColumnTitleIndex);
 
    if (groupname == NULL) {
-       // 获取所有组
        gsize groups_size = 0;
        gchar** groups = g_key_file_get_groups(keyfile, &groups_size);
        
@@ -6348,53 +6370,15 @@ static int ProcessKeyValuePairInData(GKeyFile *keyfile, char* groupname){
        }
        
        if (groups_size == 1) {
-           // 只有一个组，直接处理
-           keys = g_key_file_get_keys(keyfile, groups[0], &size, &error);
-           g_log(RFM_LOG_DATA, G_LOG_LEVEL_DEBUG, "number of keys in group %s: %ld", groups[0], size);
-           
-           for(gsize i=0; i<size; i++){
-               gchar* currentExtColumnValue = g_key_file_get_string(keyfile, groups[0], keys[i], &error);
-               if (currentExtColumnValue==NULL){
-                   g_warning("ProcessKeyValuePairInData. groupname %s, keyvalue %s, not found, error:%s", groups[0], keys[i], error? error->message:"");
-                   g_error_free(error); error=NULL; continue;
-               } else ProcessKeyValuePair(keys[i], currentExtColumnValue, currentColumnOriginalTitle);
-           }
-           g_strfreev(keys);
+           process_keys_in_group(keyfile, groups[0], currentColumnOriginalTitle, FALSE);
        } else {
-           // 多个组，处理所有组的 keys，key 名前加上 [组名]
            for(gsize g=0; g<groups_size; g++){
-               keys = g_key_file_get_keys(keyfile, groups[g], &size, &error);
-               g_log(RFM_LOG_DATA, G_LOG_LEVEL_DEBUG, "number of keys in group %s: %ld", groups[g], size);
-               
-               for(gsize i=0; i<size; i++){
-                   gchar* currentExtColumnValue = g_key_file_get_string(keyfile, groups[g], keys[i], &error);
-                   if (currentExtColumnValue==NULL){
-                       g_warning("ProcessKeyValuePairInData. groupname %s, keyvalue %s, not found, error:%s", groups[g], keys[i], error? error->message:"");
-                       g_error_free(error); error=NULL; continue;
-                   } else {
-                       // 构建带组名前缀的 key
-                       gchar* group_key = g_strdup_printf("[%s]%s", groups[g], keys[i]);
-                       ProcessKeyValuePair(group_key, currentExtColumnValue, currentColumnOriginalTitle);
-                       g_free(group_key);
-                   }
-               }
-               g_strfreev(keys);
+               process_keys_in_group(keyfile, groups[g], currentColumnOriginalTitle, TRUE);
            }
        }
        g_strfreev(groups);
    } else {
-       // 原来的逻辑，处理指定组
-       keys = g_key_file_get_keys(keyfile, groupname, &size, &error);
-       g_log(RFM_LOG_DATA, G_LOG_LEVEL_DEBUG, "number of keys:%ld", size);
-
-       for(gsize i=0; i<size; i++){
-           gchar* currentExtColumnValue = g_key_file_get_string(keyfile, groupname, keys[i], &error);
-           if (currentExtColumnValue==NULL){
-               g_warning("ProcessKeyValuePairInData. groupname %s, keyvalue %s, not found, error:%s", groupname, keys[i], error? error->message:"");
-               g_error_free(error); error=NULL; continue;
-           } else ProcessKeyValuePair(keys[i], currentExtColumnValue, currentColumnOriginalTitle);
-       }
-       g_strfreev(keys);
+       process_keys_in_group(keyfile, groupname, currentColumnOriginalTitle, FALSE);
    }
    return 0;
 }
