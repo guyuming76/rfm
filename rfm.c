@@ -945,7 +945,7 @@ char * get_drwxrwxrwx(mode_t st_mode){
 static void free_thumbQueueData(RFM_ThumbQueueData *thumbData)
 {
    if (thumbData->g_source_id_for_load_thumbnail>0) g_source_remove(thumbData->g_source_id_for_load_thumbnail);
-   if (thumbData->appInfoFromDesktopFile) g_free(thumbData->appInfoFromDesktopFile);
+   if (thumbData->appInfoFromDesktopFile) g_object_unref(thumbData->appInfoFromDesktopFile);
    g_free(thumbData->uri);
    g_free(thumbData->path);
    g_free(thumbData->md5);
@@ -1715,7 +1715,7 @@ static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter)
    }
 
    if (strcmp(fileAttributes->mime_sub_type,"x-desktop")==0 && strcmp(fileAttributes->mime_root,"application")==0){
-     thumbData->appInfoFromDesktopFile = g_desktop_app_info_new (fileAttributes->file_name);
+     thumbData->appInfoFromDesktopFile = g_desktop_app_info_new_from_filename (fileAttributes->path);
      if (thumbData->appInfoFromDesktopFile)
        g_log(RFM_LOG_DATA_THUMBNAIL, G_LOG_LEVEL_DEBUG, "create GDesktopAppInfo for desktop file:%s", fileAttributes->path);
      else{
