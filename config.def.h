@@ -105,6 +105,7 @@ static RFM_SearchResultType searchresultTypes[] = {
 #ifdef RFM_AddOn
   {RFM_ADDON_FILENAME_SUFFIX,ProcessOnelineForSearchResult, AddOnStatusColumns, NULL, NULL,                          "rfm addon status"},
 #endif
+  {".desktop", ProcessKeyValuePairInDesktopFilesFromSearchResult, NULL,       NULL, NULL,                            "desktop key value"},
 };
 
 
