@@ -631,7 +631,10 @@ impl RfmEditor {
             DefaultPromptSegment::Basic("".to_string()),
 	);
 	
-	// 5. 编辑循环
+	// 5. 显示用户提示信息
+	println!("\x1b[33mCtrl+o save and exit; Ctrl+x exit without saving\x1b[0m");
+	
+	// 6. 编辑循环
 	let mut saved = false;
 	loop {
             match self.line_editor.read_line(&prompt)? {
