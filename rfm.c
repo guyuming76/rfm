@@ -6141,7 +6141,7 @@ int ProcessKeyValuePairInFilesFromSearchResult(CALLER_OWN char *oneline, gboolea
      g_warning("ProcessKeyValuePairInFilesFromSearchResult. error loading key value pair from file %s, error code: %d, message:%s",oneline, error==NULL?0:error->code, error==NULL?"":error->message);
      g_error_free(error);
    }else{
-     ProcessKeyValuePairInData(keyfile, dumb_keyfile_groupname);
+     ProcessKeyValuePairInData(keyfile, NULL);
      g_key_file_free(keyfile);
    }
    g_free(absolute_address);
@@ -6325,7 +6325,7 @@ static int ProcessGKeyfileStr(CALLER_OWN gchar *cmdOutput){
        g_warning("ProcessGKeyfileStr. error loading key value pair in cmdOutput, error code: %d, message:%s", error==NULL?0:error->code, error==NULL?"":error->message);
        if (error) g_error_free(error);
      }else{
-       ProcessKeyValuePairInData(keyfile, dumb_keyfile_groupname);
+       ProcessKeyValuePairInData(keyfile, NULL);
        g_key_file_free(keyfile);
      }
 }
