@@ -2900,7 +2900,7 @@ static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointe
 
    if (!fileAttributes->is_dir) {
 
-      // 合并 run_actions 和 addons 中的菜单项
+      // 合并 run_actions 和 addons 中的菜单项 TODO: 每次item_activate 时合并有些低效，为啥不定义全局变量，在 setup, 以及每次 loadd_addon , unload addon 的时候重建
       GPtrArray *merged_actions = g_ptr_array_new();
 
       // 首先添加 addons 中的菜单项（优先级更高）
@@ -2919,7 +2919,6 @@ static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointe
         }
       }
 #endif
-
       // 然后添加 run_actions 中的菜单项
       for (guint j = 0; j < G_N_ELEMENTS(run_actions); j++) {
         g_ptr_array_add(merged_actions, &(run_actions[j]));
@@ -7456,7 +7455,7 @@ static NO_FREE char *AddOnStatus(RFM_FileAttributes* fileAttribs, guint ExtColum
   if (g_hash_table_lookup(addons, fileAttribs->path)) return "loaded";
   else return "not loaded";
 }
-
+//在config.def.h 中作为文件上下文菜单相应函数
 static void unload_addon_filemenu_func() {
   GList* selection_GtkTreePath_list = get_view_selection_list(icon_or_tree_view,treeview,&treemodel);
   GtkTreeIter iter;
