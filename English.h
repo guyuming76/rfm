@@ -47,7 +47,6 @@
 #define MENU_hideThisColumn "hide this column"
 #define MENU_InsertBeforeThisColumn "insert before this column"
 #define MENU_InsertAfterThisColumn "insert after this column"
-#define START_MENU "Start menu"
 #define SAVESEARCHRESULT "save (selected) search result into file"
 #define FIND_FILES "find ."
 #define LS_AI_DIALOG "ls AI dialog"

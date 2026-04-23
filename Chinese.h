@@ -48,7 +48,6 @@
 #define MENU_hideThisColumn "隐藏此列"
 #define MENU_InsertBeforeThisColumn "在此列前插入"
 #define MENU_InsertAfterThisColumn "在此列后插入"
-#define START_MENU "开始菜单"
 #define SAVESEARCHRESULT "保存（选中的）查询结果到文件"
 #define FIND_FILES "find ."
 #define LS_AI_DIALOG "ls AI对话"

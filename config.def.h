@@ -118,7 +118,6 @@ static const char *To_SearchResult[] = { stdin_cmd_interpretors[0].name, "find -
 static const char *find_same_name[] = { stdin_cmd_interpretors[0].name, rfmBinPath "rfmFindFilesWithTheSameName.sh "RFM_SearchResultTypeNamePrefix SrchRsltType_multitype" ", NULL };
 
 static const char *cd_in_searchresult[] = { stdin_cmd_interpretors[0].name, "cd ", NULL };
-static const char *start_menu[] = { stdin_cmd_interpretors[0].name, "cd /usr/share/applications", NULL };
 static const char *find_files[] = { stdin_cmd_interpretors[0].name,"find . -follow"RFM_SearchResultTypeNamePrefix"0", NULL };
 static const char *extract_archive[] = { stdin_cmd_interpretors[0].name, "rfmExtractArchive.sh "RFM_NEW_TERM_SUFFIX" ", NULL };
 static const char *mkdir_and_move_files_into_it[] = { stdin_cmd_interpretors[0].name, "rfm_mkdir_and_move_selected_files_into_it.sh "RFM_NEW_TERM_SUFFIX" ",NULL };
@@ -180,7 +179,6 @@ static const char *new_rfm[]  = { "$RFM_TERM", "$RFM_TERM_E", rfmBinPath "rfm", 
 #ifndef PythonEmbedded
 static const char *share_dir[] = { "$RFM_TERM", "$RFM_TERM_E", rfmBinPath "rfmShareDir.sh", NULL };
 #endif
-static const char *launch_desktop[] = { "dex", "--term", "$RFM_TERM", NULL };
 //TODO: to get thumbnail from .desktop file
 #ifdef GitIntegration
 static const char *git_ls_files_cmd[] = {"git", "ls-files", "--deduplicate",NULL};
@@ -259,7 +257,6 @@ static RFM_MenuItem run_actions[] = {
    { RunActionChangeOwner,"*",         "*",                    NULL,			NULL,			NULL,		change_owner,                   NULL },
    { RunActionMkdirMoveFiles,"*",      "*",                    NULL,                    NULL,                   NULL,           mkdir_and_move_files_into_it,   NULL },
    { "Open",         "image",          "*",                    NULL,			NULL,			NULL,		show_image,       		NULL },
-   { "Open",         "application",    "x-desktop",            NULL,                    NULL,                   NULL,           launch_desktop,                 NULL },
    { "Open",         "application",    "vnd.oasis.opendocument.text",          NULL,	NULL,			NULL,		soffice,  			NULL },
    { "Open",         "application",    "vnd.oasis.opendocument.spreadsheet",   NULL,	NULL,			NULL,		soffice,  			NULL },
    { "Open",         "application",    "vnd.openxmlformats-officedocument.wordprocessingml.document",NULL, NULL,NULL,		soffice,  			NULL },
@@ -362,7 +359,6 @@ static RFM_ToolButton tool_buttons[] = {
    { cpPath,         NULL,                      copy_curPath_to_clipboard, NULL,           TRUE,           TRUE,      0,                      "copy current path to clipboard", NULL},
    { SAVESEARCHRESULT,NULL,                     NULL,                   save_searchresult_to_file,TRUE,    FALSE,     0,                      NULL,                   NULL },
 // { FILTERSEARCHRESULT,NULL,                   NULL,                filter_selected_searchresult,TRUE,    FALSE,     0,                      NULL,                   InTreeView },
-   { START_MENU,     NULL,                      NULL,                   start_menu,        FALSE,          TRUE,      0,                      NULL,                  NULL},
    { PARSE_SEARCH_RESULT, NULL,                 InIconView,        parse_searchresult_with_multitype, TRUE,FALSE,     0,                      NULL,                  NULL},
    { UnionSearchResultClipboard, NULL,          NULL,                   Union_SearchResult_clipboard, TRUE,FALSE,     0,                      NULL,                  NULL},
 #ifdef RFM_AddOn
