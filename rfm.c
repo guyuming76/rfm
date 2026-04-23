@@ -2937,7 +2937,7 @@ static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointe
             index_of_default_file_activation_action_based_on_mime_or_searchresultType = i;
             g_debug("default menu item finally %s %s %s", action->runName, action->runRoot, action->runSub);
             break;
-          } else if (strncmp("*", action->runSub, 1) == 0) {
+          } else if (strncmp("*", action->runSub, 1) == 0 && index_of_default_file_activation_action_based_on_mime_or_searchresultType == -1) {
             index_of_default_file_activation_action_based_on_mime_or_searchresultType = i;
             g_debug("default menu item temporarily %s %s %s", action->runName, action->runRoot, action->runSub);
           } //当sub mime type 是*的时候，不break，继续往下找，而精确匹配的时候break,这样精确匹配的优先级就高
