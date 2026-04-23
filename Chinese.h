@@ -266,7 +266,7 @@ BuiltInCmd_SearchResultColumnSeperator \
 
 #define RFM_AddOn_HELP "  rfm 使用符合命名规范的 .c 源码作为 AddOn 插件，提供界面定制和功能扩展。请使用工具栏中\033[33maddons\033[0m按钮来查看插件列表\n" \
 "  插件类型：\n" \
-"    - Global：全局插件，可在任何目录使用. 系统启动时使用 locate 命令在整个系统中查找符合命名规范的 .c 文件\n" \
+"    - Global：全局插件，可在任何目录使用. 系统启动时使用 locate 命令在整个系统中查找符合命名规范的 .c 文件, 若其中包含 `const enum RFM_ADDON_TYPE addon_type = Global;` 则为全局插件\n" \
 "    - Directory：目录插件，只在特定目录生效。当进入特定目录时，检查该目录中是否存在符合命名规范的 .c 文件\n" \
 "  编译时机：\n" \
 "    - 首次发现 .c 文件时\n" \

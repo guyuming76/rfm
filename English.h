@@ -261,7 +261,7 @@ BuiltInCmd_SearchResultColumnSeperator \
 #define RFM_AddOn_HELP "  rfm uses .c source files that follow naming conventions as AddOns, which can be listed with the \033[33maddons\033[0m toolbar button\n" \
 "  interface customization and functionality extensions.\n" \
 "  Plugin Types:\n" \
-"    - Global: Global plugins that can be used in any directory. Uses locate command to find .c files matching naming convention in the entire system when system start\n" \
+"    - Global: Global plugins that can be used in any directory. Uses locate command to find .c files matching naming convention in the entire system when system start。 And it is global if it contains `const enum RFM_ADDON_TYPE addon_type = Global;`\n" \
 "    - Directory: Directory-specific plugins that only work in specific directories. When entering a specific directory, checks if there are .c files matching naming convention in that directory\n" \
 "  Compilation Timing:\n" \
 "    - When .c files are first discovered\n" \
