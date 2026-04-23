@@ -2900,36 +2900,68 @@ static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointe
 
    if (!fileAttributes->is_dir) {
 
-      for(i=0; i<G_N_ELEMENTS(run_actions); i++) {
-	 if (SearchResultViewInsteadOfDirectoryView && g_strcmp0(run_actions[i].OrSearchResultType, SearchResultTypePointerForCurrentExistingSearchResult->name)==0){
-	    index_of_default_file_activation_action_based_on_mime_or_searchresultType = i;
-	    break;
-	 }
-         if (strcmp(fileAttributes->mime_root, run_actions[i].runRoot)==0) {
-            if (strcmp(fileAttributes->mime_sub_type, run_actions[i].runSub)==0 ) { /* Exact match */
-               index_of_default_file_activation_action_based_on_mime_or_searchresultType = i;
-               g_debug("default menu item finally %s %s %s", run_actions[i].runName, run_actions[i].runRoot, run_actions[i].runSub);
-               break;
-            }else if (strncmp("*", run_actions[i].runSub, 1)==0) {
-              index_of_default_file_activation_action_based_on_mime_or_searchresultType = i;
-              g_debug("default menu item temporarily %s %s %s", run_actions[i].runName, run_actions[i].runRoot, run_actions[i].runSub);
-            } //当sub mime type 是*的时候，不break，继续往下找，而精确匹配的时候break,这样精确匹配的优先级就高
-         }
+      // 合并 run_actions 和 addons 中的菜单项
+      GPtrArray *merged_actions = g_ptr_array_new();
+
+      // 首先添加 addons 中的菜单项（优先级更高）
+#ifdef RFM_AddOn
+      GHashTableIter ht_iter;
+      gchar *key;
+      RFM_ADDON *value;
+      g_hash_table_iter_init(&ht_iter, addons);
+      while (g_hash_table_iter_next(&ht_iter, &key, &value)){
+        RFM_ADDON_RESOURCE_TYPE* addon_resource = value->resource_managed_by_addon;
+        if (addon_resource->file_menuitem_definitions_local_array_size > 0) {
+          for (guint j = 0; j < addon_resource->file_menuitem_definitions_local_array_size; j++) {
+            RFM_MenuItem *menu_item = &(addon_resource->file_menuitem_definitions_local[j]);
+            g_ptr_array_add(merged_actions, menu_item);
+          }
+        }
+      }
+#endif
+
+      // 然后添加 run_actions 中的菜单项
+      for (guint j = 0; j < G_N_ELEMENTS(run_actions); j++) {
+        g_ptr_array_add(merged_actions, &(run_actions[j]));
       }
 
-      if (index_of_default_file_activation_action_based_on_mime_or_searchresultType != -1){
-	file_menu_exec(NULL, &(run_actions[index_of_default_file_activation_action_based_on_mime_or_searchresultType]));
-      }else {
-         msg=g_strdup_printf("No default file activation action defined for mime type:\n %s/%s\n", fileAttributes->mime_root, fileAttributes->mime_sub_type);
-         show_msgbox(msg, "Run Action", GTK_MESSAGE_INFO);
-         g_free(msg);
+      // 在合并数组中查找匹配的菜单项
+      for (guint i = 0; i < merged_actions->len; i++) {
+        RFM_MenuItem *action = (RFM_MenuItem *)g_ptr_array_index(merged_actions, i);
+        if (SearchResultViewInsteadOfDirectoryView && g_strcmp0(action->OrSearchResultType, SearchResultTypePointerForCurrentExistingSearchResult->name) == 0){
+          index_of_default_file_activation_action_based_on_mime_or_searchresultType = i;
+          break;
+        }
+        if (strcmp(fileAttributes->mime_root, action->runRoot) == 0) {
+          if (strcmp(fileAttributes->mime_sub_type, action->runSub) == 0) { /* Exact match */
+            index_of_default_file_activation_action_based_on_mime_or_searchresultType = i;
+            g_debug("default menu item finally %s %s %s", action->runName, action->runRoot, action->runSub);
+            break;
+          } else if (strncmp("*", action->runSub, 1) == 0) {
+            index_of_default_file_activation_action_based_on_mime_or_searchresultType = i;
+            g_debug("default menu item temporarily %s %s %s", action->runName, action->runRoot, action->runSub);
+          } //当sub mime type 是*的时候，不break，继续往下找，而精确匹配的时候break,这样精确匹配的优先级就高
+        }
       }
+
+      // 执行匹配的菜单项
+      if (index_of_default_file_activation_action_based_on_mime_or_searchresultType != -1) {
+        RFM_MenuItem *action = (RFM_MenuItem *)g_ptr_array_index(merged_actions, index_of_default_file_activation_action_based_on_mime_or_searchresultType);
+        file_menu_exec(NULL, action);
+      } else {
+        msg = g_strdup_printf("No default file activation action defined for mime type: %s/%s", fileAttributes->mime_root, fileAttributes->mime_sub_type);
+        show_msgbox(msg, "Run Action", GTK_MESSAGE_INFO);
+        g_free(msg);
+      }
+
+      // 释放合并数组
+      g_ptr_array_free(merged_actions, FALSE);
+
    }else{ /* If dir, reset rfm_curPath and fill the model */
       SearchResultViewInsteadOfDirectoryView=0; //let the following set_rfm_curPath to tigger refresh_store from inotify_handler
       set_rfm_curPath(fileAttributes->path);
    }
 }
-
 static void row_activated(GtkTreeView *tree_view, GtkTreePath *tree_path,GtkTreeViewColumn *col, gpointer user_data)
 {
   item_activated(GTK_WIDGET(tree_view),tree_path,user_data);
