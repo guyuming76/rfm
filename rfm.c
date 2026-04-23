@@ -641,8 +641,6 @@ static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboo
 static int ProcessOnelineForSearchResult_with_title(CALLER_OWN char* oneline, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs);
 static void CallDefaultSearchResultFunctionForNewSearch(CALLER_OWN char *one_line_in_search_result, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs);
 int ProcessKeyValuePairInFilesFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs);
-
-int ProcessKeyValuePairInDesktopFilesFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs);
 int ProcessKeyValuePairInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char **cmdtemplate, RFM_FileAttributes* fileAttributes,RFM_ChildAttribs *childAttribs);
 int ProcessJsonInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate, RFM_FileAttributes* fileAttributes,RFM_ChildAttribs* child_attribs);
 static int ProcessCmdOutputFromSearchResultWithFunction(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate, RFM_FileAttributes* fileAttributes, RFM_ChildAttribs* child_attribs, int (*func)(RFM_ChildAttribs*));
@@ -7444,82 +7442,3 @@ static void unload_addon_filemenu_func() {
   g_list_free_full(selection_GtkTreePath_list, (GDestroyNotify)gtk_tree_path_free);
 };
 #endif
-// 处理 .desktop 文件，使用 GDesktopAppInfo 库
-int ProcessKeyValuePairInDesktopFilesFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs){
-   if (new_search){
-     CallDefaultSearchResultFunctionForNewSearch(oneline, TRUE, cmdTemplate, fileAttributes, childAttribs);
-     return 0;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
-   }
-
-   gchar * absolute_address = g_canonicalize_filename(oneline, rfm_SearchResultPath);
-   GError *error=NULL;
-
-   // 使用 GDesktopAppInfo 加载 .desktop 文件
-   GDesktopAppInfo *app_info = g_desktop_app_info_new_from_filename(absolute_address);
-   if (!app_info){
-     g_warning("ProcessKeyValuePairInDesktopFilesFromSearchResult. error loading desktop file %s", oneline);
-   } else {
-     // 处理常用的 .desktop 文件键
-     char currentColumnOriginalTitle[10];
-     snprintf(currentColumnOriginalTitle, 10, "C%d", currentPageStartingColumnTitleIndex);
-
-     // 处理函数：安全地处理字符串并传递给 ProcessKeyValuePair
-     void process_string(const gchar *key, const gchar *value) {
-       if (value) {
-         if (g_utf8_validate(value, -1, NULL)) {
-           // 有效的 UTF-8 字符串，直接使用
-           ProcessKeyValuePair((gchar*)key, (gchar*)value, currentColumnOriginalTitle);
-         } else {
-           // 尝试转换为 UTF-8
-           gchar *utf8_value = g_locale_to_utf8(value, -1, NULL, NULL, NULL);
-           if (utf8_value) {
-             // 转换成功，使用转换后的字符串
-             ProcessKeyValuePair((gchar*)key, utf8_value, currentColumnOriginalTitle);
-             g_free(utf8_value);
-           } else {
-             // 转换失败，使用空字符串
-             ProcessKeyValuePair((gchar*)key, (gchar*)"", currentColumnOriginalTitle);
-           }
-         }
-       }
-     }
-
-     // 获取并处理 Name
-     const gchar *name = g_app_info_get_name(G_APP_INFO(app_info));
-     process_string("Name", name);
-
-     // 获取并处理 Comment
-     const gchar *comment = g_app_info_get_description(G_APP_INFO(app_info));
-     process_string("Comment", comment);
-
-     // 获取并处理 Exec
-     const gchar *exec = g_app_info_get_executable(G_APP_INFO(app_info));
-     process_string("Exec", exec);
-
-     // 获取并处理 Icon
-     GIcon *gicon = g_app_info_get_icon(G_APP_INFO(app_info));
-     if (gicon) {
-       const gchar *icon = g_icon_to_string(gicon);
-       process_string("Icon", icon);
-     }
-
-     // 获取并处理 Type
-     GKeyFile *keyfile = g_key_file_new();
-     if (g_key_file_load_from_file(keyfile, absolute_address, G_KEY_FILE_NONE, &error)) {
-       gchar *type = g_key_file_get_string(keyfile, "Desktop Entry", "Type", &error);
-       if (type) {
-         process_string("Type", type);
-         g_free(type);
-       }
-       g_key_file_free(keyfile);
-     } else {
-       g_error_free(error);
-     }
-
-     g_object_unref(app_info);
-   }
-
-   g_free(absolute_address);
-   return 0;
-}
-
