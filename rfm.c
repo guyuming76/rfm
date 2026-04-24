@@ -36,7 +36,6 @@
 #include <wordexp.h>
 #include <stdarg.h>
 #include <regex.h>
-#include <gio/gdesktopappinfo.h>
 #include <json-glib/json-glib.h>
 #ifdef RFM_AddOn
 #include <dlfcn.h>
@@ -412,27 +411,6 @@ static void set_env_to_pass_into_child_process_for_view_columns_when_ItemSelecte
 /******Process spawn related definitions end*********/
 /****************************************************/
 /******Thumbnail related definitions*****************/
-typedef struct {
-   gchar *path;
-   gchar *thumb_name;
-   gchar *md5;
-   gchar *uri;
-   gint64 mtime_file;
-   gint t_idx;
-   pid_t rfm_pid;
-   gint thumb_size;
-   guint g_source_id_for_load_thumbnail;
-   GDesktopAppInfo *appInfoFromDesktopFile;
-} RFM_ThumbQueueData;
-
-typedef struct {
-   gchar *thumbRoot;
-   gchar *thumbSub;
-   gchar *filenameSuffix;
-  //GdkPixbuf *(*func)(RFM_ThumbQueueData * thumbData);
-   const gchar **thumbCmd;
-  gboolean check_tEXt;
-} RFM_Thumbnailer;
 
 typedef struct {
    GdkPixbuf *file, *dir;
@@ -447,7 +425,7 @@ typedef struct {
 } RFM_defaultPixbufs;
 
 static RFM_defaultPixbufs *defaultPixbufs=NULL;
-static GtkIconTheme *icon_theme;
+GtkIconTheme *icon_theme;
 static gchar *rfm_thumbDir;         /* Users thumbnail directory */
 static gint rfm_do_thumbs;          /* Show thumbnail images of files: 0: disabled; 1: enabled; 2: disabled for current dir */
 static GList *rfm_thumbQueue=NULL;
@@ -945,7 +923,6 @@ char * get_drwxrwxrwx(mode_t st_mode){
 static void free_thumbQueueData(RFM_ThumbQueueData *thumbData)
 {
    if (thumbData->g_source_id_for_load_thumbnail>0) g_source_remove(thumbData->g_source_id_for_load_thumbnail);
-   if (thumbData->appInfoFromDesktopFile) g_object_unref(thumbData->appInfoFromDesktopFile);
    g_free(thumbData->uri);
    g_free(thumbData->path);
    g_free(thumbData->md5);
@@ -1713,20 +1690,6 @@ static RFM_ThumbQueueData *get_thumbData(GtkTreeIter *iter)
      g_warning("calloc for RFM_ThumbQueueData failed");
      return NULL;
    }
-
-   if (strcmp(fileAttributes->mime_sub_type,"x-desktop")==0 && strcmp(fileAttributes->mime_root,"application")==0){
-     thumbData->appInfoFromDesktopFile = g_desktop_app_info_new_from_filename (fileAttributes->path);
-     if (thumbData->appInfoFromDesktopFile)
-       g_log(RFM_LOG_DATA_THUMBNAIL, G_LOG_LEVEL_DEBUG, "create GDesktopAppInfo for desktop file:%s", fileAttributes->path);
-     else{
-       g_warning("Failed to create GDesktopAppInfo for desktop file:%s", fileAttributes->path);
-       //g_log(RFM_LOG_DATA_THUMBNAIL, G_LOG_LEVEL_DEBUG, "Failed to create GDesktopAppInfo for desktop file:%s", fileAttributes->path);
-       free(thumbData);
-       thumbData=NULL;
-     }
-     return thumbData;
-   }
-
    thumbData->t_idx=find_thumbnailer(fileAttributes->mime_root, fileAttributes->mime_sub_type, fileAttributes->path);
    if (thumbData->t_idx==-1) {
       free(thumbData);
@@ -1994,26 +1957,8 @@ static void load_thumbnail_or_enqueue_thumbQueue_for_store_row(GtkTreeIter *iter
       RFM_ThumbQueueData *thumbData=NULL;
       thumbData=get_thumbData(iter); /* Returns NULL if thumbnail not handled */
 
-      if (thumbData && thumbData->appInfoFromDesktopFile) {
-	GIcon *appIcon = g_app_info_get_icon( thumbData->appInfoFromDesktopFile );
-	if (appIcon){
-	  const gchar *type_name = G_OBJECT_TYPE_NAME(appIcon);
-	  g_log(RFM_LOG_DATA_THUMBNAIL, G_LOG_LEVEL_DEBUG, "create %s for GDesktopAppInfo:%s", type_name? type_name:"NULL", g_desktop_app_info_get_filename(thumbData->appInfoFromDesktopFile));
-	  if (strcmp(type_name,"GThemedIcon")==0){
-	    char **icon_names = g_themed_icon_get_names(appIcon);
-	    if (icon_names){
-	      GdkPixbuf *pixbuf = gtk_icon_theme_load_icon(icon_theme, icon_names[0], RFM_ICON_SIZE, GTK_ICON_LOOKUP_GENERIC_FALLBACK, NULL);
-	      g_log(RFM_LOG_DATA_THUMBNAIL, G_LOG_LEVEL_DEBUG, "create GdkPixbuf for themed icon:%s", icon_names[0]);
-	      if (pixbuf){
-		gtk_list_store_set (store, iter, COL_PIXBUF, pixbuf, -1);
-		g_object_unref(pixbuf);
-	      }
-	    }
-	  }
-	}
-	free_thumbQueueData(thumbData);
 
-      }else if (thumbData){
+   if (thumbData){
          /* Try to load any existing thumbnail */
 	int ld=load_thumbnail(thumbData, (strncmp(rfm_thumbDir, thumbData->path, strlen(rfm_thumbDir))==0), thumbnailers[thumbData->t_idx].check_tEXt); //如同get_thumbData函数里面同样的逻辑, thumbData->path 在 rfm_thumbDir, 就视为显示thumbnail本身,而不是将其视作其他图片的thumbnail
 	 if ( ld == 0) { /* Success: thumbnail exists in cache and is valid */
@@ -2026,6 +1971,28 @@ static void load_thumbnail_or_enqueue_thumbQueue_for_store_row(GtkTreeIter *iter
 	   g_log(RFM_LOG_DATA_THUMBNAIL,G_LOG_LEVEL_DEBUG,"thumbnail %s creation enqueued for %s; load_thumbnail failure code:%d.",thumbData->thumb_name,thumbData->path,ld);
          }
       }
+   // 检查 addon 是否提供了 thumbnail 加载函数
+#ifdef RFM_AddOn
+  else{
+   RFM_FileAttributes *fileAttributes;
+   gtk_tree_model_get(GTK_TREE_MODEL(store), iter, COL_ATTR, &fileAttributes, -1);//TODO：这行在get_thumbData 里面也有，是不是可以考虑把get_thumbData 的参数从iter换成fileAttribute
+   GHashTableIter ht_iter;
+   gchar *key;
+   RFM_ADDON *value;
+   g_hash_table_iter_init(&ht_iter, addons);
+   while (g_hash_table_iter_next(&ht_iter, &key, &value)){
+     RFM_ADDON_RESOURCE_TYPE* addon_resource = value->resource_managed_by_addon;
+     if (addon_resource->thumbLoadFunc) {
+       GdkPixbuf *pixbuf = addon_resource->thumbLoadFunc(fileAttributes);
+       if (pixbuf) {
+         gtk_list_store_set (store, iter, COL_PIXBUF, pixbuf, -1);
+         g_object_unref(pixbuf);
+         return;
+       }
+     }
+   }
+  }
+#endif
 }
 
 #ifdef GitIntegration

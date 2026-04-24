@@ -4,7 +4,7 @@
 /*#define RFM_SINGLE_CLICK "True"*/
 #include <linux/limits.h>
 #define RFM_TOOL_SIZE 22
-#define RFM_ICON_SIZE 48
+int RFM_ICON_SIZE = 48;
 #define PIPE_SZ 65535      /* Kernel pipe size */ //TODO：如果 locate rfmTODO|rfm.sh 通过pipe传递的数据比这个大会怎样？
 //#define RFM_CACHE_THUMBNAIL_IN_MEM TRUE
 #define RFM_MX_MSGBOX_CHARS 1500 /* Maximum chars for show_msg output; messages exceeding this will be displayed in parent stdout */
@@ -29,21 +29,6 @@
 // "\e[A":history-search-backward
 // arrow down
 // "\e[B":history-search-forward
-#define RFM_LOG_DATA "rfm-data"
-#define RFM_LOG_DATA_EXT "rfm-data-ext"
-#define RFM_LOG_DATA_THUMBNAIL "rfm-data-thumbnail"
-#define RFM_LOG_DATA_SEARCH "rfm-data-search"
-#define RFM_LOG_DATA_SORT "rfm-data-sort"
-#ifdef GitIntegration
-#define RFM_LOG_DATA_GIT "rfm-data-git"
-#endif
-#define RFM_LOG_GSPAWN "rfm-gspawn"
-#define RFM_LOG_GSPAWN_READ_PIPE "rfm-gspawn-readpipe"
-#define RFM_LOG_COLUMN "rfm-column"
-#define RFM_LOG_COLUMN_VERBOSE "rfm-column-verbose"
-#define RFM_LOG_GTK "rfm-gtk"
-#define RFM_LOG_READLINE "rfm-readline"
-#define RFM_LOG_DIMENSION "rfm-dimension"
 
 static int RFM_msgbox_throttle = 5;/* Maximum number of concurrent message boxes */
 static gint RFM_THUMBNAIL_SIZE = 128; /* Maximum size for thumb dir normal is 128 */

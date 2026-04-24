@@ -15,6 +15,22 @@
 #define NO_FREE  //indicate that no need to free, for example, a static array compiled in code
 #define OWNER_CHANGE //indicate that ownership changed after function calll, need to pay attention.
 
+#define RFM_LOG_DATA "rfm-data"
+#define RFM_LOG_DATA_EXT "rfm-data-ext"
+#define RFM_LOG_DATA_THUMBNAIL "rfm-data-thumbnail"
+#define RFM_LOG_DATA_SEARCH "rfm-data-search"
+#define RFM_LOG_DATA_SORT "rfm-data-sort"
+#ifdef GitIntegration
+#define RFM_LOG_DATA_GIT "rfm-data-git"
+#endif
+#define RFM_LOG_GSPAWN "rfm-gspawn"
+#define RFM_LOG_GSPAWN_READ_PIPE "rfm-gspawn-readpipe"
+#define RFM_LOG_COLUMN "rfm-column"
+#define RFM_LOG_COLUMN_VERBOSE "rfm-column-verbose"
+#define RFM_LOG_GTK "rfm-gtk"
+#define RFM_LOG_READLINE "rfm-readline"
+#define RFM_LOG_DIMENSION "rfm-dimension"
+
 typedef struct RFM_ChildAttributes RFM_ChildAttribs;
 struct RFM_ToolButton;
 struct RFM_MenuItem;
@@ -177,6 +193,27 @@ typedef struct {
 } RFM_SearchResultType;
 
 typedef struct {
+   gchar *path;
+   gchar *thumb_name;
+   gchar *md5;
+   gchar *uri;
+   gint64 mtime_file;
+   gint t_idx;
+   pid_t rfm_pid;
+   gint thumb_size;
+   guint g_source_id_for_load_thumbnail;
+} RFM_ThumbQueueData;
+
+typedef struct {
+   gchar *thumbRoot;
+   gchar *thumbSub;
+   gchar *filenameSuffix;
+  //GdkPixbuf *(*func)(RFM_ThumbQueueData * thumbData);
+   const gchar **thumbCmd;
+  gboolean check_tEXt;
+} RFM_Thumbnailer;
+
+typedef struct {
   RFM_treeviewColumn *treeviewColumns;
   size_t treeviewColumns_array_size;
   GtkWidget **tool_bar_buttons_local;
@@ -187,6 +224,10 @@ typedef struct {
   size_t file_menuitem_definitions_local_array_size;
   RFM_SearchResultType *searchresulttypes;
   size_t searchresulttypes_array_size;
+  // 新增：thumbnail 处理相关字段
+  //RFM_Thumbnailer *thumbnailer_definitions_local;
+  //size_t thumbnailer_definitions_local_array_size;
+  GdkPixbuf* (*thumbLoadFunc)(RFM_FileAttributes *fileAttributes);
   stdin_cmd_interpretor **stdin_cmd_interpretors;
   size_t stdin_cmd_interpretors_array_size;
   stdin_cmd_interpretor*(*check_cmd_interpretor_switch_or_effective_cmd_interpretor)(gchar**, stdin_cmd_interpretor** , gboolean* , gchar**, gchar**);
