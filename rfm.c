@@ -591,7 +591,7 @@ static void cmdToggleFileNameCompletionCaseSensitive(wordexp_t *parsed_msg,GStri
 /******GtkListStore and refresh definitions end******/
 /****************************************************/
 /******Search Result related definitions*************/
-static gchar *rfm_SearchResultPath=NULL; /*keep the rfm_curPath value when SearchResult was created */
+gchar *rfm_SearchResultPath=NULL; /*keep the rfm_curPath value when SearchResult was created */
 static GList *SearchResultFileNameList = NULL;
 // in search result view, same file can appear more than once(for example, in
 // grep result), which means there can be duplicate files in fileAttribute list,
@@ -607,7 +607,7 @@ static RFM_SearchResultType* SearchResultTypePointer = NULL; // we need to pass 
 static RFM_SearchResultType* SearchResultTypePointerForCurrentExistingSearchResult = NULL; //The value above will be override by next command, which can be a non-search command, we need this variable to preserve the current displaying searchresulttype
 //如要分配新的自定义列,此变量记录分配的列名,按C1,C2..顺序,分配后,用键值替换原始的Cx列名
 static int currentSearchResultTypeStartingColumnTitleIndex;
-static int currentPageStartingColumnTitleIndex;
+int currentPageStartingColumnTitleIndex;
 static int FileNameIndexInColumnTitles=FALSE;
 static gchar** search_result_type_withtitle_column_title_array = NULL;
 static gchar* stdout_read_by_search_result=NULL;
@@ -617,13 +617,13 @@ static void showSearchResultExtColumnsBasedOnHashTableValues();
 static int ProcessOnelineForSearchResult(CALLER_OWN gchar *oneline, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs);
 static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboolean new_search, int first_line_column_title);
 static int ProcessOnelineForSearchResult_with_title(CALLER_OWN char* oneline, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs);
-static void CallDefaultSearchResultFunctionForNewSearch(CALLER_OWN char *one_line_in_search_result, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs);
+void CallDefaultSearchResultFunctionForNewSearch(CALLER_OWN char *one_line_in_search_result, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs);
 int ProcessKeyValuePairInFilesFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs);
 int ProcessKeyValuePairInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char **cmdtemplate, RFM_FileAttributes* fileAttributes,RFM_ChildAttribs *childAttribs);
 int ProcessJsonInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate, RFM_FileAttributes* fileAttributes,RFM_ChildAttribs* child_attribs);
 static int ProcessCmdOutputFromSearchResultWithFunction(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate, RFM_FileAttributes* fileAttributes, RFM_ChildAttribs* child_attribs, int (*func)(RFM_ChildAttribs*));
 static int ProcessKeyValuePairInData(GKeyFile* keyfile, char *groupname);
-static void ProcessKeyValuePair(CALLER_OWN gchar *key, OWNER_CHANGE gchar* currentExtColumnValue, CALLER_OWN char* currentColumnOriginalTitle);
+void ProcessKeyValuePair(CALLER_OWN gchar *key, OWNER_CHANGE gchar* currentExtColumnValue, CALLER_OWN char* currentColumnOriginalTitle);
 static int ProcessGKeyfileStrWrapper(RFM_ChildAttribs *child_attribs);
 static int ProcessGKeyfileStr(CALLER_OWN gchar *cmdOutput);
 static int ProcessJsonStrWrapper(RFM_ChildAttribs *child_attribs);
@@ -6121,7 +6121,7 @@ static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboo
 	   return currentColumnTitleIndex;
 }
 
-static void CallDefaultSearchResultFunctionForNewSearch(CALLER_OWN char *one_line_in_search_result, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs){
+void CallDefaultSearchResultFunctionForNewSearch(CALLER_OWN char *one_line_in_search_result, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs){
      if (fileAttributeID==1) {
        currentSearchResultTypeStartingColumnTitleIndex = ProcessOnelineForSearchResult(one_line_in_search_result,TRUE, cmdTemplate, fileAttributes, childAttribs);
        currentPageStartingColumnTitleIndex = currentSearchResultTypeStartingColumnTitleIndex;
@@ -6152,7 +6152,7 @@ int ProcessKeyValuePairInFilesFromSearchResult(CALLER_OWN char *oneline, gboolea
 }
 
 //根据key,找到合适的列，合适的currentExtColumnHashTableIndex, 执行g_hash_table_insert(ExtColumnHashTable[currentExtColumnHashTableIndex], strFileAttributeID, currentExtColumnValue);
-static void ProcessKeyValuePair(CALLER_OWN gchar *key, OWNER_CHANGE gchar* currentExtColumnValue, CALLER_OWN char* currentColumnOriginalTitle){
+void ProcessKeyValuePair(CALLER_OWN gchar *key, OWNER_CHANGE gchar* currentExtColumnValue, CALLER_OWN char* currentColumnOriginalTitle){
 	  RFM_treeviewColumn * col;
 	  enum RFM_treeviewCol current_Ext_Column;
 	  if ((col=get_treeviewColumnByTitle(key))){ //已经有同名列了

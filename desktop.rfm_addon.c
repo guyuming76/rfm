@@ -36,6 +36,10 @@ extern void remove_file_menuitems(GtkWidget ***menuitems, const size_t size);
 
 extern GtkIconTheme *icon_theme;
 extern int RFM_ICON_SIZE;
+extern int currentPageStartingColumnTitleIndex;
+extern gchar *rfm_SearchResultPath;
+extern void ProcessKeyValuePair(CALLER_OWN gchar *key, OWNER_CHANGE gchar* currentExtColumnValue, CALLER_OWN char* currentColumnOriginalTitle);
+extern void CallDefaultSearchResultFunctionForNewSearch(CALLER_OWN char *one_line_in_search_result, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs);
 
 RFM_ADDON_RESOURCE_TYPE addon_resource = {0};
 const enum RFM_ADDON_TYPE addon_type = Global;
@@ -87,6 +91,84 @@ static GdkPixbuf *desktop_thumbLoadFunc(RFM_FileAttributes *fileAttributes) {
   return NULL;
 }
 
+// 处理 .desktop 文件，直接解析文件内容
+int ProcessKeyValuePairInDesktopFilesFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs){
+    if (new_search){
+      CallDefaultSearchResultFunctionForNewSearch(oneline, TRUE, cmdTemplate, fileAttributes, childAttribs);
+      return 0;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
+    }
+ 
+    gchar * absolute_address = g_canonicalize_filename(oneline, rfm_SearchResultPath);
+    GError *error=NULL;
+ 
+    // 直接读取并解析 .desktop 文件，避免使用 GDesktopAppInfo 可能的语言问题
+    GKeyFile *keyfile = g_key_file_new();
+    if (!g_key_file_load_from_file(keyfile, absolute_address, G_KEY_FILE_NONE, &error)){
+      g_warning("ProcessKeyValuePairInDesktopFilesFromSearchResult. error loading desktop file %s, error code: %d, message:%s", oneline, error==NULL?0:error->code, error==NULL?"":error->message);
+      g_error_free(error);
+    } else {
+      // 处理常用的 .desktop 文件键
+      char currentColumnOriginalTitle[10];
+      snprintf(currentColumnOriginalTitle, 10, "C%d", currentPageStartingColumnTitleIndex);
+ 
+      // 处理函数：安全地处理字符串并传递给 ProcessKeyValuePair
+      void process_string(const gchar *key, const gchar *value) {
+        if (value) {
+          // 确保字符串是有效的 UTF-8
+          gchar *utf8_value = NULL;
+          if (g_utf8_validate(value, -1, NULL)) {
+            // 有效的 UTF-8 字符串，直接使用
+            utf8_value = g_strdup(value);
+          } else {
+            // 尝试转换为 UTF-8
+            utf8_value = g_locale_to_utf8(value, -1, NULL, NULL, NULL);
+          }
+          
+          if (utf8_value) {
+            // 再次验证转换后的字符串
+            if (g_utf8_validate(utf8_value, -1, NULL)) {
+              ProcessKeyValuePair((gchar*)key, utf8_value, currentColumnOriginalTitle);
+            } else {
+              // 仍然无效，使用空字符串
+              ProcessKeyValuePair((gchar*)key, (gchar*)"", currentColumnOriginalTitle);
+            }
+            g_free(utf8_value);
+          } else {
+            // 转换失败，使用空字符串
+            ProcessKeyValuePair((gchar*)key, (gchar*)"", currentColumnOriginalTitle);
+          }
+        }
+      }
+ 
+      // 处理常用键
+      gchar **keys = g_key_file_get_keys(keyfile, "Desktop Entry", NULL, NULL);
+      if (keys) {
+        for (int i = 0; keys[i]; i++) {
+          gchar *key = keys[i];
+          // 只处理常用键，跳过带语言下标的键
+          if (strchr(key, '[') == NULL) {
+            gchar *value = g_key_file_get_string(keyfile, "Desktop Entry", key, NULL);
+            if (value) {
+              process_string(key, value);
+              g_free(value);
+            }
+          }
+        }
+        g_strfreev(keys);
+      }
+ 
+      g_key_file_free(keyfile);
+    }
+ 
+    g_free(absolute_address);
+    return 0;
+}
+
+RFM_SearchResultType searchresultTypes[] = {
+//name	              SearchResultLineProcessingFunc                  showcolumn     SearchResultColumnSeperator  cmdTemplate                                Description
+  {".desktop", ProcessKeyValuePairInDesktopFilesFromSearchResult,     NULL,          NULL,                        NULL,                            "parse .desktop file"},
+};
+
 void rfm_local_enter(char * Addon_dir) {
      fprintf(stderr,"rfm_local_enter called for %s\n", Addon_dir);
      addon_resource.addon_dir = strdup(Addon_dir);
@@ -94,6 +176,8 @@ void rfm_local_enter(char * Addon_dir) {
      addon_resource.toolbar_button_definitions_local_array_size = G_N_ELEMENTS(tool_buttons_local);
      addon_resource.file_menuitem_definitions_local = file_menus_local;
      addon_resource.file_menuitem_definitions_local_array_size = G_N_ELEMENTS(file_menus_local);
+     addon_resource.searchresulttypes = searchresultTypes;
+     addon_resource.searchresulttypes_array_size = G_N_ELEMENTS(searchresultTypes);
      start_menu[0] = stdin_cmd_interpretors[0].name;
      addon_resource.thumbLoadFunc = desktop_thumbLoadFunc;
      add_toolbar_buttons(&(addon_resource.tool_bar_buttons_local),tool_buttons_local, addon_resource.toolbar_button_definitions_local_array_size);
