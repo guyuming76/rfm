@@ -1728,7 +1728,7 @@ static void refreshThumbnail() {
 	 if (thumbdata) {
     rfm_thumbQueue = g_list_append(rfm_thumbQueue, thumbdata);
 	  g_log(RFM_LOG_DATA_THUMBNAIL,G_LOG_LEVEL_DEBUG,"thumbnail %s creation enqueued for %s; manual refresh",thumbdata->thumb_name,thumbdata->path);
-   }
+   }//TODO: 这里有必要像  load_thumbnail_or_enqueue_thumbQueue_for_store_row 里那样考虑AddOn吗？
 
          listElement=g_list_next(listElement);
   }
