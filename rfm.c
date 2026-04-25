@@ -1725,8 +1725,10 @@ static void refreshThumbnail() {
   while(listElement!=NULL) {
 	 gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, listElement->data); //GtkTreePath to GtkTreeIter
 	 RFM_ThumbQueueData* thumbdata = get_thumbData(&iter);
-	 rfm_thumbQueue = g_list_append(rfm_thumbQueue, thumbdata);
-	 g_log(RFM_LOG_DATA_THUMBNAIL,G_LOG_LEVEL_DEBUG,"thumbnail %s creation enqueued for %s; manual refresh",thumbdata->thumb_name,thumbdata->path);
+	 if (thumbdata) {
+    rfm_thumbQueue = g_list_append(rfm_thumbQueue, thumbdata);
+	  g_log(RFM_LOG_DATA_THUMBNAIL,G_LOG_LEVEL_DEBUG,"thumbnail %s creation enqueued for %s; manual refresh",thumbdata->thumb_name,thumbdata->path);
+   }
 
          listElement=g_list_next(listElement);
   }
