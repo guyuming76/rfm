@@ -783,7 +783,7 @@ static gboolean view_button_press(GtkWidget *widget, GdkEvent *event);
 static gboolean on_query_tooltip(GtkWidget *widget, gint x, gint y, gboolean keyboard_mode, GtkTooltip *tooltip, gpointer user_data);
 static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointer user_data);
 static void row_activated(GtkTreeView *tree_view, GtkTreePath *tree_path,GtkTreeViewColumn *col, gpointer user_data);
-
+static void regenerate_merged_menu_and_toolbars(void);
 // 对于在下面几行代码运行git blame 显示commit msg
 // 里面提到的是否准备支持多搜索结果问题,我想我是有答案的:不准备支持
 // rfm在平铺窗口下运行比较好,用多个rfm实例来支持多搜索结果优于在一个实例里面支持多结果
@@ -794,6 +794,8 @@ static size_t TREEVIEW_COLUMNS_array_size = G_N_ELEMENTS(treeviewColumns);
 #define TREEVIEW_COLUMNS ViewColumnsLayouts[SearchResultViewInsteadOfDirectoryView]
 
 #define SHOW_TOOLBAR_BUTTON(x,i) (((SearchResultViewInsteadOfDirectoryView && x[i].showInSearchResultView) || (!SearchResultViewInsteadOfDirectoryView && x[i].showInDirectoryView)) && (x[i].showCondition == NULL || x[i].showCondition()))
+static GPtrArray* MergedFilemenu;
+static GPtrArray* Merged_tool_buttons;
 /**************gtk UI, filemenu, toolbar end**************************/
 /************** Addon begin ******************************************/
 
@@ -2868,34 +2870,9 @@ static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointe
    gtk_tree_model_get(GTK_TREE_MODEL(store), &iter, COL_ATTR, &fileAttributes, -1);
 
    if (!fileAttributes->is_dir) {
-
-      // 合并 run_actions 和 addons 中的菜单项 TODO: 每次item_activate 时合并有些低效，为啥不定义全局变量，在 setup, 以及每次 loadd_addon , unload addon 的时候重建
-      GPtrArray *merged_actions = g_ptr_array_new();
-
-      // 首先添加 addons 中的菜单项（优先级更高）
-#ifdef RFM_AddOn
-      GHashTableIter ht_iter;
-      gchar *key;
-      RFM_ADDON *value;
-      g_hash_table_iter_init(&ht_iter, addons);
-      while (g_hash_table_iter_next(&ht_iter, &key, &value)){
-        RFM_ADDON_RESOURCE_TYPE* addon_resource = value->resource_managed_by_addon;
-        if (addon_resource->file_menuitem_definitions_local_array_size > 0) {
-          for (guint j = 0; j < addon_resource->file_menuitem_definitions_local_array_size; j++) {
-            RFM_MenuItem *menu_item = &(addon_resource->file_menuitem_definitions_local[j]);
-            g_ptr_array_add(merged_actions, menu_item);
-          }
-        }
-      }
-#endif
-      // 然后添加 run_actions 中的菜单项
-      for (guint j = 0; j < G_N_ELEMENTS(run_actions); j++) {
-        g_ptr_array_add(merged_actions, &(run_actions[j]));
-      }
-
       // 在合并数组中查找匹配的菜单项
-      for (guint i = 0; i < merged_actions->len; i++) {
-        RFM_MenuItem *action = (RFM_MenuItem *)g_ptr_array_index(merged_actions, i);
+      for (guint i = 0; i < MergedFilemenu->len; i++) {
+        RFM_MenuItem *action = (RFM_MenuItem *)g_ptr_array_index(MergedFilemenu, i);
         if (SearchResultViewInsteadOfDirectoryView && g_strcmp0(action->OrSearchResultType, SearchResultTypePointerForCurrentExistingSearchResult->name) == 0){
           index_of_default_file_activation_action_based_on_mime_or_searchresultType = i;
           break;
@@ -2914,16 +2891,13 @@ static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointe
 
       // 执行匹配的菜单项
       if (index_of_default_file_activation_action_based_on_mime_or_searchresultType != -1) {
-        RFM_MenuItem *action = (RFM_MenuItem *)g_ptr_array_index(merged_actions, index_of_default_file_activation_action_based_on_mime_or_searchresultType);
+        RFM_MenuItem *action = (RFM_MenuItem *)g_ptr_array_index(MergedFilemenu, index_of_default_file_activation_action_based_on_mime_or_searchresultType);
         file_menu_exec(NULL, action);
       } else {
         msg = g_strdup_printf("No default file activation action defined for mime type: %s/%s", fileAttributes->mime_root, fileAttributes->mime_sub_type);
         show_msgbox(msg, "Run Action", GTK_MESSAGE_INFO);
         g_free(msg);
       }
-
-      // 释放合并数组
-      g_ptr_array_free(merged_actions, FALSE);
 
    }else{ /* If dir, reset rfm_curPath and fill the model */
       SearchResultViewInsteadOfDirectoryView=0; //let the following set_rfm_curPath to tigger refresh_store from inotify_handler
@@ -3363,12 +3337,13 @@ static gboolean view_key_press(GtkWidget *widget, GdkEvent *event) {
   } else if (ek->keyval == GDK_KEY_Tab){
     g_message("This is the command window");
   } else {
-    for (int i = 0; i < G_N_ELEMENTS(tool_buttons); i++) {
-      if (tool_buttons[i].Accel &&
-	  ek->keyval == tool_buttons[i].Accel &&
+    for (guint i = 0; i < Merged_tool_buttons->len; i++) {
+      RFM_ToolButton *button = (RFM_ToolButton*)g_ptr_array_index(Merged_tool_buttons, i);
+      if (button->Accel &&
+	  ek->keyval == button->Accel &&
           (ek->state & GDK_MOD1_MASK) == GDK_MOD1_MASK &&
-          SHOW_TOOLBAR_BUTTON(tool_buttons,i)) {
-        tool_buttons[i].func(&(tool_buttons[i]));
+          (((SearchResultViewInsteadOfDirectoryView && button->showInSearchResultView) || (!SearchResultViewInsteadOfDirectoryView && button->showInDirectoryView)) && (button->showCondition == NULL || button->showCondition()))) {
+        button->func(button);
         return TRUE;
       }
     }
@@ -3452,6 +3427,47 @@ static gboolean view_button_press(GtkWidget *widget, GdkEvent *event)
    }
    gtk_tree_path_free(tree_path);
    return ret_val;
+}
+
+static void regenerate_merged_menu_and_toolbars(void)
+{
+  // Regenerate MergedFilemenu and Merged_tool_buttons
+  if (MergedFilemenu != NULL)
+    g_ptr_array_free(MergedFilemenu, FALSE);
+  MergedFilemenu = g_ptr_array_new();
+
+  if (Merged_tool_buttons != NULL)
+    g_ptr_array_free(Merged_tool_buttons, FALSE);
+  Merged_tool_buttons = g_ptr_array_new();
+
+#ifdef RFM_AddOn
+  GHashTableIter ht_iter;
+  gchar *key;
+  RFM_ADDON *value;
+  g_hash_table_iter_init(&ht_iter, addons);
+  while (g_hash_table_iter_next(&ht_iter, &key, &value)){
+    RFM_ADDON_RESOURCE_TYPE* addon_resource = value->resource_managed_by_addon;
+    if (addon_resource->file_menuitem_definitions_local_array_size > 0) {
+      for (guint j = 0; j < addon_resource->file_menuitem_definitions_local_array_size; j++) {
+        RFM_MenuItem *menu_item = &(addon_resource->file_menuitem_definitions_local[j]);
+        g_ptr_array_add(MergedFilemenu, menu_item);
+      }
+    }
+    if (addon_resource->toolbar_button_definitions_local_array_size > 0) {
+      for (guint j = 0; j < addon_resource->toolbar_button_definitions_local_array_size; j++) {
+        RFM_ToolButton *tool_button = &(addon_resource->toolbar_button_definitions_local[j]);
+        g_ptr_array_add(Merged_tool_buttons, tool_button);
+      }
+    }
+  }
+#endif
+  // Add run_actions and tool_buttons
+  for (guint j = 0; j < G_N_ELEMENTS(run_actions); j++) {
+    g_ptr_array_add(MergedFilemenu, &(run_actions[j]));
+  }
+  for (guint j = 0; j < G_N_ELEMENTS(tool_buttons); j++) {
+    g_ptr_array_add(Merged_tool_buttons, &(tool_buttons[j]));
+  }
 }
 
 static void refresh_toolbar()
@@ -4676,17 +4692,19 @@ static gboolean cmd_GUI_cmd_wrapper(wordexp_t *parsed_msg, GString *readline_res
   if (parsed_msg->we_wordc < 1) return FALSE;
   const char *cmd_name = parsed_msg->we_wordv[0];
   g_debug("cmd_GUI_cmd_wrapper %s; %s", cmd_name, readline_result_string_after_file_name_substitution->str);
-  if (ItemSelected > 0) {// 有文件选中，在 run_actions 中查找
-    for (guint i = 0; i < G_N_ELEMENTS(run_actions); i++) {
-      if (g_strcmp0(cmd_name, run_actions[i].runName) == 0) {
-        g_idle_add_once(file_menu_exec_by_g_idle_add, &run_actions[i]);
+  if (ItemSelected > 0) {// 有文件选中，在 MergedFilemenu 中查找
+    for (guint i = 0; i < MergedFilemenu->len; i++) {
+      RFM_MenuItem *menu_item = g_ptr_array_index(MergedFilemenu, i);
+      if (g_strcmp0(cmd_name, menu_item->runName) == 0) {
+        g_idle_add_once(file_menu_exec_by_g_idle_add, menu_item);
         return TRUE;
       }
     }
-  } else {// 无文件选中，在 tool_buttons 中查找
-    for (guint i = 0; i < G_N_ELEMENTS(tool_buttons); i++) {
-      if (g_strcmp0(cmd_name, tool_buttons[i].buttonName) == 0) {
-        g_idle_add_once(toolbar_button_exec_by_g_idle_add, &tool_buttons[i]);
+  } else {// 无文件选中，在 Merged_tool_buttons 中查找
+    for (guint i = 0; i < Merged_tool_buttons->len; i++) {
+      RFM_ToolButton *tool_button = g_ptr_array_index(Merged_tool_buttons, i);
+      if (g_strcmp0(cmd_name, tool_button->buttonName) == 0) {
+        g_idle_add_once(toolbar_button_exec_by_g_idle_add, tool_button);
         return TRUE;
       }
     }
@@ -5705,6 +5723,7 @@ static int setup()
    add_toolbar(rfm_main_box, defaultPixbufs);
    menu=gtk_menu_new();
    add_file_menuitems(&menuItem,run_actions,G_N_ELEMENTS(run_actions));
+   regenerate_merged_menu_and_toolbars();
 
    columnHeaderMenu = gtk_menu_new();
    InsertBeforeMenuItem = gtk_menu_item_new_with_label(MENU_InsertBeforeThisColumn);
@@ -7337,6 +7356,7 @@ static void load_addon(CALLER_OWN char* addon_fullpath){
 	    g_hash_table_insert(addons_hash, addon->addon_hash, addon);
 	    g_hash_table_insert(addons_filename, addon->addon_base_filename, addon);
 	    append_addon_treeviewColumns(addon,TRUE,TRUE);
+	    regenerate_merged_menu_and_toolbars();
 	    g_debug("addons size after loading:%d",g_hash_table_size(addons));
 	    g_free(addon_dir);
 	    return; // 成功call enter funtion 就不要cleanup, unload 完再cleanup
@@ -7386,6 +7406,7 @@ static void find_and_unload_addons_before_leaving_current_directory(CALLER_OWN c
     GHashTableIter ht_iter;
     gchar *key;
     RFM_ADDON *value;
+    gboolean needs_regenerate = FALSE;
     g_hash_table_iter_init(&ht_iter, addons);
     while (g_hash_table_iter_next(&ht_iter, &key, &value)){
       gchar * addon_dir = g_path_get_dirname(value->addon_c_fullpath);
@@ -7393,10 +7414,12 @@ static void find_and_unload_addons_before_leaving_current_directory(CALLER_OWN c
 	g_hash_table_iter_remove(&ht_iter);
 	unload_local_extension(value);
 	free_addon(value);
+        needs_regenerate = TRUE;
         g_debug("addons size after unloading:%d",g_hash_table_size(addons));
       }
       g_free(addon_dir);
     }
+    if (needs_regenerate) regenerate_merged_menu_and_toolbars();
 }
 
 static void unload_local_extension(RFM_ADDON *addon) {
@@ -7446,6 +7469,7 @@ static void unload_addon_filemenu_func() {
 	 }
          listElement=g_list_next(listElement);
   }
+  regenerate_merged_menu_and_toolbars();
   g_list_free_full(selection_GtkTreePath_list, (GDestroyNotify)gtk_tree_path_free);
 };
 #endif
