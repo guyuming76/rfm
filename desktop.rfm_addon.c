@@ -60,6 +60,28 @@ RFM_MenuItem file_menus_local[] = {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wincompatible-pointer-types"
 
+static gchar* sanitize_utf8(const gchar *str) {
+    if (!str)
+        return g_strdup("");
+    if (g_utf8_validate(str, -1, NULL))
+        return g_strdup(str);
+    
+    // 先尝试从当前 locale 转换（若 locale 为 UTF-8，这一步基本会失败）
+    gchar *tmp = g_locale_to_utf8(str, -1, NULL, NULL, NULL);
+    if (tmp && g_utf8_validate(tmp, -1, NULL))
+        return tmp;
+    g_free(tmp);
+    
+    // 回退：强行从 ISO-8859-1 转成 UTF‑8（许多老旧 .desktop 文件用此编码）
+    tmp = g_convert(str, -1, "UTF-8", "ISO-8859-1", NULL, NULL, NULL);
+    if (tmp && g_utf8_validate(tmp, -1, NULL))
+        return tmp;
+    g_free(tmp);
+    
+    // 最终仍然无效，用空白替代
+    return g_strdup("");
+}
+
 // .desktop 文件的 thumbnail 加载函数
 static GdkPixbuf *desktop_thumbLoadFunc(RFM_FileAttributes *fileAttributes) {
   if (strcmp(fileAttributes->mime_sub_type, "x-desktop") == 0 &&
@@ -113,36 +135,14 @@ int ProcessKeyValuePairInDesktopFilesFromSearchResult(CALLER_OWN char *oneline, 
       // 处理常用的 .desktop 文件键
       char currentColumnOriginalTitle[10];
       snprintf(currentColumnOriginalTitle, 10, "C%d", currentPageStartingColumnTitleIndex);
- 
+
       // 处理函数：安全地处理字符串并传递给 ProcessKeyValuePair
       void process_string(const gchar *key, const gchar *value) {
-        if (value) {
-          // 确保字符串是有效的 UTF-8
-          gchar *utf8_value = NULL;
-          if (g_utf8_validate(value, -1, NULL)) {
-            // 有效的 UTF-8 字符串，直接使用
-            utf8_value = g_strdup(value);
-          } else {
-            // 尝试转换为 UTF-8
-            utf8_value = g_locale_to_utf8(value, -1, NULL, NULL, NULL);
-          }
-          
-          if (utf8_value) {
-            // 再次验证转换后的字符串
-            if (g_utf8_validate(utf8_value, -1, NULL)) {
-              ProcessKeyValuePair((gchar*)key, utf8_value, currentColumnOriginalTitle);
-            } else {
-              // 仍然无效，使用空字符串
-              ProcessKeyValuePair((gchar*)key, (gchar*)"", currentColumnOriginalTitle);
-            }
-            g_free(utf8_value);
-          } else {
-            // 转换失败，使用空字符串
-            ProcessKeyValuePair((gchar*)key, (gchar*)"", currentColumnOriginalTitle);
-          }
-        }
-      }
- 
+	gchar *clean_value = sanitize_utf8(value);
+	ProcessKeyValuePair((gchar*)key, clean_value, currentColumnOriginalTitle);
+	g_free(clean_value);
+     }
+
       // 处理常用键
       gchar **keys = g_key_file_get_keys(keyfile, "Desktop Entry", NULL, NULL);
       if (keys) {
