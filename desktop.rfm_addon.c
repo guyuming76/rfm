@@ -60,28 +60,6 @@ RFM_MenuItem file_menus_local[] = {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wincompatible-pointer-types"
 
-static gchar* sanitize_utf8(const gchar *str) {
-    if (!str)
-        return g_strdup("");
-    if (g_utf8_validate(str, -1, NULL))
-        return g_strdup(str);
-    
-    // 先尝试从当前 locale 转换（若 locale 为 UTF-8，这一步基本会失败）
-    gchar *tmp = g_locale_to_utf8(str, -1, NULL, NULL, NULL);
-    if (tmp && g_utf8_validate(tmp, -1, NULL))
-        return tmp;
-    g_free(tmp);
-    
-    // 回退：强行从 ISO-8859-1 转成 UTF‑8（许多老旧 .desktop 文件用此编码）
-    tmp = g_convert(str, -1, "UTF-8", "ISO-8859-1", NULL, NULL, NULL);
-    if (tmp && g_utf8_validate(tmp, -1, NULL))
-        return tmp;
-    g_free(tmp);
-    
-    // 最终仍然无效，用空白替代
-    return g_strdup("");
-}
-
 // .desktop 文件的 thumbnail 加载函数
 static GdkPixbuf *desktop_thumbLoadFunc(RFM_FileAttributes *fileAttributes) {
   if (strcmp(fileAttributes->mime_sub_type, "x-desktop") == 0 &&
@@ -119,54 +97,40 @@ static GdkPixbuf *desktop_thumbLoadFunc(RFM_FileAttributes *fileAttributes) {
 // 处理 .desktop 文件，直接解析文件内容
 int ProcessKeyValuePairInDesktopFilesFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs){
     if (new_search){
-      CallDefaultSearchResultFunctionForNewSearch(oneline, TRUE, cmdTemplate, fileAttributes, childAttribs);
-      return 0;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
+        CallDefaultSearchResultFunctionForNewSearch(oneline, TRUE, cmdTemplate, fileAttributes, childAttribs);
+        return 0;
     }
- 
-    gchar * absolute_address = g_canonicalize_filename(oneline, rfm_SearchResultPath);
-    GError *error=NULL;
- 
-    // 直接读取并解析 .desktop 文件，避免使用 GDesktopAppInfo 可能的语言问题
-    GKeyFile *keyfile = g_key_file_new();
-    if (!g_key_file_load_from_file(keyfile, absolute_address, G_KEY_FILE_NONE, &error)){
-      g_warning("ProcessKeyValuePairInDesktopFilesFromSearchResult. error loading desktop file %s, error code: %d, message:%s", oneline, error==NULL?0:error->code, error==NULL?"":error->message);
-      g_error_free(error);
-    } else {
-      // 处理常用的 .desktop 文件键
-      char currentColumnOriginalTitle[10];
-      snprintf(currentColumnOriginalTitle, 10, "C%d", currentPageStartingColumnTitleIndex);
-
-      // 处理函数：安全地处理字符串并传递给 ProcessKeyValuePair
-      void process_string(const gchar *key, const gchar *value) {
-	gchar *clean_value = sanitize_utf8(value);
-	ProcessKeyValuePair((gchar*)key, clean_value, currentColumnOriginalTitle);
-	g_free(clean_value);
-     }
-
-      // 处理常用键
-      gchar **keys = g_key_file_get_keys(keyfile, "Desktop Entry", NULL, NULL);
-      if (keys) {
-        for (int i = 0; keys[i]; i++) {
-          gchar *key = keys[i];
-          // 只处理常用键，跳过带语言下标的键
-          if (strchr(key, '[') == NULL) {
-            gchar *value = g_key_file_get_string(keyfile, "Desktop Entry", key, NULL);
-            if (value) {
-              process_string(key, value);
-              g_free(value);
-            }
-          }
-        }
-        g_strfreev(keys);
-      }
- 
-      g_key_file_free(keyfile);
+    
+    gchar *absolute_address = g_canonicalize_filename(oneline, rfm_SearchResultPath);
+    GDesktopAppInfo *app_info = g_desktop_app_info_new_from_filename(absolute_address);
+    if (!app_info) {
+        g_warning("ProcessKeyValuePairInDesktopFilesFromSearchResult: failed to create GDesktopAppInfo for %s", absolute_address);
+        g_free(absolute_address);
+        return 0;
     }
- 
+    
+    char currentColumnOriginalTitle[10];
+    snprintf(currentColumnOriginalTitle, 10, "C%d", currentPageStartingColumnTitleIndex);
+       
+    // 要提取的常用 desktop entry 键（不含语言标记）
+    static const gchar *common_keys[] = {
+        "Name", "Comment", "GenericName", "Exec", "Icon",
+        "Categories", "Type", "Terminal", "NoDisplay", "Hidden",
+        "OnlyShowIn", "NotShowIn", "MimeType", "Keywords",
+        "StartupWMClass", "StartupNotify", "Actions",
+        NULL
+    };
+    
+    for (int i = 0; common_keys[i] != NULL; i++) {
+        const gchar *key = strdup(common_keys[i]);
+        gchar *value = g_desktop_app_info_get_string(app_info, key);
+        if (value) ProcessKeyValuePair((gchar*)key, value, currentColumnOriginalTitle);
+    }
+    
+    g_object_unref(app_info);
     g_free(absolute_address);
     return 0;
 }
-
 #pragma GCC diagnostic pop
 
 RFM_SearchResultType searchresultTypes[] = {
