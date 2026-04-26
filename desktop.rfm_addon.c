@@ -57,6 +57,9 @@ RFM_MenuItem file_menus_local[] = {
    { "Open",         "application",    "x-desktop",            NULL,                    NULL,               NULL,    launch_desktop,         NULL },
 };
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wincompatible-pointer-types"
+
 // .desktop 文件的 thumbnail 加载函数
 static GdkPixbuf *desktop_thumbLoadFunc(RFM_FileAttributes *fileAttributes) {
   if (strcmp(fileAttributes->mime_sub_type, "x-desktop") == 0 &&
@@ -163,6 +166,8 @@ int ProcessKeyValuePairInDesktopFilesFromSearchResult(CALLER_OWN char *oneline, 
     g_free(absolute_address);
     return 0;
 }
+
+#pragma GCC diagnostic pop
 
 RFM_SearchResultType searchresultTypes[] = {
 //name	              SearchResultLineProcessingFunc                  showcolumn     SearchResultColumnSeperator  cmdTemplate                                Description
