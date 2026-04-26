@@ -70,7 +70,6 @@ fn context_for_cursor(line: &str, pos: usize, completion_start_pos: &mut usize) 
 
 // 定义 C 函数指针类型  
 type GetCompletionFn = extern "C" fn(*const i8, *mut i32) -> *const GPtrArray;
-type GetMenuCompletionFn = extern "C" fn(*const i8, *mut i32) -> *const GPtrArray;
 type EscapeHandler = extern "C" fn();
 type ToggleRecursiveCompletionFn = extern "C" fn();
 //type GNUFileCompleteWrapperFn = extern "C" fn(*const i8) -> *mut *mut i8;
@@ -78,7 +77,7 @@ type ToggleRecursiveCompletionFn = extern "C" fn();
 #[repr(C)]
 pub struct rfmFunctions {
     pub get_completion_fn:GetCompletionFn,
-    pub get_menu_completion_fn:GetMenuCompletionFn,
+    pub get_menu_completion_fn:GetCompletionFn,
     // 其他函数...
     pub g_idle_add_once_handle_escape:EscapeHandler,
     pub toggle_recursive_completion_fn:ToggleRecursiveCompletionFn,
@@ -101,7 +100,7 @@ impl CCompleter {
 
 // c 语言菜单补全器，补全菜单和工具栏命令
 pub struct MenuCompleter {
-    get_menu_completion_fn: GetMenuCompletionFn,
+    get_menu_completion_fn: GetCompletionFn,
 }
 
 impl MenuCompleter {
