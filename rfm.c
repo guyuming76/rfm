@@ -4675,6 +4675,7 @@ static void cmd_setenv(wordexp_t *parsed_msg, GString *readline_result_string_af
 static gboolean cmd_GUI_cmd_wrapper(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution) {
   if (parsed_msg->we_wordc < 1) return FALSE;
   const char *cmd_name = parsed_msg->we_wordv[0];
+  g_debug("cmd_GUI_cmd_wrapper %s; %s", cmd_name, readline_result_string_after_file_name_substitution->str);
   if (ItemSelected > 0) {// 有文件选中，在 run_actions 中查找
     for (guint i = 0; i < G_N_ELEMENTS(run_actions); i++) {
       if (g_strcmp0(cmd_name, run_actions[i].runName) == 0) {
