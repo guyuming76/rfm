@@ -1387,7 +1387,6 @@ static void check_wait_status_and_set_exit_code(CALLER_OWN RFM_ChildAttribs *chi
 
 static gchar *choose_working_directory_for_g_spawn(RFM_ChildAttribs *childAttribs) {
   if (childAttribs->workingDir) return childAttribs->workingDir;//workingDir 是强制指定的，有最高优先级
-  if (childAttribs->searchresulttype_addon_dir) return childAttribs->searchresulttype_addon_dir;
   if (childAttribs->cmd_interpretor_addon_dir) return childAttribs->cmd_interpretor_addon_dir;
   if (childAttribs->toolbar_button_or_filemenu_addon_dir) return childAttribs->toolbar_button_or_filemenu_addon_dir;
   return rfm_curPath;
@@ -2467,6 +2466,7 @@ static gboolean fill_fileAttributeList_with_filenames_from_search_result_and_the
       rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
       g_log(RFM_LOG_DATA,G_LOG_LEVEL_DEBUG,"appended into rfm_fileAttributeList:%s", (char*)name->data);
       if (SearchResultViewInsteadOfDirectoryView && SearchResultTypePointerForCurrentExistingSearchResult)//本函数仅在refresh_store()searchresultview分支调用，因此判断条件中SearchResultViewInsteadOfDirectoryView其实可以不要
+	if (childAttribs->searchresulttype_addon_dir) childAttribs->workingDir = strdup(childAttribs->searchresulttype_addon_dir);
 	SearchResultTypePointerForCurrentExistingSearchResult->SearchResultLineProcessingFunc((gchar*)(name->data), FALSE, SearchResultTypePointerForCurrentExistingSearchResult->cmdTemplate, fileAttributes, childAttribs);
     }
     fileAttributeID++;//上面SearchResultLineProcessingFunc里面会使用fileAttributeID作为hashtable的key, commit ab8f8c2f832bc32b431ced50bda21de36b9314d5 之前是分两次从fileAttributeID=1开始遍历文件名列表的,但commit ab8f8c2f832bc32b431ced50bda21de36b9314d5 和并成了现在的一次遍历, 造成了一个bug: 之前在 get_fileAttributes_for_a_file 调用fileAttributeID++, 后面的SearchResultLineProcessingFunc里fileAttributeID值就错了,所以现在改在这里调用 fileAttributeID++
@@ -6314,7 +6314,7 @@ static int ProcessCmdOutputFromSearchResultWithFunction(CALLER_OWN char *oneline
    childAttribs->setsid = child_attribs->setsid;
    if (!no_window) childAttribs->runOpts = G_SPAWN_STDIN_FROM_DEV_NULL; //如果在no_window模式下设置STDIN_FROM_DEV_NULL, 就会报错：无法设定终端进程组 (-1): 对设备不适当的 ioctl 操作。bash: 此 shell 中无任务控制
    if (child_attribs->toolbar_button_or_filemenu_addon_dir) childAttribs->toolbar_button_or_filemenu_addon_dir = strdup(child_attribs->toolbar_button_or_filemenu_addon_dir);
-   if (child_attribs->searchresulttype_addon_dir) childAttribs->searchresulttype_addon_dir = strdup(child_attribs->searchresulttype_addon_dir);
+   if (child_attribs->searchresulttype_addon_dir) childAttribs->workingDir = strdup(child_attribs->searchresulttype_addon_dir);
    g_spawn_wrapper_(NULL,NULL,childAttribs);
 }
 
@@ -6430,6 +6430,7 @@ static int ProcessKeyValuePairInData(GKeyFile *keyfile, char* groupname){
 	    }
 #endif
 	    g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"%s: SearchResultType name %s matched for file:%s", SrchRsltType_multitype,longest_matched_searchresulttype_name,oneline);
+            if (childAttribs->searchresulttype_addon_dir) childAttribs->workingDir = strdup(childAttribs->searchresulttype_addon_dir);
 	    int ret = matched_searchresulttype_pointer->SearchResultLineProcessingFunc(oneline,new_search,matched_searchresulttype_pointer->cmdTemplate, fileAttributes, childAttribs);
 	    g_free(childAttribs->searchresulttype_addon_dir); childAttribs->searchresulttype_addon_dir = NULL;//当前的searchresulttype是multitype,对应的addon_dir是null
    //对于multitype来说，每一行的showcolumn应该是匹配到的具体searchresulttype的showcolumn, 所以应该给每种匹配到的showcolumn做个并集
@@ -6671,6 +6672,7 @@ static void update_SearchResultFileNameList_and_refresh_store(RFM_ChildAttribs *
   if (filenamelist){
   gchar * oneline=strtok((gchar*)filenamelist,"\n");
   while (oneline!=NULL){
+    if (childAttribs->searchresulttype_addon_dir) childAttribs->workingDir = strdup(childAttribs->searchresulttype_addon_dir);
     SearchResultTypePointer->SearchResultLineProcessingFunc(oneline, TRUE, SearchResultTypePointer->cmdTemplate,NULL, childAttribs);
     fileAttributeID++;
     oneline=strtok(NULL, "\n");
