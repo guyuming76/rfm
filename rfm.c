@@ -5311,25 +5311,12 @@ static gboolean rfm_menu_completion_in_gtk_thread(RFM_MenuCompletionData *data) 
   }
   
   // Add toolbar buttons with "*" prefix
-  for (guint i = 0; i < G_N_ELEMENTS(tool_buttons); i++) {
-    if (SHOW_TOOLBAR_BUTTON(tool_buttons, i) && MATCH_CONTAINS(tool_buttons[i].buttonName, data->text)) {
-      g_ptr_array_add(result, g_strdup_printf("*%s", tool_buttons[i].buttonName));
+  for (guint i = 0; i < Merged_tool_buttons->len; i++) {
+    RFM_ToolButton *tool_button = g_ptr_array_index(Merged_tool_buttons, i);
+    if (SHOW_TOOLBAR_BUTTON(tool_button, 0) && MATCH_CONTAINS(tool_button->buttonName, data->text)) {
+      g_ptr_array_add(result, g_strdup_printf("*%s", tool_button->buttonName));
     }
   }
-#ifdef RFM_AddOn
-  GHashTableIter iter;
-  gchar *key;
-  RFM_ADDON *value;
-  g_hash_table_iter_init(&iter, addons);
-  while (g_hash_table_iter_next(&iter, &key, &value)) {
-    RFM_ADDON_RESOURCE_TYPE* addon_resource = value->resource_managed_by_addon;
-    for (guint i = 0; i < addon_resource->toolbar_button_definitions_local_array_size; i++) {
-      if (SHOW_TOOLBAR_BUTTON(addon_resource->toolbar_button_definitions_local, i) && MATCH_CONTAINS(addon_resource->toolbar_button_definitions_local[i].buttonName, data->text)) {
-        g_ptr_array_add(result, g_strdup_printf("*%s", addon_resource->toolbar_button_definitions_local[i].buttonName));
-      }
-    }
-  }
-#endif
   
   // Add builtin commands from builtinCMD array with "#" prefix
   for (guint i = 0; i < G_N_ELEMENTS(builtinCMD); i++) {
