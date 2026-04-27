@@ -44,7 +44,7 @@ extern void CallDefaultSearchResultFunctionForNewSearch(CALLER_OWN char *one_lin
 RFM_ADDON_RESOURCE_TYPE addon_resource = {0};
 const enum RFM_ADDON_TYPE addon_type = Global;
 
-static const char *start_menu[] = { NULL, "cd /usr/share/applications", NULL };
+static const char *start_menu[] = { NULL, "find /usr/share/applications -name \"*.desktop\">.desktop", NULL };
 static const char *launch_desktop[] = { "dex", "--term", "$RFM_TERM", NULL };
 
 RFM_ToolButton tool_buttons_local[] = {
@@ -132,10 +132,10 @@ int ProcessKeyValuePairInDesktopFilesFromSearchResult(CALLER_OWN char *oneline, 
     return 0;
 }
 #pragma GCC diagnostic pop
-
+static char *desktop_showcolumn[] = {",缩略图,Name,Exec,文件名", NULL};
 RFM_SearchResultType searchresultTypes[] = {
 //name	              SearchResultLineProcessingFunc                  showcolumn     SearchResultColumnSeperator  cmdTemplate                                Description
-  {".desktop", ProcessKeyValuePairInDesktopFilesFromSearchResult,     NULL,          NULL,                        NULL,                            "parse .desktop file"},
+  {".desktop", ProcessKeyValuePairInDesktopFilesFromSearchResult,     desktop_showcolumn, NULL,                        NULL,                            "parse .desktop file"},
 };
 
 void rfm_local_enter(char * Addon_dir) {
@@ -149,6 +149,9 @@ void rfm_local_enter(char * Addon_dir) {
      addon_resource.searchresulttypes_array_size = G_N_ELEMENTS(searchresultTypes);
      start_menu[0] = stdin_cmd_interpretors[0].name;
      addon_resource.thumbLoadFunc = desktop_thumbLoadFunc;
+     char* column=calloc(100,sizeof(char));
+     sprintf(column,",%d,Name,Exec,%d",COL_PIXBUF,COL_FILENAME);
+     desktop_showcolumn[0] = column;
 }
 
 void rfm_local_leave() {
