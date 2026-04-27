@@ -149,12 +149,8 @@ void rfm_local_enter(char * Addon_dir) {
      addon_resource.searchresulttypes_array_size = G_N_ELEMENTS(searchresultTypes);
      start_menu[0] = stdin_cmd_interpretors[0].name;
      addon_resource.thumbLoadFunc = desktop_thumbLoadFunc;
-     add_toolbar_buttons(&(addon_resource.tool_bar_buttons_local),tool_buttons_local, addon_resource.toolbar_button_definitions_local_array_size);
-     add_file_menuitems(&(addon_resource.menuItems_local), file_menus_local, addon_resource.file_menuitem_definitions_local_array_size);
 }
 
 void rfm_local_leave() {
      fprintf(stderr,"rfm_local_leave called for %s\n", addon_resource.addon_dir);
-     remove_toolbar_buttons(&(addon_resource.tool_bar_buttons_local),addon_resource.toolbar_button_definitions_local_array_size);
-     remove_file_menuitems(&(addon_resource.menuItems_local), addon_resource.file_menuitem_definitions_local_array_size);
 }

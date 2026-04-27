@@ -3452,12 +3452,14 @@ static void regenerate_merged_menu_and_toolbars(void)
         RFM_MenuItem *menu_item = &(addon_resource->file_menuitem_definitions_local[j]);
         g_ptr_array_add(MergedFilemenu, menu_item);
       }
+      if (!(addon_resource->menuItems_local)) add_file_menuitems(&(addon_resource->menuItems_local), addon_resource->file_menuitem_definitions_local, addon_resource->file_menuitem_definitions_local_array_size);
     }
     if (addon_resource->toolbar_button_definitions_local_array_size > 0) {
       for (guint j = 0; j < addon_resource->toolbar_button_definitions_local_array_size; j++) {
         RFM_ToolButton *tool_button = &(addon_resource->toolbar_button_definitions_local[j]);
         g_ptr_array_add(Merged_tool_buttons, tool_button);
       }
+      if (!(addon_resource->tool_bar_buttons_local)) add_toolbar_buttons(&(addon_resource->tool_bar_buttons_local), addon_resource->toolbar_button_definitions_local, addon_resource->toolbar_button_definitions_local_array_size);
     }
   }
 #endif
@@ -7428,6 +7430,8 @@ static void unload_local_extension(RFM_ADDON *addon) {
         if (addon->addon_leave_func) {
             g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Calling %s from %s", RFM_ADDON_LEAVE_FUNC, addon->addon_so_fullpath);
             (*(addon->addon_leave_func))(); //call leave function
+	    if (addon->resource_managed_by_addon->menuItems_local) remove_file_menuitems(&(addon->resource_managed_by_addon->menuItems_local), addon->resource_managed_by_addon->file_menuitem_definitions_local_array_size);
+	    if (addon->resource_managed_by_addon->tool_bar_buttons_local) remove_toolbar_buttons(&(addon->resource_managed_by_addon->tool_bar_buttons_local), addon->resource_managed_by_addon->toolbar_button_definitions_local_array_size);
         } else {
              g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Function %s not found in %s (optional).", RFM_ADDON_LEAVE_FUNC, addon->addon_so_fullpath);
         }
