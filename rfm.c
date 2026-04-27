@@ -5303,7 +5303,8 @@ static gboolean rfm_menu_completion_in_gtk_thread(RFM_MenuCompletionData *data) 
     for (guint i = 0; i < all_items->len; i++) {
       gchar* name = g_ptr_array_index(all_items, i);
       if (MATCH_CONTAINS(name, data->text)) {
-        g_ptr_array_add(result, g_strdup_printf("*%s", name));
+        if (strstr(name, " ")) g_ptr_array_add(result, g_strdup_printf("*\"%s\"", name));
+        else g_ptr_array_add(result, g_strdup_printf("*%s", name));
       }
       g_free(name);
     }
@@ -5314,7 +5315,8 @@ static gboolean rfm_menu_completion_in_gtk_thread(RFM_MenuCompletionData *data) 
   for (guint i = 0; i < Merged_tool_buttons->len; i++) {
     RFM_ToolButton *tool_button = g_ptr_array_index(Merged_tool_buttons, i);
     if (SHOW_TOOLBAR_BUTTON(tool_button, 0) && MATCH_CONTAINS(tool_button->buttonName, data->text)) {
-      g_ptr_array_add(result, g_strdup_printf("*%s", tool_button->buttonName));
+      if (strstr(tool_button->buttonName, " "))g_ptr_array_add(result, g_strdup_printf("*\"%s\"", tool_button->buttonName));
+      else g_ptr_array_add(result, g_strdup_printf("*%s", tool_button->buttonName));
     }
   }
   
