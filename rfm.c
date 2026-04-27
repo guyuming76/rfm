@@ -3342,8 +3342,8 @@ static gboolean view_key_press(GtkWidget *widget, GdkEvent *event) {
       if (button->Accel &&
 	  ek->keyval == button->Accel &&
           (ek->state & GDK_MOD1_MASK) == GDK_MOD1_MASK &&
-          (((SearchResultViewInsteadOfDirectoryView && button->showInSearchResultView) || (!SearchResultViewInsteadOfDirectoryView && button->showInDirectoryView)) && (button->showCondition == NULL || button->showCondition()))) {
-        button->func(button);
+          SHOW_TOOLBAR_BUTTON(button,0)) {
+        tool_buttons[i].func(button);
         return TRUE;
       }
     }
