@@ -5309,7 +5309,7 @@ static gboolean rfm_menu_completion_in_gtk_thread(RFM_MenuCompletionData *data) 
       g_free(name);
     }
     g_ptr_array_free(all_items, FALSE);
-  }
+  } else {
   
   // Add toolbar buttons with "*" prefix
   for (guint i = 0; i < Merged_tool_buttons->len; i++) {
@@ -5319,7 +5319,7 @@ static gboolean rfm_menu_completion_in_gtk_thread(RFM_MenuCompletionData *data) 
       else g_ptr_array_add(result, g_strdup_printf("*%s", tool_button->buttonName));
     }
   }
-  
+  }
   // Add builtin commands from builtinCMD array with "#" prefix
   for (guint i = 0; i < G_N_ELEMENTS(builtinCMD); i++) {
     if (MATCH_CONTAINS(builtinCMD[i].cmd, data->text)) {
