@@ -25,7 +25,7 @@ CPPFLAGS += -D_FILE_OFFSET_BITS=64
 
 INCS = -I. -I/usr/include
 LIBS += -L/usr/lib `pkg-config --libs ${GTK_VERSION} gio-unix-2.0 json-glib-1.0`
-#ifeq (${READLINE_LIB},-DGNU_readline)  在使用 reedline 时，我们还是会使用gnu readline 的filename completion, 不考虑 linenoise, 所以我们总是加上gnu readline
+#ifeq (${READLINE_LIB},-DGNU_readline)  在使用 reedline 时，我们还在使用gnu readline 的rl_completion_matches函数, 所以我们总是加上gnu readline
 LIBS += `pkg-config --libs readline`
 #endif
 ifeq (${READLINE_LIB},-Dreedline)
