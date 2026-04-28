@@ -49,7 +49,7 @@ static const char *launch_desktop[] = { "dex", "--term", "$RFM_TERM", NULL };
 
 RFM_ToolButton tool_buttons_local[] = {
    /* name           icon                       function    		RunCmd      SearchResultView   DirectoryView   Accel                 tooltip                showCondition*/
-   { START_MENU,     NULL,                      NULL,                   start_menu,        FALSE,          TRUE,      0,                      NULL,                  NULL},
+   { START_MENU,     NULL,                      NULL,                   start_menu,        TRUE,          TRUE,      0,                      NULL,                  NULL},
 };
 
 RFM_MenuItem file_menus_local[] = {
@@ -132,7 +132,7 @@ int ProcessKeyValuePairInDesktopFilesFromSearchResult(CALLER_OWN char *oneline, 
     return 0;
 }
 #pragma GCC diagnostic pop
-static char *desktop_showcolumn[] = {",缩略图,Name,Exec,文件名", NULL};
+static char *desktop_showcolumn[] = {",缩略图,Name,Exec,Comment,Categories,Terminal", NULL};
 RFM_SearchResultType searchresultTypes[] = {
 //name	              SearchResultLineProcessingFunc                  showcolumn     SearchResultColumnSeperator  cmdTemplate                                Description
   {".desktop", ProcessKeyValuePairInDesktopFilesFromSearchResult,     desktop_showcolumn, NULL,                        NULL,                            "parse .desktop file"},
@@ -150,7 +150,7 @@ void rfm_local_enter(char * Addon_dir) {
      start_menu[0] = stdin_cmd_interpretors[0].name;
      addon_resource.thumbLoadFunc = desktop_thumbLoadFunc;
      char* column=calloc(100,sizeof(char));
-     sprintf(column,",%d,Name,Exec,%d",COL_PIXBUF,COL_FILENAME);
+     sprintf(column,",%d,Name,Exec,Comment,Categories,Terminal",COL_PIXBUF);
      desktop_showcolumn[0] = column;
 }
 
