@@ -1317,6 +1317,7 @@ static gboolean g_spawn_async_with_pipes_wrapper(CALLER_OWN gchar **v, RFM_Child
 static MEM_ALLOC gchar **build_cmd_vector(CALLER_OWN const char **cmd, CALLER_OWN GList *file_list, CALLER_OWN const char *dest_path)
 {
    long j=0;
+   int empty_args_in_cmd = 0;
    gchar **v=NULL;
    file_list=g_list_first(file_list);
   
@@ -1327,10 +1328,10 @@ static MEM_ALLOC gchar **build_cmd_vector(CALLER_OWN const char **cmd, CALLER_OW
      if (strcmp(cmd[j],RFM_selected_filename_placeholder)==0 && (file_list||dest_path)){//如果file_list为NULL,而cmd里面有 RFM_selected_filename_picker, 如%s,并且dest_path 不为空，可以用dest_path来替换%s，相当于dest_path 作为最后一个元素加入file_list
        // before this commit, file_list and dest_path are all appended after cmd, but commands like ffmpeg to create thumbnail need to have file name in the middle of the argv, appended at the end won't work. So i modify the rule here so that if we have placeholder in cmd, we replace it with item in file_list. So, file_list can work as generic argument list later, not necessarily the filename. And replacing empty string place holders in cmd with items in file_list can be something like printf.
        if (file_list) {
-	 v[j]=file_list->data; //this data is owned by rfm_FileAttributes and was not freed before, but now, v and file_list share the reference.  g_list_free_full never called on file_list, and filename char* is not freed when free(v),  but freed with rfm_FileAttributes.
+	 v[j-empty_args_in_cmd]=file_list->data; //this data is owned by rfm_FileAttributes and was not freed before, but now, v and file_list share the reference.  g_list_free_full never called on file_list, and filename char* is not freed when free(v),  but freed with rfm_FileAttributes.
 	 file_list=g_list_next(file_list);
        }else{
-	 v[j]=dest_path; dest_path=NULL;
+	 v[j-empty_args_in_cmd]=dest_path; dest_path=NULL;
        }
      }else if (cmd[j][0]=='$' && strlen(cmd[j])>1){
        const char* envName = cmd[j] + sizeof(char); //remove leading $ in cmd[j] to get envName
@@ -1340,10 +1341,10 @@ static MEM_ALLOC gchar **build_cmd_vector(CALLER_OWN const char **cmd, CALLER_OW
 	 free(v);
 	 return NULL;
        }else if (strlen(envValue)>0){
-	 v[j]=strdup(envValue);
-       }else { continue; } //当环境变量值为空值“”，非NULL时,如RFM_TERM_E,跳过，也不增加j，否则 foot "" ls 这样的命令会报错
+	 v[j-empty_args_in_cmd]=strdup(envValue);
+       }else { empty_args_in_cmd++; } //当环境变量值为空值“”，非NULL时,如RFM_TERM_E,跳过，也不增加j，否则 foot "" ls 这样的命令会报错
      }else if (strcmp(cmd[j],"")!=0){
-       v[j]=(gchar*)cmd[j]; /* FIXME: gtk spawn functions require gchar*, but we have const gchar*; should probably g_strdup() and create a free_cmd_vector() function */
+       v[j-empty_args_in_cmd]=(gchar*)cmd[j]; /* FIXME: gtk spawn functions require gchar*, but we have const gchar*; should probably g_strdup() and create a free_cmd_vector() function */
      }//else { continue; } //走到这里表示cmd[j] 等于 ""，按照前面环境变量值为空非NULL时直接跳过并不增加j，这里似乎也应该这样处理，但有没有可能用户就是要放一个空字符串在这里？
      j++;
    }
@@ -1354,13 +1355,13 @@ static MEM_ALLOC gchar **build_cmd_vector(CALLER_OWN const char **cmd, CALLER_OW
    }
    //把没用完的file_list成员append到命令结尾
    while (file_list!=NULL) {
-      v[j]=file_list->data;
+      v[j-empty_args_in_cmd]=file_list->data;
       j++;
       file_list=g_list_next(file_list);
    }
 
-   v[j]=dest_path; /* This may be NULL anyway */
-   v[++j]=NULL;
+   v[j-empty_args_in_cmd]=dest_path; /* This may be NULL anyway */
+   v[++j-empty_args_in_cmd]=NULL;
 
    return v;
 }
