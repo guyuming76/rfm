@@ -6019,7 +6019,7 @@ static int ProcessOnelineForSearchResult_with_title(CALLER_OWN char* oneline, gb
       i++;
     }
     g_warning("no %s field in search result!",fld_FileName);
-    g_strfreev(search_result_type_withtitle_column_title_array);
+    g_strfreev(search_result_type_withtitle_column_title_array);search_result_type_withtitle_column_title_array=NULL;
     return 0;
   }else return ProcessOnelineForSearchResult_internel(oneline, new_search, FileNameIndexInColumnTitles);
 }
