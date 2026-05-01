@@ -5087,6 +5087,7 @@ static void combine_command_with_selected_files_and_setenv(CALLER_OWN GString* r
 gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboolean const from_stdin_readline, NO_FREE const stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs* childAttribs)
 {
         gboolean ret = FALSE;
+        gboolean exec_stdin_command_in_gtk_thread = FALSE;
 	stdin_cmd_leading_space=FALSE;
         gboolean execCmdInNewVT=FALSE;//used by file_menu_exec, i.e., not from readline
         effective_cmd_interpretor_pointer = cmd_interpretor_pointer; // Use this for actual execution
@@ -5253,7 +5254,8 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
 		       && effective_cmd_interpretor_pointer->customCallBackFunc && !execCmdInNewVT && !execStdinCmdInNewVT) ){ //这一行条件用来判断需要使用customCallBackFunction来处理 exec_stdin_command 的输出的情况，比如AI LLM返回的内容，这种情况下，g_spawn_wrapper 用异步，exec_stdin_command 会很早返回，但g_spawn_wrapper 还没完成，为了避免争夺终端模拟器，这时不能开始readline,所以就暂时不要 g_thread_new readline,在 g_spawn_wrapper 的异步callback里面再考虑 g_thread_new readline。另外这一行判断也是保证此时exec_stdin_command在gtk thread里执行，否则在readline thread里执行得话，就不方便控制exec_stdin_command 中g_spawn_wrapper 实际callback完成后才调用 readline函数了。注意之一行判断条件在下面 g_thread_new readline 前也有使用
 	    if (childAttribs->readlineResultString){
 	           childAttribs->exec_stdin_command_in_gtk_thread = TRUE;//因为上面的组合判断条件越来越复杂了，不方便把等价条件放入readlineInSeperateThread; 并且exec_stdin_command中调用的g_spawn_wrapper可能是异步的，也不能直接在这里释放childAttribs并置NULL,所以这里添加了一个标志属性简化代码
-	           ret = exec_stdin_command(childAttribs->readlineResultString, effective_cmd_interpretor_pointer, childAttribs);
+		   exec_stdin_command_in_gtk_thread = TRUE;//这个在后面判断是否把childAttribs传递到readline thread 时使用，因为上面childAttribs可能已经在下面一行 exec_stdin_command 中释放了，不能再传到readline thread 里
+		   ret = exec_stdin_command(childAttribs->readlineResultString, effective_cmd_interpretor_pointer, childAttribs);
 	    }
           }
           if ((execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT)) && childAttribs->readlineResultString) exec_stdin_command_in_new_VT(childAttribs->readlineResultString, effective_cmd_interpretor_pointer, childAttribs); // 在AI Mode下输入builtin cmd,如 help, 会因为是AI mode 一开始把 execStdinCmdInNewVT 设成true,所以这里加上 readlineResultString 非NULL判断
@@ -5273,7 +5275,7 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
 							      || !(effective_cmd_interpretor_pointer->customCallBackFunc && !execCmdInNewVT && !execStdinCmdInNewVT)))) {
 #endif
               assert(readlineThread==NULL);
-              if (window) readlineThread=g_thread_new("readline", readlineInSeperateThread, from_stdin_readline?childAttribs:NULL);
+              if (window) readlineThread=g_thread_new("readline", readlineInSeperateThread, (from_stdin_readline && !exec_stdin_command_in_gtk_thread)?childAttribs:NULL);
           }
 
         return ret;
