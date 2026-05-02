@@ -4015,6 +4015,7 @@ static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousRea
 	  }else{
 	    if (cmd_interpretor_pointer->customCallBackFunc){
 	      childAttribs->spawn_async = TRUE; childAttribs->keep_total_buffer_in_show_child_output = TRUE; childAttribs->customCallBackFunc = cmd_interpretor_pointer->customCallBackFunc; //这一行设置被用作在ExecCallback_freeChildattribs 里面 g_thread_new readline thread 的一个条件，这组条件也可以看作有parse_and_exec_command_in_gtk_thread 中的条件 (effective_cmd_interpretor_pointer->customCallBackFunc && !execCmdInNewVT && !execStdinCmdInNewVT) 得来
+	      //之所以用spawn_async, 是因为可以使用 g_spawn_async_with_pipes_wrapper_child_supervisor来读取和处理AI脚本输出,而不是让 AI 脚本进程直接继承终端输出.
 	      childAttribs->g_idle_add_once_to_run_CallBackFunc = TRUE;
 	      childAttribs->runOpts = G_SPAWN_SEARCH_PATH|G_SPAWN_CHILD_INHERITS_STDIN;
 	    }else if (childAttribs->output_read_by_program){ childAttribs->runOpts |= G_SPAWN_SEARCH_PATH|G_SPAWN_CHILD_INHERITS_STDIN;
