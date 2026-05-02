@@ -338,7 +338,7 @@ int readlink_proc_self_fd_pipefd_and_confirm_pipefd_is_used_by_pipeline();
 void ensure_fd0_is_opened_for_stdin_inherited_from_parent_process_instead_of_used_by_pipeline_any_more();
 static gboolean startWithTerm();
 static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs);
-static void ensure_foreground_process(void);
+static void ensure_foreground_process(gboolean set_foreground);
 static void ReadFromPipeStdinIfAny(char *fd);
 static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *child_attribs);
 static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *childAttribs);
@@ -1371,6 +1371,7 @@ static void GSpawnChildSetupFunc_setenv(gpointer user_data) {
       //if (rfm_curPath!=NULL) setenv("PWD",rfm_curPath,TRUE);
       //working_directory won't update child process PWD env, which inherits parents PWD env,why?
       if (child_attribs->setsid) setsid();//防止子进程和readline线程争夺终端控制权，产生SIGTTIN 信号，导致readline所在进程组被放入后台。
+      ensure_foreground_process(FALSE);
 }
 
 static void check_wait_status_and_set_exit_code(CALLER_OWN RFM_ChildAttribs *child_attribs) {
@@ -1401,7 +1402,7 @@ gboolean g_spawn_wrapper_(CALLER_OWN GList *file_list, CALLER_OWN const char *de
 {
    gchar **v=NULL;
    gboolean ret=TRUE;
-
+   ensure_foreground_process(FALSE);
    v=build_cmd_vector(child_attribs->RunCmd, file_list, dest_path);
    if (v != NULL) {
       setenv("RFM_DIMENSION_PROPERTIES_FILE_NAME",RFM_DIMENSION_PROPERTIES_FILE_NAME, 1);
@@ -4163,7 +4164,10 @@ static void writeSearchResultIntoFD_in_gtk_thread(gint fd,gboolean exportFilePat
 
 static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs) {
   g_debug("readlineInSeperateThread in thread %p", readlineThread);
-  if (childAttribs && !childAttribs->exec_stdin_command_in_gtk_thread && !execStdinCmdInNewVT) exec_stdin_command(childAttribs->readlineResultString, effective_cmd_interpretor_pointer, childAttribs);
+  if (childAttribs && !childAttribs->exec_stdin_command_in_gtk_thread && !execStdinCmdInNewVT) {
+    g_debug("exec_stdin_command in readlineInSeperateThread");
+    exec_stdin_command(childAttribs->readlineResultString, effective_cmd_interpretor_pointer, childAttribs);
+  }
   //这里不用 free childAttribs, 因为如果上一步if条件没满足，没有执行exec_stdin_command ，一定是在gtk_thread里面执行了 exec 的某个版本，但因为是异步的，这里我又不方便加assert判断 childAttribs
   execStdinCmdInNewVT = FALSE;
   
@@ -4223,27 +4227,30 @@ static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs) {
 }
 
 
-static void ensure_foreground_process(void) {
+static void ensure_foreground_process(gboolean set_foreground) {
+    pid_t current_pid = getpid();
     int fd = open("/dev/tty", O_RDWR);
     if (fd >= 0) {
         pid_t current_pgid = getpgrp();
         pid_t foreground_pgid = tcgetpgrp(fd);
         // 判断是否在后台运行
         if (current_pgid != foreground_pgid) {
-            g_warning("rfm is running in background (current PGID: %d, foreground PGID: %d), trying to bring to foreground", current_pgid, foreground_pgid);
+            g_warning("pid %d is running in background (current PGID: %d, foreground PGID: %d), trying to bring to foreground", current_pid, current_pgid, foreground_pgid);
             // 尝试设置为前台进程
-            int result = tcsetpgrp(fd, current_pgid);
-            if (result == 0) {
-                g_debug("Successfully brought rfm to foreground");
-            } else {
-                g_warning("Failed to bring rfm to foreground: %s", strerror(errno));
-            }
+	    if (set_foreground){
+              int result = tcsetpgrp(fd, current_pgid);
+              if (result == 0) {
+                g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_DEBUG,"Successfully brought pid %d to foreground", current_pid);
+              } else {
+                g_warning("Failed to bring %d to foreground: %s", current_pid, strerror(errno));
+              }
+	    }
         } else {
-            g_debug("rfm is already in foreground (PGID: %d)", current_pgid);
+            g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_DEBUG, "%d is already in foreground (PGID: %d)", current_pid, current_pgid);
         }
         close(fd);
     } else {
-        g_warning("Could not open /dev/tty: %s", strerror(errno));
+        g_warning("Could not open /dev/tty: %s for pid %d", strerror(errno), current_pid);
     }
 }
 
@@ -5256,6 +5263,7 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
 	    if (childAttribs->readlineResultString){
 	           childAttribs->exec_stdin_command_in_gtk_thread = TRUE;//因为上面的组合判断条件越来越复杂了，不方便把等价条件放入readlineInSeperateThread; 并且exec_stdin_command中调用的g_spawn_wrapper可能是异步的，也不能直接在这里释放childAttribs并置NULL,所以这里添加了一个标志属性简化代码
 		   exec_stdin_command_in_gtk_thread = TRUE;//这个在后面判断是否把childAttribs传递到readline thread 时使用，因为上面childAttribs可能已经在下面一行 exec_stdin_command 中释放了，不能再传到readline thread 里
+	           g_debug("exec_stdin_command in parse_and_exec_command_in_gtk_thread");
 		   ret = exec_stdin_command(childAttribs->readlineResultString, effective_cmd_interpretor_pointer, childAttribs);
 	    }
           }
@@ -5277,7 +5285,7 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
 #endif
               assert(readlineThread==NULL);
               if (window) readlineThread=g_thread_new("readline", readlineInSeperateThread, (from_stdin_readline && !exec_stdin_command_in_gtk_thread)?childAttribs:NULL);
-          }
+          }else g_debug("skip new readline thread at the end of parse_and_exec_command_in_gtk_thread");
 
         return ret;
 }
@@ -5561,7 +5569,7 @@ static char** gnu_readline_completion(const char *text, int start, int end){
 
 
 static gboolean window_focus_in_event(GtkWidget *widget, GdkEventFocus *event, gpointer user_data) {
-    ensure_foreground_process();
+    ensure_foreground_process(FALSE);
     return FALSE;
 }
 
