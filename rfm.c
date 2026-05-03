@@ -1371,7 +1371,7 @@ static void GSpawnChildSetupFunc_setenv(gpointer user_data) {
       //if (rfm_curPath!=NULL) setenv("PWD",rfm_curPath,TRUE);
       //working_directory won't update child process PWD env, which inherits parents PWD env,why?
       if (child_attribs->setsid) setsid();//防止子进程和readline线程争夺终端控制权，产生SIGTTIN 信号，导致readline所在进程组被放入后台。
-      ensure_foreground_process(FALSE);
+      //ensure_foreground_process(FALSE);
 }
 
 static void check_wait_status_and_set_exit_code(CALLER_OWN RFM_ChildAttribs *child_attribs) {
@@ -6245,7 +6245,7 @@ static int ProcessJsonStr(CALLER_OWN gchar* json_data){
     GError *error = NULL;
     JsonParser *parser = json_parser_new();
     if (!json_parser_load_from_data(parser, json_data, -1, &error)) {
-        g_warning("Error parsing JSON: %s", error->message);
+        g_warning("Error parsing JSON:%s, error message:%s", json_data, error->message);
         g_error_free(error);
     }else{
          // 获取根节点（假设根为JsonObject）
