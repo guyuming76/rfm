@@ -1269,7 +1269,7 @@ static void show_msgbox(gchar *msg, gchar *title, GtkMessageType type)
   data->buttons = GTK_BUTTONS_OK;
   // 检查是否在主线程中
   if (g_main_context_is_owner(g_main_context_default())) show_msgbox_in_main_thread(data);
-  else g_idle_add(show_msgbox_in_main_thread, data);
+  else g_idle_add_once(show_msgbox_in_main_thread, data);
 }
 
 static gboolean g_spawn_async_with_pipes_wrapper(CALLER_OWN gchar **v, RFM_ChildAttribs *child_attribs)
