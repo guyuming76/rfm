@@ -29,6 +29,8 @@
 #define RunActionRefreshThumb "Refresh Thumbnail"
 #define RunActionMount "mount"
 #define RunActionUmount "umount"
+#define RunActionPlay "play"
+#define RunActionEdit "edit"
 #define ToSearchResult "File Set Operation: To SearchResult"
 #define UnionSearchResult  "File Set Operation: Union SearchResult"
 #define UnionSearchResultClipboard  "File Set Operation: Union SearchResult with clipboard"

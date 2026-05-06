@@ -30,6 +30,8 @@
 #define RunActionRefreshThumb "刷新缩略图"
 #define RunActionMount "挂载(mount)"
 #define RunActionUmount "取消挂载(umount)"
+#define RunActionPlay "播放"
+#define RunActionEdit "编辑"
 #define ToSearchResult "文件集合操作:选中内容(包含目录子项)->查询结果(排序去重)"
 #define UnionSearchResult  "文件集合操作:选中内容 合并 当前查询结果->新查询结果(排序去重)"
 #define UnionSearchResultClipboard  "文件集合操作:剪贴板 合并 当前查询结果->新查询结果(排序去重)"
