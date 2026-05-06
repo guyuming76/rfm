@@ -3449,6 +3449,7 @@ static void regenerate_merged_menu_and_toolbars(void)
   g_hash_table_iter_init(&ht_iter, addons);
   while (g_hash_table_iter_next(&ht_iter, &key, &value)){
     RFM_ADDON_RESOURCE_TYPE* addon_resource = value->resource_managed_by_addon;
+    addon_resource->file_menuitem_definitions_local_array_size = G_N_ELEMENTS(addon_resource->file_menuitem_definitions_local);
     if (addon_resource->file_menuitem_definitions_local_array_size > 0) {
       for (guint j = 0; j < addon_resource->file_menuitem_definitions_local_array_size; j++) {
         RFM_MenuItem *menu_item = &(addon_resource->file_menuitem_definitions_local[j]);
@@ -3456,6 +3457,7 @@ static void regenerate_merged_menu_and_toolbars(void)
       }
       if (!(addon_resource->menuItems_local)) add_file_menuitems(&(addon_resource->menuItems_local), addon_resource->file_menuitem_definitions_local, addon_resource->file_menuitem_definitions_local_array_size);
     }
+    addon_resource->toolbar_button_definitions_local_array_size = G_N_ELEMENTS(addon_resource->toolbar_button_definitions_local);
     if (addon_resource->toolbar_button_definitions_local_array_size > 0) {
       for (guint j = 0; j < addon_resource->toolbar_button_definitions_local_array_size; j++) {
         RFM_ToolButton *tool_button = &(addon_resource->toolbar_button_definitions_local[j]);
