@@ -115,7 +115,7 @@
 #define BuiltInCmd_help_Description            "显示命令帮助,加命令名参数则仅显示这条命令的帮助"
 #define BuiltInCmd_dimension                   "维度"
 #define BuiltInCmd_set_dimension_value_description  "为选中文件设置维度值，也就是在相应维度值目录下创建指向选中文件的符号链接。命令参数（可通过TAB补全输入）: 维度名=维度值 .命令名可以省略,也就是说可以直接在命令行输入 维度名=维度值 ,就可以为选中文件创建符号链接"
-#define BuiltInCmd_ESC_Description	       "取消当前文件选中;或在命令窗口使用esc键"
+#define BuiltInCmd_ESC_Description	       "取消当前文件选中;或在命令窗口使用esc键;再次按esc则重新选中"
 #define Up "父"
 #define BuiltInCmd_Up_Description              "进入上级目录，可使用组合键 ALT+向上箭头（MOD1通常就是ALT键）"
 #define BuiltInCmd_Previous_Description        "后退到历史路径，快捷键：ALT+左箭头"

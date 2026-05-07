@@ -669,6 +669,7 @@ static void init_ext_columns_in_treeviewColumns();
 static GList * filepath_lists_for_selection_on_view[2] = {NULL,NULL};
 static GList * filepath_lists_for_selection_on_view_clone;
 static GList * stdin_cmd_selection_list=NULL; //selected files used in stdin cmd expansion(or we call it substitution) which replace ending space and %s with selected file names
+static GList *escaped_selection = NULL; // 保存 ESC 时取消选中的 GtkTreePath 列表
 static GtkTreeIter iter_selectionChanged;
 static gchar* selected_file_mode_str = NULL;
 static GList* get_view_selection_list(GtkWidget * view, gboolean treeview, GtkTreeModel ** model);
@@ -3320,8 +3321,31 @@ static gboolean view_column_header_clicked(GtkButton* column_header, GdkEvent *e
 }
 
 static void cmd_handle_escape_key() {
-    if(treeview) gtk_tree_selection_unselect_all(gtk_tree_view_get_selection(GTK_TREE_VIEW(icon_or_tree_view)));
-    else gtk_icon_view_unselect_all(GTK_ICON_VIEW(icon_or_tree_view));
+    if (stdin_cmd_selection_list != NULL) {
+        // 有选中文件：保存选中内容，然后取消选中
+        // 先释放之前保存的选中内容
+        if (escaped_selection) {
+            g_list_free_full(escaped_selection, (GDestroyNotify)gtk_tree_path_free);
+            escaped_selection = NULL;
+        }
+        
+        // 保存当前选中的 GtkTreePath 列表
+        escaped_selection = g_list_copy_deep(stdin_cmd_selection_list, (GCopyFunc)gtk_tree_path_copy, NULL);
+        
+        // 取消当前选中
+        if (treeview) {
+            gtk_tree_selection_unselect_all(gtk_tree_view_get_selection(GTK_TREE_VIEW(icon_or_tree_view)));
+        } else {
+            gtk_icon_view_unselect_all(GTK_ICON_VIEW(icon_or_tree_view));
+        }
+    } else if (escaped_selection != NULL) {
+        // 没有选中文件且保存了之前选中的内容：恢复选中
+        set_view_selection_list(icon_or_tree_view, treeview, escaped_selection);
+        
+        // 清空保存的选中内容
+        g_list_free_full(escaped_selection, (GDestroyNotify)gtk_tree_path_free);
+        escaped_selection = NULL;
+    }
 }
 
 static gboolean view_key_press(GtkWidget *widget, GdkEvent *event) {
