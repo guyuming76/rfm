@@ -5480,11 +5480,22 @@ static char* rfm_custom_filename_completion(const char *text, int state) {
       matches = NULL;
     }
 
+    // Expand ~ to home directory if present
+    const char *expanded_text = text;
+    char *expanded_text_free = NULL;
+    if (text[0] == '~') {
+      wordexp_t we;
+      if (wordexp(text, &we, WRDE_NOCMD) == 0 && we.we_wordc > 0) {
+        expanded_text = expanded_text_free = strdup(we.we_wordv[0]);
+        wordfree(&we);
+      }
+    }
+
     // Get directory and base name
     char *dir = NULL, *base = NULL;
-    if (text[0] == '/') {
+    if (expanded_text[0] == '/') {
       // Absolute path
-      dir = strdup(text);
+      dir = strdup(expanded_text);
       char *last_slash = strrchr(dir, '/');
       if (last_slash) {
         *last_slash = '\0';
@@ -5493,17 +5504,18 @@ static char* rfm_custom_filename_completion(const char *text, int state) {
         base = dir;
         dir = strdup("/");
       }
-    } else if (strchr(text, '/')) {
+    } else if (strchr(expanded_text, '/')) {
       // Relative path with directory
-      dir = strdup(text);
+      dir = strdup(expanded_text);
       char *last_slash = strrchr(dir, '/');
       *last_slash = '\0';
       base = last_slash + 1;
     } else {
       // Current directory
       dir = strdup(".");
-      base = (char *)text;
+      base = (char *)expanded_text;
     }
+    free(expanded_text_free);
 
     // Collect matching files
     GPtrArray *all_matches = g_ptr_array_new();
