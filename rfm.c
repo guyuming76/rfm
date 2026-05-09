@@ -91,26 +91,7 @@ static void startPythonEmbedding(){
   }
 }
 
-static PyObject *py_oh_module=NULL;
-static PyObject *py_oh_instance=NULL;
-
 static void endPythonEmbedding(){
-    // Shut down OpenHarness before finalizing Python
-    if (py_oh_instance != NULL) {
-      PyGILState_STATE gstate = PyGILState_Ensure();
-      PyObject *pShutdown = PyObject_GetAttrString(py_oh_instance, "shutdown");
-      if (pShutdown != NULL) {
-        PyObject *pResult = PyObject_CallObject(pShutdown, NULL);
-        if (PyErr_Occurred()) { PyErr_Print(); PyErr_Clear(); }
-        Py_XDECREF(pResult);
-        Py_DECREF(pShutdown);
-      } else { PyErr_Print(); PyErr_Clear(); }
-      Py_XDECREF(py_oh_instance);
-      py_oh_instance = NULL;
-      Py_XDECREF(py_oh_module);
-      py_oh_module = NULL;
-      PyGILState_Release(gstate);
-    }
     if (Py_IsInitialized() && Py_FinalizeEx() < 0) {
         g_warning("Py_FinalizeEx()<0");
 	return;
@@ -124,146 +105,10 @@ static PyObject *pFactoryClass=NULL;
 static PyObject *p_ftp_manager=NULL;
 static PyObject *p_http_manager=NULL;
 
-static void cmdOpenHarness(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution) {
-    gboolean continuous = FALSE;
-    gchar *model = NULL;
-    GError *error = NULL;
-    GOptionEntry entries[] = {
-      {"continuous", 'c', 0, G_OPTION_ARG_NONE, &continuous, "continuous conversation mode", NULL},
-      {"model", 'm', 0, G_OPTION_ARG_STRING, &model, "model to use", "MODEL"},
-      {NULL}
-    };
-    GOptionContext *context = g_option_context_new("oh");
-    g_option_context_add_main_entries(context, entries, NULL);
-    if (!g_option_context_parse_strv(context, &(parsed_msg->we_wordv), &error)) {
-      g_warning("oh: %s", error->message);
-      g_error_free(error);
-      return;
-    }
-
-    PyGILState_STATE gstate;
-    gstate = PyGILState_Ensure();
-
-    /* ── ensure module & instance ───────────────────────────────── */
-    if (py_oh_module == NULL) {
-      // Add rfm executable dir to sys.path so scripts/ are findable
-      char buf[PATH_MAX];
-      ssize_t len = readlink("/proc/self/exe", buf, PATH_MAX - 1);
-      if (len == -1) {
-        g_debug("readlink /proc/self/exe return -1");
-        PyGILState_Release(gstate);
-        g_option_context_free(context);
-        return;
-      }
-      buf[len] = '\0';
-      gchar *program_dir = g_path_get_dirname(buf);
-      PyRun_SimpleString("import sys, os");
-      gchar *insert_path = g_strdup_printf("sys.path.insert(0, '%s')", program_dir);
-      PyRun_SimpleString(insert_path);
-      g_free(insert_path);
-      g_free(program_dir);
-
-      py_oh_module = PyImport_ImportModule("rfmOpenHarness");
-      if (py_oh_module == NULL) {
-        PyErr_Print(); PyErr_Clear();
-        goto quit;
-      }
-    }
-
-    if (py_oh_instance == NULL) {
-      PyObject *get_inst = PyObject_GetAttrString(py_oh_module, "get_instance");
-      if (get_inst == NULL) {
-        PyErr_Print(); PyErr_Clear();
-        goto quit;
-      }
-      py_oh_instance = PyObject_CallObject(get_inst, NULL);
-      Py_DECREF(get_inst);
-      if (py_oh_instance == NULL) {
-        PyErr_Print(); PyErr_Clear();
-        goto quit;
-      }
-    }
-
-    /* ── init runtime (once) ─────────────────────────────────────── */
-    {
-      PyObject *pInit = PyObject_GetAttrString(py_oh_instance, "init");
-      if (pInit == NULL) { PyErr_Print(); PyErr_Clear(); goto quit; }
-      PyObject *pyModel = model ? PyUnicode_FromString(model) : Py_None;
-      PyObject *pArgs = Py_BuildValue(
-        "(sOOOO)",
-        rfm_curPath ? rfm_curPath : "",
-        pyModel,
-        Py_None,  // api_key — use config file
-        Py_None,  // base_url — use config file
-        Py_None   // api_format — use config file
-      );
-      PyObject *pResult = PyObject_Call(pInit, pArgs, NULL);
-      if (PyErr_Occurred()) { PyErr_Print(); PyErr_Clear(); }
-      Py_XDECREF(pResult);
-      Py_XDECREF(pArgs);
-      if (model) Py_DECREF(pyModel);
-      Py_DECREF(pInit);
-    }
-
-    /* ── update rfm state ────────────────────────────────────────── */
-    {
-      // Build Python list of selected file paths
-      PyObject *pySelectedFiles = PyList_New(0);
-      if (stdin_cmd_selection_list != NULL) {
-        for (GList *l = stdin_cmd_selection_list; l != NULL; l = l->next) {
-          if (l->data != NULL) {
-            PyObject *pyPath = PyUnicode_FromString((char *)l->data);
-            PyList_Append(pySelectedFiles, pyPath);
-            Py_DECREF(pyPath);
-          }
-        }
-      }
-
-      PyObject *pSetState = PyObject_GetAttrString(py_oh_instance, "set_rfm_state");
-      if (pSetState != NULL) {
-        PyObject *pArgs = Py_BuildValue("(sO)", rfm_curPath ? rfm_curPath : "", pySelectedFiles);
-        PyObject *pResult = PyObject_Call(pSetState, pArgs, NULL);
-        if (PyErr_Occurred()) { PyErr_Print(); PyErr_Clear(); }
-        Py_XDECREF(pResult);
-        Py_XDECREF(pArgs);
-        Py_DECREF(pSetState);
-      } else { PyErr_Print(); PyErr_Clear(); }
-      Py_DECREF(pySelectedFiles);
-    }
-
-    /* ── build prompt from remaining args ────────────────────────── */
-    gchar *prompt = NULL;
-    {
-      // Collect args after parsed options into a single prompt string
-      GString *prompt_buf = g_string_new("");
-      gint argc = g_strv_length(parsed_msg->we_wordv);
-      for (gint i = 1; i < argc; i++) {
-        if (prompt_buf->len > 0) g_string_append_c(prompt_buf, ' ');
-        g_string_append(prompt_buf, parsed_msg->we_wordv[i]);
-      }
-      prompt = g_string_free(prompt_buf, FALSE);
-    }
-
-    /* ── ask ─────────────────────────────────────────────────────── */
-    {
-      PyObject *pAsk = PyObject_GetAttrString(py_oh_instance, "ask");
-      if (pAsk != NULL) {
-        PyObject *pArgs = Py_BuildValue("(si)", prompt, (int)continuous);
-        PyObject *pResult = PyObject_Call(pAsk, pArgs, NULL);
-        if (PyErr_Occurred()) { PyErr_Print(); PyErr_Clear(); }
-        Py_XDECREF(pResult);
-        Py_XDECREF(pArgs);
-        Py_DECREF(pAsk);
-      } else { PyErr_Print(); PyErr_Clear(); }
-    }
-
-    g_free(prompt);
-
-quit:
-    PyGILState_Release(gstate);
-    g_option_context_free(context);
-    g_free(model);
-}
+/* //OpenHarness has been moved to a global addon (OpenHarness.rfm_addon.c). */
+/* static void cmdOpenHarness(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution){ */
+/*     printf("OpenHarness is now a toolbar button. Click 'OpenHarness' or type 'oh>' to chat.\n"); */
+/* } */
 
 static void cmdStartShare(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution) {
     gint port = -1;
@@ -7315,6 +7160,12 @@ static gboolean compile_local_extension(RFM_ADDON* addon) {
 #endif
 
     gchar* rfm_local_c_compile_cmd = g_strdup_printf(rfm_local_c_compile_cmd_template, RFM_AddOn_H_filepath, DCmarkTools, DGitIntegration, rfmLANGUAGE, RFM_SearchResultTypeNamePrefix, RFM_NEW_TERM_SUFFIX, RFM_selected_filename_placeholder, RFM_SEARCH_RESULT_AS_INPUT_PREFIX, addon->addon_so_fullpath, rfm_addon_C_hash_via_gcc, addon->addon_c_fullpath, rfm_addon_H_hash_via_gcc);
+#ifdef PythonEmbedded
+    /* Append Python flags so addons can use #include <Python.h> */
+    gchar *rfm_local_c_compile_cmd_with_python = g_strdup_printf("%s $(python3-config --cflags)", rfm_local_c_compile_cmd);
+    g_free(rfm_local_c_compile_cmd);
+    rfm_local_c_compile_cmd = rfm_local_c_compile_cmd_with_python;
+#endif
     gboolean success = g_spawn_wrapper_wordexp(rfm_local_c_compile_cmd, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, FALSE, NULL, NULL, FALSE);
     g_free(rfm_local_c_compile_cmd); g_free(rfm_addon_C_hash_via_gcc); g_free(rfm_addon_H_hash_via_gcc);
     return success;
