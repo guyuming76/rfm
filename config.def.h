@@ -192,6 +192,7 @@ static RFM_builtinCMD builtinCMD[] = {
         {"pyq",    endPythonEmbedding,      "quit Python Embedding" },
         {"startshare",                         cmdStartShare,                          "start inprocess http/ftp server. ftp username 'rfm' hardcoded: startshare [--http] [--ftp] [--port xxxx(default 8080/2121 depends on http/ftp)] [--password xxxx(default empty)] [--no_firewall] [--perm xxxx(default elradfmw for ftp)]"},
         {"stopshare",                          cmdStopShare,                           "stop inprocess http/ftp server"},
+        {"oh",                                 cmdOpenHarness,                         "OpenHarness AI agent: oh [prompt] | oh -c for continuous conversation | oh -c -m MODEL for specific model"},
 #endif
 #ifdef RFM_FILE_CHOOSER
        	{"test_rfmFileChooser",Test_rfmFileChooser,"test rfmFileChooser" },
