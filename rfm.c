@@ -385,7 +385,8 @@ static NO_FREE gchar** stdin_command_nu(CALLER_OWN gchar* user_input_cmd, gboole
 
 static void null_log_handler(const gchar *log_domain,GLogLevelFlags log_level,const gchar *message,gpointer user_data){
 }
-
+void CancelReadInput(RFM_ChildAttribs *childAttribs);
+void ResumeReadInput();
 /******Terminal Emulator related definitions end*****/
 /****************************************************/
 /******Process spawn related definitions*************/
@@ -5116,9 +5117,24 @@ static void combine_command_with_selected_files_and_setenv(CALLER_OWN GString* r
             } else {
 	      unsetenv("RFM_SELECTED_FILES");
 	    }
-}  
+}
 
+void CancelReadInput(RFM_ChildAttribs* childAttribs) {
+#ifdef reedline
+  reedline_interrupt(reedline_handle);//下面g_thread_join 从效果上相当于 reedline_interrupt 是同步的
+  if (readlineThread) { g_thread_join(readlineThread); g_debug("g_thread_join finished for readlineThread %p when !from_stdin_readline",readlineThread);readlineThread=NULL; }//we won't have more than one readlineThread running at the same time since we join before new thread here
+#endif
+#ifdef GNU_readline
+  //rl_done = 77; //77这个数没啥特别意义，AI说只要非零就可以，例子给的是1, 我怕有冲突，就设了个特别的数，以便可以比较，知道是这里设的
+  if (childAttribs) childAttribs->setsid = TRUE;//TODO:用户选择文本文件按回车，item_activated 函数调用 bat 命令在终端模拟器内显示文本。 之前reedline 方式下会出现显示只换行不回车的情况，AI的解释是reedline下terminal被设置成raw模式，所以上面调用reedline_interrupt停止reedline。类似，设置rl_done停止gnu readline，但这gnu readline 下会出错，所以注释掉了。另外，在gnu readline 下测试似乎没有只换行不回车的现象，倒是rfm会被自动设成后台进程，需fg命令切回前台，于是这里尝试设置setsid, 简单测试下来rfm不被自动放到后台了，但readline 和 exec_stdin_command 执行的终端输出干扰应该还是存在的，表现为exec_stdin_command执行输出完，回车命令提示符后面有时会多出一些不该出现的内容,以及：bash: 无法设定终端进程组 (-1): 对设备不适当的 ioctl 操作; bash: 此 shell 中无任务控制
+#endif
+}
 
+void ResumeReadInput(){
+#ifdef reedline
+  if (readlineThread==NULL) readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);
+#endif
+}
 // this runs in gtk thread
 // from_stdin_readline 为 TRUE 时，表示用户从命令窗口输入的字符串，这时忽略 cmd_interpretor_index 参数为调用时的 current_stdin_cmd_interpretor
 // from_stdin_readline 为假时，readlineResults 通常是 config.h 里面配置好的命令字符串。此时命令字符串数组头部会配置 cmd_interpretor_index 对应的name
@@ -5132,18 +5148,7 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
         effective_cmd_interpretor_pointer = cmd_interpretor_pointer; // Use this for actual execution
         gint len = strlen(readlineResult);
 	g_debug ("parse_and_exec_command_in_gtk_thread, RFM_ChildAttribs %p, readline length %u: %s", childAttribs, len, readlineResult);
-
-#ifdef reedline
-        if (!from_stdin_readline) reedline_interrupt(reedline_handle);//下面g_thread_join 从效果上相当于 reedline_interrupt 是同步的
-#endif
-#ifdef GNU_readline
-        if (!from_stdin_readline)
-            //rl_done = 77; //77这个数没啥特别意义，AI说只要非零就可以，例子给的是1, 我怕有冲突，就设了个特别的数，以便可以比较，知道是这里设的
-            childAttribs->setsid = TRUE;//TODO:用户选择文本文件按回车，item_activated 函数调用 bat 命令在终端模拟器内显示文本。 之前reedline 方式下会出现显示只换行不回车的情况，AI的解释是reedline下terminal被设置成raw模式，所以上面调用reedline_interrupt停止reedline。类似，设置rl_done停止gnu readline，但这gnu readline 下会出错，所以注释掉了。另外，在gnu readline 下测试似乎没有只换行不回车的现象，倒是rfm会被自动设成后台进程，需fg命令切回前台，于是这里尝试设置setsid, 简单测试下来rfm不被自动放到后台了，但readline 和 exec_stdin_command 执行的终端输出干扰应该还是存在的，表现为exec_stdin_command执行输出完，回车命令提示符后面有时会多出一些不该出现的内容,以及：bash: 无法设定终端进程组 (-1): 对设备不适当的 ioctl 操作; bash: 此 shell 中无任务控制
-#endif
-#ifdef reedline
-	if (!from_stdin_readline && readlineThread) { g_thread_join(readlineThread); g_debug("g_thread_join finished for readlineThread %p when !from_stdin_readline",readlineThread);readlineThread=NULL; }//we won't have more than one readlineThread running at the same time since we join before new thread here
-#endif
+        if (!from_stdin_readline) CancelReadInput(childAttribs);
 	if (len == 0){
 	    time_t now_time=time(NULL);
             if ((now_time - lastEnter)<=1){
