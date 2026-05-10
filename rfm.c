@@ -3377,7 +3377,7 @@ static gboolean view_key_press(GtkWidget *widget, GdkEvent *event) {
 	  ek->keyval == button->Accel &&
           (ek->state & GDK_MOD1_MASK) == GDK_MOD1_MASK &&
           SHOW_TOOLBAR_BUTTON(button,0)) {
-        tool_buttons[i].func(button);
+        button->func(button);
         return TRUE;
       }
     }
