@@ -275,12 +275,6 @@ typedef struct {
 } RFM_cmd_regex_rule;
 
 typedef struct {
-  gchar *cmd;
-  void (*action)(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution, RFM_ChildAttribs* childAttribs);//this point to function which takes three parameters, but in config.h, i assign it with function taking not parameter, it still works! Refer to comments in rfm_addon.h for explanation which mentions that GCC allows this.
-  //childAttribs参数是后加的，按理说可以把前两个参数合并到childAttribs成员里，这里只要一个参数就可以了。但这样要改现有的buildin_cmd，特别是我还不知道有没有别人在用这一块，所以就扩充一个参数，暂时不管冗余了
-  gchar *help_msg;
-} RFM_builtinCMD;
-typedef struct {
   const char *text;
   int *count;
   GPtrArray *result;
@@ -805,6 +799,7 @@ static size_t TREEVIEW_COLUMNS_array_size = G_N_ELEMENTS(treeviewColumns);
 #define SHOW_TOOLBAR_BUTTON(x,i) (((SearchResultViewInsteadOfDirectoryView && x[i].showInSearchResultView) || (!SearchResultViewInsteadOfDirectoryView && x[i].showInDirectoryView)) && (x[i].showCondition == NULL || x[i].showCondition()))
 static GPtrArray* MergedFilemenu;
 static GPtrArray* Merged_tool_buttons;
+static GPtrArray* Merged_builtinCMD;
 /**************gtk UI, filemenu, toolbar end**************************/
 /************** Addon begin ******************************************/
 
@@ -3465,7 +3460,7 @@ static gboolean view_button_press(GtkWidget *widget, GdkEvent *event)
 
 static void regenerate_merged_menu_and_toolbars(void)
 {
-  // Regenerate MergedFilemenu and Merged_tool_buttons
+  // Regenerate MergedFilemenu, Merged_tool_buttons, and Merged_builtinCMD
   if (MergedFilemenu != NULL)
     g_ptr_array_free(MergedFilemenu, FALSE);
   MergedFilemenu = g_ptr_array_new();
@@ -3473,6 +3468,10 @@ static void regenerate_merged_menu_and_toolbars(void)
   if (Merged_tool_buttons != NULL)
     g_ptr_array_free(Merged_tool_buttons, FALSE);
   Merged_tool_buttons = g_ptr_array_new();
+
+  if (Merged_builtinCMD != NULL)
+    g_ptr_array_free(Merged_builtinCMD, FALSE);
+  Merged_builtinCMD = g_ptr_array_new();
 
 #ifdef RFM_AddOn
   GHashTableIter ht_iter;
@@ -3495,14 +3494,23 @@ static void regenerate_merged_menu_and_toolbars(void)
       }
       if (!(addon_resource->tool_bar_buttons_local)) add_toolbar_buttons(&(addon_resource->tool_bar_buttons_local), addon_resource->toolbar_button_definitions_local, addon_resource->toolbar_button_definitions_local_array_size);
     }
+    if (addon_resource->builtinCMD_definitions_local_array_size > 0) {
+      for (guint j = 0; j < addon_resource->builtinCMD_definitions_local_array_size; j++) {
+        RFM_builtinCMD *bcmd = &(addon_resource->builtinCMD_definitions_local[j]);
+        g_ptr_array_add(Merged_builtinCMD, bcmd);
+      }
+    }
   }
 #endif
-  // Add run_actions and tool_buttons
+  // Add run_actions and tool_buttons and builtinCMD from config.h
   for (guint j = 0; j < G_N_ELEMENTS(run_actions); j++) {
     g_ptr_array_add(MergedFilemenu, &(run_actions[j]));
   }
   for (guint j = 0; j < G_N_ELEMENTS(tool_buttons); j++) {
     g_ptr_array_add(Merged_tool_buttons, &(tool_buttons[j]));
+  }
+  for (guint j = 0; j < G_N_ELEMENTS(builtinCMD); j++) {
+    g_ptr_array_add(Merged_builtinCMD, &(builtinCMD[j]));
   }
 }
 
@@ -4310,12 +4318,13 @@ static void stdin_command_help(wordexp_t * parsed_msg, GString* readline_result_
       if (!for_specific_command) printf("%s",builtinCMD_Help);
 
       // --- 打印内置命令 (builtinCMD) 的帮助信息 ---
-      // 遍历在 config.h 中定义的 builtinCMD 数组
-      for(guint i=0;i<G_N_ELEMENTS(builtinCMD);i++){
+      // 遍历合并后的 builtinCMD 数组 (config.h + addons)
+      for(guint i=0;i<Merged_builtinCMD->len;i++){
+        RFM_builtinCMD *bcmd = g_ptr_array_index(Merged_builtinCMD, i);
         // 如果是通用帮助请求，或者 是特定帮助请求且用户请求的主题与当前命令匹配
-        if (!for_specific_command || (for_specific_command && strcmp(parsed_msg->we_wordv[1], builtinCMD[i].cmd)==0)) {
+        if (!for_specific_command || (for_specific_command && strcmp(parsed_msg->we_wordv[1], bcmd->cmd)==0)) {
           // 打印命令名称（黄色高亮）和其帮助信息
-          printf("    \033[33m%s\033[0m   %s\n", builtinCMD[i].cmd, builtinCMD[i].help_msg); // \033[33m 是黄色, \033[0m 重置颜色
+          printf("    \033[33m%s\033[0m   %s\n", bcmd->cmd, bcmd->help_msg); // \033[33m 是黄色, \033[0m 重置颜色
         }
       }
       // --- 打印标准输入命令解释器 (stdin_cmd_interpretors) 的信息 ---
@@ -4898,10 +4907,11 @@ static void rfmEdit(gchar* filepath) {
 //返回TRUE表示成功匹配为BuiltInCmd并被执行,无论执行成功与否,都不需要在调用Shell来执行了;返回false表示未能识别为builtInCmd,需要进一步处理. 返回true后, GString*参数内存被释放,但调用者仍需将其设为NULL,因为后续处理根据其是否为NULL来判断是否需要继续处理(比如是否需要发送到Shell执行)
 static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(CALLER_OWN wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution, RFM_ChildAttribs* childAttribs){
 
-        for(guint i=0;i<G_N_ELEMENTS(builtinCMD);i++){
-	  if (g_strcmp0(parsed_msg->we_wordv[0], builtinCMD[i].cmd)==0) {
-	        builtinCMD[i].action(parsed_msg,readline_result_string_after_file_name_substitution, childAttribs);
-	        g_debug("builtin command %s run", builtinCMD[i].cmd);
+        for(guint i=0;i<Merged_builtinCMD->len;i++){
+          RFM_builtinCMD *bcmd = g_ptr_array_index(Merged_builtinCMD, i);
+	  if (g_strcmp0(parsed_msg->we_wordv[0], bcmd->cmd)==0) {
+	        bcmd->action(parsed_msg,readline_result_string_after_file_name_substitution, childAttribs);
+	        g_debug("builtin command %s run", bcmd->cmd);
 		add_history_after_stdin_command_execution(readline_result_string_after_file_name_substitution);
 		return TRUE;
 	  }
@@ -5368,10 +5378,11 @@ static gboolean rfm_menu_completion_in_gtk_thread(RFM_MenuCompletionData *data) 
     }
   }
   }
-  // Add builtin commands from builtinCMD array with "#" prefix
-  for (guint i = 0; i < G_N_ELEMENTS(builtinCMD); i++) {
-    if (MATCH_CONTAINS(builtinCMD[i].cmd, data->text)) {
-      g_ptr_array_add(result, g_strdup_printf("#%s", builtinCMD[i].cmd));
+  // Add builtin commands from merged builtinCMD array with "#" prefix
+  for (guint i = 0; i < Merged_builtinCMD->len; i++) {
+    RFM_builtinCMD *bcmd = g_ptr_array_index(Merged_builtinCMD, i);
+    if (MATCH_CONTAINS(bcmd->cmd, data->text)) {
+      g_ptr_array_add(result, g_strdup_printf("#%s", bcmd->cmd));
     }
   }
   
@@ -5379,8 +5390,9 @@ static gboolean rfm_menu_completion_in_gtk_thread(RFM_MenuCompletionData *data) 
   const char* hardcoded_cmds[] = {"setpwd", "pwd", "quit", "/", "//"};
   for (guint i = 0; i < G_N_ELEMENTS(hardcoded_cmds); i++) {
     gboolean found = FALSE;
-    for (guint j = 0; j < G_N_ELEMENTS(builtinCMD); j++) {
-      if (g_strcmp0(hardcoded_cmds[i], builtinCMD[j].cmd) == 0) {
+    for (guint j = 0; j < Merged_builtinCMD->len; j++) {
+      RFM_builtinCMD *bcmd = g_ptr_array_index(Merged_builtinCMD, j);
+      if (g_strcmp0(hardcoded_cmds[i], bcmd->cmd) == 0) {
         found = TRUE;
         break;
       }

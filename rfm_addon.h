@@ -6,6 +6,7 @@
 //rfm_local.h的加入是为了满足 rfm_local.c 的动态编译。rfm_local.h 要在 rfm.c 和 rfm_local.c 之间共享
 //事实上，config.h里面的定义也是依赖rfm_local.h内数据类型定义的，但config.h内无需#include rfm_local.h,这时因为在rfm.c里面对于config.h的引用出现在对rfm_local.h的应用的后面，c语言编译器似乎可以处理这种情况
 #include <gtk-3.0/gtk/gtk.h>
+#include <wordexp.h>
 //在C语言中，使用`-include`参数包含的头文件会出现在所有其他头文件之前。因此，如果在rfm_addon.h中没有包含`glib.h`，那么就会导致这些类型未知。之前在 rfm_addon.c (rfm_local.c) 中，rfm_addon.h是在gtk.h后面include的，现在通过 -include 参数传递给gcc来编译rfm_addon.c, 就不得不在这里加 gtk.h
 #define FREE //indicate that it is freed here
 #define FREE_FULL //indicate that it is freed full here
@@ -34,6 +35,12 @@
 typedef struct RFM_ChildAttributes RFM_ChildAttribs;
 struct RFM_ToolButton;
 struct RFM_MenuItem;
+
+typedef struct {
+  gchar *cmd;
+  void (*action)(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution, RFM_ChildAttribs* childAttribs);
+  gchar *help_msg;
+} RFM_builtinCMD;
 
 typedef struct {  /* Update free_fileAttributes() and malloc_fileAttributes() if new items are added */
    guint id; // usually, path can be unique id for fileAttributelist, however, for searchresult from grep, same file can appear more than once, so we need a id as key for grepMatch_hash and others.
@@ -231,6 +238,8 @@ typedef struct {
   stdin_cmd_interpretor **stdin_cmd_interpretors;
   size_t stdin_cmd_interpretors_array_size;
   stdin_cmd_interpretor*(*check_cmd_interpretor_switch_or_effective_cmd_interpretor)(gchar**, stdin_cmd_interpretor** , gboolean* , gchar**, gchar**);
+  RFM_builtinCMD *builtinCMD_definitions_local;
+  size_t builtinCMD_definitions_local_array_size;
   char * addon_dir; //TODO:有必要加这个字段吗？通过获取RFM_ADDON指针，然后使用local_c_path的目录不行吗？不安全？
 } RFM_ADDON_RESOURCE_TYPE;
 
