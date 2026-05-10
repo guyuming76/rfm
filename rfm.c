@@ -3053,9 +3053,9 @@ static NO_FREE stdin_cmd_interpretor* match_cmd_str_array_with_interpretors(gcha
 
 static void toolbar_button_exec(GtkToolItem *item, RFM_ToolButton *button_definition)
 {
-   if (button_definition->RunCmd==NULL) /* Argument is an internal function */
+   if (button_definition->RunCmd==NULL && button_definition->func) /* Argument is an internal function */
      button_definition->func(button_definition);
-   else { /* Assume argument is a shell exec */
+   else if (button_definition->RunCmd){ /* Assume argument is a shell exec */
      RFM_ChildAttribs *child_attribs=calloc(1, sizeof(RFM_ChildAttribs));
      child_attribs->RunCmd = g_strdupv(button_definition->RunCmd);
      if (!exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread) child_attribs->spawn_async = TRUE;//到目前为止，我日常很少通过 toggleBlockGUI 功能，只是在功能添加之初测试过，所以改这一句对我现有常用功能应该没啥影响。设计的出发点在于在执行命令的时候锁死GUI界面，究竟async 好还是sync 好，当时应该也比较随意。也就是当时应该也没明确定义是否要block到自进程结束。显然对于耗时较长的 search ，async 不会让终端输入等待太久，所以之前一直 async 执行子进程。到目前为止，子进程bash脚本执行过程都无需终端窗口输入。需要交互输入的常用命令如AI addon的对话，是通过在 exec_stdin_command 中另外的方式处理同步的，会和cmd_interpretor 提示符关联，好处是可以在 config.h, rfm_addon.c 里面为命令设定好cmd_interpretor.这次新加AI对话历史相似度查询功能，犹豫是不是新加一个cmd_interpretor 。问题是interpretor类型太多用户也不好记。所以做了这个commit 中 exec_stdin_command 中的修改，以便用户在切换到 exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread 状态后可以运行需要提示输入的脚本且不和readlineThread冲突，TODO: 但问题是这个现在要提示用户手工切换。
@@ -3086,9 +3086,9 @@ static void toolbar_button_exec(GtkToolItem *item, RFM_ToolButton *button_defini
 
 static void file_menu_exec(GtkMenuItem *menuitem, RFM_MenuItem *file_menu_item_definition)
 { 
-  if (file_menu_item_definition->runCmd==NULL) //如果runCmd为空，则直接执行func,否则，先执行runCmd,后通过callbackfunc指针执行func
+  if (file_menu_item_definition->runCmd==NULL && file_menu_item_definition->func) //如果runCmd为空，则直接执行func,否则，先执行runCmd,后通过callbackfunc指针执行func
      file_menu_item_definition->func(file_menu_item_definition);
-  else{
+  else if (file_menu_item_definition->runCmd){
      RFM_ChildAttribs *child_attribs=calloc(1, sizeof(RFM_ChildAttribs));
      child_attribs->RunCmd = g_strdupv(file_menu_item_definition->runCmd);
      if (!exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread) child_attribs->spawn_async = TRUE;
@@ -3377,7 +3377,7 @@ static gboolean view_key_press(GtkWidget *widget, GdkEvent *event) {
 	  ek->keyval == button->Accel &&
           (ek->state & GDK_MOD1_MASK) == GDK_MOD1_MASK &&
           SHOW_TOOLBAR_BUTTON(button,0)) {
-        button->func(button);
+        toolbar_button_exec(NULL, button);
         return TRUE;
       }
     }
