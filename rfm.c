@@ -3071,7 +3071,7 @@ static void toolbar_button_exec(GtkToolItem *item, RFM_ToolButton *button_defini
      }
 #endif
      stdin_cmd_interpretor *cmd_interpretor_pointer = match_cmd_str_array_with_interpretors(button_definition->RunCmd);//match_cmd函数里面会使用地址相等比较，所以要用原始静态字符串数组，而不是g_strdupv深度复制的
-     if (cmd_interpretor_pointer){
+     if (cmd_interpretor_pointer){//TODO:stdin_cmd_interpretors 中没有专门针对builtin cmd的项，所以如果要在这里使用builtin cmd, 可以在 cmd strv 的第一项用 stdin_cmd_interpretors[0].name(即bash), 因为parse_and_exec_stdin_builtin_command_in_gtk_thread 在parse_and_exec_command_in_gtk_thread 中会执行在exec_stdin_command前面, 这虽然有点confusing,但这会儿我也没别的好办法。如果在stdin_cmd_interpretors 里面为builtin cmd 单独加一项，cmdTransformer等属性如何设置？ 下面filemenu里也是同样。
        gchar* cmd = strdup(child_attribs->RunCmd[1]);
        if (startWithTerm()) printf("\n\r%s\033[32m%s%s%s\033[0m`%s`\r\n",InheritedPrompt, cmd_interpretor_pointer->prompt,(ItemSelected==0)?"":"*",exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread?"]":">",cmd);
        parse_and_exec_command_in_gtk_thread(cmd, FALSE, cmd_interpretor_pointer, child_attribs);
