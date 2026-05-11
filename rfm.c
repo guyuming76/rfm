@@ -5636,7 +5636,6 @@ static gboolean window_focus_in_event(GtkWidget *widget, GdkEventFocus *event, g
 static int setup()
 {
    gtk_init(NULL, NULL);
-   if (!no_window && showHelpOnStart && startWithTerm() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)) stdin_command_help(NULL,NULL);
    if (!no_window){
    window=gtk_window_new(GTK_WINDOW_TOPLEVEL);
    gtk_window_set_default_size(GTK_WINDOW(window), 640, 400);
@@ -5787,7 +5786,7 @@ static int setup()
    menu=gtk_menu_new();
    add_file_menuitems(&menuItem,run_actions,G_N_ELEMENTS(run_actions));
    regenerate_merged_menu_and_toolbars();
-
+   if (!no_window && showHelpOnStart && startWithTerm() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)) stdin_command_help(NULL,NULL);
    columnHeaderMenu = gtk_menu_new();
    InsertBeforeMenuItem = gtk_menu_item_new_with_label(MENU_InsertBeforeThisColumn);
    gtk_menu_shell_append(GTK_MENU_SHELL(columnHeaderMenu), InsertBeforeMenuItem);
