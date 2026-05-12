@@ -48,6 +48,7 @@
 // Returns TRUE if haystack contains needle (case-insensitive)
 #define MATCH_CONTAINS(haystack, needle) (needle == NULL || strlen(needle) == 0 || (haystack != NULL && strcasestr(haystack, needle) != NULL))
 
+#define MATCH_FILENAME_SUFFIX_OR_PATH(fullpath,suffix_or_path_rule) (strchr(suffix_or_path_rule,'*') ? fnmatch(suffix_or_path_rule, fullpath,0)==0 : g_str_has_suffix(fullpath, suffix_or_path_rule))
 static RFM_ChildAttribs *childAttribsForCurrentDisplayingSearchResult=NULL;//这个用来保持查询视图当前查询运行时的值，查询刷新时使用
 static GUnixMountMonitor *rfm_mountMonitor=NULL;   /* Reference for monitor mount events */
 static guint delayedRefresh_GSourceID=0;  /* Main loop source ID for refresh_store() delayed refresh timer */
@@ -3153,7 +3154,7 @@ static void show_hide_file_menu_item(GtkWidget ***menuitems, RFM_MenuItem menuit
 	 while (listElement) {
 	    gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, listElement->data);
 	    gtk_tree_model_get (GTK_TREE_MODEL(store), &iter, COL_ATTR, &fileAttributes, -1);
-            if (!(strchr(menuitem_definitions[i].filenameSuffix,'*') ? fnmatch(menuitem_definitions[i].filenameSuffix, fileAttributes->path,0)==0 : g_str_has_suffix(fileAttributes->path, menuitem_definitions[i].filenameSuffix))){//如果规则包含*，则用fnmatch,否则用g_str_has_suffix.TODO: filenameSuffix 这个字段名有些局限了
+	    if (!MATCH_FILENAME_SUFFIX_OR_PATH(fileAttributes->path, menuitem_definitions[i].filenameSuffix)){//如果规则包含*，则用fnmatch,否则用g_str_has_suffix.TODO: filenameSuffix 这个字段名有些局限了
 	      showMenuItem[i]=0;
 	      break;
 	    }
