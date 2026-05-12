@@ -9,7 +9,7 @@
 #include <linux/limits.h>
 #include <stddef.h>
 #define _GNU_SOURCE
-
+#include <fnmatch.h>
 #include <stdlib.h>
 #include <gtk/gtk.h>
 #include <gdk/gdkwayland.h>
@@ -3153,7 +3153,7 @@ static void show_hide_file_menu_item(GtkWidget ***menuitems, RFM_MenuItem menuit
 	 while (listElement) {
 	    gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, listElement->data);
 	    gtk_tree_model_get (GTK_TREE_MODEL(store), &iter, COL_ATTR, &fileAttributes, -1);
-            if (!g_str_has_suffix(fileAttributes->path, menuitem_definitions[i].filenameSuffix)){
+            if (!(strchr(menuitem_definitions[i].filenameSuffix,'*') ? fnmatch(menuitem_definitions[i].filenameSuffix, fileAttributes->path,0)==0 : g_str_has_suffix(fileAttributes->path, menuitem_definitions[i].filenameSuffix))){//如果规则包含*，则用fnmatch,否则用g_str_has_suffix.TODO: filenameSuffix 这个字段名有些局限了
 	      showMenuItem[i]=0;
 	      break;
 	    }
