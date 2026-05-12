@@ -6486,7 +6486,7 @@ static int ProcessKeyValuePairInData(GKeyFile *keyfile, char* groupname){
    char* longest_matched_searchresulttype_name = "";
    RFM_SearchResultType * matched_searchresulttype_pointer = &(searchresultTypes[0]);//没有匹配到得话就直接调用 default, 0号
    for(guint i=0; i<G_N_ELEMENTS(searchresultTypes); i++){
-     if (g_str_has_suffix(oneline, searchresultTypes[i].name)){
+     if (MATCH_FILENAME_SUFFIX_OR_PATH(oneline, searchresultTypes[i].name)){
        if (strlen(searchresultTypes[i].name)>strlen(longest_matched_searchresulttype_name)){
 	 longest_matched_searchresulttype_name = searchresultTypes[i].name;
 	 matched_searchresulttype_pointer = &(searchresultTypes[i]);
@@ -6502,7 +6502,7 @@ static int ProcessKeyValuePairInData(GKeyFile *keyfile, char* groupname){
 	    while (g_hash_table_iter_next(&ht_iter, &key, &value)){
 	           RFM_ADDON_RESOURCE_TYPE* addon_resource = value->resource_managed_by_addon;
 		   for (guint i = 0; i < addon_resource->searchresulttypes_array_size; i++) {
-		         if (g_str_has_suffix(oneline, addon_resource->searchresulttypes[i].name)){//注意这里和MatchSearchResultType函数的区别，那里匹配的是加上 RFM_SearchResultTypeNamePrefix 的searchresulttype。TODO:不能扩展下MatchSearchResultType函数，在这里也调用吗？代码会短些
+		         if (MATCH_FILENAME_SUFFIX_OR_PATH(oneline, addon_resource->searchresulttypes[i].name)){//注意这里和MatchSearchResultType函数的区别，那里匹配的是加上 RFM_SearchResultTypeNamePrefix 的searchresulttype。TODO:不能扩展下MatchSearchResultType函数，在这里也调用吗？代码会短些
 			   if (strlen(addon_resource->searchresulttypes[i].name)>strlen(longest_matched_searchresulttype_name)){
 			     longest_matched_searchresulttype_name = addon_resource->searchresulttypes[i].name;
 			     matched_searchresulttype_pointer = &(addon_resource->searchresulttypes[i]);

@@ -102,27 +102,52 @@ void print_node(cmark_node *node, cmark_event_type ev_type) {
 }
 
 int main(int argc, char *argv[]) {
-    if (argc < 3) {
-        printf("We parse a file specified by the MarkdownFilename argument with cmark, and output KeyValue pair lines. The HeadersToMatch arguments specify the keys, which are the highest level header texts in the markdown file. Note that we suppose the first header node we get in a file has the highest level. The first line of literal text for the matched header will be the value for the key\n\n");
-        printf("Usage: %s (0|1) MarkdownFilename {HeadersToMatch}\n", argv[0]);
-        printf(" 0 or 1 for the debug option, 1 for debug\n");
-        printf(" HeadersToMatch is the list of markdown headers text to match, seperated with space\n");
-        printf(" All headers of the highest level will be in output if no HeadersToMatch is specified\n");
-        printf("example: %s 0 your_markdown_file.md Header_level1_text1 Header_level1_text2\n", argv[0]);
+    if (argc < 2) {
+        printf("We parse a markdown file (or stdin pipe) with cmark, and output KeyValue pair lines as JSON.\n");
+        printf("The HeadersToMatch arguments specify the keys, which are the highest level header texts in the markdown file.\n");
+        printf("Note that we suppose the first header node we get in a file has the highest level.\n");
+        printf("The first line of literal text for the matched header will be the value for the key\n\n");
+        printf("Usage:\n");
+        printf("  From file:   %s (0|1) MarkdownFilename {HeadersToMatch}\n", argv[0]);
+        printf("  From pipe:   cat file.md | %s (0|1) {HeadersToMatch}\n", argv[0]);
+        printf("  0 or 1 for the debug option, 1 for debug\n");
+        printf("  HeadersToMatch is the list of markdown headers text to match, seperated with space\n");
+        printf("  All headers of the highest level will be in output if no HeadersToMatch is specified\n");
+        printf("examples:\n");
+        printf("  %s 0 your_markdown_file.md Header_level1_text1 Header_level1_text2\n", argv[0]);
+        printf("  cat your_markdown_file.md | %s 0\n", argv[0]);
+        printf("  cat your_markdown_file.md | %s 0 Header_level1_text1 Header_level1_text2\n", argv[0]);
         return 1;
     }
-
-    FILE *fp = fopen(argv[2], "rb");
-    if (!fp) {
-        fprintf(stderr, "Error opening file: %s\n", argv[2]);
-        return 1;
-    }
-    cmark_node *root = cmark_parse_file(fp, CMARK_OPT_DEFAULT);
-    fclose(fp);
 
     debug = atoi(argv[1]);
-    HeadersToMatch = argv + 3;
-    HeadersToMatch_Count = argc - 3;
+
+    cmark_node *root;
+    int pipe_mode = 0;
+
+    if (argc == 2) {
+        /* Pipe mode, no headers filter: cat file.md | extractJsonFromMarkdown 0 */
+        pipe_mode = 1;
+        root = cmark_parse_file(stdin, CMARK_OPT_DEFAULT);
+        HeadersToMatch = NULL;
+        HeadersToMatch_Count = 0;
+    } else {
+        /* argc >= 3: try to open argv[2] as a regular file first */
+        FILE *fp = fopen(argv[2], "rb");
+        if (fp) {
+            /* Original file mode: argv[2] is filename, argv[3+] are headers */
+            root = cmark_parse_file(fp, CMARK_OPT_DEFAULT);
+            fclose(fp);
+            HeadersToMatch = argv + 3;
+            HeadersToMatch_Count = argc - 3;
+        } else {
+            /* Pipe mode with headers: cat file.md | extractJsonFromMarkdown 0 H1 H2 */
+            pipe_mode = 1;
+            root = cmark_parse_file(stdin, CMARK_OPT_DEFAULT);
+            HeadersToMatch = argv + 2;
+            HeadersToMatch_Count = argc - 2;
+        }
+    }
 
     json_object = json_object_new();
 
