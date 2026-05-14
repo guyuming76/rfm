@@ -14,7 +14,7 @@ use log::{warn, debug}; // 导入日志宏
 use glib_sys::{GPtrArray};
 use std::io::{stdout, Write};
 use crossterm::execute;
-use crossterm::terminal::supports_keyboard_enhancement;
+use crossterm::terminal::{supports_keyboard_enhancement, enable_raw_mode, disable_raw_mode};
 use crossterm::event::{PushKeyboardEnhancementFlags, KeyboardEnhancementFlags, PopKeyboardEnhancementFlags};
 // deepwiki 回答说 line 只包含光标前的字符串，光标及其后面字符都不包含，输入abcd,然后光标向左一道c下，则line只包含ab. 也就是说代码里检查cursor_and_after后面的部分貌似目前都没有用，但还是留着。
 fn context_for_cursor(line: &str, pos: usize, completion_start_pos: &mut usize) -> CString {
@@ -384,10 +384,6 @@ pub extern "C" fn reedline_create(rfm_functions: *const rfmFunctions) -> *mut Re
 //     ‌unsafe块‌：整个操作需在unsafe上下文中执行，因为直接解引用原始指针可能引发未定义行为（如指针无效或数据竞争）。开发者需自行确保指针有效性
 
 
-    if supports_keyboard_enhancement().unwrap_or(false) {
-        // 启用键盘增强协议,以便使用Menu键
-        execute!(stdout(), PushKeyboardEnhancementFlags(KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES));
-    }else{ warn!("crossterm KeyboardEnhancement not supported for MENU key"); }
     // 创建自定义键绑定
     let mut keybindings = default_emacs_keybindings();
     
@@ -505,7 +501,22 @@ pub extern "C" fn reedline_readline(
    let left_prompt = DefaultPromptSegment::Basic(prompt_str.to_string());
    let prompt_obj = DefaultPrompt::new(left_prompt, DefaultPromptSegment::Empty);
 
-   match handle.inner.read_line(&prompt_obj) {
+   // 启用 raw mode 和键盘增强协议
+   // raw mode 让 reedline 能逐字符读取输入；键盘增强让 Menu/Ctrl+C 等组合键能正确识别
+   let _ = enable_raw_mode();
+   if supports_keyboard_enhancement().unwrap_or(false) {
+       let _ = execute!(stdout(), PushKeyboardEnhancementFlags(KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES));
+   }
+
+   let result = handle.inner.read_line(&prompt_obj);
+
+   // 读取完成，恢复终端到 cooked mode，让 Ctrl+C 可以正常生成 SIGINT
+   if supports_keyboard_enhancement().unwrap_or(false) {
+       let _ = execute!(stdout(), PopKeyboardEnhancementFlags);
+   }
+   let _ = disable_raw_mode();
+
+   match result {
         Ok(Signal::Success(line)) => CString::new(line).unwrap().into_raw(),
         Ok(Signal::CtrlD | Signal::CtrlC) => ptr::null_mut(), // 处理Ctrl-C/Ctrl-D
         Ok(Signal::Interrupted) => CString::new(REEDLINE_INTERRUPTED).unwrap().into_raw(),
@@ -534,7 +545,7 @@ pub extern "C" fn string_free(s: *mut c_char) {
 pub extern "C" fn reedline_free(handle: *mut ReedlineHandle) {
     if supports_keyboard_enhancement().unwrap_or(false) {
         execute!(stdout(), PopKeyboardEnhancementFlags);
-    }
+    }//TODO:这部分要不要去掉，要不要disable_raw_mode()?
     if !handle.is_null() {
         unsafe { let _ = Box::from_raw(handle); };
     }
