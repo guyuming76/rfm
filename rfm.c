@@ -316,7 +316,7 @@ static rfmFunctions functionPointersForReedlineWrapper;
 #endif
 
 #ifdef RFM_AddOn
-static gchar* Addon_Prompt = NULL;
+gchar* Addon_Prompt = NULL;
 static NO_FREE char *AddOnStatus(RFM_FileAttributes* fileAttribs, guint ExtColumnHashTableIndex);
 static void unload_addon_filemenu_func();
 #endif
@@ -380,8 +380,8 @@ static NO_FREE gchar** stdin_command_nu(CALLER_OWN gchar* user_input_cmd, gboole
 
 static void null_log_handler(const gchar *log_domain,GLogLevelFlags log_level,const gchar *message,gpointer user_data){
 }
-void CancelReadInput(RFM_ChildAttribs *childAttribs);
-void ResumeReadInput();
+static void CancelReadInput(RFM_ChildAttribs *childAttribs);
+//void ResumeReadInput();
 /******Terminal Emulator related definitions end*****/
 /****************************************************/
 /******Process spawn related definitions*************/
@@ -775,7 +775,8 @@ static void g_idle_add_once_handle_escape_key(){ g_idle_add_once(cmd_handle_esca
 static gboolean window_focus_in_event(GtkWidget *widget, GdkEventFocus *event, gpointer user_data);
 #include "config.h"
 
-static stdin_cmd_interpretor * current_stdin_cmd_interpretor_pointer = &(stdin_cmd_interpretors[0]);
+/* non-static so addons can reset it on /quit etc. */
+stdin_cmd_interpretor * current_stdin_cmd_interpretor_pointer = &(stdin_cmd_interpretors[0]);
 static stdin_cmd_interpretor * effective_cmd_interpretor_pointer = &(stdin_cmd_interpretors[0]);  //keep the init value the same as that of current_stdin_cmd_interpretor so that these two would be same for the first run of readlineInseperatethread
 
 static GtkWidget *add_view();
@@ -4037,6 +4038,17 @@ static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousRea
 		return ret;
 	  }
 #endif
+          /* cmdTransformer==NULL + customCallBackFunc -> persistent dialogue mode:
+           * skip subprocess spawn, call callback in-process (e.g. OpenHarness). */
+          if (cmd_interpretor_pointer->customCallBackFunc && cmd_interpretor_pointer->cmdTransformer == NULL) {
+                childAttribs->customCallBackFunc = cmd_interpretor_pointer->customCallBackFunc;
+                (childAttribs->customCallBackFunc)(childAttribs);
+                add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);//TODO: 这里readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution 其实就是 childAttribs->readlineResultString. 所以要在free_child_attribs 调用前调用本函数，否则在这里调用 ExecCallback_freeChildAttribs(childAttribs)更为合理，但似乎要重构ExecCallback_freeChildAttribs，把add_history_after_stdin_command_execution 移入其中。
+	        g_debug("exec_stdin_command run the 'OpenHarness' branch");
+	        free_child_attribs(childAttribs);
+	        if (readlineThread==NULL) readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);//这个为OpenHarness新添加的分支在parse_and_exec_command_in_gtk_thread中不满足 g_thread_new 的判断条件，所以在这里new thread. TODO：因为这里添加了判断条件，还是整体考虑一下能够利用parse_and_exec_command_in_gtk_thread里的统一new thread入口为好
+                return TRUE;
+          }
           childAttribs->RunCmd = cmd_interpretor_pointer->cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE);
           if (SearchResultTypePointer) {
 	    if (childAttribs->exec_stdin_command_in_gtk_thread){
@@ -5132,7 +5144,7 @@ static void combine_command_with_selected_files_and_setenv(CALLER_OWN GString* r
 	    }
 }
 
-void CancelReadInput(RFM_ChildAttribs* childAttribs) {
+static void CancelReadInput(RFM_ChildAttribs* childAttribs) {
 #ifdef reedline
   reedline_interrupt(reedline_handle);//下面g_thread_join 从效果上相当于 reedline_interrupt 是同步的
   if (readlineThread) { g_thread_join(readlineThread); g_debug("g_thread_join finished for readlineThread %p when !from_stdin_readline",readlineThread);readlineThread=NULL; }//we won't have more than one readlineThread running at the same time since we join before new thread here
@@ -5143,11 +5155,11 @@ void CancelReadInput(RFM_ChildAttribs* childAttribs) {
 #endif
 }
 
-void ResumeReadInput(){
-#ifdef reedline
-  if (readlineThread==NULL) readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);
-#endif
-}
+/* void ResumeReadInput(){ */
+/* #ifdef reedline */
+/*   if (readlineThread==NULL) readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL); */
+/* #endif */
+/* } */
 // this runs in gtk thread
 // from_stdin_readline 为 TRUE 时，表示用户从命令窗口输入的字符串，这时忽略 cmd_interpretor_index 参数为调用时的 current_stdin_cmd_interpretor
 // from_stdin_readline 为假时，readlineResults 通常是 config.h 里面配置好的命令字符串。此时命令字符串数组头部会配置 cmd_interpretor_index 对应的name
@@ -5333,7 +5345,7 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
 							      || !(effective_cmd_interpretor_pointer->customCallBackFunc && !execCmdInNewVT && !execStdinCmdInNewVT)))) {
 #endif
               assert(readlineThread==NULL);
-              if (window) readlineThread=g_thread_new("readline", readlineInSeperateThread, (from_stdin_readline && !exec_stdin_command_in_gtk_thread)?childAttribs:NULL);
+              if (window && readlineThread==NULL) readlineThread=g_thread_new("readline", readlineInSeperateThread, (from_stdin_readline && !exec_stdin_command_in_gtk_thread)?childAttribs:NULL);//这里exec_stdin_command 走OpenHarness分支的时候，执行OH /quit命令完了也会new thread, 所以在这个commit里加上readlineThread==NULL 判断，其实不论如何，这个判断都应该加的，只是之前似乎没遇到问题
           }else g_debug("skip new readline thread at the end of parse_and_exec_command_in_gtk_thread");
 
         return ret;
