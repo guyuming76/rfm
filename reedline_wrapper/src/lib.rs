@@ -503,7 +503,7 @@ pub extern "C" fn reedline_readline(
 
    // 启用 raw mode 和键盘增强协议
    // raw mode 让 reedline 能逐字符读取输入；键盘增强让 Menu/Ctrl+C 等组合键能正确识别
-   let _ = enable_raw_mode();
+   //let _ = enable_raw_mode();
    if supports_keyboard_enhancement().unwrap_or(false) {
        let _ = execute!(stdout(), PushKeyboardEnhancementFlags(KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES));
    }
@@ -514,7 +514,7 @@ pub extern "C" fn reedline_readline(
    if supports_keyboard_enhancement().unwrap_or(false) {
        let _ = execute!(stdout(), PopKeyboardEnhancementFlags);
    }
-   let _ = disable_raw_mode();
+   //let _ = disable_raw_mode();
 
    match result {
         Ok(Signal::Success(line)) => CString::new(line).unwrap().into_raw(),
