@@ -14,6 +14,7 @@ int RFM_ICON_SIZE = 48;
 #define RFM_INOTIFY_TIMEOUT 500  /* ms between inotify events after which a full refresh is done */
 #define RFM_DATETIME_FORMAT "%Y-%m-%d,%H:%M:%S"
 #define RFM_HISTORY_SIZE 10000
+#define RFM_sync_pwd_with_curPath TRUE
 #define RFM_AUTOSELECT_OLDPWD_IN_VIEW TRUE
 #define RFM_FILE_CHOOSER_NAMED_PIPE_PREFIX "/tmp/rfmFileChooser_"
 #define RFM_ENV_VAR_NAME_PREFIX ""  //change this if your extented column name conflicts with existing ENV Variable name

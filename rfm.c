@@ -2711,8 +2711,8 @@ static void set_rfm_curPath_internal(CALLER_OWN const gchar* path){
 	 chdir(rfm_curPath);//TODO: i don't know whether we really need this
 	 g_setenv("rfm_curPath", rfm_curPath, 1);
 
-         //g_setenv("PWD", rfm_curPath, 1);
-	 //TODO: i am not sure wether i shold set PWD env value here too, and remove the builtin command setpwd
+         if (RFM_sync_pwd_with_curPath) g_setenv("PWD", rfm_curPath, 1); //最初让PWD和rfm_curPath不一致的一个好处是当时emacs lsp根据pwd获取compile_commands.json, 这个位置通常固定，可以是我打开rfm的位置，然后我再rfm里切换到不同目录，找到不同的文件在 emacs 里面打开，pwd 不变，也就是都可以找到compile_command.json. 但毕竟 pwd 和 rfm_curpath 不一致会带来很多复杂性和困惑，并且emacs lsp也许进化了。
+	 //i am not sure wether i shold set PWD env value here too, and remove the builtin command setpwd
    //when we run commands such as echo $PWD, we spawn child process with working directory rfm_curPath, so, even we do not set $PWD, we get result as expected with this kind of commands.
    //so, we should first know the relationship between working directory parameter in g_spawn and PWD env value inheritence before we do anything furthur here.
    //anyway, setting OLDPWD is necessary for us here.
@@ -4933,12 +4933,7 @@ static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(CALLER_OWN wo
 	}
 	
 	//i don't want to call add_history for the following short builtin commands, so i do not move them into the builtinCMD array
-        if (g_strcmp0(parsed_msg->we_wordv[0],"setpwd")==0) {
-	  setenv("PWD",rfm_curPath,1);
-	  printf("%s\n",getenv("PWD"));
-        }else if (g_strcmp0(parsed_msg->we_wordv[0],"pwd")==0) {
-	  printf("%s\n",getenv("PWD"));
-        }else if (g_strcmp0(parsed_msg->we_wordv[0],"quit")==0) {
+	if (g_strcmp0(parsed_msg->we_wordv[0],"quit")==0) {
 	  cleanup();
         }else if (g_strcmp0(parsed_msg->we_wordv[0],"/")==0) {
 	  switch_iconview_treeview();
@@ -5402,7 +5397,7 @@ static gboolean rfm_menu_completion_in_gtk_thread(RFM_MenuCompletionData *data) 
   }
   
   // Add hardcoded builtin commands with "#" prefix
-  const char* hardcoded_cmds[] = {"setpwd", "pwd", "quit", "/", "//"};
+  const char* hardcoded_cmds[] = {"quit", "/", "//"};
   for (guint i = 0; i < G_N_ELEMENTS(hardcoded_cmds); i++) {
     gboolean found = FALSE;
     for (guint j = 0; j < Merged_builtinCMD->len; j++) {
