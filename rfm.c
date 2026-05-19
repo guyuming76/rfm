@@ -271,7 +271,7 @@ enum rfmTerminal {
 typedef struct {
   gchar* pattern;
   gchar* replacement;
-  void (*action)(void);
+  void (*action)(RFM_ChildAttribs* childAttribs);
   regex_t * restrict pattern_compiled;
 } RFM_cmd_regex_rule;
 
@@ -298,7 +298,6 @@ static gboolean execStdinCmdInNewVT = FALSE;
 // since it's may be complicated if possible to update stdin prompt whenever the terminal window get focus, i just show ItemSelected prompt in new prompt, and user press two times to refresh gtk view.So, I need a way to recognize consecutive enter press.
 static time_t lastEnter;
 
-static gboolean stdin_cmd_leading_space = FALSE;
 static enum rfmTerminal rfmStartWithVirtualTerminal = INHERIT_TERMINAL;
 static guint stdin_command_Scheduler=0;
 static GThread * readlineThread=NULL;
@@ -346,7 +345,7 @@ static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPrevi
 static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *childAttribs);
 static void g_spawn_async_callback_to_new_readline_thread(RFM_ChildAttribs *child_attribs);
 static void regcomp_for_regex_rules();
-static void set_stdin_cmd_leading_space_true();
+static void set_stdin_cmd_leading_space_true(RFM_ChildAttribs* childAttribs);
 static NO_FREE stdin_cmd_interpretor* match_cmd_str_array_with_interpretors(gchar** RunCmd);
 static void combine_command_with_selected_files_and_setenv(CALLER_OWN GString* readlineResultString, gboolean cmd_end_with_space, gchar** *env, GList* fullpath_list_as_parameter);
 gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboolean const from_stdin_readline, NO_FREE const stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs* childAttribs);
@@ -5090,8 +5089,8 @@ static RFM_SearchResultType* MatchSearchResultType(gchar* readlineResult, RFM_Ch
 	    return NULL;
 }
 
-static void set_stdin_cmd_leading_space_true(){
-  stdin_cmd_leading_space=TRUE;
+static void set_stdin_cmd_leading_space_true(RFM_ChildAttribs* childAttribs){
+  if (childAttribs) childAttribs->stdin_cmd_leading_space=TRUE;
 }
 
 static void combine_command_with_selected_files_and_setenv(CALLER_OWN GString* readlineResultString, gboolean cmd_end_with_space, gchar** *env, GList* fullpath_list_as_parameter) {
@@ -5168,7 +5167,6 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
 {
         gboolean ret = FALSE;
         gboolean exec_stdin_command_in_gtk_thread = FALSE;
-	stdin_cmd_leading_space=FALSE;
         gboolean execCmdInNewVT=FALSE;//used by file_menu_exec, i.e., not from readline
         effective_cmd_interpretor_pointer = cmd_interpretor_pointer; // Use this for actual execution
         gint len = strlen(readlineResult);
@@ -5240,7 +5238,7 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
 
 	    //正则表达式替换发生在命令解释器识别之后
 	    for (guint i=0;i<G_N_ELEMENTS(regex_rules);i++){
-	      if (regex_rules[i].pattern_compiled && str_regex_replace(&readlineResult, regex_rules[i].pattern_compiled, regex_rules[i].replacement) && regex_rules[i].action) (regex_rules[i].action)();
+	      if (regex_rules[i].pattern_compiled && str_regex_replace(&readlineResult, regex_rules[i].pattern_compiled, regex_rules[i].replacement) && regex_rules[i].action) (regex_rules[i].action)(childAttribs);
 	    }
 	    len = strlen(readlineResult);
 

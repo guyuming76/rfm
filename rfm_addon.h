@@ -278,6 +278,7 @@ typedef struct RFM_ChildAttributes{
    gboolean SearchResultAsInput;
    // used by exec_stdin_command and exec_stdin_command_builtin to share status
    gboolean stdin_cmd_ending_space;
+   gboolean stdin_cmd_leading_space;
 } RFM_ChildAttribs; //data needed to spawn child process
 
 
