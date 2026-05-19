@@ -4016,6 +4016,7 @@ static void add_history_after_stdin_command_execution(GString * readlineResultSt
 }
 
 static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *child_attribs){
+  if (cmd_interpretor_pointer->cmdTransformer){
 	      // this child_attribs will be freed by g_spawn_wrapper call tree
 	      child_attribs->RunCmd = cmd_interpretor_pointer->cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str, TRUE);
 	      child_attribs->runOpts = G_SPAWN_STDOUT_TO_DEV_NULL|G_SPAWN_STDERR_TO_DEV_NULL|G_SPAWN_STDIN_FROM_DEV_NULL;
@@ -4023,6 +4024,7 @@ static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPrevi
 	      g_spawn_wrapper_(NULL, NULL, child_attribs);
               g_debug("exec_stdin_command_in_new_VT(%s,cmd_interpretor name:%s)",readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,cmd_interpretor_pointer->name);
 	      add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
+  }else g_warning("TODO:cmd_interpretor_pointer->cmdTransformer==NULL");//might be in OpenHarness.rfm_addon.c
 }
 
 static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *childAttribs){
