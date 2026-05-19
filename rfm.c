@@ -1003,7 +1003,7 @@ static gboolean ExecCallback_freeChildAttribs(FREE_FULL RFM_ChildAttribs * child
    // Restart readline if this was a search command from readlineinput and it failed
    if ((child_attribs->exitcode == -1 && child_attribs->customCallBackFunc == g_spawn_async_callback_to_new_readline_thread)
        || (child_attribs->spawn_async && child_attribs->keep_total_buffer_in_show_child_output && child_attribs->customCallBackFunc)){ //关于这一行条件，参见parse_and_exec_command_in_gtk_thread 和 exec_stdin_command 里的注释
-       readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL); //SearchResultAsInput 时，命令执行失败，从这里新建readline.
+     if (!child_attribs->parse_and_exec_stdin_command_in_gtk_thread_called_nested_so_do_not_new_readlineThread_afterwards && readlineThread==NULL) readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL); //SearchResultAsInput 时，命令执行失败，从这里新建readline.
    }
 
    free_child_attribs(child_attribs);
@@ -4046,7 +4046,7 @@ static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousRea
                 add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);//TODO: 这里readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution 其实就是 childAttribs->readlineResultString. 所以要在free_child_attribs 调用前调用本函数，否则在这里调用 ExecCallback_freeChildAttribs(childAttribs)更为合理，但似乎要重构ExecCallback_freeChildAttribs，把add_history_after_stdin_command_execution 移入其中。
 	        g_debug("exec_stdin_command run the 'OpenHarness' branch");
 	        free_child_attribs(childAttribs);
-	        if (readlineThread==NULL) readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);//这个为OpenHarness新添加的分支在parse_and_exec_command_in_gtk_thread中不满足 g_thread_new 的判断条件，所以在这里new thread. TODO：因为这里添加了判断条件，还是整体考虑一下能够利用parse_and_exec_command_in_gtk_thread里的统一new thread入口为好
+	        if (!childAttribs->parse_and_exec_stdin_command_in_gtk_thread_called_nested_so_do_not_new_readlineThread_afterwards && readlineThread==NULL) readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);//这个为OpenHarness新添加的分支在parse_and_exec_command_in_gtk_thread中不满足 g_thread_new 的判断条件，所以在这里new thread. TODO：因为这里添加了判断条件，还是整体考虑一下能够利用parse_and_exec_command_in_gtk_thread里的统一new thread入口为好
                 return TRUE;
           }
           childAttribs->RunCmd = cmd_interpretor_pointer->cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE);
@@ -4090,7 +4090,7 @@ static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousRea
 static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, gboolean from_stdin_readline, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *childAttribs){
             if (readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution==NULL){
               free_child_attribs(childAttribs);
-	      readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);
+	      if (!childAttribs->parse_and_exec_stdin_command_in_gtk_thread_called_nested_so_do_not_new_readlineThread_afterwards && readlineThread==NULL) readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);
 	      return;
 	    }
 
@@ -4099,8 +4099,8 @@ static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResult
             if (cmd_interpretor_pointer->cmdTransformer==NULL){
 	      g_warning("TODO:cmd_interpretor_pointer->cmdTransformer==NULL");//might be in OpenHarness.rfm_addon.c
               free_child_attribs(childAttribs);
-	      readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);
-	      //TODO: 1.本函数里重复出现的上面两行代码，如何重构下; 2. 判断下readlineThread为NULL,代码里好多地方都没判断，判断下，不为NULL的情况加个warning也许更好
+	      if (!childAttribs->parse_and_exec_stdin_command_in_gtk_thread_called_nested_so_do_not_new_readlineThread_afterwards && readlineThread==NULL) readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);
+	      //TODO: 1.本函数里重复出现的上面两行代码，如何重构下;
 	      return;
 	    }
 
@@ -4132,7 +4132,7 @@ static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResult
 		}
 	        childAttribs->no_free = FALSE;
 	        free_child_attribs(childAttribs);
-		readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);//SearchResultAsInput情况下，g_spawn 失败,（命令根本就没执行，比如命令没找到），从这里新建readline
+		if (!childAttribs->parse_and_exec_stdin_command_in_gtk_thread_called_nested_so_do_not_new_readlineThread_afterwards && readlineThread==NULL) readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);//SearchResultAsInput情况下，g_spawn 失败,（命令根本就没执行，比如命令没找到），从这里新建readline
 	    } else {
 	        writeSearchResultIntoFD_in_gtk_thread(childAttribs->stdIn_fd,export_filepath_only, childAttribs);
 		add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
@@ -4148,7 +4148,7 @@ gpointer transferPointerOwnership(gpointer *newOwner, gpointer *oldOwner)
 
 static void g_spawn_async_callback_to_new_readline_thread(RFM_ChildAttribs *child_attribs){
   if (child_attribs->SearchResultTypePointer) update_SearchResultFileNameList_and_refresh_store(child_attribs); //这里假定当前方法是在gtk main thread 上运行的,如不是,就得用g_idle_add_once
-  readlineThread=g_thread_new("readline", readlineInSeperateThread, NULL);// SearchResultAsInput情况下，命令执行成功，从这里新建 readline;  这种情况下,新的readlineThread下不会再运行exec_stdin_command, 所以命令参数直接传NULL过去就可以了
+  if (!child_attribs->parse_and_exec_stdin_command_in_gtk_thread_called_nested_so_do_not_new_readlineThread_afterwards && readlineThread==NULL) readlineThread=g_thread_new("readline", readlineInSeperateThread, NULL);// SearchResultAsInput情况下，命令执行成功，从这里新建 readline;  这种情况下,新的readlineThread下不会再运行exec_stdin_command, 所以命令参数直接传NULL过去就可以了
 }
 
 static void writeSearchResultIntoFD_in_gtk_thread(gint fd,gboolean exportFilePathOnly, RFM_ChildAttribs* childAttribs){
@@ -5179,7 +5179,7 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
         effective_cmd_interpretor_pointer = cmd_interpretor_pointer; // Use this for actual execution
         gint len = strlen(readlineResult);
 	g_debug ("parse_and_exec_command_in_gtk_thread, RFM_ChildAttribs %p, readline length %u: %s", childAttribs, len, readlineResult);
-        if (!from_stdin_readline) CancelReadInput(childAttribs);
+        if (!from_stdin_readline && !childAttribs->parse_and_exec_stdin_command_in_gtk_thread_called_nested_so_do_not_new_readlineThread_afterwards) CancelReadInput(childAttribs);
 	if (len == 0){
 	    time_t now_time=time(NULL);
             if ((now_time - lastEnter)<=1){
@@ -5350,8 +5350,7 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
 							      || !ret
 							      || !(effective_cmd_interpretor_pointer->customCallBackFunc && !execCmdInNewVT && !childAttribs->execStdinCmdInNewVT)))) {
 #endif
-              assert(readlineThread==NULL);
-              if (window && readlineThread==NULL) readlineThread=g_thread_new("readline", readlineInSeperateThread, (from_stdin_readline && !exec_stdin_command_in_gtk_thread)?childAttribs:NULL);//这里exec_stdin_command 走OpenHarness分支的时候，执行OH /quit命令完了也会new thread, 所以在这个commit里加上readlineThread==NULL 判断，其实不论如何，这个判断都应该加的，只是之前似乎没遇到问题
+              if (window && !childAttribs->parse_and_exec_stdin_command_in_gtk_thread_called_nested_so_do_not_new_readlineThread_afterwards && readlineThread==NULL) readlineThread=g_thread_new("readline", readlineInSeperateThread, (from_stdin_readline && !exec_stdin_command_in_gtk_thread)?childAttribs:NULL);//这里exec_stdin_command 走OpenHarness分支的时候，执行OH /quit命令完了也会new thread, 所以在这个commit里加上readlineThread==NULL 判断，其实不论如何，这个判断都应该加的，只是之前似乎没遇到问题
           }else g_debug("skip new readline thread at the end of parse_and_exec_command_in_gtk_thread");
 
         return ret;
@@ -5824,6 +5823,7 @@ static int setup()
      child_attribs->customCallbackUserData = child_attribs;
      child_attribs->output_read_by_program = TRUE;
      child_attribs->setsid = TRUE;
+     child_attribs->parse_and_exec_stdin_command_in_gtk_thread_called_nested_so_do_not_new_readlineThread_afterwards = TRUE;//这里不是call nested,但设置为true的目的是完了不要去 new readlineThread,让后面去new,算是一次特殊的用法
      //child_attribs->spawn_async = TRUE; //TODO: 倒不是说这里要用async,只是开发时发现，这个会被 exec_stdin_command 里的设置覆盖掉
      parse_and_exec_command_in_gtk_thread(g_strdup(locate_all_addons[1]), FALSE, match_cmd_str_array_with_interpretors(locate_all_addons), child_attribs);
    }
@@ -5835,7 +5835,7 @@ static int setup()
    if (no_window) writeSearchResultIntoFD_in_gtk_thread(STDOUT_FILENO, FALSE, &childAttribs_for_ReadFromPipeStdin);
   
    refresh_store();
-   if(!no_window && startWithTerm() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)){
+   if(!no_window && startWithTerm() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL) && readlineThread==NULL){
        readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);
    }
    

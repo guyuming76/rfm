@@ -260,6 +260,7 @@ typedef struct RFM_ChildAttributes{
    gpointer customCallbackUserData; //this is not freed in free_child_attribs, user should free it.
    gboolean g_idle_add_once_to_run_CallBackFunc;
    gboolean no_free;
+   gboolean parse_and_exec_stdin_command_in_gtk_thread_called_nested_so_do_not_new_readlineThread_afterwards;
    gboolean spawn_async;
    gint exitcode;
    gboolean output_read_by_program;
