@@ -604,7 +604,7 @@ static gint SearchResultFileNameListLength=0;
 static gint currentFileNum=0;
 static GList *CurrentPage_SearchResultView=NULL;
 static gint PageSize_SearchResultView=100;
-static RFM_SearchResultType* SearchResultTypePointerForCurrentExistingSearchResult = NULL; //The value above will be override by next command, which can be a non-search command, we need this variable to preserve the current displaying searchresulttype
+
 //如要分配新的自定义列,此变量记录分配的列名,按C1,C2..顺序,分配后,用键值替换原始的Cx列名
 static int currentSearchResultTypeStartingColumnTitleIndex;
 int currentPageStartingColumnTitleIndex;
@@ -2473,9 +2473,9 @@ static gboolean fill_fileAttributeList_with_filenames_from_search_result_and_the
     if (fileAttributes != NULL) {
       rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
       g_log(RFM_LOG_DATA,G_LOG_LEVEL_DEBUG,"appended into rfm_fileAttributeList:%s", (char*)name->data);
-      if (SearchResultViewInsteadOfDirectoryView && SearchResultTypePointerForCurrentExistingSearchResult)//本函数仅在refresh_store()searchresultview分支调用，因此判断条件中SearchResultViewInsteadOfDirectoryView其实可以不要
+      if (SearchResultViewInsteadOfDirectoryView && childAttribsForCurrentDisplayingSearchResult && childAttribsForCurrentDisplayingSearchResult->SearchResultTypePointer)//本函数仅在refresh_store()searchresultview分支调用，因此判断条件中SearchResultViewInsteadOfDirectoryView其实可以不要
 	if (childAttribs->searchresulttype_addon_dir) childAttribs->workingDir = strdup(childAttribs->searchresulttype_addon_dir);
-	SearchResultTypePointerForCurrentExistingSearchResult->SearchResultLineProcessingFunc((gchar*)(name->data), FALSE, SearchResultTypePointerForCurrentExistingSearchResult->cmdTemplate, fileAttributes, childAttribs);
+	childAttribsForCurrentDisplayingSearchResult->SearchResultTypePointer->SearchResultLineProcessingFunc((gchar*)(name->data), FALSE, childAttribsForCurrentDisplayingSearchResult->SearchResultTypePointer->cmdTemplate, fileAttributes, childAttribs);
     }
     fileAttributeID++;//上面SearchResultLineProcessingFunc里面会使用fileAttributeID作为hashtable的key, commit ab8f8c2f832bc32b431ced50bda21de36b9314d5 之前是分两次从fileAttributeID=1开始遍历文件名列表的,但commit ab8f8c2f832bc32b431ced50bda21de36b9314d5 和并成了现在的一次遍历, 造成了一个bug: 之前在 get_fileAttributes_for_a_file 调用fileAttributeID++, 后面的SearchResultLineProcessingFunc里fileAttributeID值就错了,所以现在改在这里调用 fileAttributeID++
     name=g_list_next(name);
@@ -2483,7 +2483,7 @@ static gboolean fill_fileAttributeList_with_filenames_from_search_result_and_the
   }
   rfm_fileAttributeList=g_list_reverse(rfm_fileAttributeList);
 
-  if (SearchResultTypePointerForCurrentExistingSearchResult && !showSearchResultExtColumnsBasedOnHashTableValues_has_already_been_called_for_searchresult) showSearchResultExtColumnsBasedOnHashTableValues();
+  if (childAttribsForCurrentDisplayingSearchResult && childAttribsForCurrentDisplayingSearchResult->SearchResultTypePointer && !showSearchResultExtColumnsBasedOnHashTableValues_has_already_been_called_for_searchresult) showSearchResultExtColumnsBasedOnHashTableValues();
 
   icon_or_tree_view = add_view();//add view have to be called after showSearchResultExtColumnsBasedOnHashTableValues()
   //commit ab8f8c2f832bc32b431ced50bda21de36b9314d5 里, 我发现 add_view 需要在showSearchResultExtColumnsBasedOnHashTableValues()后面调用,就在那个commit 里面移动了add_view 的位置,否则会出现一个问题:运行 locate .rfmTODO.md>TODO.md 后,只有filename列显示,需要连续回车刷新下才会显示ext列. 究其原因,可能和第 3334 行代码有关, 也就是说,在调用 show_hide_treeview_column 时,需要 icon_or_tree_view值有效,否则gtkcolumn不会被设置成显示
@@ -2578,7 +2578,7 @@ static void refresh_store()
 
    gchar * title;
    if (SearchResultViewInsteadOfDirectoryView) {
-     if (SearchResultTypePointerForCurrentExistingSearchResult){
+     if (childAttribsForCurrentDisplayingSearchResult && childAttribsForCurrentDisplayingSearchResult->SearchResultTypePointer){
          for(int i=0;i<=NUM_Ext_Columns;i++) {
 	   if (!ExtColumnHashTable_keep_during_refresh[i] && ExtColumnHashTable[i]!=NULL){
 	     g_hash_table_destroy(ExtColumnHashTable[i]);//TODO: 这里为啥要把hashtable里值全部销毁然后用newsearch false 参数重新调用SearchResultTypeProcessingFunc呢？这样文件里面的数据更新是刷新了，但查询命令本身并没有被重新执行，也就是文件结果集没有变化。这牵涉到究竟如何定义查询刷新，如果只是UI重建，保留所有的hashtable,也不用重新调用SearchResultTypeProcessingFunc就可以了，但这样数据没有变化的刷新意义何在？ 这个git branch的重构考虑到把Search命令的ChildAttribs,包括Search命令本身保存在SearchResultTypeProcessingContext 里面，如此，就可以在刷新的时候重新执行整个search命令了。但现有的代码，Update_searchresult里面调用了一次SearchProcessingFunc, newsearch 为true, refresh_store 的时候再调用一次， newsearch为false. 将来的完整刷新模式下似乎应该是showSearchResult负责用hasttable的值填充store，而现有的update_searchresult功能应该并入完整刷新。但问题的另一面是，完整的查询刷新意义又何在呢？作为命令重新执行的快捷方式？
@@ -2881,7 +2881,7 @@ static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointe
       // 在合并数组中查找匹配的菜单项
       for (guint i = 0; i < MergedFilemenu->len; i++) {
         RFM_MenuItem *action = (RFM_MenuItem *)g_ptr_array_index(MergedFilemenu, i);
-        if (SearchResultViewInsteadOfDirectoryView && g_strcmp0(action->OrSearchResultType, SearchResultTypePointerForCurrentExistingSearchResult->name) == 0){
+        if (SearchResultViewInsteadOfDirectoryView && childAttribsForCurrentDisplayingSearchResult && childAttribsForCurrentDisplayingSearchResult->SearchResultTypePointer && g_strcmp0(action->OrSearchResultType, childAttribsForCurrentDisplayingSearchResult->SearchResultTypePointer->name) == 0){
           index_of_default_file_activation_action_based_on_mime_or_searchresultType = i;
           break;
         }
@@ -3149,7 +3149,7 @@ static void show_hide_file_menu_item(GtkWidget ***menuitems, RFM_MenuItem menuit
       }
       if (strncmp("*", menuitem_definitions[i].runRoot, 1)==0)
          showMenuItem[i]++;   /* Run actions to show for all files */
-      if (SearchResultViewInsteadOfDirectoryView && g_strcmp0(menuitem_definitions[i].OrSearchResultType, SearchResultTypePointerForCurrentExistingSearchResult->name)==0) showMenuItem[i]++;
+      if (SearchResultViewInsteadOfDirectoryView && childAttribsForCurrentDisplayingSearchResult && childAttribsForCurrentDisplayingSearchResult->SearchResultTypePointer && g_strcmp0(menuitem_definitions[i].OrSearchResultType, childAttribsForCurrentDisplayingSearchResult->SearchResultTypePointer->name)==0) showMenuItem[i]++;
       if (menuitem_definitions[i].filenameSuffix){
 	 GList *listElement=g_list_first(selectionList);
 	 while (listElement) {
@@ -5055,7 +5055,7 @@ static RFM_SearchResultType* MatchSearchResultType(gchar* readlineResult, RFM_Ch
 		readlineResult[len-strlen(searchTypeNumberSuffix)]='\0';//remove suffix from readlineResult
 		g_free(searchTypeNumberSuffix);
                 if (strcmp(SrchRsltType_current, searchresultTypes[i].name)==0){
-		  return SearchResultTypePointerForCurrentExistingSearchResult ? SearchResultTypePointerForCurrentExistingSearchResult : &(searchresultTypes[0]);
+		  return (childAttribsForCurrentDisplayingSearchResult && childAttribsForCurrentDisplayingSearchResult->SearchResultTypePointer) ? childAttribsForCurrentDisplayingSearchResult->SearchResultTypePointer : &(searchresultTypes[0]);
 		}else return &(searchresultTypes[i]);
 	      }
 	      g_free(searchTypeNumberSuffix);
@@ -5066,7 +5066,7 @@ static RFM_SearchResultType* MatchSearchResultType(gchar* readlineResult, RFM_Ch
 		readlineResult[len-strlen(searchTypeNameSuffix)]='\0';//remove suffix from readlineResult
 		g_free(searchTypeNameSuffix);
                 if (strcmp(SrchRsltType_current, searchresultTypes[i].name)==0){
-		  return SearchResultTypePointerForCurrentExistingSearchResult ? SearchResultTypePointerForCurrentExistingSearchResult : &(searchresultTypes[0]);
+		  return (childAttribsForCurrentDisplayingSearchResult && childAttribsForCurrentDisplayingSearchResult->SearchResultTypePointer) ? childAttribsForCurrentDisplayingSearchResult->SearchResultTypePointer : &(searchresultTypes[0]);
 		}else return &(searchresultTypes[i]);
 	      }
 	      g_free(searchTypeNameSuffix);
@@ -6497,7 +6497,7 @@ static int ProcessKeyValuePairInData(GKeyFile *keyfile, char* groupname){
 // 比如 searchresulttype name 有 ".md", 还有 "TODO.md"
 // 一个没匹配到,默认用 searchresultype[0]
  static int CallMatchingProcessorForSearchResultLine(char *oneline, gboolean new_search, char *cmdtemplate, RFM_FileAttributes* fileAttributes, RFM_ChildAttribs* childAttribs){
-   assert(g_strcmp0(SearchResultTypePointerForCurrentExistingSearchResult->name,SrchRsltType_multitype)==0);
+   assert(childAttribsForCurrentDisplayingSearchResult && g_strcmp0(childAttribsForCurrentDisplayingSearchResult->SearchResultTypePointer->name,SrchRsltType_multitype)==0);
    if (new_search){
      CallDefaultSearchResultFunctionForNewSearch(oneline, TRUE, cmdtemplate, fileAttributes , childAttribs);
      return 0;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
@@ -6537,17 +6537,17 @@ static int ProcessKeyValuePairInData(GKeyFile *keyfile, char* groupname){
 	    int ret = matched_searchresulttype_pointer->SearchResultLineProcessingFunc(oneline,new_search,matched_searchresulttype_pointer->cmdTemplate, fileAttributes, childAttribs);
 	    g_free(childAttribs->searchresulttype_addon_dir); childAttribs->searchresulttype_addon_dir = NULL;//当前的searchresulttype是multitype,对应的addon_dir是null
    //对于multitype来说，每一行的showcolumn应该是匹配到的具体searchresulttype的showcolumn, 所以应该给每种匹配到的showcolumn做个并集
-   if (SearchResultTypePointerForCurrentExistingSearchResult->showcolumn==NULL){
-     SearchResultTypePointerForCurrentExistingSearchResult->showcolumn = g_ptr_array_new();
-     g_debug("SearchResultTypePointerForCurrentExistingSearchResult->showcolumn set to GPtrArray* %p for SearchResultType %s %p",SearchResultTypePointerForCurrentExistingSearchResult->showcolumn, SearchResultTypePointerForCurrentExistingSearchResult->name, SearchResultTypePointerForCurrentExistingSearchResult);
+   if (childAttribsForCurrentDisplayingSearchResult->SearchResultTypePointer->showcolumn==NULL){
+     childAttribsForCurrentDisplayingSearchResult->SearchResultTypePointer->showcolumn = g_ptr_array_new();
+     g_debug("SearchResultTypePointerForCurrentExistingSearchResult->showcolumn set to GPtrArray* %p for SearchResultType %s %p",childAttribsForCurrentDisplayingSearchResult->SearchResultTypePointer->showcolumn, childAttribsForCurrentDisplayingSearchResult->SearchResultTypePointer->name, childAttribsForCurrentDisplayingSearchResult->SearchResultTypePointer);
    }
    if (matched_searchresulttype_pointer->showcolumn){
        for(int i=0; matched_searchresulttype_pointer->showcolumn[i];i++){
 	 gboolean already_exists_in_multitype_showcolumn = FALSE; //用于避免重复加入字符串数组元素
-	 for(guint j=0; j<((GPtrArray*)(SearchResultTypePointerForCurrentExistingSearchResult->showcolumn))->len;j++)
-	   if (matched_searchresulttype_pointer->showcolumn[i]==((GPtrArray*)(SearchResultTypePointerForCurrentExistingSearchResult->showcolumn))->pdata[j]) { already_exists_in_multitype_showcolumn = TRUE; break; }
+	 for(guint j=0; j<((GPtrArray*)(childAttribsForCurrentDisplayingSearchResult->SearchResultTypePointer->showcolumn))->len;j++)
+	   if (matched_searchresulttype_pointer->showcolumn[i]==((GPtrArray*)(childAttribsForCurrentDisplayingSearchResult->SearchResultTypePointer->showcolumn))->pdata[j]) { already_exists_in_multitype_showcolumn = TRUE; break; }
 	 if (!already_exists_in_multitype_showcolumn) {
-	   g_ptr_array_add((GPtrArray*)(SearchResultTypePointerForCurrentExistingSearchResult->showcolumn), matched_searchresulttype_pointer->showcolumn[i]);
+	   g_ptr_array_add((GPtrArray*)(childAttribsForCurrentDisplayingSearchResult->SearchResultTypePointer->showcolumn), matched_searchresulttype_pointer->showcolumn[i]);
 	   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"%s: SearchResultType name %s matched for file:%s; showcolumn element '%s' added",SrchRsltType_multitype,longest_matched_searchresulttype_name,oneline,matched_searchresulttype_pointer->showcolumn[i]);
 	 }
        }
@@ -6649,7 +6649,7 @@ static void showSearchResultExtColumnsBasedOnHashTableValues(){
 
   gboolean old_value=do_not_show_VALUE_MAY_NOT_LOADED_message_because_we_will_add_GtkTreeViewColumn_later;
   do_not_show_VALUE_MAY_NOT_LOADED_message_because_we_will_add_GtkTreeViewColumn_later=TRUE;
-  if (search_result_type_withtitle_column_title_array){//只有在searchresulttype(即(SearchResultTypePointerForCurrentExistingSearchResult)是 withTitle 的情况下才不为空
+  if (search_result_type_withtitle_column_title_array){//只有在searchresulttype(即childAttribsForCurrentDisplayingSearchResult->SearchResultTypePointer)是 withTitle 的情况下才不为空
 
          for(int i=0;i<NUM_Ext_Columns;i++) if (ExtColumnHashTable[i]){//ProcessOnelineForSearchResult_with_title 的时候，对于没列输入的数据，都使用ExtColumnHashTable保存，并把title保存在key 1 里，对于现有的同名列，如文件属性，DimensionValue,也使用单独的ExtColumnHashTable。
 	   char* column_title_in_first_line = (char*)g_hash_table_lookup(ExtColumnHashTable[i], "1");
@@ -6689,22 +6689,23 @@ static void showSearchResultExtColumnsBasedOnHashTableValues(){
 
   guint i=0;
   gchar* column_sequence;
-  if (g_strcmp0(SearchResultTypePointerForCurrentExistingSearchResult->name,SrchRsltType_multitype)==0 ?((GPtrArray*)(SearchResultTypePointerForCurrentExistingSearchResult->showcolumn)) : SearchResultTypePointerForCurrentExistingSearchResult->showcolumn){
-    while ((column_sequence = (g_strcmp0(SearchResultTypePointerForCurrentExistingSearchResult->name,SrchRsltType_multitype)==0 ?
-			             (i<(((GPtrArray*)(SearchResultTypePointerForCurrentExistingSearchResult->showcolumn))->len) ?
-				          g_ptr_array_index((GPtrArray*)(SearchResultTypePointerForCurrentExistingSearchResult->showcolumn), i)
+  RFM_SearchResultType* srType = childAttribsForCurrentDisplayingSearchResult->SearchResultTypePointer;
+  if (g_strcmp0(srType->name,SrchRsltType_multitype)==0 ?((GPtrArray*)(srType->showcolumn)) : srType->showcolumn){
+    while ((column_sequence = (g_strcmp0(srType->name,SrchRsltType_multitype)==0 ?
+			             (i<(((GPtrArray*)(srType->showcolumn))->len) ?
+				          g_ptr_array_index((GPtrArray*)(srType->showcolumn), i)
 				          :NULL)
-			             : SearchResultTypePointerForCurrentExistingSearchResult->showcolumn[i]))){
+			             : srType->showcolumn[i]))){
       show_hide_treeview_columns_in_order(column_sequence);//如果查询结果不包含getExtColumnValueFromHashTable列,只包含文件名,默认会显示文件日期大小等常规列,如果不想显示这些列,可以指定 { ",FileName,", NULL } 这样一个包含 ",FileName," 逗号开头结尾的showcolumn字符串数组
       i++;
     }
   }
   do_not_show_VALUE_MAY_NOT_LOADED_message_because_we_will_add_GtkTreeViewColumn_later=old_value;
   showSearchResultExtColumnsBasedOnHashTableValues_has_already_been_called_for_searchresult = TRUE;
-  if (g_strcmp0(SearchResultTypePointerForCurrentExistingSearchResult->name,SrchRsltType_multitype)==0 && SearchResultTypePointerForCurrentExistingSearchResult->showcolumn) {
-    g_ptr_array_free((GPtrArray*)(SearchResultTypePointerForCurrentExistingSearchResult->showcolumn), FALSE); //multitype searcharesulttype 的showcolumn属性默认是NULL的，动态添加  MatchedSearchResultType 的showcolumn, 用完后释放字符串数组，字符串本身不用释放
-    SearchResultTypePointerForCurrentExistingSearchResult->showcolumn = NULL;
-    g_debug("free SearchResultTypePointerForCurrentExistingSearchResult->showcolumn and set to NULL for SearchResultType %s %p", SearchResultTypePointerForCurrentExistingSearchResult->name, SearchResultTypePointerForCurrentExistingSearchResult);
+  if (g_strcmp0(srType->name,SrchRsltType_multitype)==0 && srType->showcolumn) {
+    g_ptr_array_free((GPtrArray*)(srType->showcolumn), FALSE); //multitype searcharesulttype 的showcolumn属性默认是NULL的，动态添加  MatchedSearchResultType 的showcolumn, 用完后释放字符串数组，字符串本身不用释放
+    srType->showcolumn = NULL;
+    g_debug("free SearchResultTypePointerForCurrentExistingSearchResult->showcolumn and set to NULL for SearchResultType %s %p", srType->name, srType);
   }
 }
 
@@ -6777,9 +6778,6 @@ static void update_SearchResultFileNameList_and_refresh_store(RFM_ChildAttribs *
 
   if (SearchResultFileNameList != NULL) SearchResultFileNameList=g_list_first(g_list_reverse(SearchResultFileNameList));
   current_sort_column_id = GTK_TREE_SORTABLE_UNSORTED_SORT_COLUMN_ID;
-  SearchResultTypePointerForCurrentExistingSearchResult=childAttribs->SearchResultTypePointer;//执行到这里一次查询才算是成功了，保留指针以便以后 refresh_store 操作
-  //TODO:之前SearchResultTypePointer是全局变量，现在是childAttribs内属性，上面几行释放更新childAttribsForCurrentDisplayingSearchResult和现在设置SearchResultTypePointerForCurrentExistingSearchResult有个时间差，隔着SearchResultLineProcessingFunc，现在还有意义吗？现在去掉SearchResultTypePointerForCurrentExistingSearchResult，直接在这里更新childAttribsForCurrentDisplayingSearchResult如何呢？ 如果 SearchResultLineProcessingFunc 执行失败，refresh_store 的行为有何差别？
-  childAttribs->SearchResultTypePointer = NULL;//完成向SearchResultTypePointerForCurrentExistingSearchResult转移后清零,TODO:如果Search命令执行失败如何清零?把他们从全局变量改为childAttribs属性应该就好了?
 
   FirstPage();
   if (old_filenamelist!=NULL) g_list_free(old_filenamelist);
