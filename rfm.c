@@ -637,7 +637,7 @@ static void set_pagesize_for_searchresultview(const char *pagesize);
 static void cmdPagesize(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
 void addToSearchResult(FREE char *fileFullpath);
 static void cmd_addToSearchResult(CALLER_OWN wordexp_t *parsed_msg,CALLER_OWN  GString *readline_result_string_after_file_name_substitution);
-static void writeSearchResultIntoFD_in_gtk_thread(gint fd, gboolean exportFilePathOnly);
+static void writeSearchResultIntoFD_in_gtk_thread(gint fd, gboolean exportFilePathOnly, RFM_ChildAttribs* childAttribs);
 static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, gboolean from_stdin_readline, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *childAttribs);
 /******Search Result related definitions end*********/
 /****************************************************/
@@ -772,6 +772,7 @@ static void g_idle_add_once_handle_escape_key(){ g_idle_add_once(cmd_handle_esca
 static gboolean window_focus_in_event(GtkWidget *widget, GdkEventFocus *event, gpointer user_data);
 #include "config.h"
 
+#define SEARCH_RESULT_COLUMN_SEPERATOR(overriding_child_attribts) ((overriding_child_attribts && overriding_child_attribts->SearchResultTypePointer && overriding_child_attribts->SearchResultTypePointer->SearchResultColumnSeperator) ? overriding_child_attribts->SearchResultTypePointer->SearchResultColumnSeperator : SearchResultColumnSeperator)
 /* non-static so addons can reset it on /quit etc. */
 stdin_cmd_interpretor * current_stdin_cmd_interpretor_pointer = &(stdin_cmd_interpretors[0]);
 static stdin_cmd_interpretor * effective_cmd_interpretor_pointer = &(stdin_cmd_interpretors[0]);  //keep the init value the same as that of current_stdin_cmd_interpretor so that these two would be same for the first run of readlineInseperatethread
@@ -1409,7 +1410,7 @@ gboolean g_spawn_wrapper_(CALLER_OWN GList *file_list, CALLER_OWN const char *de
    v=build_cmd_vector(child_attribs->RunCmd, file_list, dest_path);
    if (v != NULL) {
       setenv("RFM_DIMENSION_PROPERTIES_FILE_NAME",RFM_DIMENSION_PROPERTIES_FILE_NAME, 1);
-      setenv("RFM_SearchResultColumnSeperator",SearchResultColumnSeperator,1);
+      setenv("RFM_SearchResultColumnSeperator",SEARCH_RESULT_COLUMN_SEPERATOR(child_attribs),1);
       //上面setenv原本放在 GSpawnChildSetupFunc_setenv 里的，但是测试发觉不稳定，有时子进程里没设置
       gchar * argv=g_strjoinv(" ", v);
       gchar* workingDir = choose_working_directory_for_g_spawn(child_attribs);
@@ -4123,7 +4124,7 @@ static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResult
 	        free_child_attribs(childAttribs);
 		readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);//SearchResultAsInput情况下，g_spawn 失败,（命令根本就没执行，比如命令没找到），从这里新建readline
 	    } else {
-	        writeSearchResultIntoFD_in_gtk_thread(childAttribs->stdIn_fd,export_filepath_only);
+	        writeSearchResultIntoFD_in_gtk_thread(childAttribs->stdIn_fd,export_filepath_only, childAttribs);
 		add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
 	    }
 }
@@ -4140,7 +4141,7 @@ static void g_spawn_async_callback_to_new_readline_thread(RFM_ChildAttribs *chil
   readlineThread=g_thread_new("readline", readlineInSeperateThread, NULL);// SearchResultAsInput情况下，命令执行成功，从这里新建 readline;  这种情况下,新的readlineThread下不会再运行exec_stdin_command, 所以命令参数直接传NULL过去就可以了
 }
 
-static void writeSearchResultIntoFD_in_gtk_thread(gint fd,gboolean exportFilePathOnly){
+static void writeSearchResultIntoFD_in_gtk_thread(gint fd,gboolean exportFilePathOnly, RFM_ChildAttribs* childAttribs){
   g_debug("writeSearchResultIntoFD(%d)",fd);
   if (SearchResultViewInsteadOfDirectoryView){
     GList* columns=NULL;
@@ -4156,7 +4157,7 @@ static void writeSearchResultIntoFD_in_gtk_thread(gint fd,gboolean exportFilePat
 	if (firstColumn){
 	  dprintf(fd, "%s", TREEVIEW_COLUMNS[i].title); //首列输出列标题
 	  firstColumn=FALSE;
-	}else dprintf(fd, "%s%s",SearchResultColumnSeperator,TREEVIEW_COLUMNS[i].title); //非首列输出 分隔符 加列标题
+	}else dprintf(fd, "%s%s",SEARCH_RESULT_COLUMN_SEPERATOR(childAttribs),TREEVIEW_COLUMNS[i].title); //非首列输出 分隔符 加列标题
       columns=g_list_prepend(columns, &(TREEVIEW_COLUMNS[i].enumCol));
       }
     }
@@ -4180,14 +4181,14 @@ static void writeSearchResultIntoFD_in_gtk_thread(gint fd,gboolean exportFilePat
 	      if (c==columns)//this means the first column
 		dprintf(fd, "\n%s", str_value? str_value:""); //首列输出回车 加 值
 	      else{
-		if (str_value && strstr(str_value, SearchResultColumnSeperator)!=NULL) g_warning(SearchResult_contains_ColumnSeperator, SearchResultColumnSeperator, str_value);
-		dprintf(fd, "%s%s",SearchResultColumnSeperator, str_value?str_value:""); //非首列输出 分隔符 加值
+		if (str_value && strstr(str_value, SEARCH_RESULT_COLUMN_SEPERATOR(childAttribs))!=NULL) g_warning(SearchResult_contains_ColumnSeperator, SEARCH_RESULT_COLUMN_SEPERATOR(childAttribs), str_value);
+		dprintf(fd, "%s%s",SEARCH_RESULT_COLUMN_SEPERATOR(childAttribs), str_value?str_value:""); //非首列输出 分隔符 加值
 	      }
 	      if (str_value) g_free(str_value);
 	  }else{ //GTYPE_UINT64
 	      if (c==columns)//this means the first column
 		dprintf(fd, "\n%ld", g_value_get_uint64(&val)); //首列输出回车 加 值
-	      else dprintf(fd, "%s%ld",SearchResultColumnSeperator, g_value_get_uint64(&val)); //非首列输出 分隔符 加值
+	      else dprintf(fd, "%s%ld",SEARCH_RESULT_COLUMN_SEPERATOR(childAttribs), g_value_get_uint64(&val)); //非首列输出 分隔符 加值
 	  }
 	  //g_value_unset(&val);
 	}while((c=g_list_next(c)));
@@ -5821,7 +5822,7 @@ static int setup()
    set_rfm_curPath(initDir);
    RFM_ChildAttribs childAttribs_for_ReadFromPipeStdin = {0};
    ReadFromPipeStdinIfAny(pipefd, &childAttribs_for_ReadFromPipeStdin);
-   if (no_window) writeSearchResultIntoFD_in_gtk_thread(STDOUT_FILENO, FALSE);
+   if (no_window) writeSearchResultIntoFD_in_gtk_thread(STDOUT_FILENO, FALSE, &childAttribs_for_ReadFromPipeStdin);
   
    refresh_store();
    if(!no_window && startWithTerm() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)){
@@ -6089,7 +6090,7 @@ static int ProcessOnelineForSearchResult_with_title(CALLER_OWN char* oneline, gb
 
   if (fileAttributeID==1){
     if (search_result_type_withtitle_column_title_array) { g_strfreev(search_result_type_withtitle_column_title_array);search_result_type_withtitle_column_title_array=NULL; }
-    search_result_type_withtitle_column_title_array = g_strsplit(oneline, SearchResultColumnSeperator, TREEVIEW_COLUMNS_array_size);
+    search_result_type_withtitle_column_title_array = g_strsplit(oneline, SEARCH_RESULT_COLUMN_SEPERATOR(childAttribs), TREEVIEW_COLUMNS_array_size);
     uint i=0;
     while(search_result_type_withtitle_column_title_array[i]){
       if (strcmp(search_result_type_withtitle_column_title_array[i], fld_FileName)==0){
@@ -6116,14 +6117,14 @@ static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboo
 	   char* key=calloc(10, sizeof(char));
            char* filename = oneline;
            char* currentExtColumnValue = NULL;
-	   char* seperatorPointerAfterCurrentExtColumnValue = strstr(oneline, SearchResultColumnSeperator);
+	   char* seperatorPointerAfterCurrentExtColumnValue = strstr(oneline, SEARCH_RESULT_COLUMN_SEPERATOR(childAttribs));
 	   uint currentColumnTitleIndex=1;
 	   if (seperatorPointerAfterCurrentExtColumnValue) { //found SearchResulutColumnSeperator such as ":" in oneline; emacs里 ctrl+alt+f  ctrl+alt+b 跳转到匹配的括号
 	       snprintf(key,10, "%d", fileAttributeID);
 	       *seperatorPointerAfterCurrentExtColumnValue = 0; //ending NULL for filename
 
                if (filename_index_in_column_titles<=1){ //如果第一列是文件名
-		 currentExtColumnValue = seperatorPointerAfterCurrentExtColumnValue + strlen(SearchResultColumnSeperator); //如果第一列是文件名，则移动currentExtColumnValue指针到下一列。
+		 currentExtColumnValue = seperatorPointerAfterCurrentExtColumnValue + strlen(SEARCH_RESULT_COLUMN_SEPERATOR(childAttribs)); //如果第一列是文件名，则移动currentExtColumnValue指针到下一列。
 		 filename = oneline;
 		 g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"first column is filename:%s", filename);
 	       }else{
@@ -6159,13 +6160,13 @@ static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboo
 		    
 		    if (currentExtColumnValue!=oneline) {//当currentExtColumnValue==oneline 时，说明第一列不是文件名，do 循环前已经把第一列后面的SearchResultColumnSeperator首字符置0了。
 		      //do 循环的开始，找下一个SearchResultColumnSeperator, 并将其首字符置0,即为currentExtColumnValue尾部设NULL
-		      seperatorPointerAfterCurrentExtColumnValue = strstr(currentExtColumnValue, SearchResultColumnSeperator);
+		      seperatorPointerAfterCurrentExtColumnValue = strstr(currentExtColumnValue, SEARCH_RESULT_COLUMN_SEPERATOR(childAttribs));
 		      if (seperatorPointerAfterCurrentExtColumnValue) *seperatorPointerAfterCurrentExtColumnValue = 0; //ending NULL for currentExtColumnValue
 		    }
 		    g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"Insert column %s into ExtColumnHashTable[%d]: fileAttributeID as key %s,value %s", currentColumnTitleIndexName, currentExtColumnHashTableIndex,key,currentExtColumnValue);
 		    g_hash_table_insert(ExtColumnHashTable[currentExtColumnHashTableIndex], strdup(key), strdup(currentExtColumnValue));
 
-		    if (seperatorPointerAfterCurrentExtColumnValue) currentExtColumnValue = seperatorPointerAfterCurrentExtColumnValue + strlen(SearchResultColumnSeperator); //moving char pointer
+		    if (seperatorPointerAfterCurrentExtColumnValue) currentExtColumnValue = seperatorPointerAfterCurrentExtColumnValue + strlen(SEARCH_RESULT_COLUMN_SEPERATOR(childAttribs)); //moving char pointer
 
       		    currentColumnTitleIndex++;
 		    snprintf(currentColumnTitleIndexName,10,"C%d", currentColumnTitleIndex);
@@ -6176,9 +6177,9 @@ static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboo
 		      //TODO：这里在一个do循环中，使用 strstr 查找 SearchResultColumnSeperator两次，即处理了两列，不够优美。重构这个函数，在do循环体内处理filename列，而不是像现在这样，在循环体内跳过filename列，到循环结束后再prepend到 SearchResultFileNameList
 		      g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"skip filename column");
 		      *seperatorPointerAfterCurrentExtColumnValue = 0; //为filename前一个字段设置ending NULL
-		      seperatorPointerAfterCurrentExtColumnValue = strstr(currentExtColumnValue, SearchResultColumnSeperator);//查找filename后面的seperator
+		      seperatorPointerAfterCurrentExtColumnValue = strstr(currentExtColumnValue, SEARCH_RESULT_COLUMN_SEPERATOR(childAttribs));//查找filename后面的seperator
 		      if (seperatorPointerAfterCurrentExtColumnValue){
-			currentExtColumnValue = seperatorPointerAfterCurrentExtColumnValue + strlen(SearchResultColumnSeperator); //moving char pointer
+			currentExtColumnValue = seperatorPointerAfterCurrentExtColumnValue + strlen(SEARCH_RESULT_COLUMN_SEPERATOR(childAttribs)); //moving char pointer
 			*seperatorPointerAfterCurrentExtColumnValue = 0; //为filename设置ending NULL
 		      }
 		    }
@@ -6739,12 +6740,6 @@ static void update_SearchResultFileNameList_and_refresh_store(RFM_ChildAttribs *
   }
 #endif
   showSearchResultExtColumnsBasedOnHashTableValues_has_already_been_called_for_searchresult = FALSE;
-  char old_searchresultcolumnSeperator[32];
-  //apply searchresulttype specific column seperator
-  if (childAttribs->SearchResultTypePointer->SearchResultColumnSeperator) {
-    strcpy(old_searchresultcolumnSeperator, SearchResultColumnSeperator);
-    strcpy(SearchResultColumnSeperator, childAttribs->SearchResultTypePointer->SearchResultColumnSeperator);//TODO:这里为啥要拷来拷去？为啥不直接用childAttribs->SearchResultTypePointer->SearchResultColumnSeperator？
-  }
   SearchResultFileNameListLength=0;
   fileAttributeID=1;
 
@@ -6774,9 +6769,6 @@ static void update_SearchResultFileNameList_and_refresh_store(RFM_ChildAttribs *
   current_sort_column_id = GTK_TREE_SORTABLE_UNSORTED_SORT_COLUMN_ID;
   SearchResultTypePointerForCurrentExistingSearchResult=childAttribs->SearchResultTypePointer;//执行到这里一次查询才算是成功了，保留指针以便以后 refresh_store 操作
   //TODO:之前SearchResultTypePointer是全局变量，现在是childAttribs内属性，上面几行释放更新childAttribsForCurrentDisplayingSearchResult和现在设置SearchResultTypePointerForCurrentExistingSearchResult有个时间差，隔着SearchResultLineProcessingFunc，现在还有意义吗？现在去掉SearchResultTypePointerForCurrentExistingSearchResult，直接在这里更新childAttribsForCurrentDisplayingSearchResult如何呢？ 如果 SearchResultLineProcessingFunc 执行失败，refresh_store 的行为有何差别？
-  if (childAttribs->SearchResultTypePointer->SearchResultColumnSeperator) {
-    strcpy(SearchResultColumnSeperator, old_searchresultcolumnSeperator);
-  }
   childAttribs->SearchResultTypePointer = NULL;//完成向SearchResultTypePointerForCurrentExistingSearchResult转移后清零,TODO:如果Search命令执行失败如何清零?把他们从全局变量改为childAttribs属性应该就好了?
 
   FirstPage();
