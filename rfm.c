@@ -615,7 +615,7 @@ static gboolean showSearchResultExtColumnsBasedOnHashTableValues_has_already_bee
 static void update_SearchResultFileNameList_and_refresh_store(RFM_ChildAttribs *childAttribs);
 static void showSearchResultExtColumnsBasedOnHashTableValues();
 static int ProcessOnelineForSearchResult(CALLER_OWN gchar *oneline, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs);
-static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboolean new_search, int first_line_column_title);
+static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboolean new_search, int first_line_column_title, RFM_ChildAttribs *childAttribs);
 static int ProcessOnelineForSearchResult_with_title(CALLER_OWN char* oneline, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs);
 void CallDefaultSearchResultFunctionForNewSearch(CALLER_OWN char *one_line_in_search_result, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs);
 int ProcessKeyValuePairInFilesFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs);
@@ -6077,14 +6077,14 @@ int main(int argc, char *argv[])
 static int ProcessOnelineForSearchResult(CALLER_OWN char* oneline, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs){
   FileNameIndexInColumnTitles = FALSE;
   if (search_result_type_withtitle_column_title_array) { g_strfreev(search_result_type_withtitle_column_title_array);search_result_type_withtitle_column_title_array=NULL; }
-  return ProcessOnelineForSearchResult_internel(oneline, new_search, FileNameIndexInColumnTitles);
+  return ProcessOnelineForSearchResult_internel(oneline, new_search, FileNameIndexInColumnTitles, childAttribs);
 }
 
 static int ProcessOnelineForSearchResult_with_title(CALLER_OWN char* oneline, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs){
   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"ProcessOnelineForSearchResult_with_title(%s, new_search:%d) fileAttributeID:%d", oneline, new_search,fileAttributeID);
   if (childAttribs->SearchResultAsInput && !treeview){//iconview视图下面查询结果第一行不会导出文件名标题列(参见writeSearchResultIntoFD_in_gtk_thread)，所以读入的时候也如同没有 _with_title 一样。
     FileNameIndexInColumnTitles = FALSE;
-    return ProcessOnelineForSearchResult_internel(oneline, new_search, FileNameIndexInColumnTitles);
+    return ProcessOnelineForSearchResult_internel(oneline, new_search, FileNameIndexInColumnTitles, childAttribs);
   }
 
   if (fileAttributeID==1){
@@ -6094,14 +6094,14 @@ static int ProcessOnelineForSearchResult_with_title(CALLER_OWN char* oneline, gb
     while(search_result_type_withtitle_column_title_array[i]){
       if (strcmp(search_result_type_withtitle_column_title_array[i], fld_FileName)==0){
 	FileNameIndexInColumnTitles = i + 1; //filename_index_in_column_titles start with 1
-	return ProcessOnelineForSearchResult_internel(oneline, new_search, FileNameIndexInColumnTitles);
+	return ProcessOnelineForSearchResult_internel(oneline, new_search, FileNameIndexInColumnTitles, childAttribs);
       }
       i++;
     }
     g_warning("no %s field in search result!",fld_FileName);
     g_strfreev(search_result_type_withtitle_column_title_array);search_result_type_withtitle_column_title_array=NULL;
     return 0;
-  }else return ProcessOnelineForSearchResult_internel(oneline, new_search, FileNameIndexInColumnTitles);
+  }else return ProcessOnelineForSearchResult_internel(oneline, new_search, FileNameIndexInColumnTitles, childAttribs);
 }
 
 // default search result processing function
@@ -6110,7 +6110,7 @@ static int ProcessOnelineForSearchResult_with_title(CALLER_OWN char* oneline, gb
 // first_line_column_title 为FALSE时,搜索结果第一行不包含表头,显示C1,C2,C3,...的顺序列名
 // first_line_column_title 为TRUE的时候,第一行为表头,且只能用于扩展列,不会去查找现有同名列
 // 当 first_line_column_title 为false时，假定文件名列排第一， filename_index_in_column_title 为0 即false；当first_line_column_title 为true时，filename_index_in_column_titles 大于等于1,即从1开始。在本commit前，假设文件名始终位于查询结果首列，不论是否first_line_column_title(即查询结果类型withTitle)。
-static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboolean new_search, int filename_index_in_column_titles){
+static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboolean new_search, int filename_index_in_column_titles, RFM_ChildAttribs *childAttribs){
            g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"ProcessOnelineForSearchResult_internel(%s, new_search:%d, filename_index_in_column_titles:%d)", oneline, new_search, filename_index_in_column_titles);
            if (oneline == NULL || !new_search) return 0;
 	   char* key=calloc(10, sizeof(char));
