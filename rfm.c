@@ -339,7 +339,7 @@ void ensure_fd0_is_opened_for_stdin_inherited_from_parent_process_instead_of_use
 static gboolean startWithTerm();
 static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs);
 static void ensure_foreground_process(gboolean set_foreground);
-static void ReadFromPipeStdinIfAny(char *fd);
+static void ReadFromPipeStdinIfAny(char *fd, RFM_ChildAttribs *childAttribs);
 static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *child_attribs);
 static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *childAttribs);
 static void g_spawn_async_callback_to_new_readline_thread(RFM_ChildAttribs *child_attribs);
@@ -5819,8 +5819,8 @@ static int setup()
 #endif
    if (initDir == NULL) initDir = cwd;
    set_rfm_curPath(initDir);
-
-   ReadFromPipeStdinIfAny(pipefd);
+   RFM_ChildAttribs childAttribs_for_ReadFromPipeStdin = {0};
+   ReadFromPipeStdinIfAny(pipefd, &childAttribs_for_ReadFromPipeStdin);
    if (no_window) writeSearchResultIntoFD_in_gtk_thread(STDOUT_FILENO, FALSE);
   
    refresh_store();
@@ -6584,12 +6584,11 @@ static NO_FREE RFM_FileAttributes *get_fileAttributes_byId(guint fileAttributeId
    }
 }
 
-static void ReadFromPipeStdinIfAny(char * fd)
+static void ReadFromPipeStdinIfAny(char * fd, RFM_ChildAttribs *childAttribs)
 {
    if (readlink_proc_self_fd_pipefd_and_confirm_pipefd_is_used_by_pipeline()){
          //if (initDir!=NULL && (SearchResultViewInsteadOfDirectoryView^1)) die("if you have -d specified, and read file name list from pipeline, -p parameter must goes BEFORE -d\n");
          //TODO：本commit 移动了ReadFromPipeStdinIfAny调用在setup里的位置, 所以上面一行不能要了，否则rfm直接退出，但我这会儿不太记得上面这句在这里有啥作用
-	 RFM_ChildAttribs *childAttribs = calloc(1, sizeof(RFM_ChildAttribs));
          childAttribs->no_free = TRUE;
 	 if (read_char_pipe(atoi(fd), PIPE_SZ, &childAttribs->stdOut)<0) g_warning("read_char_pipe failed");
          childAttribs->SearchResultTypePointer = &(searchresultTypes[1]);//multitype
