@@ -4096,6 +4096,14 @@ static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResult
 
             if (!SearchResultViewInsteadOfDirectoryView) Switch_SearchResultView_DirectoryView();
 
+            if (cmd_interpretor_pointer->cmdTransformer==NULL){
+	      g_warning("TODO:cmd_interpretor_pointer->cmdTransformer==NULL");//might be in OpenHarness.rfm_addon.c
+              free_child_attribs(childAttribs);
+	      readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);
+	      //TODO: 1.本函数里重复出现的上面两行代码，如何重构下; 2. 判断下readlineThread为NULL,代码里好多地方都没判断，判断下，不为NULL的情况加个warning也许更好
+	      return;
+	    }
+
 	    childAttribs->RunCmd = cmd_interpretor_pointer->cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE);
 	    childAttribs->stdIn_fd = -1; //set to non-zero, and will be set to a valid fd by g_spawn_async_with_pipes
 
