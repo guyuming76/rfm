@@ -604,7 +604,6 @@ static gint SearchResultFileNameListLength=0;
 static gint currentFileNum=0;
 static GList *CurrentPage_SearchResultView=NULL;
 static gint PageSize_SearchResultView=100;
-static RFM_SearchResultType* SearchResultTypePointer = NULL; // we need to pass this status from exec_stdin_command to readlineInSeperatedThread, however, we can only pass one parameter in g_thread_new, so, i use a global variable here.
 static RFM_SearchResultType* SearchResultTypePointerForCurrentExistingSearchResult = NULL; //The value above will be override by next command, which can be a non-search command, we need this variable to preserve the current displaying searchresulttype
 //如要分配新的自定义列,此变量记录分配的列名,按C1,C2..顺序,分配后,用键值替换原始的Cx列名
 static int currentSearchResultTypeStartingColumnTitleIndex;
@@ -4048,7 +4047,7 @@ static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousRea
                 return TRUE;
           }
           childAttribs->RunCmd = cmd_interpretor_pointer->cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE);
-          if (SearchResultTypePointer) {
+          if (childAttribs->SearchResultTypePointer) {
 	    if (childAttribs->exec_stdin_command_in_gtk_thread){
 	        childAttribs->runOpts |= G_SPAWN_SEARCH_PATH|G_SPAWN_CHILD_INHERITS_STDIN|G_SPAWN_CHILD_INHERITS_STDERR;
 	        childAttribs->output_read_by_program = TRUE;
@@ -4064,7 +4063,7 @@ static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousRea
 	    childAttribs->setsid = TRUE;//search 后台进程有可能运行时间比较长，为了防止和终端输入争抢，设置这里，所以同时就不设置 G_SPAWN_CHILD_INHERITS_STDIN|G_SPAWN_CHILD_INHERITS_STDOUT,但这也意味着执行search的过程就无法和用户通过命令行交互
 	    childAttribs->no_free = TRUE; //update_SearchResultFileNameList_and_refresh_store 要多次调用SearchResultTypeProcessingFunc, 可能会重复使用这个childAttribs,多次穿过 g_spawn_wrapper调用, 在update_SearchResultFileNameList_and_refresh_store 调用的最后置为 FALSE.
 	    ret = g_spawn_wrapper_(NULL, NULL, childAttribs);
-	    childAttribs->name = strdup(SearchResultTypePointer->name);
+	    childAttribs->name = strdup(childAttribs->SearchResultTypePointer->name);
 	    }
 	  }else{
 	    if (cmd_interpretor_pointer->customCallBackFunc){
@@ -4107,7 +4106,7 @@ static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResult
 #ifdef GNU_readline
 	                                       from_stdin_readline ? g_spawn_async_callback_to_new_readline_thread : ( SearchResultTypePointer? update_SearchResultFileNameList_and_refresh_store : NULL); //如果不是从readline获取的命令，callback里面就不能包含new readline，否则会超过一个readline线程在运行.
 #endif
-	    if (SearchResultTypePointer) {
+	    if (childAttribs->SearchResultTypePointer) {
               childAttribs->g_idle_add_once_to_run_CallBackFunc = TRUE; //TODO：目前函数是在 gtk main thread 运行的，所以这一行应该可以不要，加一下避免以后改动当前函数运行环境导致出错
 	      childAttribs->output_read_by_program = TRUE;
 	      childAttribs->no_free = TRUE;
@@ -4137,7 +4136,7 @@ gpointer transferPointerOwnership(gpointer *newOwner, gpointer *oldOwner)
 }
 
 static void g_spawn_async_callback_to_new_readline_thread(RFM_ChildAttribs *child_attribs){
-  if (SearchResultTypePointer) update_SearchResultFileNameList_and_refresh_store(child_attribs); //这里假定当前方法是在gtk main thread 上运行的,如不是,就得用g_idle_add_once
+  if (child_attribs->SearchResultTypePointer) update_SearchResultFileNameList_and_refresh_store(child_attribs); //这里假定当前方法是在gtk main thread 上运行的,如不是,就得用g_idle_add_once
   readlineThread=g_thread_new("readline", readlineInSeperateThread, NULL);// SearchResultAsInput情况下，命令执行成功，从这里新建 readline;  这种情况下,新的readlineThread下不会再运行exec_stdin_command, 所以命令参数直接传NULL过去就可以了
 }
 
@@ -5266,7 +5265,7 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
 	    while (len>=1 && readlineResult[len-1]==' ') { readlineResult[len-1]='\0'; len--; } //remove ending space
 
 	    if (!childAttribs->execStdinCmdInNewVT && !(!from_stdin_readline && execCmdInNewVT)){
-	      SearchResultTypePointer = MatchSearchResultType(readlineResult,childAttribs);
+	      childAttribs->SearchResultTypePointer = MatchSearchResultType(readlineResult,childAttribs);
 	      len = strlen(readlineResult);
 	    }
 
@@ -6593,7 +6592,7 @@ static void ReadFromPipeStdinIfAny(char * fd)
 	 RFM_ChildAttribs *childAttribs = calloc(1, sizeof(RFM_ChildAttribs));
          childAttribs->no_free = TRUE;
 	 if (read_char_pipe(atoi(fd), PIPE_SZ, &childAttribs->stdOut)<0) g_warning("read_char_pipe failed");
-         SearchResultTypePointer = &(searchresultTypes[1]);//multitype
+         childAttribs->SearchResultTypePointer = &(searchresultTypes[1]);//multitype
          update_SearchResultFileNameList_and_refresh_store(childAttribs);
 	 ensure_fd0_is_opened_for_stdin_inherited_from_parent_process_instead_of_used_by_pipeline_any_more();
    }
@@ -6714,7 +6713,7 @@ static void showSearchResultExtColumnsBasedOnHashTableValues(){
 // 本函数是newsearch 为True, 对应新的查询结果集
 // fill_fileAttributeList_with_filenames_from_search_result_and_then_insert_into_store 里的调用 newsearch 为false,对应页面刷新以及翻页
 static void update_SearchResultFileNameList_and_refresh_store(RFM_ChildAttribs *childAttribs){
-  g_assert(SearchResultTypePointer);
+  g_assert(childAttribs && childAttribs->SearchResultTypePointer);
   gchar *filenamelist = childAttribs->stdOut;
   
   GList * old_filenamelist = SearchResultFileNameList;
@@ -6743,9 +6742,9 @@ static void update_SearchResultFileNameList_and_refresh_store(RFM_ChildAttribs *
   showSearchResultExtColumnsBasedOnHashTableValues_has_already_been_called_for_searchresult = FALSE;
   char old_searchresultcolumnSeperator[32];
   //apply searchresulttype specific column seperator
-  if (SearchResultTypePointer->SearchResultColumnSeperator) {
+  if (childAttribs->SearchResultTypePointer->SearchResultColumnSeperator) {
     strcpy(old_searchresultcolumnSeperator, SearchResultColumnSeperator);
-    strcpy(SearchResultColumnSeperator, SearchResultTypePointer->SearchResultColumnSeperator);
+    strcpy(SearchResultColumnSeperator, childAttribs->SearchResultTypePointer->SearchResultColumnSeperator);//TODO:这里为啥要拷来拷去？为啥不直接用childAttribs->SearchResultTypePointer->SearchResultColumnSeperator？
   }
   SearchResultFileNameListLength=0;
   fileAttributeID=1;
@@ -6766,7 +6765,7 @@ static void update_SearchResultFileNameList_and_refresh_store(RFM_ChildAttribs *
   gchar * oneline=strtok((gchar*)filenamelist,"\n");
   while (oneline!=NULL){
     if (childAttribs->searchresulttype_addon_dir) childAttribs->workingDir = strdup(childAttribs->searchresulttype_addon_dir);
-    SearchResultTypePointer->SearchResultLineProcessingFunc(oneline, TRUE, SearchResultTypePointer->cmdTemplate,NULL, childAttribs);
+    childAttribs->SearchResultTypePointer->SearchResultLineProcessingFunc(oneline, TRUE, childAttribs->SearchResultTypePointer->cmdTemplate,NULL, childAttribs);
     fileAttributeID++;
     oneline=strtok(NULL, "\n");
   }
@@ -6774,12 +6773,12 @@ static void update_SearchResultFileNameList_and_refresh_store(RFM_ChildAttribs *
 
   if (SearchResultFileNameList != NULL) SearchResultFileNameList=g_list_first(g_list_reverse(SearchResultFileNameList));
   current_sort_column_id = GTK_TREE_SORTABLE_UNSORTED_SORT_COLUMN_ID;
-  SearchResultTypePointerForCurrentExistingSearchResult=SearchResultTypePointer;//执行到这里一次查询才算是成功了，保留指针以便以后 refresh_store 操作
-  
-  if (SearchResultTypePointer->SearchResultColumnSeperator) {
+  SearchResultTypePointerForCurrentExistingSearchResult=childAttribs->SearchResultTypePointer;//执行到这里一次查询才算是成功了，保留指针以便以后 refresh_store 操作
+  //TODO:之前SearchResultTypePointer是全局变量，现在是childAttribs内属性，上面几行释放更新childAttribsForCurrentDisplayingSearchResult和现在设置SearchResultTypePointerForCurrentExistingSearchResult有个时间差，隔着SearchResultLineProcessingFunc，现在还有意义吗？现在去掉SearchResultTypePointerForCurrentExistingSearchResult，直接在这里更新childAttribsForCurrentDisplayingSearchResult如何呢？ 如果 SearchResultLineProcessingFunc 执行失败，refresh_store 的行为有何差别？
+  if (childAttribs->SearchResultTypePointer->SearchResultColumnSeperator) {
     strcpy(SearchResultColumnSeperator, old_searchresultcolumnSeperator);
   }
-  SearchResultTypePointer = NULL; //完成向SearchResultTypePointerForCurrentExistingSearchResult转移后清零,TODO:如果Search命令执行失败如何清零?把他们从全局变量改为childAttribs属性应该就好了
+  childAttribs->SearchResultTypePointer = NULL;//完成向SearchResultTypePointerForCurrentExistingSearchResult转移后清零,TODO:如果Search命令执行失败如何清零?把他们从全局变量改为childAttribs属性应该就好了?
 
   FirstPage();
   if (old_filenamelist!=NULL) g_list_free(old_filenamelist);

@@ -276,6 +276,7 @@ typedef struct RFM_ChildAttributes{
    GList* fullpath_list_as_RunCmd_parameters;
    gboolean exec_stdin_command_in_gtk_thread;
    gboolean execStdinCmdInNewVT;
+   RFM_SearchResultType* SearchResultTypePointer;
    gboolean SearchResultAsInput;
    // used by exec_stdin_command and exec_stdin_command_builtin to share status
    gboolean stdin_cmd_ending_space;
