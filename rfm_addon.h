@@ -258,7 +258,7 @@ typedef struct RFM_ChildAttributes{
    int   status;
    void (*customCallBackFunc)(RFM_ChildAttribs*); //In Searchresultviewinsteadofdirectoryview situation, after runAction such as Move, i need to fill_store to reflect remove of files, so, i need a callback function. Rodney's original code only deals with working directory, and use INotify to reflect the change.
    gpointer customCallbackUserData; //this is not freed in free_child_attribs, user should free it.
-   gboolean g_idle_add_once_to_run_CallBackFunc;
+   gboolean g_idle_add_once_to_run_CallBackFunc;//如果此值设为TRUE,则注意本结构要使用calloc/malloc在堆上分配，而不要直接在函数体内部栈上申明，因为在栈上申明，在callbackfunc后free_childAttribs的时候，childAttribs在栈上可能已经失效了
    gboolean no_free;
    gboolean parse_and_exec_stdin_command_in_gtk_thread_called_nested_so_do_not_new_readlineThread_afterwards;
    gboolean spawn_async;
