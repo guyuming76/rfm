@@ -5806,7 +5806,6 @@ static int setup()
    menu=gtk_menu_new();
    add_file_menuitems(&menuItem,run_actions,G_N_ELEMENTS(run_actions));
    regenerate_merged_menu_and_toolbars();
-   if (!no_window && showHelpOnStart && startWithTerm() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)) stdin_command_help(NULL,NULL);
    columnHeaderMenu = gtk_menu_new();
    InsertBeforeMenuItem = gtk_menu_item_new_with_label(MENU_InsertBeforeThisColumn);
    gtk_menu_shell_append(GTK_MENU_SHELL(columnHeaderMenu), InsertBeforeMenuItem);
@@ -5833,7 +5832,7 @@ static int setup()
    RFM_ChildAttribs childAttribs_for_ReadFromPipeStdin = {0};
    ReadFromPipeStdinIfAny(pipefd, &childAttribs_for_ReadFromPipeStdin);
    if (no_window) writeSearchResultIntoFD_in_gtk_thread(STDOUT_FILENO, FALSE, &childAttribs_for_ReadFromPipeStdin);
-  
+   if (!no_window && showHelpOnStart && startWithTerm() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)) stdin_command_help(NULL,NULL);
    refresh_store();
    if(!no_window && startWithTerm() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL) && readlineThread==NULL){
        readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);
@@ -6050,8 +6049,9 @@ int main(int argc, char *argv[])
 	  exit(Success);
 	}else if (g_strcmp0(longArgument, "help")==0){
 	  printf(rfmLaunchHelp, PROG_NAME);
-	  stdin_command_help(NULL, NULL);
-	  return 0;
+	  showHelpOnStart = TRUE;
+	  auto_execution_command_after_rfm_start = g_strdup("quit");
+	  break;
 	}else if (g_strcmp0(longArgument, "InheritedPrompt")==0){
 	  if (argc<=(c+1)) {
 	   g_warning("Missing prompt string!");
