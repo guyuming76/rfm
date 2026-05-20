@@ -2473,9 +2473,9 @@ static gboolean fill_fileAttributeList_with_filenames_from_search_result_and_the
     if (fileAttributes != NULL) {
       rfm_fileAttributeList=g_list_prepend(rfm_fileAttributeList, fileAttributes);
       g_log(RFM_LOG_DATA,G_LOG_LEVEL_DEBUG,"appended into rfm_fileAttributeList:%s", (char*)name->data);
-      if (SearchResultViewInsteadOfDirectoryView && childAttribsForCurrentDisplayingSearchResult && childAttribsForCurrentDisplayingSearchResult->SearchResultTypePointer)//本函数仅在refresh_store()searchresultview分支调用，因此判断条件中SearchResultViewInsteadOfDirectoryView其实可以不要
+      if (SearchResultViewInsteadOfDirectoryView && childAttribs && childAttribs->SearchResultTypePointer)//本函数仅在refresh_store()searchresultview分支调用，因此判断条件中SearchResultViewInsteadOfDirectoryView其实可以不要
 	if (childAttribs->searchresulttype_addon_dir) childAttribs->workingDir = strdup(childAttribs->searchresulttype_addon_dir);
-	childAttribsForCurrentDisplayingSearchResult->SearchResultTypePointer->SearchResultLineProcessingFunc((gchar*)(name->data), FALSE, childAttribsForCurrentDisplayingSearchResult->SearchResultTypePointer->cmdTemplate, fileAttributes, childAttribs);
+	childAttribs->SearchResultTypePointer->SearchResultLineProcessingFunc((gchar*)(name->data), FALSE, childAttribs->SearchResultTypePointer->cmdTemplate, fileAttributes, childAttribs);
     }
     fileAttributeID++;//上面SearchResultLineProcessingFunc里面会使用fileAttributeID作为hashtable的key, commit ab8f8c2f832bc32b431ced50bda21de36b9314d5 之前是分两次从fileAttributeID=1开始遍历文件名列表的,但commit ab8f8c2f832bc32b431ced50bda21de36b9314d5 和并成了现在的一次遍历, 造成了一个bug: 之前在 get_fileAttributes_for_a_file 调用fileAttributeID++, 后面的SearchResultLineProcessingFunc里fileAttributeID值就错了,所以现在改在这里调用 fileAttributeID++
     name=g_list_next(name);
@@ -2483,7 +2483,7 @@ static gboolean fill_fileAttributeList_with_filenames_from_search_result_and_the
   }
   rfm_fileAttributeList=g_list_reverse(rfm_fileAttributeList);
 
-  if (childAttribsForCurrentDisplayingSearchResult && childAttribsForCurrentDisplayingSearchResult->SearchResultTypePointer && !showSearchResultExtColumnsBasedOnHashTableValues_has_already_been_called_for_searchresult) showSearchResultExtColumnsBasedOnHashTableValues();
+  if (childAttribs && childAttribs->SearchResultTypePointer && !showSearchResultExtColumnsBasedOnHashTableValues_has_already_been_called_for_searchresult) showSearchResultExtColumnsBasedOnHashTableValues();
 
   icon_or_tree_view = add_view();//add view have to be called after showSearchResultExtColumnsBasedOnHashTableValues()
   //commit ab8f8c2f832bc32b431ced50bda21de36b9314d5 里, 我发现 add_view 需要在showSearchResultExtColumnsBasedOnHashTableValues()后面调用,就在那个commit 里面移动了add_view 的位置,否则会出现一个问题:运行 locate .rfmTODO.md>TODO.md 后,只有filename列显示,需要连续回车刷新下才会显示ext列. 究其原因,可能和第 3334 行代码有关, 也就是说,在调用 show_hide_treeview_column 时,需要 icon_or_tree_view值有效,否则gtkcolumn不会被设置成显示
@@ -6497,7 +6497,7 @@ static int ProcessKeyValuePairInData(GKeyFile *keyfile, char* groupname){
 // 比如 searchresulttype name 有 ".md", 还有 "TODO.md"
 // 一个没匹配到,默认用 searchresultype[0]
  static int CallMatchingProcessorForSearchResultLine(char *oneline, gboolean new_search, char *cmdtemplate, RFM_FileAttributes* fileAttributes, RFM_ChildAttribs* childAttribs){
-   assert(childAttribsForCurrentDisplayingSearchResult && g_strcmp0(childAttribsForCurrentDisplayingSearchResult->SearchResultTypePointer->name,SrchRsltType_multitype)==0);
+   assert(childAttribs && g_strcmp0(childAttribs->SearchResultTypePointer->name,SrchRsltType_multitype)==0);
    if (new_search){
      CallDefaultSearchResultFunctionForNewSearch(oneline, TRUE, cmdtemplate, fileAttributes , childAttribs);
      return 0;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
@@ -6537,17 +6537,17 @@ static int ProcessKeyValuePairInData(GKeyFile *keyfile, char* groupname){
 	    int ret = matched_searchresulttype_pointer->SearchResultLineProcessingFunc(oneline,new_search,matched_searchresulttype_pointer->cmdTemplate, fileAttributes, childAttribs);
 	    g_free(childAttribs->searchresulttype_addon_dir); childAttribs->searchresulttype_addon_dir = NULL;//当前的searchresulttype是multitype,对应的addon_dir是null
    //对于multitype来说，每一行的showcolumn应该是匹配到的具体searchresulttype的showcolumn, 所以应该给每种匹配到的showcolumn做个并集
-   if (childAttribsForCurrentDisplayingSearchResult->SearchResultTypePointer->showcolumn==NULL){
-     childAttribsForCurrentDisplayingSearchResult->SearchResultTypePointer->showcolumn = g_ptr_array_new();
-     g_debug("SearchResultTypePointerForCurrentExistingSearchResult->showcolumn set to GPtrArray* %p for SearchResultType %s %p",childAttribsForCurrentDisplayingSearchResult->SearchResultTypePointer->showcolumn, childAttribsForCurrentDisplayingSearchResult->SearchResultTypePointer->name, childAttribsForCurrentDisplayingSearchResult->SearchResultTypePointer);
+   if (childAttribs->SearchResultTypePointer->showcolumn==NULL){
+     childAttribs->SearchResultTypePointer->showcolumn = g_ptr_array_new();
+     g_debug("childAttribs->SearchResultTypePointer->showcolumn set to GPtrArray* %p for SearchResultType %s %p",childAttribs->SearchResultTypePointer->showcolumn, childAttribs->SearchResultTypePointer->name, childAttribs->SearchResultTypePointer);
    }
    if (matched_searchresulttype_pointer->showcolumn){
        for(int i=0; matched_searchresulttype_pointer->showcolumn[i];i++){
 	 gboolean already_exists_in_multitype_showcolumn = FALSE; //用于避免重复加入字符串数组元素
-	 for(guint j=0; j<((GPtrArray*)(childAttribsForCurrentDisplayingSearchResult->SearchResultTypePointer->showcolumn))->len;j++)
-	   if (matched_searchresulttype_pointer->showcolumn[i]==((GPtrArray*)(childAttribsForCurrentDisplayingSearchResult->SearchResultTypePointer->showcolumn))->pdata[j]) { already_exists_in_multitype_showcolumn = TRUE; break; }
+	 for(guint j=0; j<((GPtrArray*)(childAttribs->SearchResultTypePointer->showcolumn))->len;j++)
+	   if (matched_searchresulttype_pointer->showcolumn[i]==((GPtrArray*)(childAttribs->SearchResultTypePointer->showcolumn))->pdata[j]) { already_exists_in_multitype_showcolumn = TRUE; break; }
 	 if (!already_exists_in_multitype_showcolumn) {
-	   g_ptr_array_add((GPtrArray*)(childAttribsForCurrentDisplayingSearchResult->SearchResultTypePointer->showcolumn), matched_searchresulttype_pointer->showcolumn[i]);
+	   g_ptr_array_add((GPtrArray*)(childAttribs->SearchResultTypePointer->showcolumn), matched_searchresulttype_pointer->showcolumn[i]);
 	   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"%s: SearchResultType name %s matched for file:%s; showcolumn element '%s' added",SrchRsltType_multitype,longest_matched_searchresulttype_name,oneline,matched_searchresulttype_pointer->showcolumn[i]);
 	 }
        }
