@@ -5829,9 +5829,9 @@ static int setup()
 #endif
    if (initDir == NULL) initDir = cwd;
    set_rfm_curPath(initDir);
-   RFM_ChildAttribs childAttribs_for_ReadFromPipeStdin = {0};
-   ReadFromPipeStdinIfAny(pipefd, &childAttribs_for_ReadFromPipeStdin);
-   if (no_window) writeSearchResultIntoFD_in_gtk_thread(STDOUT_FILENO, FALSE, &childAttribs_for_ReadFromPipeStdin);
+   RFM_ChildAttribs *childAttribs_for_ReadFromPipeStdin = calloc(1, sizeof(RFM_ChildAttribs));
+   ReadFromPipeStdinIfAny(pipefd, childAttribs_for_ReadFromPipeStdin);
+   if (no_window) writeSearchResultIntoFD_in_gtk_thread(STDOUT_FILENO, FALSE, childAttribs_for_ReadFromPipeStdin);
    if (!no_window && showHelpOnStart && startWithTerm() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)) stdin_command_help(NULL,NULL);
    refresh_store();
    if(!no_window && startWithTerm() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL) && readlineThread==NULL){
