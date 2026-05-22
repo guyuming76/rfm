@@ -5537,6 +5537,7 @@ static char* rfm_custom_filename_completion(const char *text, int state) {
 
     // Get directory and base name
     char *dir = NULL, *base = NULL;
+    char *base_allocated = NULL; // non-NULL when base was strdup'd separately
     if (expanded_text[0] == '/') {
       // Absolute path
       dir = strdup(expanded_text);
@@ -5544,6 +5545,13 @@ static char* rfm_custom_filename_completion(const char *text, int state) {
       if (last_slash) {
         *last_slash = '\0';
         base = last_slash + 1;
+        if (dir[0] == '\0') {
+          // "/foo" → dir became "" after truncation; restore to "/"
+          // base points into dir's buffer, must copy before freeing dir
+          base = base_allocated = strdup(base);
+          free(dir);
+          dir = strdup("/");
+        }
       } else {
         base = dir;
         dir = strdup("/");
@@ -5578,6 +5586,7 @@ static char* rfm_custom_filename_completion(const char *text, int state) {
     
     g_ptr_array_free(all_matches, FALSE); // Don't free the strings, they're now in matches
     free(dir);
+    free(base_allocated);
   }
 
   // Return next match
