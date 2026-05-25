@@ -801,6 +801,7 @@ static GPtrArray* MergedFilemenu;
 static GPtrArray* Merged_tool_buttons;
 static GPtrArray* Merged_builtinCMD;
 static GPtrArray* Merged_cmdInterpretor;
+static GPtrArray* Merged_searchResultTypes;
 /**************gtk UI, filemenu, toolbar end**************************/
 /************** Addon begin ******************************************/
 
@@ -3463,7 +3464,7 @@ static gboolean view_button_press(GtkWidget *widget, GdkEvent *event)
 
 static void regenerate_merged_menu_and_toolbars(void)
 {
-  // Regenerate MergedFilemenu, Merged_tool_buttons, and Merged_builtinCMD
+  // Regenerate MergedFilemenu, Merged_tool_buttons, and Merged_builtinCMD, and Merged_cmdInterpretor and Merged_searcharesulttype
   if (MergedFilemenu != NULL)
     g_ptr_array_free(MergedFilemenu, FALSE);
   MergedFilemenu = g_ptr_array_new();
@@ -3480,6 +3481,14 @@ static void regenerate_merged_menu_and_toolbars(void)
     g_ptr_array_free(Merged_cmdInterpretor, FALSE);
   Merged_cmdInterpretor = g_ptr_array_new();
 
+  if (Merged_searchResultTypes != NULL)
+    g_ptr_array_free(Merged_searchResultTypes, FALSE);
+  Merged_searchResultTypes = g_ptr_array_new();
+
+  for (guint j = 0; j < G_N_ELEMENTS(searchresultTypes); j++) {
+    g_ptr_array_add(Merged_searchResultTypes, &(searchresultTypes[j]));
+  }
+  
 #ifdef RFM_AddOn
   GHashTableIter ht_iter;
   gchar *key;
@@ -3507,12 +3516,16 @@ static void regenerate_merged_menu_and_toolbars(void)
         g_ptr_array_add(Merged_builtinCMD, bcmd);
     }
     for (guint j = 0; j < addon_resource->stdin_cmd_interpretors_array_size; j++) {
-        RFM_builtinCMD *cmdInterpretor = &(addon_resource->stdin_cmd_interpretors[j]);
+        stdin_cmd_interpretor *cmdInterpretor = &(addon_resource->stdin_cmd_interpretors[j]);
         g_ptr_array_add(Merged_cmdInterpretor, cmdInterpretor);
+    }
+    for (guint j = 0; j < addon_resource->searchresulttypes_array_size; j++) {
+        RFM_SearchResultType *srchrslttp = &(addon_resource->searchresulttypes[j]);
+        g_ptr_array_add(Merged_searchResultTypes, srchrslttp);
     }
   }
 #endif
-  // Add run_actions and tool_buttons and builtinCMD from config.h
+  // Add run_actions and tool_buttons and builtinCMD and cmdInterpretor from config.h
   for (guint j = 0; j < G_N_ELEMENTS(run_actions); j++) {
     g_ptr_array_add(MergedFilemenu, &(run_actions[j]));
   }
@@ -4420,11 +4433,12 @@ static void stdin_command_help(wordexp_t * parsed_msg, GString* readline_result_
         printf("%s\n", RFM_SEARCH_RESULT_TYPES_HELP);
       }
       // 遍历在 config.h 中定义的 searchresultTypes 数组
-      for(guint i=0;i<G_N_ELEMENTS(searchresultTypes);i++){
+      for(guint i=0;i<Merged_searchResultTypes->len;i++){
+	RFM_SearchResultType *srchrslttp = g_ptr_array_index(Merged_searchResultTypes, i);
         // 如果是通用帮助请求，或者 是特定帮助请求且用户请求的主题与当前类型名称匹配
-        if (!for_specific_command || (for_specific_command && strcmp(parsed_msg->we_wordv[1], searchresultTypes[i].name)==0)) {
+        if (!for_specific_command || (for_specific_command && strcmp(parsed_msg->we_wordv[1], srchrslttp->name)==0)) {
           // 打印类型名称（蓝色高亮）和其描述
-          printf("    \033[34m%s\033[0m   %s\n",searchresultTypes[i].name,searchresultTypes[i].Description); // \033[34m 是蓝色
+          printf("    \033[34m%s\033[0m   %s\n",srchrslttp->name, srchrslttp->Description); // \033[34m 是蓝色
         }
       }
 #ifdef RFM_AddOn
