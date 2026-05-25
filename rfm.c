@@ -4033,7 +4033,11 @@ static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousRea
   if (readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution!=NULL){ //this means it's not initial run after rfm start, so i should first run cmd from previous readline here
 #ifdef PythonEmbedded
 	  if (pyProgramName!=NULL && g_strcmp0(cmd_interpretor_pointer->name,"PythonEmbedded")==0){
+	        PyGILState_STATE gstate;
+	        gstate = PyGILState_Ensure();
 	        ret = (PyRun_SimpleString(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str)==0);
+	        if (PyErr_Occurred()) PyErr_Print();
+	        PyGILState_Release(gstate);
 		add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
 		return ret;
 	  }
