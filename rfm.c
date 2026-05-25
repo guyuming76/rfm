@@ -4234,6 +4234,8 @@ static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs) {
   //这里不用 free childAttribs, 因为如果上一步if条件没满足，没有执行exec_stdin_command ，一定是在gtk_thread里面执行了 exec 的某个版本，但因为是异步的，这里我又不方便加assert判断 childAttribs
   
   if(startWithTerm() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)){
+    // 在读取终端输入前，确保 rfm 在前台进程组
+    ensure_foreground_process(FALSE);
 #ifdef reedline
     // rfmEdit 其实也可以只在readlineInSeperateThread 里完成 parse 和执行，而不是像现在那样和其他命令一样在gtk线程里面parse,然后绕一个圈子又回到readlineInSeperateThread里执行。现在这样，好处是可以利用 leading_space 消除，当前选中文件补全等 gtk 线程里面的功能，并且将来还有可能扩展
     if (childAttribs && childAttribs->rfmEditFilePath) { rfmEdit(childAttribs->rfmEditFilePath); free_child_attribs(childAttribs); }
@@ -4289,6 +4291,42 @@ static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs) {
 }
 
 
+/*
+ * Recursively check if any descendant (child, grandchild, etc.) of 'pid'
+ * has a process group ID equal to 'foreground_pgid' — meaning that
+ * descendant is the foreground process group of our controlling terminal.
+ *
+ * Returns TRUE if any descendant is in the foreground PGID.
+ *
+ * NOTE: This traverses /proc/[pid]/task/[tid]/children files. A process
+ * that called setsid() creates a new session and won't appear as
+ * foreground here (its pgid != foreground_pgid of /dev/tty), which is
+ * correct — we only care about our own terminal.
+ */
+static gboolean any_descendant_in_foreground(pid_t pid, pid_t foreground_pgid) {
+    char path[64];
+    snprintf(path, sizeof(path), "/proc/%d/task/%d/children", pid, pid);
+    FILE *f = fopen(path, "r");
+    if (!f) return FALSE;  // process may have exited, treat as no descendant in fg
+
+    gboolean found = FALSE;
+    pid_t child;
+    while (fscanf(f, "%d", &child) == 1) {
+        pid_t child_pgid = getpgid(child);
+        if (child_pgid == foreground_pgid) {
+            found = TRUE;
+            break;
+        }
+        // Recurse into grandchildren
+        if (any_descendant_in_foreground(child, foreground_pgid)) {
+            found = TRUE;
+            break;
+        }
+    }
+    fclose(f);
+    return found;
+}
+
 static void ensure_foreground_process(gboolean set_foreground) {
     pid_t current_pid = getpid();
     int fd = open("/dev/tty", O_RDWR);
@@ -4297,16 +4335,39 @@ static void ensure_foreground_process(gboolean set_foreground) {
         pid_t foreground_pgid = tcgetpgrp(fd);
         // 判断是否在后台运行
         if (current_pgid != foreground_pgid) {
-            g_warning("pid %d is running in background (current PGID: %d, foreground PGID: %d), trying to bring to foreground", current_pid, current_pgid, foreground_pgid);
-            // 尝试设置为前台进程
-	    if (set_foreground){
-              int result = tcsetpgrp(fd, current_pgid);
-              if (result == 0) {
-                g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_DEBUG,"Successfully brought pid %d to foreground", current_pid);
-              } else {
-                g_warning("Failed to bring %d to foreground: %s", current_pid, strerror(errno));
-              }
-	    }
+            // 查找所有子进程、子子进程，是否有任一在前台
+            if (any_descendant_in_foreground(current_pid, foreground_pgid)) {
+                g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_DEBUG,
+                      "pid %d is in background but a descendant holds the foreground, skip",
+                      current_pid);
+            } else {
+                g_warning("pid %d is running in background (current PGID: %d, foreground PGID: %d), trying to bring to foreground",
+                          current_pid, current_pgid, foreground_pgid);
+                if (set_foreground) {
+                    /*
+                     * 临时忽略 SIGTTOU，防止 rfm 在后台时调用 tcsetpgrp
+                     * 被内核 SIGTTOU 信号 STOP。忽略后 tcsetpgrp 会直接
+                     * 返回 -1 + EPERM，而不是让 rfm 僵死。
+                     */
+                    struct sigaction old_sigttou, ign_sigttou;
+                    ign_sigttou.sa_handler = SIG_IGN;
+                    sigemptyset(&ign_sigttou.sa_mask);
+                    ign_sigttou.sa_flags = 0;
+                    sigaction(SIGTTOU, &ign_sigttou, &old_sigttou);
+
+                    int result = tcsetpgrp(fd, current_pgid);
+
+                    sigaction(SIGTTOU, &old_sigttou, NULL);
+
+                    if (result == 0) {
+                        g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_DEBUG,
+                              "Successfully brought pid %d to foreground", current_pid);
+                    } else {
+                        g_warning("Failed to bring %d to foreground: %s",
+                                  current_pid, strerror(errno));
+                    }
+                }
+            }
         } else {
             g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_DEBUG, "%d is already in foreground (PGID: %d)", current_pid, current_pgid);
         }
