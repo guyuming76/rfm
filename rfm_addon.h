@@ -235,7 +235,7 @@ typedef struct {
   //RFM_Thumbnailer *thumbnailer_definitions_local;
   //size_t thumbnailer_definitions_local_array_size;
   GdkPixbuf* (*thumbLoadFunc)(RFM_FileAttributes *fileAttributes);//这个函数运行在gtk主线程，直接根据文件返回图像
-  stdin_cmd_interpretor **stdin_cmd_interpretors;
+  stdin_cmd_interpretor *stdin_cmd_interpretors;
   size_t stdin_cmd_interpretors_array_size;
   stdin_cmd_interpretor*(*check_cmd_interpretor_switch_or_effective_cmd_interpretor)(gchar**, stdin_cmd_interpretor** , gboolean* , gchar**, gchar**);
   RFM_builtinCMD *builtinCMD_definitions_local;

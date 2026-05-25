@@ -800,6 +800,7 @@ static size_t TREEVIEW_COLUMNS_array_size = G_N_ELEMENTS(treeviewColumns);
 static GPtrArray* MergedFilemenu;
 static GPtrArray* Merged_tool_buttons;
 static GPtrArray* Merged_builtinCMD;
+static GPtrArray* Merged_cmdInterpretor;
 /**************gtk UI, filemenu, toolbar end**************************/
 /************** Addon begin ******************************************/
 
@@ -3475,6 +3476,10 @@ static void regenerate_merged_menu_and_toolbars(void)
     g_ptr_array_free(Merged_builtinCMD, FALSE);
   Merged_builtinCMD = g_ptr_array_new();
 
+  if (Merged_cmdInterpretor != NULL)
+    g_ptr_array_free(Merged_cmdInterpretor, FALSE);
+  Merged_cmdInterpretor = g_ptr_array_new();
+
 #ifdef RFM_AddOn
   GHashTableIter ht_iter;
   gchar *key;
@@ -3496,11 +3501,14 @@ static void regenerate_merged_menu_and_toolbars(void)
       }
       if (!(addon_resource->tool_bar_buttons_local)) add_toolbar_buttons(&(addon_resource->tool_bar_buttons_local), addon_resource->toolbar_button_definitions_local, addon_resource->toolbar_button_definitions_local_array_size);
     }
-    if (addon_resource->builtinCMD_definitions_local_array_size > 0) {
-      for (guint j = 0; j < addon_resource->builtinCMD_definitions_local_array_size; j++) {
+
+    for (guint j = 0; j < addon_resource->builtinCMD_definitions_local_array_size; j++) {
         RFM_builtinCMD *bcmd = &(addon_resource->builtinCMD_definitions_local[j]);
         g_ptr_array_add(Merged_builtinCMD, bcmd);
-      }
+    }
+    for (guint j = 0; j < addon_resource->stdin_cmd_interpretors_array_size; j++) {
+        RFM_builtinCMD *cmdInterpretor = &(addon_resource->stdin_cmd_interpretors[j]);
+        g_ptr_array_add(Merged_cmdInterpretor, cmdInterpretor);
     }
   }
 #endif
@@ -3513,6 +3521,9 @@ static void regenerate_merged_menu_and_toolbars(void)
   }
   for (guint j = 0; j < G_N_ELEMENTS(builtinCMD); j++) {
     g_ptr_array_add(Merged_builtinCMD, &(builtinCMD[j]));
+  }
+  for (guint j = 0; j < G_N_ELEMENTS(stdin_cmd_interpretors); j++) {
+    g_ptr_array_add(Merged_cmdInterpretor, &(stdin_cmd_interpretors[j]));
   }
 }
 
@@ -4389,16 +4400,15 @@ static void stdin_command_help(wordexp_t * parsed_msg, GString* readline_result_
           printf("    \033[33m%s\033[0m   %s\n", bcmd->cmd, bcmd->help_msg); // \033[33m 是黄色, \033[0m 重置颜色
         }
       }
-      // --- 打印标准输入命令解释器 (stdin_cmd_interpretors) 的信息 ---
-      // 遍历在 config.h 中定义的 stdin_cmd_interpretors 数组
-      for(guint i=0;i<G_N_ELEMENTS(stdin_cmd_interpretors);i++){
+      // --- 打印合并的命令解释器 (stdin_cmd_interpretor) 的信息 ---
+      for(guint i=0;i<Merged_cmdInterpretor->len;i++){
         // 仅在通用帮助请求时打印此部分信息
         if (!for_specific_command){
+          stdin_cmd_interpretor *cmdIntptr = g_ptr_array_index(Merged_cmdInterpretor, i);
           // 打印解释器的激活键（黄色高亮）和其名称
-          printf("    \033[33m%s\033[0m   %s\n", stdin_cmd_interpretors[i].activationKey, stdin_cmd_interpretors[i].name);
+          printf("    \033[33m%s\033[0m   %s\n", cmdIntptr->activationKey, cmdIntptr->name);
         }
       }
-
 
       // --- 打印搜索结果类型 (searchresultTypes) 的帮助信息 ---
       // 如果是通用帮助请求
