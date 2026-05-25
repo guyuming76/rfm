@@ -119,6 +119,9 @@ rfm加 -r 参数就可以在退出时通过命名管道返回选中文件名列�
 
 # 使用rfm的一些场景 #
 
+## https://gitee.com/guyuming76/OpenHarness/blob/guyuming_try_oh_as_cmdInterpretor_instead_of_builtin_cmd_main_base_2/%E5%AE%89%E8%A3%85%E8%AE%BE%E7%BD%AE.md ##
+rfm 的OpenHarness AI agent 插件。
+
 ## https://gitee.com/guyuming76/AI_model_API_config ##
 使用全局Addon扩展rfm,以支持在终端模拟器内和大语言模型对话
 
@@ -147,8 +150,11 @@ github, gitee 等自带的issue列表是和商业网站绑定的，如果有一�
 
 # 一些TroubleShooting记录以及其他备注 #
 
+## 制作debian安装包 ##
+运行 `./update_deb.sh` 脚本生成 .deb 安装包。
+
 ## rust 依赖 ##
-命令输入多行编辑功能使用rust库reedline.如果你的系统不支持rust,可以在config.mk里选择使用 GNU_readline 库.
+命令输入多行编辑功能使用rust库reedline.如果你的系统不支持rust,可以在config.mk里选择使用 GNU_readline 库，但会损失命令输入的多行编辑以及交互式的补全。
 
 ## 显示调试信息 ##
 
