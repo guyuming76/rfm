@@ -4388,8 +4388,19 @@ static void stdin_command_help(wordexp_t * parsed_msg, GString* readline_result_
       gboolean for_specific_command = (parsed_msg!=NULL && (parsed_msg->we_wordc!=1));
 
       // 如果是通用帮助请求，打印预定义的通用帮助头信息 (通常定义在 config.h)
-      if (!for_specific_command) printf("%s",builtinCMD_Help);
+      if (!for_specific_command) printf("%s",System_Help);
+      // --- 打印合并的命令解释器 (stdin_cmd_interpretor) 的信息 ---
+      for(guint i=0;i<Merged_cmdInterpretor->len;i++){
+        // 仅在通用帮助请求时打印此部分信息
+        if (!for_specific_command){
+          stdin_cmd_interpretor *cmdIntptr = g_ptr_array_index(Merged_cmdInterpretor, i);
+          // 打印解释器的激活键（黄色高亮）和其名称
+          printf("    \033[33m%s\033[0m   %s\n", cmdIntptr->activationKey, cmdIntptr->name);
+        }
+      }
 
+      if (!for_specific_command) printf("%s",completion_Help);
+  
       // --- 打印内置命令 (builtinCMD) 的帮助信息 ---
       // 遍历合并后的 builtinCMD 数组 (config.h + addons)
       for(guint i=0;i<Merged_builtinCMD->len;i++){
@@ -4398,15 +4409,6 @@ static void stdin_command_help(wordexp_t * parsed_msg, GString* readline_result_
         if (!for_specific_command || (for_specific_command && strcmp(parsed_msg->we_wordv[1], bcmd->cmd)==0)) {
           // 打印命令名称（黄色高亮）和其帮助信息
           printf("    \033[33m%s\033[0m   %s\n", bcmd->cmd, bcmd->help_msg); // \033[33m 是黄色, \033[0m 重置颜色
-        }
-      }
-      // --- 打印合并的命令解释器 (stdin_cmd_interpretor) 的信息 ---
-      for(guint i=0;i<Merged_cmdInterpretor->len;i++){
-        // 仅在通用帮助请求时打印此部分信息
-        if (!for_specific_command){
-          stdin_cmd_interpretor *cmdIntptr = g_ptr_array_index(Merged_cmdInterpretor, i);
-          // 打印解释器的激活键（黄色高亮）和其名称
-          printf("    \033[33m%s\033[0m   %s\n", cmdIntptr->activationKey, cmdIntptr->name);
         }
       }
 

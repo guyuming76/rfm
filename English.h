@@ -133,7 +133,7 @@
        #define rfmEdit_help ""
 #endif
 
-#define builtinCMD_Help \
+#define System_Help \
 "\n\033[32m system views: \033[0m\n" \
 "    with difference in data source, two types of view can be shown, one is current directory view, with the left-most toolbar button showing its path(and git branch). The other is search result view. You can switch between these two views with the left-most toolbar button.\n" \
 "    hidden files will not appear in current directory view, to see them, use command ls -a>0to show them in search result view.\n" \
@@ -147,7 +147,10 @@
 "    prompt won't update when selection changes in rfm view, press Enter to refresh\n" \
 "    prompt b*],b>,b?] differ with explanation above only in that commands inputted in stdin is started in gtk thread instead of readline thread. When ] is displayed instead of >, gtk window will not refresh and file selection cannot be changed when command is executing(such as when selected file is being editted).\n" \
 reedline_specific_help \
-"    ctrl-z in command window will send rfm.sh to background, and the command prompt will change to the shell prompt before rfm.sh launch. fg command can bring rfm.sh back to foreground the the command prompt will change to rfm prompt described above.\n" \
+"    if rfm is put into background by system, for example, when ctrl-z in command window is pressed (if rfm use gnu readline to read user input), the command prompt will change to the shell prompt before rfm.sh launch. fg command can bring rfm.sh back to foreground the the command prompt will change to rfm prompt described above.\n" \
+"    What follows are active command interpretors, and activation keys are shown in first column:\n"
+
+#define completion_Help \
 "\n\033[32m TAB completion: \033[0m\n" \
 "    Compile rfm with reedline library in config.mk for more convenient completion menu interaction\n" \
 "    1. Based on currently selected files\n" \
