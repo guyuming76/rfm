@@ -4341,32 +4341,7 @@ static void ensure_foreground_process(gboolean set_foreground) {
                       "pid %d is in background but a descendant holds the foreground, skip",
                       current_pid);
             } else {
-                g_warning("pid %d is running in background (current PGID: %d, foreground PGID: %d), trying to bring to foreground",
-                          current_pid, current_pgid, foreground_pgid);
-                if (set_foreground) {
-                    /*
-                     * 临时忽略 SIGTTOU，防止 rfm 在后台时调用 tcsetpgrp
-                     * 被内核 SIGTTOU 信号 STOP。忽略后 tcsetpgrp 会直接
-                     * 返回 -1 + EPERM，而不是让 rfm 僵死。
-                     */
-                    struct sigaction old_sigttou, ign_sigttou;
-                    ign_sigttou.sa_handler = SIG_IGN;
-                    sigemptyset(&ign_sigttou.sa_mask);
-                    ign_sigttou.sa_flags = 0;
-                    sigaction(SIGTTOU, &ign_sigttou, &old_sigttou);
-
-                    int result = tcsetpgrp(fd, current_pgid);
-
-                    sigaction(SIGTTOU, &old_sigttou, NULL);
-
-                    if (result == 0) {
-                        g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_DEBUG,
-                              "Successfully brought pid %d to foreground", current_pid);
-                    } else {
-                        g_warning("Failed to bring %d to foreground: %s",
-                                  current_pid, strerror(errno));
-                    }
-                }
+                g_warning(MSG_rfm_in_background, current_pid, current_pgid, foreground_pgid);
             }
         } else {
             g_log(RFM_LOG_GSPAWN, G_LOG_LEVEL_DEBUG, "%d is already in foreground (PGID: %d)", current_pid, current_pgid);
