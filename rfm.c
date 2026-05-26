@@ -7136,9 +7136,10 @@ static void load_DimensionPropertiesHashTable_Callback(RFM_ChildAttribs* child_a
     GError *error=NULL;
     if (g_key_file_load_from_file(gkeyfile,oneline, G_KEY_FILE_NONE, &error)){
       DimensionProperties * dimProps = calloc(1, sizeof(DimensionProperties));
-      dimProps->ID = g_strstrip(g_key_file_get_string(gkeyfile, dumb_keyfile_groupname, RFM_DIMENSION_ID, &error));
+      gchar* grpname = g_key_file_get_start_group(gkeyfile);//之前用的是 dumb_keyfile_groupname， 但把这串字符到处写在属性文件又不太好，可是如果要换groupname现有的数据要改也麻烦，所以这里文件中具体组名干脆不固定
+      dimProps->ID = g_strstrip(g_key_file_get_string(gkeyfile, grpname, RFM_DIMENSION_ID, &error));
       if (error) { g_debug("load_DimensionPropertiesHashTable_Callback. error loading key value pair from file %s, error code: %d, message:%s",oneline, error->code, error->message); g_error_free(error); error=NULL;}
-      dimProps->name = g_strstrip(g_key_file_get_string(gkeyfile, dumb_keyfile_groupname, RFM_DIMENSION_NAME, &error));
+      dimProps->name = g_strstrip(g_key_file_get_string(gkeyfile, grpname, RFM_DIMENSION_NAME, &error));
       if (error) { g_debug("load_DimensionPropertiesHashTable_Callback. error loading key value pair from file %s, error code: %d, message:%s",oneline, error->code, error->message); g_error_free(error); error=NULL;}
       dimProps->localAddress = g_path_get_dirname(oneline);
       if (dimProps->name==NULL || dimProps->name[0]=='\0') dimProps->name = g_path_get_basename(dimProps->localAddress);
@@ -7151,7 +7152,7 @@ static void load_DimensionPropertiesHashTable_Callback(RFM_ChildAttribs* child_a
 	g_hash_table_insert(DimensionPropertiesHashTable_name_asKey, g_strdup(dimProps->name), dimProps);
 	g_hash_table_insert(DimensionPropertiesHashTable_localAddress_asKey, g_strdup(dimProps->localAddress), dimProps);
       }
-      g_key_file_free(gkeyfile);
+      g_key_file_free(gkeyfile);g_free(grpname);
     }else{
       g_warning("load_DimensionPropertiesHashTable_Callback. error loading key value pair from file %s, error code: %d, message:%s",oneline, error==NULL?0:error->code, error==NULL?"":error->message);
       g_error_free(error);

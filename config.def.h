@@ -37,7 +37,7 @@ static gboolean exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread = TRUE;
 static gboolean rfm_custom_filename_completion_recursive = FALSE; /* Whether to recursively search subdirectories for filename completion */
 static gboolean rfm_custom_filename_completion_case_sensitive = FALSE; /* Whether filename completion is case-sensitive */
 static gboolean keep_selection_on_view_across_refresh = TRUE;
-static gchar* dumb_keyfile_groupname = "https://discourse.gnome.org/t/gkeyfile-to-handle-conf-without-groupname/23080/3";
+//static gchar* dumb_keyfile_groupname = "https://discourse.gnome.org/t/gkeyfile-to-handle-conf-without-groupname/23080/3";
 
 //do not change the order of the following array,or change with care, it's referenced as stdin_cmd_interpretor[0] in code below
 const stdin_cmd_interpretor stdin_cmd_interpretors[] = {
