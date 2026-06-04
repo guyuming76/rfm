@@ -7103,9 +7103,20 @@ static void load_AllDimensionValues_for_one_DimensionColumn(RFM_ChildAttribs* ch
     gchar** fullpath_dimValue = g_strsplit(oneline, ":", 2);
     gchar* existingDimValue = g_hash_table_lookup(ExtColumnHashTable[col->enumCol - COL_Ext1],strdup(fullpath_dimValue[0]));
     if (existingDimValue){
-      gchar* newDimValue = g_strconcat(existingDimValue, ";", fullpath_dimValue[1], NULL);
-      g_hash_table_insert(ExtColumnHashTable[col->enumCol - COL_Ext1],strdup(fullpath_dimValue[0]), newDimValue);
-      g_log(RFM_LOG_DIMENSION,G_LOG_LEVEL_DEBUG,"load_AllDimensionValues_for_one_DimensionColumn, g_hash_table_insert overwrite existingDimValue %s for ExtColumnHashTable[%d], RFM_treeviewCol:%d,%s, fullpath:%s with newDimValue:%s", existingDimValue, col->enumCol - COL_Ext1, col->enumCol,col->title, fullpath_dimValue[0], fullpath_dimValue[1]);
+      gboolean already_exists = FALSE;
+      gchar** parts = g_strsplit(existingDimValue, ";", -1);
+      for (int i = 0; parts[i] != NULL; i++) {
+        if (g_strcmp0(parts[i], fullpath_dimValue[1]) == 0) {
+          already_exists = TRUE;
+          break;
+        }
+      }
+      g_strfreev(parts);
+      if (!already_exists) {
+        gchar* newDimValue = g_strconcat(existingDimValue, ";", fullpath_dimValue[1], NULL);
+        g_hash_table_insert(ExtColumnHashTable[col->enumCol - COL_Ext1],strdup(fullpath_dimValue[0]), newDimValue);
+        g_log(RFM_LOG_DIMENSION,G_LOG_LEVEL_DEBUG,"load_AllDimensionValues_for_one_DimensionColumn, g_hash_table_insert overwrite existingDimValue %s for ExtColumnHashTable[%d], RFM_treeviewCol:%d,%s, fullpath:%s with newDimValue:%s", existingDimValue, col->enumCol - COL_Ext1, col->enumCol,col->title, fullpath_dimValue[0], fullpath_dimValue[1]);
+      }
     }else{
       g_hash_table_insert(ExtColumnHashTable[col->enumCol - COL_Ext1],strdup(fullpath_dimValue[0]), strdup(fullpath_dimValue[1]));
       g_log(RFM_LOG_DIMENSION,G_LOG_LEVEL_DEBUG,"load_AllDimensionValues_for_one_DimensionColumn, g_hash_table_insert called for ExtColumnHashTable[%d], RFM_treeviewCol:%d,%s, fullpath:%s, dimValue:%s", col->enumCol - COL_Ext1, col->enumCol,col->title, fullpath_dimValue[0], fullpath_dimValue[1]);
