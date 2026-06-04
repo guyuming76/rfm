@@ -6642,7 +6642,7 @@ static gchar* getExtColumnValueFromHashTable(RFM_FileAttributes* fileAttribs, gu
 static gchar* getDimensionValueFromHashTable(RFM_FileAttributes* fileAttribs, guint ExtColumnHashTableIndex){
    if (ExtColumnHashTable[ExtColumnHashTableIndex]==NULL) return NULL;
    gchar *ret=g_hash_table_lookup(ExtColumnHashTable[ExtColumnHashTableIndex], fileAttribs->path);
-   g_log(RFM_LOG_DATA_EXT, G_LOG_LEVEL_DEBUG, "getDimensionValueFromHashTable(fullpath %s, ExtColumnHashTableIndex %d) return %s",fileAttribs->path,ExtColumnHashTableIndex,ret);
+   g_log(RFM_LOG_DIMENSION, G_LOG_LEVEL_DEBUG, "getDimensionValueFromHashTable(fullpath %s, ExtColumnHashTableIndex %d) return %s",fileAttribs->path,ExtColumnHashTableIndex,ret);
    if (!ret && fileAttribs->is_symlink) {
      // 构建符号链接所在目录的GFile
      GFile *symlink_file = g_file_new_for_path(fileAttribs->path);
@@ -6651,7 +6651,7 @@ static gchar* getDimensionValueFromHashTable(RFM_FileAttributes* fileAttribs, gu
      GFile *target_file = g_file_resolve_relative_path(parent_dir, fileAttribs->link_target_filename);
      gchar *abs_path = g_file_get_path(target_file);
      ret=g_hash_table_lookup(ExtColumnHashTable[ExtColumnHashTableIndex], abs_path);
-     g_log(RFM_LOG_DATA_EXT, G_LOG_LEVEL_DEBUG, "getDimensionValueFromHashTable(linktarget fullpath %s, ExtColumnHashTableIndex %d) return %s",abs_path,ExtColumnHashTableIndex,ret);
+     g_log(RFM_LOG_DIMENSION, G_LOG_LEVEL_DEBUG, "getDimensionValueFromHashTable(linktarget fullpath %s, ExtColumnHashTableIndex %d) return %s",abs_path,ExtColumnHashTableIndex,ret);
      g_free(abs_path);g_object_unref(target_file);g_object_unref(parent_dir);g_object_unref(symlink_file);
    }
    return ret;
