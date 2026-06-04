@@ -233,7 +233,7 @@ BuiltInCmd_SearchResultColumnSeperator \
 "用法:  "BuiltInCmd_setenv" EnvVarName Value\n" \
 "例子:  "BuiltInCmd_setenv" G_MESSAGES_DEBUG all\n" \
 "       "BuiltInCmd_setenv" G_MESSAGES_DEBUG rfm\n" \
-"       "BuiltInCmd_setenv" G_MESSAGES_DEBUG rfm,rfm-data,rfm-data-ext,rfm-data-thumbnail,rfm-data-search,rfm-data-git,rfm-gspawn,rfm-column,rfm-column-verbose,rfm-gtk,rfm-readline,rfm-addon,rfm-dimension (分割符逗号不行就试空格，glib版本升级好像变过, rfm这些参数应该也要用双引号括起来吧？如果此帮助内容有误，以rfm_addon.h 文件中定义为准)\n" \
+"       "BuiltInCmd_setenv" G_MESSAGES_DEBUG rfm,rfm-data,rfm-data-ext,rfm-data-thumbnail,rfm-data-search,rfm-data-git,rfm-gspawn,rfm-column,rfm-column-verbose,rfm-gtk,rfm-readline,rfm-addon,rfm-dimension (分割符逗号不行就试空格，glib版本升级好像变过, rfm这些参数应该也要用双引号括起来吧？如果此帮助内容有误，以rfm_addon.h 文件中定义为准.屏幕日志内容太多，在foot终端里，可以用ctrl+shift+r在屏幕缓存内查找)\n" \
 "       "BuiltInCmd_setenv" G_MESSAGES_DEBUG \"\"\n" \
 "获取当前值:\n" \
 "       env |grep G_MESSAGES_DEBUG\n" \

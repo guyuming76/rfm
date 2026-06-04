@@ -230,7 +230,7 @@ BuiltInCmd_SearchResultColumnSeperator \
 "Usage:       "BuiltInCmd_setenv" EnvVarName Value\n" \
 "For example: "BuiltInCmd_setenv" G_MESSAGES_DEBUG all\n" \
 "             "BuiltInCmd_setenv" G_MESSAGES_DEBUG rfm\n" \
-"             "BuiltInCmd_setenv" G_MESSAGES_DEBUG rfm,rfm-data,rfm-data-ext,rfm-data-thumbnail,rfm-data-search,rfm-data-git,rfm-gspawn,rfm-column,rfm-column-verbose,rfm-gtk,rfm-readline,rfm-addon,rfm-dimension（try space as seperator if comma does not work, and add double quotation. Refer to rfm_addon.h if the list here is not accurate）\n" \
+"             "BuiltInCmd_setenv" G_MESSAGES_DEBUG rfm,rfm-data,rfm-data-ext,rfm-data-thumbnail,rfm-data-search,rfm-data-git,rfm-gspawn,rfm-column,rfm-column-verbose,rfm-gtk,rfm-readline,rfm-addon,rfm-dimension（try space as seperator if comma does not work, and add double quotation. Refer to rfm_addon.h if the list here is not accurate. In foot termnial, ctrl+shift+r can enable scrollback search if there are too many log entries to read）\n" \
 "             "BuiltInCmd_setenv" G_MESSAGES_DEBUG \"\"\n" \
 "Get current value with:\n" \
 "             env |grep G_MESSAGES_DEBUG\n" \
