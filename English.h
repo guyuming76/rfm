@@ -163,6 +163,7 @@ reedline_specific_help \
 "        Add a file named " RFM_DIMENSION_PROPERTIES_FILE_NAME " in a directory, and rfm will define a unique dimension for that directory, with subdirectory names as members of this dimension.\n" \
 "        Dimension names and members are displayed in \033[33myellow\033[0m in the TAB completion menu.\n" \
 "        After completing a dimension name with TAB, press TAB again to see corresponding dimension member value completions, with equals sign automatically added before values - no manual input needed.\n" \
+"        Refer to rfmFind_DIMENSION_PROPERTIES_FILEs.sh for how system out dimensions to load" \
 "\n\033[32m Menu key completion: \033[0m\n" \
 "    Compile rfm with reedline library in config.mk. Press Menu key in terminal, and based on whether files are selected in rfm graphical window, file context menu completion or toolbar button completion menu will pop up, displayed in yellow, followed by green built-in command list. You can execute graphical interface operations without leaving the terminal window.\n" \
 "\n\033[32m command history: \033[0m\n" \
