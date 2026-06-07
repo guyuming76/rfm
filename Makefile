@@ -197,6 +197,9 @@ ifneq (${PythonEmbedded}, )
 else
 	@cp -f scripts/rfmShareDir.sh ${DESTDIR}${PREFIX}/bin/
 endif
+ifneq (${RFM_AddOn},)
+	@cp -f scripts/rfmEnsurePythonVenv.sh ${DESTDIR}${PREFIX}/bin/
+endif
 
 ifneq ($(CalledByEbuild),YES)
 # the CalledByEbuild variable is exported in rfm ebuild
@@ -258,6 +261,9 @@ ifneq (${PythonEmbedded}, )
 else
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmShareDir.sh
 endif
+ifneq (${RFM_AddOn},)
+	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmEnsurePythonVenv.sh
+endif
 
 uninstall:
 	@echo removing files from ${DESTDIR}${PREFIX}/{bin,lib}
@@ -311,6 +317,9 @@ ifneq (${PythonEmbedded}, )
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmShareDir.py
 else
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmShareDir.sh
+endif
+ifneq (${RFM_AddOn},)
+	@rm -f ${DESTDIR}${PREFIX}/bin/rfmEnsurePythonVenv.sh
 endif
 
 ifneq ($(CalledByEbuild),YES)

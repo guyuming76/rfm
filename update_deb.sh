@@ -121,6 +121,8 @@ READLINE_LIB=$(grep "^READLINE_LIB" config.mk | sed 's/.*= //')
 CmarkTools=$(grep "^CmarkTools" config.mk | sed 's/.*= //')
 # 提取 PythonEmbedded
 PythonEmbedded=$(grep "^PythonEmbedded" config.mk | sed 's/.*= //')
+# 提取 RFM_AddOn
+RFM_AddOn=$(grep "^RFM_AddOn" config.mk | sed 's/.*= //')
 
 # 输出提取的配置值
 echo "配置选项:"
@@ -129,6 +131,7 @@ echo "  RFM_FILE_CHOOSER: $RFM_FILE_CHOOSER"
 echo "  READLINE_LIB: $READLINE_LIB"
 echo "  CmarkTools: $CmarkTools"
 echo "  PythonEmbedded: $PythonEmbedded"
+echo "  RFM_AddOn: $RFM_AddOn"
 
 # 复制文件到 deb 包目录
 echo "复制文件到 deb 包目录..."
@@ -168,6 +171,10 @@ if [ ! -z "$CmarkTools" ]; then
             echo "警告: $tool 不存在，将跳过"
         fi
     done
+fi
+
+if [ ! -z "$RFM_AddOn" ]; then
+	cp scripts/rfmEnsurePythonVenv.sh ${PKG_NAME}${PREFIX}/bin/
 fi
 
 # 复制脚本文件
