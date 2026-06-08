@@ -5074,7 +5074,7 @@ static void cmd_cd(wordexp_t *parsed_msg, GString *readline_result_string_after_
 	    }
 	  }else if (parsed_msg->we_wordc==1){ // cd without parameter
 	      if (childAttribs->stdin_cmd_ending_space){
-		if (ItemSelected==1){
+		if (ItemSelected==1 && selected_file_mode_str){
 		  if (selected_file_mode_str[0]=='d'){
 		    set_rfm_curPath(rfm_selection_completion);//因为当前函数和selectionChanged函数运行在同一线程里，所以读取rfm_selection_completion不用加锁
 		    if (SearchResultViewInsteadOfDirectoryView) Switch_SearchResultView_DirectoryView();
