@@ -6623,7 +6623,7 @@ static int ProcessKeyValuePairInData(GKeyFile *keyfile, char* groupname){
 	   if (matched_searchresulttype_pointer->showcolumn[i]==((GPtrArray*)(childAttribs->SearchResultTypePointer->showcolumn))->pdata[j]) { already_exists_in_multitype_showcolumn = TRUE; break; }
 	 if (!already_exists_in_multitype_showcolumn) {
 	   g_ptr_array_add((GPtrArray*)(childAttribs->SearchResultTypePointer->showcolumn), matched_searchresulttype_pointer->showcolumn[i]);
-	   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"%s: SearchResultType name %s matched for file:%s; showcolumn element '%s' added",SrchRsltType_multitype,longest_matched_searchresulttype_name,oneline,matched_searchresulttype_pointer->showcolumn[i]);
+	   g_log(RFM_LOG_COLUMN,G_LOG_LEVEL_DEBUG,"%s: SearchResultType name %s matched for file:%s; showcolumn element '%s' added",SrchRsltType_multitype,longest_matched_searchresulttype_name,oneline,matched_searchresulttype_pointer->showcolumn[i]);
 	 }
        }
    }
