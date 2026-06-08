@@ -6151,7 +6151,10 @@ int main(int argc, char *argv[])
    }
 
    if (setup()==0){
-      if (auto_execution_command_after_rfm_start) g_idle_add_once(parse_and_exec_cmd_in_gtk_thread, auto_execution_command_after_rfm_start);
+      if (auto_execution_command_after_rfm_start){
+         if (no_window) parse_and_exec_cmd_in_gtk_thread(auto_execution_command_after_rfm_start);
+         else g_idle_add_once(parse_and_exec_cmd_in_gtk_thread, auto_execution_command_after_rfm_start);//g_idle_add_once 依赖 gtk_main()
+      }
       if (!no_window) gtk_main();
    }else
       die("ERROR: %s: setup() failed\n", PROG_NAME);
