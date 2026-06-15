@@ -42,6 +42,8 @@
 #include <glib/gchecksum.h> // For file hashing
 #endif
 #include <rfm_addon.h>
+#include <fcntl.h>
+#include <poll.h>
 
 #define INOTIFY_MASK IN_MOVE|IN_CREATE|IN_CLOSE_WRITE|IN_DELETE|IN_DELETE_SELF|IN_MOVE_SELF
 #define PIPE_SZ 65535      /* Kernel pipe size */
@@ -341,6 +343,7 @@ static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs);
 static void ensure_foreground_process(gboolean set_foreground);
 static void ReadFromPipeStdinIfAny(char *fd, RFM_ChildAttribs *childAttribs);
 static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *child_attribs);
+static void exec_stdin_command_in_new_VT_with_proxy(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *child_attribs);
 static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *childAttribs);
 static void g_spawn_async_callback_to_new_readline_thread(RFM_ChildAttribs *child_attribs);
 static void regcomp_for_regex_rules();
@@ -385,6 +388,31 @@ static void CancelReadInput(RFM_ChildAttribs *childAttribs);
 /******Process spawn related definitions*************/
 static GList *rfm_childList = NULL;
 static int rfm_childListLength = 0;
+
+// newTermProxy: proxy thread for communicating with commands running in new terminal windows via named pipes
+typedef struct NewTermProxy {
+    char *fifo_dir;                   // /tmp/rfm_proxy_XXXXXX directory
+    char *fifo_stdin_path;            // rfm→child stdin pipe (only when SearchResultAsInput)
+    char *fifo_stdout_path;           // child→rfm stdout pipe (only when SearchResultTypePointer)
+    char *fifo_stderr_path;           // child→rfm stderr pipe (always created)
+    int fifo_stdin_fd;
+    int fifo_stdout_fd;
+    int fifo_stderr_fd;
+    GThread *thread;
+    RFM_ChildAttribs *childAttribs;
+    gboolean need_send_search_result; // = childAttribs->SearchResultAsInput
+    gboolean need_capture_stdout;     // = (childAttribs->SearchResultTypePointer != NULL)
+    gchar *search_result_temp_file;   // temp file with search result data (written by gtk main thread)
+} NewTermProxy;
+
+static GList *newTermProxies = NULL;
+static GMutex newTermProxies_mutex;
+
+static void newTermProxy_cleanup(NewTermProxy *proxy);
+static gboolean newTermProxy_process_output_in_gtk(gpointer data);
+static gboolean newTermProxy_cleanup_in_gtk(gpointer data);
+static gpointer newTermProxy_thread(gpointer data);
+
 static void free_child_attribs(FREE_FULL RFM_ChildAttribs *child_attribs);
 static gchar *choose_working_directory_for_g_spawn(RFM_ChildAttribs *childAttribs);
 static void g_spawn_wrapper_for_selected_fileList_(FREE_FULL RFM_ChildAttribs *childAttribs);
@@ -4051,6 +4079,107 @@ static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPrevi
   }else g_warning("TODO:cmd_interpretor_pointer->cmdTransformer==NULL");//might be in OpenHarness.rfm_addon.c
 }
 
+// exec_stdin_command_in_new_VT_with_proxy: like exec_stdin_command_in_new_VT but uses
+// named pipes so the command output (and optionally stdin) can be communicated back
+// to rfm via a newTermProxy thread. Activated when user input contains & suffix AND
+// either >SearchResultType suffix or SearchResult| prefix (or both).
+static void exec_stdin_command_in_new_VT_with_proxy(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *child_attribs){
+  if (!cmd_interpretor_pointer->cmdTransformer){
+    g_warning("TODO:cmd_interpretor_pointer->cmdTransformer==NULL");
+    return;
+  }
+
+  // 1. Create temp directory for named pipes
+  char fifo_dir_template[] = "/tmp/rfm_proxy_XXXXXX";
+  char *fifo_dir = mkdtemp(fifo_dir_template);
+  if (!fifo_dir){
+    g_warning("exec_stdin_command_in_new_VT_with_proxy: mkdtemp failed");
+    free_child_attribs(child_attribs);
+    return;
+  }
+
+  NewTermProxy *proxy = calloc(1, sizeof(NewTermProxy));
+  proxy->fifo_dir = strdup(fifo_dir);
+  proxy->childAttribs = child_attribs;
+  proxy->childAttribs->no_free = TRUE;      // proxy thread owns this now
+  proxy->need_send_search_result = child_attribs->SearchResultAsInput;
+  proxy->need_capture_stdout = (child_attribs->SearchResultTypePointer != NULL);
+  proxy->fifo_stdin_fd = -1;   // must init to -1 so cleanup doesn't close(0)
+  proxy->fifo_stdout_fd = -1;
+  proxy->fifo_stderr_fd = -1;
+
+  // 2. Create named pipes as needed
+  if (proxy->need_send_search_result){
+    proxy->fifo_stdin_path = g_strdup_printf("%s/stdin", fifo_dir);
+    if (mkfifo(proxy->fifo_stdin_path, 0600) != 0){
+      g_warning("exec_stdin_command_in_new_VT_with_proxy: mkfifo stdin failed: %s", strerror(errno));
+      g_free(proxy->fifo_stdin_path); proxy->fifo_stdin_path = NULL;
+      // continue without stdin pipe — the child command will get empty stdin
+    }
+  }
+  if (proxy->need_capture_stdout){
+    proxy->fifo_stdout_path = g_strdup_printf("%s/stdout", fifo_dir);
+    if (mkfifo(proxy->fifo_stdout_path, 0600) != 0){
+      g_warning("exec_stdin_command_in_new_VT_with_proxy: mkfifo stdout failed: %s", strerror(errno));
+      g_free(proxy->fifo_stdout_path); proxy->fifo_stdout_path = NULL;
+      proxy->need_capture_stdout = FALSE; // fallback: just show in terminal
+    }
+  }
+  // stderr pipe is always created for error feedback
+  proxy->fifo_stderr_path = g_strdup_printf("%s/stderr", fifo_dir);
+  if (mkfifo(proxy->fifo_stderr_path, 0600) != 0){
+    g_warning("exec_stdin_command_in_new_VT_with_proxy: mkfifo stderr failed: %s", strerror(errno));
+    g_free(proxy->fifo_stderr_path); proxy->fifo_stderr_path = NULL;
+  }
+
+  // 3. Build the shell redirects and wrap the user command
+  gchar *cmd_str = readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str;
+  GString *redirected_cmd = g_string_new(cmd_str);
+
+  if (proxy->need_send_search_result && proxy->fifo_stdin_path)
+    g_string_append_printf(redirected_cmd, " < %s", proxy->fifo_stdin_path);
+  if (proxy->need_capture_stdout && proxy->fifo_stdout_path)
+    g_string_append_printf(redirected_cmd, " > %s", proxy->fifo_stdout_path);
+  if (proxy->fifo_stderr_path)
+    g_string_append_printf(redirected_cmd, " 2> %s", proxy->fifo_stderr_path);
+
+  g_debug("exec_stdin_command_in_new_VT_with_proxy: wrapped cmd: %s", redirected_cmd->str);
+
+  // 4. If SearchResultAsInput, write current search result to a temp file from gtk main thread.
+  //    The proxy thread will read this file and forward it to the child via the stdin fifo.
+  if (proxy->need_send_search_result && proxy->fifo_stdin_path && SearchResultViewInsteadOfDirectoryView){
+    proxy->search_result_temp_file = g_strdup_printf("%s/search_data", fifo_dir);
+    int temp_fd = open(proxy->search_result_temp_file, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+    if (temp_fd >= 0){
+      writeSearchResultIntoFD_in_gtk_thread(temp_fd, FALSE, child_attribs);
+      close(temp_fd);
+    }else{
+      g_warning("exec_stdin_command_in_new_VT_with_proxy: failed to create temp file for search result");
+      g_free(proxy->search_result_temp_file); proxy->search_result_temp_file = NULL;
+    }
+  }
+
+  // 5. Spawn the terminal emulator via cmdTransformer (stdin_command_bash)
+  child_attribs->RunCmd = cmd_interpretor_pointer->cmdTransformer(redirected_cmd->str, TRUE);
+  g_string_free(redirected_cmd, TRUE);
+
+  child_attribs->runOpts = G_SPAWN_STDOUT_TO_DEV_NULL | G_SPAWN_STDERR_TO_DEV_NULL | G_SPAWN_STDIN_FROM_DEV_NULL;
+  child_attribs->spawn_async = TRUE;
+  g_spawn_wrapper_(NULL, NULL, child_attribs);
+
+  g_debug("exec_stdin_command_in_new_VT_with_proxy(%s, cmd_interpretor name:%s)", cmd_str, cmd_interpretor_pointer->name);
+
+  // 6. Start the proxy thread
+  proxy->thread = g_thread_new("newTermProxy", newTermProxy_thread, proxy);
+
+  // 7. Add to global list
+  g_mutex_lock(&newTermProxies_mutex);
+  newTermProxies = g_list_prepend(newTermProxies, proxy);
+  g_mutex_unlock(&newTermProxies_mutex);
+
+  add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
+}
+
 static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *childAttribs){
   gboolean ret = FALSE;
   
@@ -4177,6 +4306,202 @@ gpointer transferPointerOwnership(gpointer *newOwner, gpointer *oldOwner)
 static void g_spawn_async_callback_to_new_readline_thread(RFM_ChildAttribs *child_attribs){
   if (child_attribs->SearchResultTypePointer) update_SearchResultFileNameList_and_refresh_store(child_attribs); //这里假定当前方法是在gtk main thread 上运行的,如不是,就得用g_idle_add_once
   if (!child_attribs->parse_and_exec_stdin_command_in_gtk_thread_called_nested_so_do_not_new_readlineThread_afterwards && readlineThread==NULL) readlineThread=g_thread_new("readline", readlineInSeperateThread, NULL);// SearchResultAsInput情况下，命令执行成功，从这里新建 readline;  这种情况下,新的readlineThread下不会再运行exec_stdin_command, 所以命令参数直接传NULL过去就可以了
+}
+
+// Clean up a NewTermProxy: close fds, unlink named pipes, remove temp dir, free memory.
+// Called from gtk main thread callbacks.
+static void newTermProxy_cleanup(NewTermProxy *proxy){
+  if (!proxy) return;
+
+  // Remove from global list
+  g_mutex_lock(&newTermProxies_mutex);
+  newTermProxies = g_list_remove(newTermProxies, proxy);
+  g_mutex_unlock(&newTermProxies_mutex);
+
+  // Close fds
+  if (proxy->fifo_stdin_fd >= 0) close(proxy->fifo_stdin_fd);
+  if (proxy->fifo_stdout_fd >= 0) close(proxy->fifo_stdout_fd);
+  if (proxy->fifo_stderr_fd >= 0) close(proxy->fifo_stderr_fd);
+
+  // Unlink named pipes
+  if (proxy->fifo_stdin_path) unlink(proxy->fifo_stdin_path);
+  if (proxy->fifo_stdout_path) unlink(proxy->fifo_stdout_path);
+  if (proxy->fifo_stderr_path) unlink(proxy->fifo_stderr_path);
+
+  // Remove temp dir and temp file
+  if (proxy->search_result_temp_file) unlink(proxy->search_result_temp_file);
+  if (proxy->fifo_dir) rmdir(proxy->fifo_dir);
+
+  // Free strings
+  g_free(proxy->fifo_stdin_path);
+  g_free(proxy->fifo_stdout_path);
+  g_free(proxy->fifo_stderr_path);
+  g_free(proxy->search_result_temp_file);
+  g_free(proxy->fifo_dir);
+
+  // Release childAttribs. Two cases:
+  // A) Terminal still running (status==-1): set no_free=FALSE and let child_supervisor
+  //    free it when the terminal exits.
+  // B) Terminal already closed (status!=-1): child_supervisor already fired but was
+  //    blocked by no_free=TRUE. Free it now to avoid memory leak.
+  if (proxy->childAttribs){
+    proxy->childAttribs->no_free = FALSE;  // let child_supervisor free it later
+    if (proxy->childAttribs->status != -1) free_child_attribs(proxy->childAttribs);  // child_supervisor already gave up
+    proxy->childAttribs = NULL;
+  }
+
+  g_free(proxy);
+}
+
+// gtk main thread callback: no stdout to capture (SearchResult|tee& without >type),
+// just clean up and possibly log stderr.
+static gboolean newTermProxy_cleanup_in_gtk(gpointer data){
+  NewTermProxy *proxy = (NewTermProxy *)data;
+  newTermProxy_cleanup(proxy);
+  return G_SOURCE_REMOVE;
+}
+
+// gtk main thread callback: process captured stdout as search results.
+static gboolean newTermProxy_process_output_in_gtk(gpointer data){
+  NewTermProxy *proxy = (NewTermProxy *)data;
+
+  if (proxy->childAttribs->stdOut && strlen(proxy->childAttribs->stdOut) > 0){
+    if (proxy->childAttribs->SearchResultTypePointer){
+      if (!SearchResultViewInsteadOfDirectoryView) Switch_SearchResultView_DirectoryView();
+
+      // The proxy's childAttribs is still registered with child_supervisor (g_spawn_wrapper_
+      // registered a timeout that will eventually call ExecCallback_freeChildAttribs on it).
+      // We must NOT pass it to update_SearchResultFileNameList_and_refresh_store which would
+      // store it as childAttribsForCurrentDisplayingSearchResult — that would create two
+      // competing owners. Instead, create a lightweight copy for the search result system.
+      RFM_ChildAttribs *resultAttribs = calloc(1, sizeof(RFM_ChildAttribs));
+      resultAttribs->stdOut = proxy->childAttribs->stdOut;   // transfer ownership
+      resultAttribs->stdErr = proxy->childAttribs->stdErr;   // transfer ownership
+      resultAttribs->SearchResultTypePointer = proxy->childAttribs->SearchResultTypePointer;
+      resultAttribs->no_free = TRUE;
+
+      // Allow the original childAttribs to be freed by child_supervisor when the
+      // terminal emulator eventually exits.
+      proxy->childAttribs->no_free = FALSE;
+      proxy->childAttribs->stdOut = NULL;
+      proxy->childAttribs->stdErr = NULL;
+
+      update_SearchResultFileNameList_and_refresh_store(resultAttribs);
+    }
+  }
+  newTermProxy_cleanup(proxy);
+  return G_SOURCE_REMOVE;
+}
+
+// newTermProxy thread: communicates with the command running in the new terminal
+// via three named pipes (stdin, stdout, stderr).
+static gpointer newTermProxy_thread(gpointer data){
+  NewTermProxy *proxy = (NewTermProxy *)data;
+
+  // === Phase 1: send search result data to child (if SearchResultAsInput) ===
+  if (proxy->need_send_search_result && proxy->fifo_stdin_path){
+    // Open stdin fifo for writing (blocks until child opens read end)
+    proxy->fifo_stdin_fd = open(proxy->fifo_stdin_path, O_WRONLY);
+    if (proxy->fifo_stdin_fd >= 0){
+      if (proxy->search_result_temp_file){
+        int temp_fd = open(proxy->search_result_temp_file, O_RDONLY);
+        if (temp_fd >= 0){
+          char buf[8192];
+          ssize_t n;
+          while ((n = read(temp_fd, buf, sizeof(buf))) > 0)
+            write(proxy->fifo_stdin_fd, buf, n);
+          close(temp_fd);
+        }
+      }
+      close(proxy->fifo_stdin_fd);
+      proxy->fifo_stdin_fd = -1;
+    }
+  }
+
+  // === Phase 2: read stdout and stderr from child ===
+  GString *stdout_buf = g_string_new(NULL);
+  GString *stderr_buf = g_string_new(NULL);
+
+  int stdout_fd = -1, stderr_fd = -1;
+  int stdout_closed = !proxy->need_capture_stdout;
+  int stderr_closed = 0;
+
+  if (proxy->need_capture_stdout && proxy->fifo_stdout_path){
+    stdout_fd = open(proxy->fifo_stdout_path, O_RDONLY);
+    proxy->fifo_stdout_fd = stdout_fd;
+  }
+  if (proxy->fifo_stderr_path){
+    stderr_fd = open(proxy->fifo_stderr_path, O_RDONLY);
+    proxy->fifo_stderr_fd = stderr_fd;
+    if (stderr_fd < 0) stderr_closed = 1;
+  }else stderr_closed = 1;
+
+  // Poll loop: read from both fds until both close
+  while (!stdout_closed || !stderr_closed){
+    struct pollfd fds[2];
+    int nfds = 0;
+
+    if (!stdout_closed && stdout_fd >= 0){
+      fds[nfds].fd = stdout_fd;
+      fds[nfds].events = POLLIN;
+      nfds++;
+    }
+    if (!stderr_closed && stderr_fd >= 0){
+      fds[nfds].fd = stderr_fd;
+      fds[nfds].events = POLLIN;
+      nfds++;
+    }
+
+    if (nfds == 0) break;
+
+    int ret = poll(fds, nfds, -1);
+    if (ret < 0){
+      if (errno == EINTR) continue;
+      break;
+    }
+
+    for (int i = 0; i < nfds; i++){
+      if (fds[i].revents & POLLIN){
+        char buf[8192];
+        ssize_t n = read(fds[i].fd, buf, sizeof(buf));
+        if (n > 0){
+          if (fds[i].fd == stdout_fd)
+            g_string_append_len(stdout_buf, buf, n);
+          else
+            g_string_append_len(stderr_buf, buf, n);
+        }else{
+          // n==0: EOF, n<0: error — close this fd
+          if (fds[i].fd == stdout_fd) stdout_closed = 1;
+          else stderr_closed = 1;
+        }
+      }
+      if (fds[i].revents & (POLLHUP | POLLERR)){
+        if (fds[i].fd == stdout_fd) stdout_closed = 1;
+        else stderr_closed = 1;
+      }
+    }
+  }
+
+  if (stdout_fd >= 0) close(stdout_fd);
+  if (stderr_fd >= 0) close(stderr_fd);
+  proxy->fifo_stdout_fd = -1;
+  proxy->fifo_stderr_fd = -1;
+
+  // === Phase 3: dispatch to gtk main thread ===
+  if (proxy->need_capture_stdout){
+    proxy->childAttribs->stdOut = g_string_free(stdout_buf, FALSE);
+    proxy->childAttribs->stdErr = g_string_free(stderr_buf, FALSE);
+    g_idle_add(newTermProxy_process_output_in_gtk, proxy);
+  }else{
+    // No stdout capture needed (e.g. SearchResult|tee& without >type)
+    if (stderr_buf->len > 0)
+      g_debug("newTermProxy stderr: %s", stderr_buf->str);
+    g_string_free(stdout_buf, TRUE);
+    g_string_free(stderr_buf, TRUE);
+    g_idle_add(newTermProxy_cleanup_in_gtk, proxy);
+  }
+
+  return NULL;
 }
 
 static void writeSearchResultIntoFD_in_gtk_thread(gint fd,gboolean exportFilePathOnly, RFM_ChildAttribs* childAttribs){
@@ -5341,22 +5666,17 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
 	    childAttribs->stdin_cmd_ending_space = (childAttribs->stdin_cmd_ending_space || (len>=1 && readlineResult[len-1]==' '));
 	    while (len>=1 && readlineResult[len-1]==' ') { readlineResult[len-1]='\0'; len--; } //remove ending space
 
-	    if (!childAttribs->execStdinCmdInNewVT && !(!from_stdin_readline && execCmdInNewVT)){
-	      childAttribs->SearchResultTypePointer = MatchSearchResultType(readlineResult,childAttribs);
-	      len = strlen(readlineResult);
-	    }
+            childAttribs->SearchResultTypePointer = MatchSearchResultType(readlineResult, childAttribs);
+            len = strlen(readlineResult);
+            if (childAttribs->SearchResultTypePointer && (childAttribs->execStdinCmdInNewVT || execCmdInNewVT)) childAttribs->newVT_with_proxy = TRUE;
 
-	    childAttribs->stdin_cmd_ending_space = (childAttribs->stdin_cmd_ending_space || (len>=1 && readlineResult[len-1]==' '));
+            childAttribs->stdin_cmd_ending_space = (childAttribs->stdin_cmd_ending_space || (len>=1 && readlineResult[len-1]==' '));
 	    while (len>=1 && readlineResult[len-1]==' ') { readlineResult[len-1]='\0'; len--; } //remove ending space
 
 	    if (g_str_has_prefix(readlineResult, RFM_SEARCH_RESULT_AS_INPUT_PREFIX)) {
-	        if ((from_stdin_readline && childAttribs->execStdinCmdInNewVT) || execCmdInNewVT){
-		  g_warning("%s does not work with %s for now. TODO: we might save search result into temp file and use it in new terminal emulator in future.", RFM_SEARCH_RESULT_AS_INPUT_PREFIX, RFM_NEW_TERM_SUFFIX);
-		  readlineResult[0]='\0';//设置读取字符串为空，执行一个空命令
-		}else{
-	          childAttribs->SearchResultAsInput=TRUE;
-		  for (int i=0;i<len;i++) readlineResult[i]=readlineResult[i + strlen(RFM_SEARCH_RESULT_AS_INPUT_PREFIX)]; //remove the prefix SearchResult|, which has 13 char
-		}
+	        childAttribs->SearchResultAsInput=TRUE;
+		for (int i=0;i<len;i++) readlineResult[i]=readlineResult[i + strlen(RFM_SEARCH_RESULT_AS_INPUT_PREFIX)]; //remove the prefix SearchResult|
+	        if ((from_stdin_readline && childAttribs->execStdinCmdInNewVT) || execCmdInNewVT) childAttribs->newVT_with_proxy = TRUE; // SearchResult| + &: enable newTermProxy so rfm communicates with the new terminal via named pipes
 	    }
 #ifdef RFM_AddOn
 	    }//end else (cmd_interpretor_index == stdin_cmd_interpretor_index_for_AI){ 对于输入的 AI 提示词，就不要尝试解析了，
@@ -5389,7 +5709,7 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
 
 	assert(startWithTerm()|| !from_stdin_readline);
           // Use effective_cmd_interpretor_index for execution calls
-	  if (childAttribs->SearchResultAsInput) exec_stdin_command_with_SearchResultAsInput(childAttribs->readlineResultString, from_stdin_readline, effective_cmd_interpretor_pointer, childAttribs);//c语言推荐的做法是变量free了以后置NULL,但这里exec_stdin_command_with_SearchResultAsInput中异步的g_spawn_返回false后才free childAttribs, 成功得话要等异步callback得话才free childAttribs, 所以这里没法判断是否置NULL。TODO：好的做法似乎应该是传入 &childAttribs, 甚至 free_child_attribs 函数就应该改成接收 &childAttribs 参数， free完后就立刻就地置NULL
+	  if (childAttribs->SearchResultAsInput && !childAttribs->newVT_with_proxy) exec_stdin_command_with_SearchResultAsInput(childAttribs->readlineResultString, from_stdin_readline, effective_cmd_interpretor_pointer, childAttribs);//c语言推荐的做法是变量free了以后置NULL,但这里exec_stdin_command_with_SearchResultAsInput中异步的g_spawn_返回false后才free childAttribs, 成功得话要等异步callback得话才free childAttribs, 所以这里没法判断是否置NULL。TODO：好的做法似乎应该是传入 &childAttribs, 甚至 free_child_attribs 函数就应该改成接收 &childAttribs 参数， free完后就立刻就地置NULL
 	  else if (((exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread || !from_stdin_readline) && !(childAttribs->execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT)))
 		   || (current_stdin_cmd_interpretor_pointer==cmd_interpretor_pointer //这一行排除了在命令提示符下单纯输入 d>  b> 等切换cmd_interpretor的情况，这种情况下，不在这里执行 exec_stdin_command, 也就不会free childattribs, 而是需要g_thread_new readlineThread, 参见下面g_thread_new前条件判断
 		       && effective_cmd_interpretor_pointer->customCallBackFunc && !execCmdInNewVT && !childAttribs->execStdinCmdInNewVT) ){ //这一行条件用来判断需要使用customCallBackFunction来处理 exec_stdin_command 的输出的情况，比如AI LLM返回的内容，这种情况下，g_spawn_wrapper 用异步，exec_stdin_command 会很早返回，但g_spawn_wrapper 还没完成，为了避免争夺终端模拟器，这时不能开始readline,所以就暂时不要 g_thread_new readline,在 g_spawn_wrapper 的异步callback里面再考虑 g_thread_new readline。另外这一行判断也是保证此时exec_stdin_command在gtk thread里执行，否则在readline thread里执行得话，就不方便控制exec_stdin_command 中g_spawn_wrapper 实际callback完成后才调用 readline函数了。注意之一行判断条件在下面 g_thread_new readline 前也有使用
@@ -5400,18 +5720,24 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
 		   ret = exec_stdin_command(childAttribs->readlineResultString, effective_cmd_interpretor_pointer, childAttribs);
 	    }
           }
-          if ((childAttribs->execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT)) && childAttribs->readlineResultString) exec_stdin_command_in_new_VT(childAttribs->readlineResultString, effective_cmd_interpretor_pointer, childAttribs); // 在AI Mode下输入builtin cmd,如 help, 会因为是AI mode 一开始把 execStdinCmdInNewVT 设成true,所以这里加上 readlineResultString 非NULL判断
+          if ((childAttribs->execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT)) && childAttribs->readlineResultString) {
+	      if (childAttribs->newVT_with_proxy){
+	          childAttribs->exec_stdin_command_in_gtk_thread = TRUE; // prevent childAttribs from being passed to readline thread below
+		  exec_stdin_command_in_gtk_thread = TRUE;//这个在后面判断是否把childAttribs传递到readline thread 时使用，因为上面childAttribs可能已经在下面一行 exec_stdin_command_in_new_VT_with_proxy 中释放了，childAttribs->exec_stdin_command_in_gtk_thread 不能再用在判断条件里, deepseekv4pro写的代码里没有考虑到这一点，它只加了上面那行。我在前几行类似的地方加了注释，是deepseek读代码不看注释吗，还是这是细微的，不常见的逻辑，被AI忽视了？
+	          exec_stdin_command_in_new_VT_with_proxy(childAttribs->readlineResultString, effective_cmd_interpretor_pointer, childAttribs);
+	      }else exec_stdin_command_in_new_VT(childAttribs->readlineResultString, effective_cmd_interpretor_pointer, childAttribs);
+	  } // 在AI Mode下输入builtin cmd,如 help, 会因为是AI mode 一开始把 execStdinCmdInNewVT 设成true,所以这里加上 readlineResultString 非NULL判断
 
           // Pass the original readlineResultString (potentially NULL if handled by builtin) to the next thread
           // The next thread will use the global current_stdin_cmd_interpretor for its prompt
 #ifdef reedline
-          if (!childAttribs->SearchResultAsInput && (
+          if ((!childAttribs->SearchResultAsInput || childAttribs->newVT_with_proxy) && (
 				       current_stdin_cmd_interpretor_pointer!=cmd_interpretor_pointer // 在本函数开头运行current_stdin_cmd_interpretor_pointer = &(stdin_cmd_interpretors[i]) 或 current_stdin_cmd_interpretor_pointer = new_cmd_interpretor, 接着 goto switchToReadlineThread 时，满足此行条件。
 				       || !ret
 				       || !(effective_cmd_interpretor_pointer->customCallBackFunc && !execCmdInNewVT && !childAttribs->execStdinCmdInNewVT))) {
 #endif
 #ifdef GNU_readline
-          if (childAttribs->readlineResultString==NULL || (!childAttribs->SearchResultAsInput && from_stdin_readline && (
+          if (childAttribs->readlineResultString==NULL || ((!childAttribs->SearchResultAsInput || childAttribs->newVT_with_proxy) && from_stdin_readline && (
 							      current_stdin_cmd_interpretor_pointer!=cmd_interpretor_pointer
 							      || !ret
 							      || !(effective_cmd_interpretor_pointer->customCallBackFunc && !execCmdInNewVT && !childAttribs->execStdinCmdInNewVT)))) {
@@ -6018,6 +6344,7 @@ int main(int argc, char *argv[])
 
    rfm_mountMonitor=g_unix_mount_monitor_get();
    delayedRefresh_GSourceID=0;
+   g_mutex_init(&newTermProxies_mutex);
 
    if (thumbnailers[0].thumbRoot==NULL)
       rfm_do_thumbs=0;
