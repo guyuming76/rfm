@@ -5566,7 +5566,6 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
 {
         gboolean ret = FALSE;
         gboolean exec_stdin_command_in_gtk_thread = FALSE;
-        gboolean execCmdInNewVT=FALSE;//used by file_menu_exec, i.e., not from readline
         effective_cmd_interpretor_pointer = cmd_interpretor_pointer; // Use this for actual execution
         gint len = strlen(readlineResult);
 	g_debug ("parse_and_exec_command_in_gtk_thread, RFM_ChildAttribs %p, readline length %u: %s", childAttribs, len, readlineResult);
@@ -5622,7 +5621,7 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
 	      while (g_hash_table_iter_next(&ht_iter, &key, &value)){
 	           RFM_ADDON_RESOURCE_TYPE* addon_resource = value->resource_managed_by_addon;
 	           if (addon_resource->check_cmd_interpretor_switch_or_effective_cmd_interpretor){
-		     stdin_cmd_interpretor * new_cmd_interpretor = addon_resource->check_cmd_interpretor_switch_or_effective_cmd_interpretor(&readlineResult, &effective_cmd_interpretor_pointer, from_stdin_readline? &(childAttribs->execStdinCmdInNewVT):&execCmdInNewVT, &Addon_Prompt, &(childAttribs->cmd_interpretor_addon_dir));//在目前AI_Model addon 的实现中，如果 effective_cmd_interpretor是AI_Model, 就会设置addon_dir
+		     stdin_cmd_interpretor * new_cmd_interpretor = addon_resource->check_cmd_interpretor_switch_or_effective_cmd_interpretor(&readlineResult, &effective_cmd_interpretor_pointer, &(childAttribs->execStdinCmdInNewVT), &Addon_Prompt, &(childAttribs->cmd_interpretor_addon_dir));//在目前AI_Model addon 的实现中，如果 effective_cmd_interpretor是AI_Model, 就会设置addon_dir
 		       if (new_cmd_interpretor){ //切换到AI_model
 			   current_stdin_cmd_interpretor_pointer = new_cmd_interpretor;
 			   goto switchToReadlineThread;
@@ -5650,8 +5649,7 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
 	      if (readlineResult[len-strlen(RFM_NEW_TERM_SUFFIX)-1] == '\\'){
 		memcpy(&readlineResult[len-strlen(RFM_NEW_TERM_SUFFIX)-1], &readlineResult[len-strlen(RFM_NEW_TERM_SUFFIX)], strlen(RFM_NEW_TERM_SUFFIX)+1);// 如果结尾是'\&', 即用户的确需要&字符在行尾，用\转义,则去掉\, 把后面字符（包括结尾的'\0'）向前移一位，改成'&'
 	      }else {
-		if (from_stdin_readline) childAttribs->execStdinCmdInNewVT = TRUE;
-		else execCmdInNewVT = TRUE;
+		childAttribs->execStdinCmdInNewVT = TRUE;
 		readlineResult[len-strlen(RFM_NEW_TERM_SUFFIX)] = '\0'; //remove ending '&'
 	      }
       	      len = strlen(readlineResult);
@@ -5668,7 +5666,7 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
 
             childAttribs->SearchResultTypePointer = MatchSearchResultType(readlineResult, childAttribs);
             len = strlen(readlineResult);
-            if (childAttribs->SearchResultTypePointer && (childAttribs->execStdinCmdInNewVT || execCmdInNewVT)) childAttribs->newVT_with_proxy = TRUE;
+            if (childAttribs->SearchResultTypePointer && childAttribs->execStdinCmdInNewVT) childAttribs->newVT_with_proxy = TRUE;
 
             childAttribs->stdin_cmd_ending_space = (childAttribs->stdin_cmd_ending_space || (len>=1 && readlineResult[len-1]==' '));
 	    while (len>=1 && readlineResult[len-1]==' ') { readlineResult[len-1]='\0'; len--; } //remove ending space
@@ -5676,7 +5674,7 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
 	    if (g_str_has_prefix(readlineResult, RFM_SEARCH_RESULT_AS_INPUT_PREFIX)) {
 	        childAttribs->SearchResultAsInput=TRUE;
 		for (int i=0;i<len;i++) readlineResult[i]=readlineResult[i + strlen(RFM_SEARCH_RESULT_AS_INPUT_PREFIX)]; //remove the prefix SearchResult|
-	        if ((from_stdin_readline && childAttribs->execStdinCmdInNewVT) || execCmdInNewVT) childAttribs->newVT_with_proxy = TRUE; // SearchResult| + &: enable newTermProxy so rfm communicates with the new terminal via named pipes
+	        if (childAttribs->execStdinCmdInNewVT) childAttribs->newVT_with_proxy = TRUE; // SearchResult| + &: enable newTermProxy so rfm communicates with the new terminal via named pipes
 	    }
 #ifdef RFM_AddOn
 	    }//end else (cmd_interpretor_index == stdin_cmd_interpretor_index_for_AI){ 对于输入的 AI 提示词，就不要尝试解析了，
@@ -5687,10 +5685,10 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
             combine_command_with_selected_files_and_setenv(childAttribs->readlineResultString, childAttribs->stdin_cmd_ending_space,&(childAttribs->env), childAttribs->fullpath_list_as_RunCmd_parameters);
             
 #ifdef RFM_AddOn
-	    if (!childAttribs->execStdinCmdInNewVT && !(!from_stdin_readline && execCmdInNewVT) || Addon_Prompt){ //Addon_Prompt不为空实际上就相当于 current_stdin_cmd_interpretor_pointer == AI_Model
+	    if (!childAttribs->execStdinCmdInNewVT || Addon_Prompt){ //Addon_Prompt不为空实际上就相当于 current_stdin_cmd_interpretor_pointer == AI_Model
 	      //TODO：在NewTerm里执行命令就意味着无法运行下面的builtin_commnd,但是AI模式除外，AI模式下可能会在NewTerm里执行命令，但仍然可以执行builtin_command. 用Addon_Prompt 区分状态可能不是很好，现在只有AI模式一个Addon包含 stdin_cmd_interpretor, 所以能用，以后增加类似 Addon 还要重新定义
 #else
-	    if (!childAttribs->execStdinCmdInNewVT && !(!from_stdin_readline && execCmdInNewVT)){
+	    if (!childAttribs->execStdinCmdInNewVT){
 #endif
               wordexp_t parsed_msg;
 	      int wordexp_retval = wordexp(readlineResult,&parsed_msg,0);
@@ -5710,9 +5708,9 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
 	assert(startWithTerm()|| !from_stdin_readline);
           // Use effective_cmd_interpretor_index for execution calls
 	  if (childAttribs->SearchResultAsInput && !childAttribs->newVT_with_proxy) exec_stdin_command_with_SearchResultAsInput(childAttribs->readlineResultString, from_stdin_readline, effective_cmd_interpretor_pointer, childAttribs);//c语言推荐的做法是变量free了以后置NULL,但这里exec_stdin_command_with_SearchResultAsInput中异步的g_spawn_返回false后才free childAttribs, 成功得话要等异步callback得话才free childAttribs, 所以这里没法判断是否置NULL。TODO：好的做法似乎应该是传入 &childAttribs, 甚至 free_child_attribs 函数就应该改成接收 &childAttribs 参数， free完后就立刻就地置NULL
-	  else if (((exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread || !from_stdin_readline) && !(childAttribs->execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT)))
+	  else if (((exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread || !from_stdin_readline) && !childAttribs->execStdinCmdInNewVT)
 		   || (current_stdin_cmd_interpretor_pointer==cmd_interpretor_pointer //这一行排除了在命令提示符下单纯输入 d>  b> 等切换cmd_interpretor的情况，这种情况下，不在这里执行 exec_stdin_command, 也就不会free childattribs, 而是需要g_thread_new readlineThread, 参见下面g_thread_new前条件判断
-		       && effective_cmd_interpretor_pointer->customCallBackFunc && !execCmdInNewVT && !childAttribs->execStdinCmdInNewVT) ){ //这一行条件用来判断需要使用customCallBackFunction来处理 exec_stdin_command 的输出的情况，比如AI LLM返回的内容，这种情况下，g_spawn_wrapper 用异步，exec_stdin_command 会很早返回，但g_spawn_wrapper 还没完成，为了避免争夺终端模拟器，这时不能开始readline,所以就暂时不要 g_thread_new readline,在 g_spawn_wrapper 的异步callback里面再考虑 g_thread_new readline。另外这一行判断也是保证此时exec_stdin_command在gtk thread里执行，否则在readline thread里执行得话，就不方便控制exec_stdin_command 中g_spawn_wrapper 实际callback完成后才调用 readline函数了。注意之一行判断条件在下面 g_thread_new readline 前也有使用
+		       && effective_cmd_interpretor_pointer->customCallBackFunc && !childAttribs->execStdinCmdInNewVT) ){ //这一行条件用来判断需要使用customCallBackFunction来处理 exec_stdin_command 的输出的情况，比如AI LLM返回的内容，这种情况下，g_spawn_wrapper 用异步，exec_stdin_command 会很早返回，但g_spawn_wrapper 还没完成，为了避免争夺终端模拟器，这时不能开始readline,所以就暂时不要 g_thread_new readline,在 g_spawn_wrapper 的异步callback里面再考虑 g_thread_new readline。另外这一行判断也是保证此时exec_stdin_command在gtk thread里执行，否则在readline thread里执行得话，就不方便控制exec_stdin_command 中g_spawn_wrapper 实际callback完成后才调用 readline函数了。注意之一行判断条件在下面 g_thread_new readline 前也有使用
 	    if (childAttribs->readlineResultString){
 	           childAttribs->exec_stdin_command_in_gtk_thread = TRUE;//因为上面的组合判断条件越来越复杂了，不方便把等价条件放入readlineInSeperateThread; 并且exec_stdin_command中调用的g_spawn_wrapper可能是异步的，也不能直接在这里释放childAttribs并置NULL,所以这里添加了一个标志属性简化代码
 		   exec_stdin_command_in_gtk_thread = TRUE;//这个在后面判断是否把childAttribs传递到readline thread 时使用，因为上面childAttribs可能已经在下面一行 exec_stdin_command 中释放了，不能再传到readline thread 里
@@ -5720,7 +5718,7 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
 		   ret = exec_stdin_command(childAttribs->readlineResultString, effective_cmd_interpretor_pointer, childAttribs);
 	    }
           }
-          if ((childAttribs->execStdinCmdInNewVT || (!from_stdin_readline && execCmdInNewVT)) && childAttribs->readlineResultString) {
+          if ((childAttribs->execStdinCmdInNewVT) && childAttribs->readlineResultString) {
 	      if (childAttribs->newVT_with_proxy){
 	          childAttribs->exec_stdin_command_in_gtk_thread = TRUE; // prevent childAttribs from being passed to readline thread below
 		  exec_stdin_command_in_gtk_thread = TRUE;//这个在后面判断是否把childAttribs传递到readline thread 时使用，因为上面childAttribs可能已经在下面一行 exec_stdin_command_in_new_VT_with_proxy 中释放了，childAttribs->exec_stdin_command_in_gtk_thread 不能再用在判断条件里, deepseekv4pro写的代码里没有考虑到这一点，它只加了上面那行。我在前几行类似的地方加了注释，是deepseek读代码不看注释吗，还是这是细微的，不常见的逻辑，被AI忽视了？
@@ -5734,13 +5732,13 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
           if ((!childAttribs->SearchResultAsInput || childAttribs->newVT_with_proxy) && (
 				       current_stdin_cmd_interpretor_pointer!=cmd_interpretor_pointer // 在本函数开头运行current_stdin_cmd_interpretor_pointer = &(stdin_cmd_interpretors[i]) 或 current_stdin_cmd_interpretor_pointer = new_cmd_interpretor, 接着 goto switchToReadlineThread 时，满足此行条件。
 				       || !ret
-				       || !(effective_cmd_interpretor_pointer->customCallBackFunc && !execCmdInNewVT && !childAttribs->execStdinCmdInNewVT))) {
+				       || !(effective_cmd_interpretor_pointer->customCallBackFunc && !childAttribs->execStdinCmdInNewVT))) {
 #endif
 #ifdef GNU_readline
           if (childAttribs->readlineResultString==NULL || ((!childAttribs->SearchResultAsInput || childAttribs->newVT_with_proxy) && from_stdin_readline && (
 							      current_stdin_cmd_interpretor_pointer!=cmd_interpretor_pointer
 							      || !ret
-							      || !(effective_cmd_interpretor_pointer->customCallBackFunc && !execCmdInNewVT && !childAttribs->execStdinCmdInNewVT)))) {
+							      || !(effective_cmd_interpretor_pointer->customCallBackFunc && !childAttribs->execStdinCmdInNewVT)))) {
 #endif
               if (window && !childAttribs->parse_and_exec_stdin_command_in_gtk_thread_called_nested_so_do_not_new_readlineThread_afterwards && readlineThread==NULL) readlineThread=g_thread_new("readline", readlineInSeperateThread, (from_stdin_readline && !exec_stdin_command_in_gtk_thread)?childAttribs:NULL);//这里exec_stdin_command 走OpenHarness分支的时候，执行OH /quit命令完了也会new thread, 所以在这个commit里加上readlineThread==NULL 判断，其实不论如何，这个判断都应该加的，只是之前似乎没遇到问题
           }else g_debug("skip new readline thread at the end of parse_and_exec_command_in_gtk_thread");
