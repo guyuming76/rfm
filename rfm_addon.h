@@ -247,6 +247,7 @@ typedef struct {
 typedef struct RFM_ChildAttributes{
    gchar *name;
    const gchar **RunCmd;
+   stdin_cmd_interpretor *cmd_interpretor;
    GSpawnFlags  runOpts;
    gchar** env;
    GPid  pid;
