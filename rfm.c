@@ -391,18 +391,12 @@ static int rfm_childListLength = 0;
 
 // newTermProxy: proxy thread for communicating with commands running in new terminal windows via named pipes
 typedef struct NewTermProxy {
-    char *fifo_dir;                   // /tmp/rfm_proxy_XXXXXX directory
-    char *fifo_stdin_path;            // rfm→child stdin pipe (only when SearchResultAsInput)
-    char *fifo_stdout_path;           // child→rfm stdout pipe (only when SearchResultTypePointer)
-    char *fifo_stderr_path;           // child→rfm stderr pipe (always created)
-    int fifo_stdin_fd;
-    int fifo_stdout_fd;
-    int fifo_stderr_fd;
+    RfmFifoSet *fset;                 // shared fifo set (dir + pipes + fds)
     GThread *thread;
     RFM_ChildAttribs *childAttribs;
     gboolean need_send_search_result; // = childAttribs->SearchResultAsInput
     gboolean need_capture_stdout;     // = (childAttribs->SearchResultTypePointer != NULL)
-    gchar *search_result_temp_file;   // temp file with search result data (written by gtk main thread)
+    gchar *search_result_temp_file;   // temp file with search result data
 } NewTermProxy;
 
 static GList *newTermProxies = NULL;
@@ -412,6 +406,16 @@ static void newTermProxy_cleanup(NewTermProxy *proxy);
 static gboolean newTermProxy_process_output_in_gtk(gpointer data);
 static gboolean newTermProxy_cleanup_in_gtk(gpointer data);
 static gpointer newTermProxy_thread(gpointer data);
+
+// ── RfmFifoSet forward declarations (implementations follow below) ──
+RfmFifoSet *rfm_fifo_set_create(const char *dir_template, int pipe_mask);
+gboolean rfm_fifo_open_read(RfmFifoSet *fset);
+gboolean rfm_fifo_open_write(RfmFifoSet *fset, gboolean nonblock);
+void rfm_fifo_poll_read(RfmFifoSet *fset,
+    RfmFifoDataCallback on_stdout, RfmFifoDataCallback on_stderr,
+    void *stdout_ud, void *stderr_ud, int timeout_ms);
+void rfm_fifo_set_cleanup(RfmFifoSet *fset);
+void g_string_append_len_callback(const char *data, int len, void *user_data);
 
 static void free_child_attribs(FREE_FULL RFM_ChildAttribs *child_attribs);
 static gchar *choose_working_directory_for_g_spawn(RFM_ChildAttribs *childAttribs);
@@ -4087,66 +4091,40 @@ static void exec_stdin_command_in_new_VT_with_proxy(GString * readlineResultStri
     return;
   }
 
-  // 1. Create temp directory for named pipes
-  char fifo_dir_template[] = "/tmp/rfm_proxy_XXXXXX";
-  char *fifo_dir = mkdtemp(fifo_dir_template);
-  if (!fifo_dir){
-    g_warning("exec_stdin_command_in_new_VT_with_proxy: mkdtemp failed");
+  NewTermProxy *proxy = calloc(1, sizeof(NewTermProxy));
+  proxy->childAttribs = child_attribs;
+  proxy->childAttribs->no_free = TRUE;
+  proxy->need_send_search_result = child_attribs->SearchResultAsInput;
+  proxy->need_capture_stdout = (child_attribs->SearchResultTypePointer != NULL);
+
+  // 1. Create fifo set via shared utility (fds initialised to -1 inside)
+  int pipe_mask = 0x04; // stderr always
+  if (proxy->need_send_search_result) pipe_mask |= 0x01;
+  if (proxy->need_capture_stdout)      pipe_mask |= 0x02;
+  proxy->fset = rfm_fifo_set_create("/tmp/rfm_proxy_XXXXXX", pipe_mask);
+  if (!proxy->fset){
+    g_warning("exec_stdin_command_in_new_VT_with_proxy: rfm_fifo_set_create failed");
     free_child_attribs(child_attribs);
+    g_free(proxy);
     return;
   }
 
-  NewTermProxy *proxy = calloc(1, sizeof(NewTermProxy));
-  proxy->fifo_dir = strdup(fifo_dir);
-  proxy->childAttribs = child_attribs;
-  proxy->childAttribs->no_free = TRUE;      // proxy thread owns this now
-  proxy->need_send_search_result = child_attribs->SearchResultAsInput;
-  proxy->need_capture_stdout = (child_attribs->SearchResultTypePointer != NULL);
-  proxy->fifo_stdin_fd = -1;   // must init to -1 so cleanup doesn't close(0)
-  proxy->fifo_stdout_fd = -1;
-  proxy->fifo_stderr_fd = -1;
-
-  // 2. Create named pipes as needed
-  if (proxy->need_send_search_result){
-    proxy->fifo_stdin_path = g_strdup_printf("%s/stdin", fifo_dir);
-    if (mkfifo(proxy->fifo_stdin_path, 0600) != 0){
-      g_warning("exec_stdin_command_in_new_VT_with_proxy: mkfifo stdin failed: %s", strerror(errno));
-      g_free(proxy->fifo_stdin_path); proxy->fifo_stdin_path = NULL;
-      // continue without stdin pipe — the child command will get empty stdin
-    }
-  }
-  if (proxy->need_capture_stdout){
-    proxy->fifo_stdout_path = g_strdup_printf("%s/stdout", fifo_dir);
-    if (mkfifo(proxy->fifo_stdout_path, 0600) != 0){
-      g_warning("exec_stdin_command_in_new_VT_with_proxy: mkfifo stdout failed: %s", strerror(errno));
-      g_free(proxy->fifo_stdout_path); proxy->fifo_stdout_path = NULL;
-      proxy->need_capture_stdout = FALSE; // fallback: just show in terminal
-    }
-  }
-  // stderr pipe is always created for error feedback
-  proxy->fifo_stderr_path = g_strdup_printf("%s/stderr", fifo_dir);
-  if (mkfifo(proxy->fifo_stderr_path, 0600) != 0){
-    g_warning("exec_stdin_command_in_new_VT_with_proxy: mkfifo stderr failed: %s", strerror(errno));
-    g_free(proxy->fifo_stderr_path); proxy->fifo_stderr_path = NULL;
-  }
-
-  // 3. Build the shell redirects and wrap the user command
+  // 2. Build shell redirects
   gchar *cmd_str = readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str;
   GString *redirected_cmd = g_string_new(cmd_str);
 
-  if (proxy->need_send_search_result && proxy->fifo_stdin_path)
-    g_string_append_printf(redirected_cmd, " < %s", proxy->fifo_stdin_path);
-  if (proxy->need_capture_stdout && proxy->fifo_stdout_path)
-    g_string_append_printf(redirected_cmd, " > %s", proxy->fifo_stdout_path);
-  if (proxy->fifo_stderr_path)
-    g_string_append_printf(redirected_cmd, " 2> %s", proxy->fifo_stderr_path);
+  if (proxy->need_send_search_result && proxy->fset->pipe_path[FIFO_STDIN])
+    g_string_append_printf(redirected_cmd, " < %s", proxy->fset->pipe_path[FIFO_STDIN]);
+  if (proxy->need_capture_stdout && proxy->fset->pipe_path[FIFO_STDOUT])
+    g_string_append_printf(redirected_cmd, " > %s", proxy->fset->pipe_path[FIFO_STDOUT]);
+  if (proxy->fset->pipe_path[FIFO_STDERR])
+    g_string_append_printf(redirected_cmd, " 2> %s", proxy->fset->pipe_path[FIFO_STDERR]);
 
   g_debug("exec_stdin_command_in_new_VT_with_proxy: wrapped cmd: %s", redirected_cmd->str);
 
-  // 4. If SearchResultAsInput, write current search result to a temp file from gtk main thread.
-  //    The proxy thread will read this file and forward it to the child via the stdin fifo.
-  if (proxy->need_send_search_result && proxy->fifo_stdin_path && SearchResultViewInsteadOfDirectoryView){
-    proxy->search_result_temp_file = g_strdup_printf("%s/search_data", fifo_dir);
+  // 3. Write search result to temp file (if SearchResultAsInput)
+  if (proxy->need_send_search_result && proxy->fset->pipe_path[FIFO_STDIN] && SearchResultViewInsteadOfDirectoryView){
+    proxy->search_result_temp_file = g_strdup_printf("%s/search_data", proxy->fset->dir);
     int temp_fd = open(proxy->search_result_temp_file, O_WRONLY | O_CREAT | O_TRUNC, 0600);
     if (temp_fd >= 0){
       writeSearchResultIntoFD_in_gtk_thread(temp_fd, FALSE, child_attribs);
@@ -4157,7 +4135,7 @@ static void exec_stdin_command_in_new_VT_with_proxy(GString * readlineResultStri
     }
   }
 
-  // 5. Spawn the terminal emulator via cmdTransformer (stdin_command_bash)
+  // 4. Spawn the terminal emulator via cmdTransformer
   child_attribs->RunCmd = cmd_interpretor_pointer->cmdTransformer(redirected_cmd->str, TRUE);
   g_string_free(redirected_cmd, TRUE);
 
@@ -4167,10 +4145,10 @@ static void exec_stdin_command_in_new_VT_with_proxy(GString * readlineResultStri
 
   g_debug("exec_stdin_command_in_new_VT_with_proxy(%s, cmd_interpretor name:%s)", cmd_str, cmd_interpretor_pointer->name);
 
-  // 6. Start the proxy thread
+  // 5. Start the proxy thread
   proxy->thread = g_thread_new("newTermProxy", newTermProxy_thread, proxy);
 
-  // 7. Add to global list
+  // 6. Add to global list
   g_mutex_lock(&newTermProxies_mutex);
   newTermProxies = g_list_prepend(newTermProxies, proxy);
   g_mutex_unlock(&newTermProxies_mutex);
@@ -4306,6 +4284,105 @@ static void g_spawn_async_callback_to_new_readline_thread(RFM_ChildAttribs *chil
   if (!child_attribs->parse_and_exec_stdin_command_in_gtk_thread_called_nested_so_do_not_new_readlineThread_afterwards && readlineThread==NULL) readlineThread=g_thread_new("readline", readlineInSeperateThread, NULL);// SearchResultAsInput情况下，命令执行成功，从这里新建 readline;  这种情况下,新的readlineThread下不会再运行exec_stdin_command, 所以命令参数直接传NULL过去就可以了
 }
 
+// ── RfmFifoSet implementation ────────────────────────────────────────
+
+RfmFifoSet *rfm_fifo_set_create(const char *dir_template, int pipe_mask) {
+    char template_buf[256];
+    strncpy(template_buf, dir_template, sizeof(template_buf) - 1);
+    template_buf[sizeof(template_buf) - 1] = '\0';
+
+    char *dir = mkdtemp(template_buf);
+    if (!dir) {
+        g_warning("rfm_fifo_set_create: mkdtemp failed: %s", strerror(errno));
+        return NULL;
+    }
+
+    RfmFifoSet *fset = calloc(1, sizeof(RfmFifoSet));
+    fset->dir = strdup(dir);
+    for (int i = 0; i < 3; i++) fset->pipe_fd[i] = -1;
+
+    static const char *names[] = {"stdin", "stdout", "stderr"};
+    gboolean ok = TRUE;
+    for (int i = 0; i < 3; i++) {
+        if (!(pipe_mask & (1 << i))) continue;
+        fset->pipe_path[i] = g_strdup_printf("%s/%s", dir, names[i]);
+        if (mkfifo(fset->pipe_path[i], 0600) != 0) {
+            g_warning("rfm_fifo_set_create: mkfifo %s failed: %s", names[i], strerror(errno));
+            ok = FALSE;
+        }
+    }
+
+    if (!ok) { rfm_fifo_set_cleanup(fset); return NULL; }
+    return fset;
+}
+
+gboolean rfm_fifo_open_read(RfmFifoSet *fset) {
+    gboolean any = FALSE;
+    for (int i = 1; i <= 2; i++) { // FIFO_STDOUT=1, FIFO_STDERR=2
+        if (fset->pipe_path[i] && fset->pipe_fd[i] < 0) {
+            fset->pipe_fd[i] = open(fset->pipe_path[i], O_RDONLY);
+            if (fset->pipe_fd[i] >= 0) any = TRUE;
+        }
+    }
+    return any;
+}
+
+gboolean rfm_fifo_open_write(RfmFifoSet *fset, gboolean nonblock) {
+    if (!fset->pipe_path[FIFO_STDIN]) return FALSE;
+    if (fset->pipe_fd[FIFO_STDIN] >= 0) return TRUE;
+    int flags = O_WRONLY | (nonblock ? O_NONBLOCK : 0);
+    fset->pipe_fd[FIFO_STDIN] = open(fset->pipe_path[FIFO_STDIN], flags);
+    return fset->pipe_fd[FIFO_STDIN] >= 0;
+}
+
+// Callbacks for poll_read: [1]=stdout_cb, [2]=stderr_cb; user_data is GString*
+void rfm_fifo_poll_read(RfmFifoSet *fset,
+                        RfmFifoDataCallback on_stdout, RfmFifoDataCallback on_stderr,
+                        void *stdout_ud, void *stderr_ud, int timeout_ms)
+{
+    RfmFifoDataCallback cbs[] = {NULL, on_stdout, on_stderr};
+    void *uds[] = {NULL, stdout_ud, stderr_ud};
+    gboolean open[] = {FALSE,
+        fset->pipe_fd[FIFO_STDOUT] >= 0,
+        fset->pipe_fd[FIFO_STDERR] >= 0};
+
+    while (open[1] || open[2]) {
+        struct pollfd fds[2]; int nfds = 0;
+        for (int i = 1; i <= 2; i++) {
+            if (open[i]) { fds[nfds].fd = fset->pipe_fd[i]; fds[nfds].events = POLLIN; nfds++; }
+        }
+        if (nfds == 0) break;
+        int r = poll(fds, nfds, timeout_ms);
+        if (r < 0) { if (errno == EINTR) continue; break; }
+        if (r == 0 && timeout_ms >= 0) continue;
+        for (int j = 0; j < nfds; j++) {
+            if (fds[j].revents & POLLIN) {
+                int idx = (fds[j].fd == fset->pipe_fd[1]) ? 1 : 2;
+                char buf[8192];
+                ssize_t n = read(fds[j].fd, buf, sizeof(buf));
+                if (n > 0) { if (cbs[idx]) cbs[idx](buf, (int)n, uds[idx]); }
+                else       { close(fset->pipe_fd[idx]); fset->pipe_fd[idx] = -1; open[idx] = FALSE; }
+            }
+            if (fds[j].revents & (POLLHUP | POLLERR)) {
+                int idx = (fds[j].fd == fset->pipe_fd[1]) ? 1 : 2;
+                close(fset->pipe_fd[idx]); fset->pipe_fd[idx] = -1; open[idx] = FALSE;
+            }
+        }
+    }
+}
+
+void rfm_fifo_set_cleanup(RfmFifoSet *fset) {
+    if (!fset) return;
+    for (int i = 0; i < 3; i++) {
+        if (fset->pipe_fd[i] >= 0) close(fset->pipe_fd[i]);
+        if (fset->pipe_path[i])    unlink(fset->pipe_path[i]);
+        g_free(fset->pipe_path[i]);
+    }
+    if (fset->dir) rmdir(fset->dir);
+    g_free(fset->dir);
+    g_free(fset);
+}
+
 // Clean up a NewTermProxy: close fds, unlink named pipes, remove temp dir, free memory.
 // Called from gtk main thread callbacks.
 static void newTermProxy_cleanup(NewTermProxy *proxy){
@@ -4316,35 +4393,19 @@ static void newTermProxy_cleanup(NewTermProxy *proxy){
   newTermProxies = g_list_remove(newTermProxies, proxy);
   g_mutex_unlock(&newTermProxies_mutex);
 
-  // Close fds
-  if (proxy->fifo_stdin_fd >= 0) close(proxy->fifo_stdin_fd);
-  if (proxy->fifo_stdout_fd >= 0) close(proxy->fifo_stdout_fd);
-  if (proxy->fifo_stderr_fd >= 0) close(proxy->fifo_stderr_fd);
+  // Clean up search result temp file (NewTermProxy-specific)
+  if (proxy->search_result_temp_file) {
+    unlink(proxy->search_result_temp_file);
+    g_free(proxy->search_result_temp_file);
+  }
 
-  // Unlink named pipes
-  if (proxy->fifo_stdin_path) unlink(proxy->fifo_stdin_path);
-  if (proxy->fifo_stdout_path) unlink(proxy->fifo_stdout_path);
-  if (proxy->fifo_stderr_path) unlink(proxy->fifo_stderr_path);
+  // Delegate pipe cleanup to shared utility
+  rfm_fifo_set_cleanup(proxy->fset);
 
-  // Remove temp dir and temp file
-  if (proxy->search_result_temp_file) unlink(proxy->search_result_temp_file);
-  if (proxy->fifo_dir) rmdir(proxy->fifo_dir);
-
-  // Free strings
-  g_free(proxy->fifo_stdin_path);
-  g_free(proxy->fifo_stdout_path);
-  g_free(proxy->fifo_stderr_path);
-  g_free(proxy->search_result_temp_file);
-  g_free(proxy->fifo_dir);
-
-  // Release childAttribs. Two cases:
-  // A) Terminal still running (status==-1): set no_free=FALSE and let child_supervisor
-  //    free it when the terminal exits.
-  // B) Terminal already closed (status!=-1): child_supervisor already fired but was
-  //    blocked by no_free=TRUE. Free it now to avoid memory leak.
+  // Release childAttribs (NewTermProxy-specific)
   if (proxy->childAttribs){
-    proxy->childAttribs->no_free = FALSE;  // let child_supervisor free it later
-    if (proxy->childAttribs->status != -1) free_child_attribs(proxy->childAttribs);  // child_supervisor already gave up
+    proxy->childAttribs->no_free = FALSE;
+    if (proxy->childAttribs->status != -1) free_child_attribs(proxy->childAttribs);
     proxy->childAttribs = NULL;
   }
 
@@ -4391,107 +4452,52 @@ static gboolean newTermProxy_process_output_in_gtk(gpointer data){
   return G_SOURCE_REMOVE;
 }
 
+// Helper callback for rfm_fifo_poll_read: appends data to a GString.
+void g_string_append_len_callback(const char *data, int len, void *user_data) {
+    g_string_append_len((GString *)user_data, data, len);
+}
+
 // newTermProxy thread: communicates with the command running in the new terminal
 // via three named pipes (stdin, stdout, stderr).
 static gpointer newTermProxy_thread(gpointer data){
   NewTermProxy *proxy = (NewTermProxy *)data;
 
-  // === Phase 1: send search result data to child (if SearchResultAsInput) ===
-  if (proxy->need_send_search_result && proxy->fifo_stdin_path){
-    // Open stdin fifo for writing (blocks until child opens read end)
-    proxy->fifo_stdin_fd = open(proxy->fifo_stdin_path, O_WRONLY);
-    if (proxy->fifo_stdin_fd >= 0){
+  // Phase 1: send search result data to child (if SearchResultAsInput)
+  if (proxy->need_send_search_result && proxy->fset->pipe_path[FIFO_STDIN]){
+    rfm_fifo_open_write(proxy->fset, FALSE); // blocking open
+    if (proxy->fset->pipe_fd[FIFO_STDIN] >= 0){
       if (proxy->search_result_temp_file){
         int temp_fd = open(proxy->search_result_temp_file, O_RDONLY);
         if (temp_fd >= 0){
-          char buf[8192];
-          ssize_t n;
+          char buf[8192]; ssize_t n;
           while ((n = read(temp_fd, buf, sizeof(buf))) > 0)
-            write(proxy->fifo_stdin_fd, buf, n);
+            write(proxy->fset->pipe_fd[FIFO_STDIN], buf, n);
           close(temp_fd);
         }
       }
-      close(proxy->fifo_stdin_fd);
-      proxy->fifo_stdin_fd = -1;
+      close(proxy->fset->pipe_fd[FIFO_STDIN]);
+      proxy->fset->pipe_fd[FIFO_STDIN] = -1;
     }
   }
 
-  // === Phase 2: read stdout and stderr from child ===
+  // Phase 2: read stdout and stderr via shared poll utility
   GString *stdout_buf = g_string_new(NULL);
   GString *stderr_buf = g_string_new(NULL);
 
-  int stdout_fd = -1, stderr_fd = -1;
-  int stdout_closed = !proxy->need_capture_stdout;
-  int stderr_closed = 0;
+  rfm_fifo_open_read(proxy->fset);
 
-  if (proxy->need_capture_stdout && proxy->fifo_stdout_path){
-    stdout_fd = open(proxy->fifo_stdout_path, O_RDONLY);
-    proxy->fifo_stdout_fd = stdout_fd;
-  }
-  if (proxy->fifo_stderr_path){
-    stderr_fd = open(proxy->fifo_stderr_path, O_RDONLY);
-    proxy->fifo_stderr_fd = stderr_fd;
-    if (stderr_fd < 0) stderr_closed = 1;
-  }else stderr_closed = 1;
+  rfm_fifo_poll_read(proxy->fset,
+      proxy->need_capture_stdout ? g_string_append_len_callback : NULL,
+      g_string_append_len_callback,
+      stdout_buf, stderr_buf,
+      -1); // block forever
 
-  // Poll loop: read from both fds until both close
-  while (!stdout_closed || !stderr_closed){
-    struct pollfd fds[2];
-    int nfds = 0;
-
-    if (!stdout_closed && stdout_fd >= 0){
-      fds[nfds].fd = stdout_fd;
-      fds[nfds].events = POLLIN;
-      nfds++;
-    }
-    if (!stderr_closed && stderr_fd >= 0){
-      fds[nfds].fd = stderr_fd;
-      fds[nfds].events = POLLIN;
-      nfds++;
-    }
-
-    if (nfds == 0) break;
-
-    int ret = poll(fds, nfds, -1);
-    if (ret < 0){
-      if (errno == EINTR) continue;
-      break;
-    }
-
-    for (int i = 0; i < nfds; i++){
-      if (fds[i].revents & POLLIN){
-        char buf[8192];
-        ssize_t n = read(fds[i].fd, buf, sizeof(buf));
-        if (n > 0){
-          if (fds[i].fd == stdout_fd)
-            g_string_append_len(stdout_buf, buf, n);
-          else
-            g_string_append_len(stderr_buf, buf, n);
-        }else{
-          // n==0: EOF, n<0: error — close this fd
-          if (fds[i].fd == stdout_fd) stdout_closed = 1;
-          else stderr_closed = 1;
-        }
-      }
-      if (fds[i].revents & (POLLHUP | POLLERR)){
-        if (fds[i].fd == stdout_fd) stdout_closed = 1;
-        else stderr_closed = 1;
-      }
-    }
-  }
-
-  if (stdout_fd >= 0) close(stdout_fd);
-  if (stderr_fd >= 0) close(stderr_fd);
-  proxy->fifo_stdout_fd = -1;
-  proxy->fifo_stderr_fd = -1;
-
-  // === Phase 3: dispatch to gtk main thread ===
+  // Phase 3: dispatch to gtk main thread
   if (proxy->need_capture_stdout){
     proxy->childAttribs->stdOut = g_string_free(stdout_buf, FALSE);
     proxy->childAttribs->stdErr = g_string_free(stderr_buf, FALSE);
     g_idle_add(newTermProxy_process_output_in_gtk, proxy);
   }else{
-    // No stdout capture needed (e.g. SearchResult|tee& without >type)
     if (stderr_buf->len > 0)
       g_debug("newTermProxy stderr: %s", stderr_buf->str);
     g_string_free(stdout_buf, TRUE);

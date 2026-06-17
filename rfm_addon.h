@@ -286,6 +286,21 @@ typedef struct RFM_ChildAttributes{
    gboolean stdin_cmd_leading_space;
 } RFM_ChildAttribs; //data needed to spawn child process
 
+// ── RfmFifoSet: shared named-pipe utility ────────────────────────────
+// Temp directory + up to 3 named pipes.  Indices: 0=stdin, 1=stdout, 2=stderr.
+// Used by NewTermProxy (rfm.c) and SubAgentProxy (addon).
+#define FIFO_STDIN  0
+#define FIFO_STDOUT 1
+#define FIFO_STDERR 2
+
+typedef void (*RfmFifoDataCallback)(const char *data, int len, void *user_data);
+
+typedef struct RfmFifoSet {
+    char *dir;                    // temp directory, e.g. /tmp/rfm_proxy_XXXXXX
+    char *pipe_path[3];           // FIFO_STDIN / FIFO_STDOUT / FIFO_STDERR, NULL if not created
+    int   pipe_fd[3];             // opened fds, -1 if not opened
+} RfmFifoSet;
+
 
 enum RFM_ADDON_TYPE {
   Directory,
