@@ -5741,7 +5741,7 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
           if (childAttribs->readlineResultString==NULL || ((!childAttribs->SearchResultAsInput || childAttribs->newVT_with_proxy) && from_stdin_readline && (
 							      current_stdin_cmd_interpretor_pointer!=cmd_interpretor_pointer
 							      || !ret
-							      || !(effective_cmd_interpretor_pointer->customCallBackFunc && !childAttribs->execStdinCmdInNewVT)))) {
+							      || !(childAttribs->cmd_interpretor->customCallBackFunc && !childAttribs->execStdinCmdInNewVT)))) {
 #endif
               if (window && !childAttribs->parse_and_exec_stdin_command_in_gtk_thread_called_nested_so_do_not_new_readlineThread_afterwards && readlineThread==NULL) readlineThread=g_thread_new("readline", readlineInSeperateThread, (from_stdin_readline && !exec_stdin_command_in_gtk_thread)?childAttribs:NULL);//这里exec_stdin_command 走OpenHarness分支的时候，执行OH /quit命令完了也会new thread, 所以在这个commit里加上readlineThread==NULL 判断，其实不论如何，这个判断都应该加的，只是之前似乎没遇到问题
           }else g_debug("skip new readline thread at the end of parse_and_exec_command_in_gtk_thread");
