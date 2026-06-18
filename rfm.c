@@ -5708,7 +5708,6 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
 	} //end if (len == 0)
  switchToReadlineThread:
         g_free (readlineResult); // Free the original buffer
-
 	assert(startWithTerm()|| !from_stdin_readline);
           // Use effective_cmd_interpretor_index for execution calls
 	  if (childAttribs->SearchResultAsInput && !childAttribs->newVT_with_proxy) exec_stdin_command_with_SearchResultAsInput(childAttribs->readlineResultString, from_stdin_readline, childAttribs->cmd_interpretor, childAttribs);//c语言推荐的做法是变量free了以后置NULL,但这里exec_stdin_command_with_SearchResultAsInput中异步的g_spawn_返回false后才free childAttribs, 成功得话要等异步callback得话才free childAttribs, 所以这里没法判断是否置NULL。TODO：好的做法似乎应该是传入 &childAttribs, 甚至 free_child_attribs 函数就应该改成接收 &childAttribs 参数， free完后就立刻就地置NULL
@@ -6168,9 +6167,6 @@ static int setup()
    g_debug("rfm_homePath: %s",rfm_homePath);
    g_debug("rfm_thumbDir: %s",rfm_thumbDir);
 
-#ifdef PythonEmbedded
-   startPythonEmbedding();
-#endif
    if (getcwd(cwd, sizeof(cwd)) == NULL) die("ERROR: %s: getcwd() failed.\n", PROG_NAME); /* getcwd returns NULL if cwd[] not big enough! */
 
    sprintf(rfm_historyFile_ParentDirectory, "%s", getenv("HOME"));
@@ -6229,6 +6225,9 @@ static int setup()
      //child_attribs->spawn_async = TRUE; //TODO: 倒不是说这里要用async,只是开发时发现，这个会被 exec_stdin_command 里的设置覆盖掉
      parse_and_exec_command_in_gtk_thread(g_strdup(locate_all_addons[1]), FALSE, match_cmd_str_array_with_interpretors(locate_all_addons), child_attribs);
    }
+#endif
+#ifdef PythonEmbedded
+   startPythonEmbedding();
 #endif
    if (initDir == NULL) initDir = cwd;
    set_rfm_curPath(initDir);
