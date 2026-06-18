@@ -5708,21 +5708,22 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
 	} //end if (len == 0)
  switchToReadlineThread:
         g_free (readlineResult); // Free the original buffer
-	assert(startWithTerm()|| !from_stdin_readline);
+        RFM_ChildAttribs childAttribsCopyForCondition; memcpy(&childAttribsCopyForCondition, childAttribs, sizeof(RFM_ChildAttribs)); //下面的代码主要就是各种 exec_command, 以及可能要 new readlineThread. 保不齐某个前面的 exec_command 就把 childAttribs 给 free 了，后面用childAttrib->点判断就crash了，所以这里用了一份浅拷贝。按理说最前面的exec_command 前的判断不需要，这里就是为了整齐统一，判断里全用这个变量。至于用作传入参数的 childAttribs, 理论上这些exec_command 函数都是互斥的，只有一个会执行，多个执行就是bug了，所以传参的时候还是用原始的childAttribs
+        assert(startWithTerm()|| !from_stdin_readline);
           // Use effective_cmd_interpretor_index for execution calls
-	  if (childAttribs->SearchResultAsInput && !childAttribs->newVT_with_proxy) exec_stdin_command_with_SearchResultAsInput(childAttribs->readlineResultString, from_stdin_readline, childAttribs->cmd_interpretor, childAttribs);//c语言推荐的做法是变量free了以后置NULL,但这里exec_stdin_command_with_SearchResultAsInput中异步的g_spawn_返回false后才free childAttribs, 成功得话要等异步callback得话才free childAttribs, 所以这里没法判断是否置NULL。TODO：好的做法似乎应该是传入 &childAttribs, 甚至 free_child_attribs 函数就应该改成接收 &childAttribs 参数， free完后就立刻就地置NULL
-	  else if (((exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread || !from_stdin_readline) && !childAttribs->execStdinCmdInNewVT)
+	  if (childAttribsCopyForCondition.SearchResultAsInput && !childAttribsCopyForCondition.newVT_with_proxy) exec_stdin_command_with_SearchResultAsInput(childAttribs->readlineResultString, from_stdin_readline, childAttribs->cmd_interpretor, childAttribs);//c语言推荐的做法是变量free了以后置NULL,但这里exec_stdin_command_with_SearchResultAsInput中异步的g_spawn_返回false后才free childAttribs, 成功得话要等异步callback得话才free childAttribs, 所以这里没法判断是否置NULL。TODO：好的做法似乎应该是传入 &childAttribs, 甚至 free_child_attribs 函数就应该改成接收 &childAttribs 参数， free完后就立刻就地置NULL
+	  else if (((exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread || !from_stdin_readline) && !childAttribsCopyForCondition.execStdinCmdInNewVT)
 		   || (current_stdin_cmd_interpretor_pointer==cmd_interpretor_pointer //这一行排除了在命令提示符下单纯输入 d>  b> 等切换cmd_interpretor的情况，这种情况下，不在这里执行 exec_stdin_command, 也就不会free childattribs, 而是需要g_thread_new readlineThread, 参见下面g_thread_new前条件判断
-		       && childAttribs->cmd_interpretor->customCallBackFunc && !childAttribs->execStdinCmdInNewVT) ){ //这一行条件用来判断需要使用customCallBackFunction来处理 exec_stdin_command 的输出的情况，比如AI LLM返回的内容，这种情况下，g_spawn_wrapper 用异步，exec_stdin_command 会很早返回，但g_spawn_wrapper 还没完成，为了避免争夺终端模拟器，这时不能开始readline,所以就暂时不要 g_thread_new readline,在 g_spawn_wrapper 的异步callback里面再考虑 g_thread_new readline。另外这一行判断也是保证此时exec_stdin_command在gtk thread里执行，否则在readline thread里执行得话，就不方便控制exec_stdin_command 中g_spawn_wrapper 实际callback完成后才调用 readline函数了。注意之一行判断条件在下面 g_thread_new readline 前也有使用
-	    if (childAttribs->readlineResultString){
+		       && childAttribsCopyForCondition.cmd_interpretor->customCallBackFunc && !childAttribsCopyForCondition.execStdinCmdInNewVT) ){ //这一行条件用来判断需要使用customCallBackFunction来处理 exec_stdin_command 的输出的情况，比如AI LLM返回的内容，这种情况下，g_spawn_wrapper 用异步，exec_stdin_command 会很早返回，但g_spawn_wrapper 还没完成，为了避免争夺终端模拟器，这时不能开始readline,所以就暂时不要 g_thread_new readline,在 g_spawn_wrapper 的异步callback里面再考虑 g_thread_new readline。另外这一行判断也是保证此时exec_stdin_command在gtk thread里执行，否则在readline thread里执行得话，就不方便控制exec_stdin_command 中g_spawn_wrapper 实际callback完成后才调用 readline函数了。注意之一行判断条件在下面 g_thread_new readline 前也有使用
+	    if (childAttribsCopyForCondition.readlineResultString){
 	           childAttribs->exec_stdin_command_in_gtk_thread = TRUE;//因为上面的组合判断条件越来越复杂了，不方便把等价条件放入readlineInSeperateThread; 并且exec_stdin_command中调用的g_spawn_wrapper可能是异步的，也不能直接在这里释放childAttribs并置NULL,所以这里添加了一个标志属性简化代码
 		   exec_stdin_command_in_gtk_thread = TRUE;//这个在后面判断是否把childAttribs传递到readline thread 时使用，因为上面childAttribs可能已经在下面一行 exec_stdin_command 中释放了，不能再传到readline thread 里
 	           g_debug("exec_stdin_command in parse_and_exec_command_in_gtk_thread");
 		   ret = exec_stdin_command(childAttribs->readlineResultString, childAttribs->cmd_interpretor, childAttribs);
 	    }
           }
-          if ((childAttribs->execStdinCmdInNewVT) && childAttribs->readlineResultString) {
-	      if (childAttribs->newVT_with_proxy){
+          if ((childAttribsCopyForCondition.execStdinCmdInNewVT) && childAttribsCopyForCondition.readlineResultString) {
+	      if (childAttribsCopyForCondition.newVT_with_proxy){
 	          childAttribs->exec_stdin_command_in_gtk_thread = TRUE; // prevent childAttribs from being passed to readline thread below
 		  exec_stdin_command_in_gtk_thread = TRUE;//这个在后面判断是否把childAttribs传递到readline thread 时使用，因为上面childAttribs可能已经在下面一行 exec_stdin_command_in_new_VT_with_proxy 中释放了，childAttribs->exec_stdin_command_in_gtk_thread 不能再用在判断条件里, deepseekv4pro写的代码里没有考虑到这一点，它只加了上面那行。我在前几行类似的地方加了注释，是deepseek读代码不看注释吗，还是这是细微的，不常见的逻辑，被AI忽视了？
 	          exec_stdin_command_in_new_VT_with_proxy(childAttribs->readlineResultString, childAttribs->cmd_interpretor, childAttribs);
@@ -5732,18 +5733,18 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
           // Pass the original readlineResultString (potentially NULL if handled by builtin) to the next thread
           // The next thread will use the global current_stdin_cmd_interpretor for its prompt
 #ifdef reedline
-          if ((!childAttribs->SearchResultAsInput || childAttribs->newVT_with_proxy) && (
+          if ((!childAttribsCopyForCondition.SearchResultAsInput || childAttribsCopyForCondition.newVT_with_proxy) && (
 				       current_stdin_cmd_interpretor_pointer!=cmd_interpretor_pointer // 在本函数开头运行current_stdin_cmd_interpretor_pointer = &(stdin_cmd_interpretors[i]) 或 current_stdin_cmd_interpretor_pointer = new_cmd_interpretor, 接着 goto switchToReadlineThread 时，满足此行条件。
 				       || !ret
-				       || !(childAttribs->cmd_interpretor->customCallBackFunc && !childAttribs->execStdinCmdInNewVT))) {
+				       || !(childAttribsCopyForCondition.cmd_interpretor->customCallBackFunc && !childAttribsCopyForCondition.execStdinCmdInNewVT))) {
 #endif
 #ifdef GNU_readline
-          if (childAttribs->readlineResultString==NULL || ((!childAttribs->SearchResultAsInput || childAttribs->newVT_with_proxy) && from_stdin_readline && (
+          if (childAttribsCopyForCondition.readlineResultString==NULL || ((!childAttribsCopyForCondition.SearchResultAsInput || childAttribsCopyForCondition.newVT_with_proxy) && from_stdin_readline && (
 							      current_stdin_cmd_interpretor_pointer!=cmd_interpretor_pointer
 							      || !ret
-							      || !(childAttribs->cmd_interpretor->customCallBackFunc && !childAttribs->execStdinCmdInNewVT)))) {
+							      || !(childAttribsCopyForCondition.cmd_interpretor->customCallBackFunc && !childAttribsCopyForCondition.execStdinCmdInNewVT)))) {
 #endif
-              if (window && !childAttribs->parse_and_exec_stdin_command_in_gtk_thread_called_nested_so_do_not_new_readlineThread_afterwards && readlineThread==NULL) readlineThread=g_thread_new("readline", readlineInSeperateThread, (from_stdin_readline && !exec_stdin_command_in_gtk_thread)?childAttribs:NULL);//这里exec_stdin_command 走OpenHarness分支的时候，执行OH /quit命令完了也会new thread, 所以在这个commit里加上readlineThread==NULL 判断，其实不论如何，这个判断都应该加的，只是之前似乎没遇到问题
+              if (window && !childAttribsCopyForCondition.parse_and_exec_stdin_command_in_gtk_thread_called_nested_so_do_not_new_readlineThread_afterwards && readlineThread==NULL) readlineThread=g_thread_new("readline", readlineInSeperateThread, (from_stdin_readline && !exec_stdin_command_in_gtk_thread)?childAttribs:NULL);//这里exec_stdin_command 走OpenHarness分支的时候，执行OH /quit命令完了也会new thread, 所以在这个commit里加上readlineThread==NULL 判断，其实不论如何，这个判断都应该加的，只是之前似乎没遇到问题
           }else g_debug("skip new readline thread at the end of parse_and_exec_command_in_gtk_thread");
 
         return ret;
