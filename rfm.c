@@ -840,7 +840,7 @@ typedef struct {
   RFM_ADDON_RESOURCE_TYPE * resource_managed_by_addon;
   enum RFM_ADDON_TYPE addon_type;
   void *addon_so_handle;
-  void (*addon_enter_func)(gchar*);
+  int (*addon_enter_func)(gchar*);
   void (*addon_leave_func)(void);
   gchar *addon_c_fullpath;
   gchar *addon_so_fullpath;
@@ -7846,7 +7846,7 @@ static void load_addon(CALLER_OWN char* addon_fullpath){
             goto cleanup;
         } else if (addon->addon_enter_func){
             g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Calling %s from %s", RFM_ADDON_ENTER_FUNC, addon->addon_so_fullpath);
-            (*(addon->addon_enter_func))(addon_dir); //call enter function
+            if ((*(addon->addon_enter_func))(addon_dir)){ //call enter function
 	    g_hash_table_insert(addons, strdup(addon->addon_c_fullpath), addon);
 	    g_hash_table_insert(addons_hash, addon->addon_hash, addon);
 	    g_hash_table_insert(addons_filename, addon->addon_base_filename, addon);
@@ -7855,6 +7855,10 @@ static void load_addon(CALLER_OWN char* addon_fullpath){
 	    g_debug("addons size after loading:%d",g_hash_table_size(addons));
 	    g_free(addon_dir);
 	    return; // 成功call enter funtion 就不要cleanup, unload 完再cleanup
+	    }else {
+	      g_warning("插件未加载，请检查 %s 文件 %s 函数返回值类型是否是int(插件接口升级了，插件代码可能未更新，返回值的类型不匹配是 C 语言的未定义行为，结果随机),返回0表示不能加载，非零表示可以加载", addon_fullpath, RFM_ADDON_ENTER_FUNC);
+	      goto cleanup;
+	    }
         } else {
              g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Function %s not found in %s (optional).", RFM_ADDON_ENTER_FUNC, addon->addon_so_fullpath);
         }
