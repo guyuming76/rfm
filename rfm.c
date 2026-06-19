@@ -4135,18 +4135,14 @@ static void exec_stdin_command_in_new_VT_with_proxy(GString * readlineResultStri
     }
   }
 
-  // 4. Spawn the terminal emulator via cmdTransformer
-  child_attribs->RunCmd = cmd_interpretor_pointer->cmdTransformer(redirected_cmd->str, TRUE);
-  g_string_free(redirected_cmd, TRUE);
+  // 4. Start the proxy thread
+  proxy->thread = g_thread_new("newTermProxy", newTermProxy_thread, proxy);
 
-  child_attribs->runOpts = G_SPAWN_STDOUT_TO_DEV_NULL | G_SPAWN_STDERR_TO_DEV_NULL | G_SPAWN_STDIN_FROM_DEV_NULL;
-  child_attribs->spawn_async = TRUE;
-  g_spawn_wrapper_(NULL, NULL, child_attribs);
+  // 5.
+  exec_stdin_command_in_new_VT(redirected_cmd, cmd_interpretor_pointer, child_attribs);
 
   g_debug("exec_stdin_command_in_new_VT_with_proxy(%s, cmd_interpretor name:%s)", cmd_str, cmd_interpretor_pointer->name);
 
-  // 5. Start the proxy thread
-  proxy->thread = g_thread_new("newTermProxy", newTermProxy_thread, proxy);
 
   // 6. Add to global list
   g_mutex_lock(&newTermProxies_mutex);
