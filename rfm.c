@@ -840,7 +840,7 @@ typedef struct {
   RFM_ADDON_RESOURCE_TYPE * resource_managed_by_addon;
   enum RFM_ADDON_TYPE addon_type;
   void *addon_so_handle;
-  int (*addon_enter_func)(gchar*);
+  gboolean (*addon_enter_func)(gchar*);
   void (*addon_leave_func)(void);
   gchar *addon_c_fullpath;
   gchar *addon_so_fullpath;
@@ -7834,30 +7834,30 @@ static void load_addon(CALLER_OWN char* addon_fullpath){
 	    goto cleanup;
 	}
 
-        // Find and call enter function
-        addon->addon_enter_func = dlsym(addon->addon_so_handle, RFM_ADDON_ENTER_FUNC);
+        // Find and call enter function，函数改名了，怕插件里面没改，所以新旧两个名称都试一下
+        addon->addon_enter_func = dlsym(addon->addon_so_handle, RFM_ADDON_ENTER_FUNC);//新名字优先级高
         dlsym_error = dlerror();
-        if (dlsym_error) {
-            g_warning("dlsym failed for %s in %s: %s", RFM_ADDON_ENTER_FUNC, addon->addon_so_fullpath, dlsym_error);
+        //dlsym失败‌：如果函数未能找到指定的符号，它将返回 NULL。此时，你可以通过 dlerror() 函数获取错误信息; 如果 dlsym 执行成功，紧接着调用 dlerror 会返回 NULL
+        void (*addon_enter_func_deprecated)(gchar*) = (dlsym_error || !addon->addon_enter_func)?  dlsym(addon->addon_so_handle, RFM_ADDON_ENTER_FUNC_deprecated) : NULL; //新名字没找到找旧名字
+        dlsym_error = dlerror();
+        if (!addon->addon_enter_func && dlsym_error) {//旧名字也没找到就警告，但警告里说的是新名字没找到
+            g_warning("dlsym failed for %s in %s, addon not loadded", RFM_ADDON_ENTER_FUNC, addon->addon_so_fullpath);
             goto cleanup;
-        } else if (addon->addon_enter_func){
-            g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Calling %s from %s", RFM_ADDON_ENTER_FUNC, addon->addon_so_fullpath);
-            if ((*(addon->addon_enter_func))(addon_dir)){ //call enter function
-	    g_hash_table_insert(addons, strdup(addon->addon_c_fullpath), addon);
-	    g_hash_table_insert(addons_hash, addon->addon_hash, addon);
-	    g_hash_table_insert(addons_filename, addon->addon_base_filename, addon);
-	    append_addon_treeviewColumns(addon,TRUE,TRUE);
-	    regenerate_merged_menu_and_toolbars();
-	    g_debug("addons size after loading:%d",g_hash_table_size(addons));
-	    g_free(addon_dir);
-	    return; // 成功call enter funtion 就不要cleanup, unload 完再cleanup
-	    }else {
-	      g_warning("插件未加载，请检查 %s 文件 %s 函数返回值类型是否是int(插件接口升级了，插件代码可能未更新，返回值的类型不匹配是 C 语言的未定义行为，结果随机),返回0表示不能加载，非零表示可以加载", addon_fullpath, RFM_ADDON_ENTER_FUNC);
-	      goto cleanup;
-	    }
-        } else {
-             g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Function %s not found in %s (optional).", RFM_ADDON_ENTER_FUNC, addon->addon_so_fullpath);
         }
+	if (addon->addon_enter_func && !(*(addon->addon_enter_func))(addon_dir)){
+            g_warning("Calling %s from %s failed, addon not loaded", RFM_ADDON_ENTER_FUNC, addon->addon_so_fullpath);
+            goto cleanup;
+	}
+	if (!addon->addon_enter_func && addon_enter_func_deprecated && !dlsym_error) (*(addon_enter_func_deprecated))(addon_dir);
+
+	g_hash_table_insert(addons, strdup(addon->addon_c_fullpath), addon);
+	g_hash_table_insert(addons_hash, addon->addon_hash, addon);
+	g_hash_table_insert(addons_filename, addon->addon_base_filename, addon);
+	append_addon_treeviewColumns(addon,TRUE,TRUE);
+	regenerate_merged_menu_and_toolbars();
+	g_debug("addons size after loading:%d",g_hash_table_size(addons));
+	g_free(addon_dir);
+	return; // 成功call enter funtion 就不要cleanup, unload 完再cleanup
     } else {
          g_log(RFM_LOG_ADDON, G_LOG_LEVEL_DEBUG, "No local extension file %s found.", addon->addon_c_fullpath);
     }
