@@ -342,7 +342,7 @@ static gboolean startWithTerm();
 static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs);
 static void ensure_foreground_process(gboolean set_foreground);
 static void ReadFromPipeStdinIfAny(char *fd, RFM_ChildAttribs *childAttribs);
-static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *child_attribs);
+void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *child_attribs);
 static void exec_stdin_command_in_new_VT_with_proxy(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *child_attribs);
 static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *childAttribs);
 static void g_spawn_async_callback_to_new_readline_thread(RFM_ChildAttribs *child_attribs);
@@ -4069,7 +4069,7 @@ static void add_history_after_stdin_command_execution(GString * readlineResultSt
           g_string_free(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution,TRUE);
 }
 
-static void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *child_attribs){
+void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *child_attribs){
   if (cmd_interpretor_pointer->cmdTransformer){
 	      // this child_attribs will be freed by g_spawn_wrapper call tree
 	      child_attribs->RunCmd = cmd_interpretor_pointer->cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str, TRUE);
@@ -5729,15 +5729,17 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
           // The next thread will use the global current_stdin_cmd_interpretor for its prompt
 #ifdef reedline
           if ((!childAttribsCopyForCondition.SearchResultAsInput || childAttribsCopyForCondition.newVT_with_proxy) && (
-				       current_stdin_cmd_interpretor_pointer!=cmd_interpretor_pointer // 在本函数开头运行current_stdin_cmd_interpretor_pointer = &(stdin_cmd_interpretors[i]) 或 current_stdin_cmd_interpretor_pointer = new_cmd_interpretor, 接着 goto switchToReadlineThread 时，满足此行条件。
-				       || !ret
-				       || !(childAttribsCopyForCondition.cmd_interpretor->customCallBackFunc && !childAttribsCopyForCondition.execStdinCmdInNewVT))) {
+				       current_stdin_cmd_interpretor_pointer!=cmd_interpretor_pointer //切换命令解释器  // 在本函数开头运行current_stdin_cmd_interpretor_pointer = &(stdin_cmd_interpretors[i]) 或 current_stdin_cmd_interpretor_pointer = new_cmd_interpretor, 接着 goto switchToReadlineThread 时，满足此行条件。
+				       || !ret //命令失败
+				       || !childAttribsCopyForCondition.cmd_interpretor->customCallBackFunc //不是 OpenHarness 的命令解释器（OH 命令解释器有 customcallbackfunc）
+				       || childAttribsCopyForCondition.execStdinCmdInNewVT)) { //新终端打开
 #endif
 #ifdef GNU_readline
           if (childAttribsCopyForCondition.readlineResultString==NULL || ((!childAttribsCopyForCondition.SearchResultAsInput || childAttribsCopyForCondition.newVT_with_proxy) && from_stdin_readline && (
 							      current_stdin_cmd_interpretor_pointer!=cmd_interpretor_pointer
 							      || !ret
-							      || !(childAttribsCopyForCondition.cmd_interpretor->customCallBackFunc && !childAttribsCopyForCondition.execStdinCmdInNewVT)))) {
+							      || !childAttribsCopyForCondition.cmd_interpretor->customCallBackFunc
+							      || childAttribsCopyForCondition.execStdinCmdInNewVT))) {
 #endif
               if (window && !childAttribsCopyForCondition.parse_and_exec_stdin_command_in_gtk_thread_called_nested_so_do_not_new_readlineThread_afterwards && readlineThread==NULL) readlineThread=g_thread_new("readline", readlineInSeperateThread, (from_stdin_readline && !childAttribsCopyForCondition.exec_stdin_command_in_gtk_thread)?childAttribs:NULL);//这里exec_stdin_command 走OpenHarness分支的时候，执行OH /quit命令完了也会new thread, 所以在这个commit里加上readlineThread==NULL 判断，其实不论如何，这个判断都应该加的，只是之前似乎没遇到问题
           }else g_debug("skip new readline thread at the end of parse_and_exec_command_in_gtk_thread");
