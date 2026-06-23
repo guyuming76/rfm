@@ -420,6 +420,7 @@ static char SearchResultColumnSeperator[32]={':','-','-',':', 0}; //this is the 
 static const RFM_Thumbnailer thumbnailers[] = {
     /* mime root      mime sub type    filenameSuffix    thumbCmd          check_tEXt */
     {"image",         "*",             NULL,             NULL,             TRUE  },
+    {"image",         "webp",          NULL,             ffmpegThumb,      TRUE  },
     {"video",         "mp4",           NULL,             ffmpegThumb,      TRUE  },
     //{ "application",  "dicom",       NULL,             dcmThumb     },
     {"application",   "zip",           ".ggb",           geogebraThumb,    FALSE },
