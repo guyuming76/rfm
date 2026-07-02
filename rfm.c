@@ -5544,8 +5544,10 @@ static void combine_command_with_selected_files_and_setenv(CALLER_OWN GString* r
 
 static void CancelReadInput(RFM_ChildAttribs* childAttribs) {
 #ifdef reedline
-  reedline_interrupt(reedline_handle);//下面g_thread_join 从效果上相当于 reedline_interrupt 是同步的
-  if (readlineThread) { g_thread_join(readlineThread); g_debug("g_thread_join finished for readlineThread %p when !from_stdin_readline",readlineThread);readlineThread=NULL; }//we won't have more than one readlineThread running at the same time since we join before new thread here
+  if (readlineThread) {
+    reedline_interrupt(reedline_handle);//下面g_thread_join 从效果上相当于 reedline_interrupt 是同步的
+    g_thread_join(readlineThread); g_debug("g_thread_join finished for readlineThread %p when !from_stdin_readline",readlineThread);readlineThread=NULL;
+  }//we won't have more than one readlineThread running at the same time since we join before new thread here
 #endif
 #ifdef GNU_readline
   //rl_done = 77; //77这个数没啥特别意义，AI说只要非零就可以，例子给的是1, 我怕有冲突，就设了个特别的数，以便可以比较，知道是这里设的
