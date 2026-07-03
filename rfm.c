@@ -89,6 +89,22 @@ static void startPythonEmbedding(){
             if (PyErr_Occurred()) PyErr_Print();
   } else {
     g_debug("Python embeding initialized successfully");// 添加详细诊断信息
+    /* 如果 rfm 启动时 shell 环境已有 VIRTUAL_ENV（用户先激活了虚拟环境），
+     * 将其 site-packages 加入 sys.path。嵌入式 Python 不会自动读取
+     * VIRTUAL_ENV 环境变量，需要手动处理。 */
+    {
+        const char *venv = getenv("VIRTUAL_ENV");
+        if (venv) {
+            gchar *cmd = g_strdup_printf(
+                "import sys, glob, os\n"
+                "sp = glob.glob(os.path.join('%s', 'lib', 'python3*', 'site-packages'))\n"
+                "if sp: sys.path.insert(0, sp[0])\n",
+                venv);
+            PyRun_SimpleString(cmd);
+            g_free(cmd);
+            printf("Added VIRTUAL_ENV site-packages from: %s\n", venv);
+        }
+    }
     PyEval_InitThreads(); // 启用线程支持,没这个新线程运行pyftpdlib 服务客户端就连不上
     PyEval_SaveThread(); // 释放GIL
   }
