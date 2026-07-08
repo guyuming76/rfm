@@ -2929,6 +2929,9 @@ static void item_activated(GtkWidget *icon_view, GtkTreePath *tree_path, gpointe
       // 在合并数组中查找匹配的菜单项
       for (guint i = 0; i < MergedFilemenu->len; i++) {
         RFM_MenuItem *action = (RFM_MenuItem *)g_ptr_array_index(MergedFilemenu, i);
+        /* filenameSuffix must also match (same logic as show_hide_file_menu_item) */
+        if (action->filenameSuffix && !MATCH_FILENAME_SUFFIX_OR_PATH(fileAttributes->path, action->filenameSuffix))
+          continue;
         if (SearchResultViewInsteadOfDirectoryView && childAttribsForCurrentDisplayingSearchResult && childAttribsForCurrentDisplayingSearchResult->SearchResultTypePointer && g_strcmp0(action->OrSearchResultType, childAttribsForCurrentDisplayingSearchResult->SearchResultTypePointer->name) == 0){
           index_of_default_file_activation_action_based_on_mime_or_searchresultType = i;
           break;
