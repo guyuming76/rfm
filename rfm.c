@@ -124,11 +124,6 @@ static PyObject *pFactoryClass=NULL;
 static PyObject *p_ftp_manager=NULL;
 static PyObject *p_http_manager=NULL;
 
-/* //OpenHarness has been moved to a global addon (OpenHarness.rfm_addon.c). */
-/* static void cmdOpenHarness(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution){ */
-/*     printf("OpenHarness is now a toolbar button. Click 'OpenHarness' or type 'oh>' to chat.\n"); */
-/* } */
-
 static void cmdStartShare(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution) {
     gint port = -1;
     gchar password[20] = {'p','a','s','s','w','o','r','d','\0'};
