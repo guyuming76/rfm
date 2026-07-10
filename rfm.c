@@ -984,20 +984,20 @@ static void free_child_attribs(FREE_FULL RFM_ChildAttribs *child_attribs)
    g_log(RFM_LOG_GSPAWN,G_LOG_LEVEL_DEBUG,"RFM_childAttribs %p free %s",child_attribs, child_attribs->no_free? "with no_free":"");
    if(child_attribs->no_free) return;
    if (child_attribs->RunCmd) g_strfreev(child_attribs->RunCmd);
-   free(child_attribs->stdOut); child_attribs->stdOut = NULL;
-   free(child_attribs->stdErr); child_attribs->stdErr = NULL;
-   free(child_attribs->total_stdOut); //TODO: 这里向别的地方一样，应该设成NULL的。当时我添加这行的时候，想不起来其他地方为啥还要置NULL,今天从上面日志发现同一个child_attribs 地址，有反复free的现象（从日志上下文看，应该是读取git信息相关操作），但只是同一个地址，还不能确定是同一个，否则下面 g_free(child_attribs) 为啥没有double free 错？
+   free(child_attribs->stdOut);
+   free(child_attribs->stdErr);
+   free(child_attribs->total_stdOut);
    free(child_attribs->total_stdErr);
-   g_free(child_attribs->name);   child_attribs->name = NULL;
-   g_strfreev(child_attribs->env);child_attribs->env = NULL;
+   g_free(child_attribs->name);
+   g_strfreev(child_attribs->env);
    g_list_free_full(child_attribs->fullpath_list_as_RunCmd_parameters, (GDestroyNotify)g_free);
    //how can we memcpy the content of customCallbackUserData and free it here?
    //g_free(child_attribs->customCallbackUserData);
-   g_free(child_attribs->workingDir); child_attribs->workingDir = NULL;
-   g_free(child_attribs->toolbar_button_or_filemenu_addon_dir); child_attribs->toolbar_button_or_filemenu_addon_dir = NULL;
-   g_free(child_attribs->cmd_interpretor_addon_dir); child_attribs->cmd_interpretor_addon_dir = NULL;
-   g_free(child_attribs->searchresulttype_addon_dir); child_attribs->searchresulttype_addon_dir = NULL;
-   g_free(child_attribs->rfmEditFilePath); child_attribs->rfmEditFilePath = NULL;
+   g_free(child_attribs->workingDir);
+   g_free(child_attribs->toolbar_button_or_filemenu_addon_dir);
+   g_free(child_attribs->cmd_interpretor_addon_dir);
+   g_free(child_attribs->searchresulttype_addon_dir);
+   g_free(child_attribs->rfmEditFilePath);
    g_free(child_attribs);
    //child_attribs->readlineResultString 在 add_history_after_stdin_command_execution 函数内 free, 因为child_attribs 在g_spawn_wrapper执行玩命令后就要free,但命令执行玩还要 add_history 呢。
 }
