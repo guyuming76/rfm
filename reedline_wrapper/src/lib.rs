@@ -2,7 +2,7 @@
 
 //这个程序做为库被rfm执行文件加载，接受rfm传入的补全函数指针，并调用
 
-use reedline::{ Prompt, PromptEditMode, PromptHistorySearch, EditCommand, Emacs, KeyCode, KeyModifiers,Reedline, Signal, ValidationResult, Validator, ReedlineEvent, FileBackedHistory, default_emacs_keybindings, Completer ,Suggestion, Span, ReedlineMenu, ColumnarMenu, MenuBuilder, CwdAwareHinter, DefaultCompleter, Result, LineBuffer, UndoBehavior, CompletionResult };
+use reedline::{ Prompt, PromptEditMode, PromptHistorySearch, EditCommand, Emacs, KeyCode, KeyModifiers,Reedline, Signal, ValidationResult, Validator, ReedlineEvent, FileBackedHistory, default_emacs_keybindings, Completer ,Suggestion, Span, ReedlineMenu, ColumnarMenu, MenuBuilder, CwdAwareHinter, DefaultCompleter, Result, LineBuffer, UndoBehavior, CompletionResult, RepaintSignal };
 use nu_ansi_term::{Color, Style};
 use libc::c_char;
 use std::ffi::{CStr, CString};
@@ -83,6 +83,16 @@ pub struct rfmFunctions {
     // 其他函数...
     pub g_idle_add_once_handle_escape:EscapeHandler,
     pub toggle_recursive_completion_fn:ToggleRecursiveCompletionFn,
+}
+
+// 全局标记：reedline 提示符中是否需要显示 * (表示有文件被选中)
+// 由 C 侧的 selectionChanged 和 cmd_handle_escape_key 更新
+static SELECTION_STAR: AtomicBool = AtomicBool::new(false);
+
+/// C 接口：设置提示符中是否显示选中标记 *
+#[no_mangle]
+pub extern "C" fn reedline_set_selection_star(show: libc::c_int) {
+    SELECTION_STAR.store(show != 0, Ordering::Relaxed);
 }
 
 // c 语言tab补全器，补全rfm当前选中文件
@@ -359,6 +369,7 @@ pub struct ReedlineHandle {
     inner: Reedline,
     history_path: PathBuf,
     break_signal: Arc<AtomicBool>,
+    repaint_signal: RepaintSignal,
 }
 
 #[no_mangle]
@@ -476,7 +487,7 @@ pub extern "C" fn reedline_create(rfm_functions: *const rfmFunctions) -> *mut Re
         .unwrap_or_else(|| ".rfm_reedline_history.txt".into());
 
     let history_result = FileBackedHistory::with_file(1000, history_path.clone());
-    let engine = match history_result {
+    let mut engine = match history_result {
         Ok(history) => engine_builder.with_history(Box::new(history)),
         Err(e) => {
             warn!("History load error: {}", e);
@@ -484,10 +495,15 @@ pub extern "C" fn reedline_create(rfm_functions: *const rfmFunctions) -> *mut Re
         }
     };
 
+    // 必须在 read_line 之前获取 repaint_signal。一旦持有该句柄，
+    // reedline 的输入循环会自动切换为轮询模式以检测异步 repaint 请求。
+    let repaint_signal = engine.repaint_signal();
+
     Box::into_raw(Box::new(ReedlineHandle {
         inner: engine,
         history_path, // 存储路径到句柄
         break_signal: break_signal.clone(),
+        repaint_signal,
     }))
 }
 
@@ -555,6 +571,18 @@ pub extern "C" fn reedline_interrupt(handle: *mut ReedlineHandle) {
     assert!(!handle.is_null());
     let handle = unsafe { &mut *handle };
     handle.break_signal.store(true, Ordering::Relaxed);
+}
+
+/// 异步请求 reedline 重绘提示符。
+/// 在 GTK 线程中调用（如 selectionChanged、cmd_handle_escape_key 之后），
+/// 无需打断当前 read_line 即可让提示符反映最新的选中状态。
+#[no_mangle]
+pub extern "C" fn reedline_request_repaint(handle: *mut ReedlineHandle) {
+    if handle.is_null() {
+        return;
+    }
+    let handle = unsafe { &*handle };
+    handle.repaint_signal.request_repaint();
 }
 
 #[no_mangle]
@@ -746,7 +774,13 @@ struct NoIndicatorPrompt {
 
 impl Prompt for NoIndicatorPrompt {
     fn render_prompt_left(&self) -> Cow<'_, str> {
-        Cow::Borrowed(&self.left)
+        let show_star = SELECTION_STAR.load(Ordering::Relaxed);
+        if show_star && !self.left.is_empty() {
+            let len = self.left.len();
+            Cow::Owned(format!("{}*{}", &self.left[..len - 1], &self.left[len - 1..]))
+        } else {
+            Cow::Borrowed(&self.left)
+        }
     }
     fn render_prompt_right(&self) -> Cow<'_, str> {
         Cow::Borrowed("")

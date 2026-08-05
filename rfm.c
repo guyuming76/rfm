@@ -2880,6 +2880,12 @@ static void selectionChanged(GtkWidget *view, gpointer user_data)
   g_debug("Number of view selection:%d",count);
 
   if (rfm_prePath!=NULL) { g_free(rfm_prePath); rfm_prePath=NULL; } //可能是因为 refresh_store 里 RFM_AUTOSELECT_OLDPWD_IN_VIEW 的情况，这里要清空。而 cd - 用的是环境变量OLDPWD,所以这里不影响。
+
+#ifdef reedline
+  // 通知 reedline 提示符更新选中状态（显示/隐藏 *）
+  reedline_set_selection_star(ItemSelected > 0);
+  if (reedline_handle) reedline_request_repaint(reedline_handle);
+#endif
 }
 
 // establish environmental varables for view columns
@@ -3390,6 +3396,11 @@ static void cmd_handle_escape_key() {
         } else {
             gtk_icon_view_unselect_all(GTK_ICON_VIEW(icon_or_tree_view));
         }
+#ifdef reedline
+        // 通知 reedline 提示符更新选中状态
+        reedline_set_selection_star(FALSE);
+        if (reedline_handle) reedline_request_repaint(reedline_handle);
+#endif
     } else if (escaped_selection != NULL) {
         // 没有选中文件且保存了之前选中的内容：恢复选中
         set_view_selection_list(icon_or_tree_view, treeview, escaped_selection);
@@ -3397,6 +3408,11 @@ static void cmd_handle_escape_key() {
         // 清空保存的选中内容
         g_list_free_full(escaped_selection, (GDestroyNotify)gtk_tree_path_free);
         escaped_selection = NULL;
+#ifdef reedline
+        // 通知 reedline 提示符更新选中状态
+        reedline_set_selection_star(TRUE);
+        if (reedline_handle) reedline_request_repaint(reedline_handle);
+#endif
     }
 }
 
@@ -4620,10 +4636,17 @@ static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs) {
 #else
     strcat(prompt, current_stdin_cmd_interpretor_pointer->prompt);
 #endif
-    //SearchResultTypeIndex=-1; //这个branch之前,一直在这里设成FALSE,没注意到有啥问题,但它改成数组索引后测试发现有race condition
+    // * 标记不再由 C 侧 bake 进 prompt 字符串，改由 reedline Rust 侧的
+    // NoIndicatorPrompt::render_prompt_left 根据 SELECTION_STAR 原子变量动态控制。
+    // 这样 repaint 时提示符能自动反映 GTK 窗口中最新的选中状态。
     if (keep_selection_on_view_across_refresh && In_refresh_store) strcat(prompt,exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread ? "?]":"?>");
+#ifdef reedline
+    else strcat(prompt,exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread ? "]":">");
+    reedline_set_selection_star(ItemSelected > 0);
+#else
     else if (ItemSelected==0) strcat(prompt,exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread ? "]":">");
     else strcat(prompt,exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread ? "*]":"*>");
+#endif
 
     if (OriginalReadlineResult)
 #ifdef reedline

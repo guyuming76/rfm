@@ -23,6 +23,10 @@ ReedlineHandle* reedline_create(const rfmFunctions * rfm_functions);
 // 读取一行输入 (返回的字符串需用 string_free 释放)
 char* reedline_readline(ReedlineHandle* handle, const char* prompt, const rfmFunctions * rfm_functions);
 void reedline_interrupt(ReedlineHandle* handle);
+// 异步请求 reedline 重绘提示符（用于 GTK 线程中选中状态变化后更新提示符的 * 标记）
+void reedline_request_repaint(ReedlineHandle* handle);
+// 设置提示符中是否显示选中标记 * （TRUE=显示, FALSE=不显示）
+void reedline_set_selection_star(gboolean show);
 // 释放字符串内存
 void string_free(char* s);
 // 销毁Reedline实例
