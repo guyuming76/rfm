@@ -2,7 +2,7 @@
 
 //这个程序做为库被rfm执行文件加载，接受rfm传入的补全函数指针，并调用
 
-use reedline::{ DefaultPrompt, DefaultPromptSegment, EditCommand, Emacs, KeyCode, KeyModifiers,Reedline, Signal, ValidationResult, Validator, ReedlineEvent, FileBackedHistory, default_emacs_keybindings, Completer ,Suggestion, Span, ReedlineMenu, ColumnarMenu, MenuBuilder, CwdAwareHinter, DefaultCompleter, Result, LineBuffer, UndoBehavior, CompletionResult };
+use reedline::{ Prompt, PromptEditMode, PromptHistorySearch, EditCommand, Emacs, KeyCode, KeyModifiers,Reedline, Signal, ValidationResult, Validator, ReedlineEvent, FileBackedHistory, default_emacs_keybindings, Completer ,Suggestion, Span, ReedlineMenu, ColumnarMenu, MenuBuilder, CwdAwareHinter, DefaultCompleter, Result, LineBuffer, UndoBehavior, CompletionResult };
 use nu_ansi_term::{Color, Style};
 use libc::c_char;
 use std::ffi::{CStr, CString};
@@ -14,6 +14,7 @@ use dirs::home_dir;
 use log::{warn, debug}; // 导入日志宏
 use glib_sys::{GPtrArray};
 use std::io::stdout;
+use std::borrow::Cow;
 use crossterm::execute;
 use crossterm::terminal::supports_keyboard_enhancement;
 use crossterm::event::{PushKeyboardEnhancementFlags, KeyboardEnhancementFlags, PopKeyboardEnhancementFlags};
@@ -502,9 +503,7 @@ pub extern "C" fn reedline_readline(
    let handle = unsafe { &mut *handle };
    let prompt_str = unsafe { CStr::from_ptr(prompt).to_string_lossy() };
    //let rfm_functions = unsafe { &*rfm_functions };
-   // 创建符合 Prompt trait 的 DefaultPrompt 对象
-   let left_prompt = DefaultPromptSegment::Basic(prompt_str.to_string());
-   let prompt_obj = DefaultPrompt::new(left_prompt, DefaultPromptSegment::Empty);
+   let prompt_obj = NoIndicatorPrompt { left: prompt_str.to_string() };
 
    // 启用 raw mode 和键盘增强协议
    // raw mode 让 reedline 能逐字符读取输入；键盘增强让 Menu/Ctrl+C 等组合键能正确识别
@@ -642,10 +641,7 @@ impl RfmEditor {
 	// 3. 将文件内容加载到编辑器缓冲区
         self.line_editor.set_line_buffer(line_buffer, UndoBehavior::CreateUndoPoint);
 	// 4. 创建编辑提示符
-	let prompt = DefaultPrompt::new(
-            DefaultPromptSegment::Basic("".to_string()),
-            DefaultPromptSegment::Basic("".to_string()),
-	);
+	let prompt = NoIndicatorPrompt { left: "".to_string() };
 	
 	// 5. 显示用户提示信息
 	println!("\x1b[33mCtrl+o save and exit; Ctrl+x exit without saving\x1b[0m");
@@ -722,5 +718,28 @@ pub extern "C" fn rfm_editor_edit_file(
             }
             0
         }
+    }
+}
+
+
+struct NoIndicatorPrompt {
+    left: String,
+}
+
+impl Prompt for NoIndicatorPrompt {
+    fn render_prompt_left(&self) -> Cow<'_, str> {
+        Cow::Borrowed(&self.left)
+    }
+    fn render_prompt_right(&self) -> Cow<'_, str> {
+        Cow::Borrowed("")
+    }
+    fn render_prompt_indicator(&self, _edit_mode: PromptEditMode) -> Cow<'_, str> {
+        Cow::Borrowed("")   // 关键：不返回任何指示符
+    }
+    fn render_prompt_multiline_indicator(&self) -> Cow<'_, str> {
+        Cow::Borrowed("")
+    }
+    fn render_prompt_history_search_indicator(&self, _hs: PromptHistorySearch) -> Cow<'_, str> {
+        Cow::Borrowed("")
     }
 }
