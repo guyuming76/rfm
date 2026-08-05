@@ -3372,6 +3372,7 @@ static gboolean view_column_header_clicked(GtkButton* column_header, GdkEvent *e
 }
 
 static void cmd_handle_escape_key() {
+    g_debug("cmd_handle_escape_key called in rfm.c");
     if (stdin_cmd_selection_list != NULL) {
         // 有选中文件：保存选中内容，然后取消选中
         // 先释放之前保存的选中内容
