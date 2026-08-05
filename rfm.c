@@ -3428,8 +3428,10 @@ static gboolean view_key_press(GtkWidget *widget, GdkEvent *event) {
   } else if (ek->keyval == GDK_KEY_Escape) {
     cmd_handle_escape_key();
     return TRUE;
+#ifndef reedline
   } else if (ek->keyval == GDK_KEY_Tab){
     g_message("This is the command window");
+#endif
   } else {
     for (guint i = 0; i < Merged_tool_buttons->len; i++) {
       RFM_ToolButton *button = (RFM_ToolButton*)g_ptr_array_index(Merged_tool_buttons, i);
