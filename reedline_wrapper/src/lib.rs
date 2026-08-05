@@ -497,39 +497,57 @@ pub const REEDLINE_INTERRUPTED: &'static str = "reedline_interrupted";
 pub extern "C" fn reedline_readline(
     handle: *mut ReedlineHandle,
     prompt: *const c_char,
-    _rfm_functions: *const rfmFunctions,
+    rfm_functions_ptr: *const rfmFunctions,
 ) -> *mut c_char {
    assert!(!handle.is_null());
    let handle = unsafe { &mut *handle };
    let prompt_str = unsafe { CStr::from_ptr(prompt).to_string_lossy() };
-   //let rfm_functions = unsafe { &*rfm_functions };
+   let rfm_functions = unsafe { &*rfm_functions_ptr };
    let prompt_obj = NoIndicatorPrompt { left: prompt_str.to_string() };
 
-   // 启用 raw mode 和键盘增强协议
-   // raw mode 让 reedline 能逐字符读取输入；键盘增强让 Menu/Ctrl+C 等组合键能正确识别
-   //let _ = enable_raw_mode();
-   if supports_keyboard_enhancement().unwrap_or(false) {
-       let _ = execute!(stdout(), PushKeyboardEnhancementFlags(KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES));
-   }
+   // read_line 在遇到 HostCommand (如 ExecuteHostCommand) 时会退出。
+   // 对于 "esc" 命令，我们在 reedline_wrapper 内部处理：
+   // 调用 rfm.c 的 cmd_handle_escape_key()，然后继续 readline 循环。
+   // 对于其他 HostCommand，返回命令字符串让 rfm.c 处理（兼容旧版行为）。
+   loop {
+       // 启用键盘增强协议（reedline 内部会做 raw_mode enter/exit）
+       if supports_keyboard_enhancement().unwrap_or(false) {
+           let _ = execute!(stdout(), PushKeyboardEnhancementFlags(KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES));
+       }
 
-   let result = handle.inner.read_line(&prompt_obj);
+       let result = handle.inner.read_line(&prompt_obj);
 
-   // 读取完成，恢复终端到 cooked mode，让 Ctrl+C 可以正常生成 SIGINT
-   if supports_keyboard_enhancement().unwrap_or(false) {
-       let _ = execute!(stdout(), PopKeyboardEnhancementFlags);
-   }
-   //let _ = disable_raw_mode();
+       // 恢复键盘增强协议设置
+       if supports_keyboard_enhancement().unwrap_or(false) {
+           let _ = execute!(stdout(), PopKeyboardEnhancementFlags);
+       }
 
-   match result {
-        Ok(Signal::Success(line)) => CString::new(line).unwrap().into_raw(),
-        Ok(Signal::CtrlD | Signal::CtrlC) => ptr::null_mut(), // 处理Ctrl-C/Ctrl-D
-        Ok(Signal::ExternalBreak(_line)) => CString::new(REEDLINE_INTERRUPTED).unwrap().into_raw(),
-        Ok(_) => ptr::null_mut(), // 处理其他 Signal 变体 (如 HostCommand)
-        Err(e) => {
-            warn!("Reedline error: {}", e);
-            ptr::null_mut()
+       match result {
+            Ok(Signal::Success(line)) => return CString::new(line).unwrap().into_raw(),
+            Ok(Signal::CtrlD | Signal::CtrlC) => return ptr::null_mut(),
+            Ok(Signal::ExternalBreak(_line)) => return CString::new(REEDLINE_INTERRUPTED).unwrap().into_raw(),
+            Ok(Signal::HostCommand(cmd)) => {
+                if cmd == "esc" {
+                    // 调用 rfm.c 的 cmd_handle_escape_key()
+                    (rfm_functions.g_idle_add_once_handle_escape)();
+                    // 继续 readline 循环，不退出
+                    debug!("HostCommand esc handled, continuing readline loop");
+                } else {
+                    // 其他 HostCommand (如 "u", "l", "r" 等) 返回给 rfm.c
+                    return CString::new(cmd).unwrap().into_raw();
+                }
+            }
+            Ok(_) => {
+                // Signal 是 non_exhaustive，处理未知变体
+                warn!("reedline_readline: unhandled Signal variant, returning NULL");
+                return ptr::null_mut();
+            }
+            Err(e) => {
+                warn!("Reedline error: {}", e);
+                return ptr::null_mut()
+            }
         }
-    }
+   }
 }
 
 #[no_mangle]
@@ -650,7 +668,7 @@ impl RfmEditor {
 	let mut saved = false;
 	loop {
             match self.line_editor.read_line(&prompt)? {
-		Signal::Success(command) => {
+		Signal::Success(command) | Signal::HostCommand(command) => {
                     match command.as_str() {
 			"save" => {
                             saved = self.save_file()?;
