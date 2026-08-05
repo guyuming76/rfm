@@ -543,7 +543,7 @@ pub extern "C" fn reedline_readline(
             Ok(Signal::CtrlD | Signal::CtrlC) => return ptr::null_mut(),
             Ok(Signal::ExternalBreak(_line)) => return CString::new(REEDLINE_INTERRUPTED).unwrap().into_raw(),
             Ok(Signal::HostCommand(cmd)) => {
-                if cmd == "esc" {
+                if cmd == "esc" {//在加入loop之前，reedline对于ESC键，走的是Signal::Success, rfm里有builtin command esc处理。后来走Signal::HostCommand，加入loop在reedline_wrapper内处理
                     // 调用 rfm.c 的 cmd_handle_escape_key()
                     (rfm_functions.g_idle_add_once_handle_escape)();
                     // 继续 readline 循环，不退出
