@@ -2,19 +2,20 @@
 
 //这个程序做为库被rfm执行文件加载，接受rfm传入的补全函数指针，并调用
 
-use reedline::{ DefaultPrompt, DefaultPromptSegment, EditCommand, Emacs, KeyCode, KeyModifiers,Reedline, Signal, ValidationResult, Validator, ReedlineEvent, FileBackedHistory, default_emacs_keybindings, Completer ,Suggestion, Span, ReedlineMenu, ColumnarMenu, MenuBuilder, CwdAwareHinter, DefaultCompleter, Result, LineBuffer, UndoBehavior };
+use reedline::{ DefaultPrompt, DefaultPromptSegment, EditCommand, Emacs, KeyCode, KeyModifiers,Reedline, Signal, ValidationResult, Validator, ReedlineEvent, FileBackedHistory, default_emacs_keybindings, Completer ,Suggestion, Span, ReedlineMenu, ColumnarMenu, MenuBuilder, CwdAwareHinter, DefaultCompleter, Result, LineBuffer, UndoBehavior, CompletionResult };
 use nu_ansi_term::{Color, Style};
 use libc::c_char;
 use std::ffi::{CStr, CString};
 use std::ptr;
+use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
 use std::path::{PathBuf, Path};
 use std::os::unix::fs::PermissionsExt;
 use dirs::home_dir;
 use log::{warn, debug}; // 导入日志宏
 use glib_sys::{GPtrArray};
-use std::io::{stdout, Write};
+use std::io::stdout;
 use crossterm::execute;
-use crossterm::terminal::{supports_keyboard_enhancement, enable_raw_mode, disable_raw_mode};
+use crossterm::terminal::supports_keyboard_enhancement;
 use crossterm::event::{PushKeyboardEnhancementFlags, KeyboardEnhancementFlags, PopKeyboardEnhancementFlags};
 // deepwiki 回答说 line 只包含光标前的字符串，光标及其后面字符都不包含，输入abcd,然后光标向左一道c下，则line只包含ab. 也就是说代码里检查cursor_and_after后面的部分貌似目前都没有用，但还是留着。
 fn context_for_cursor(line: &str, pos: usize, completion_start_pos: &mut usize) -> CString {
@@ -127,7 +128,7 @@ impl ShiftTabCompleter {
 }
 
 impl Completer for ShiftTabCompleter {
-    fn complete(&mut self, line: &str, pos: usize) -> Vec<Suggestion> {
+    fn complete(&mut self, line: &str, pos: usize) -> CompletionResult {
         // Toggle recursive completion mode
         (self.toggle_recursive_completion_fn)();
         
@@ -142,7 +143,7 @@ impl Completer for ShiftTabCompleter {
 }
 
 impl Completer for CCompleter {
-    fn complete(&mut self, line: &str, pos: usize) -> Vec<Suggestion> {
+    fn complete(&mut self, line: &str, pos: usize) -> CompletionResult {
         let mut count: i32 = 0;
         let before_cursor = &line[..pos];
         let _last_space_pos = before_cursor.rfind(' ').map(|p| p + 1).unwrap_or(0);
@@ -153,7 +154,7 @@ impl Completer for CCompleter {
             let result_ptr = (self.get_completion_fn)(context.as_ptr(), &mut count);
 
             if result_ptr.is_null() {
-                return vec![];
+                return CompletionResult::fresh(vec![]);
             }
 
             let result_array = &*result_ptr;
@@ -257,13 +258,13 @@ impl Completer for CCompleter {
                 }
             }
 
-            suggestions
+            CompletionResult::fresh(suggestions)
         }
     }
 }
 
 impl Completer for MenuCompleter {
-    fn complete(&mut self, line: &str, pos: usize) -> Vec<Suggestion> {
+    fn complete(&mut self, line: &str, pos: usize) -> CompletionResult {
         let mut count: i32 = 0;
         let before_cursor = &line[..pos];
         let _last_space_pos = before_cursor.rfind(' ').map(|p| p + 1).unwrap_or(0);
@@ -274,7 +275,7 @@ impl Completer for MenuCompleter {
             let result_ptr = (self.get_menu_completion_fn)(context.as_ptr(), &mut count);
 
             if result_ptr.is_null() {
-                return vec![];
+                return CompletionResult::fresh(vec![]);
             }
 
             let result_array = &*result_ptr;
@@ -310,7 +311,7 @@ impl Completer for MenuCompleter {
                 }
             }
 
-            suggestions
+            CompletionResult::fresh(suggestions)
         }
     }
 }
@@ -331,11 +332,11 @@ impl CombinedCompleter {
 }
 
 impl Completer for CombinedCompleter {
-    fn complete(&mut self, line: &str, pos: usize) -> Vec<Suggestion> {
+    fn complete(&mut self, line: &str, pos: usize) -> CompletionResult {
         // 1. 先调用 C 补全器
         let c_suggestions = self.c_completer.complete(line, pos);
 
-        if !c_suggestions.is_empty() {
+        if !c_suggestions.suggestions().is_empty() {
             return c_suggestions;
         }else{
 	    // 调用 reedline DefaultCompleter
@@ -356,6 +357,7 @@ impl Validator for AlwaysIncompleteValidator {
 pub struct ReedlineHandle {
     inner: Reedline,
     history_path: PathBuf,
+    break_signal: Arc<AtomicBool>,
 }
 
 #[no_mangle]
@@ -448,7 +450,9 @@ pub extern "C" fn reedline_create(rfm_functions: *const rfmFunctions) -> *mut Re
         ReedlineEvent::Menu("shift_tab_menu".to_string())
     );
 
+    let break_signal = Arc::new(AtomicBool::new(false));
     let engine_builder = Reedline::create()
+        .with_break_signal(break_signal.clone())
         .use_bracketed_paste(true) //复制粘贴处理 \r\n,需要terminal支持
         .with_menu(TAB_menu)
         .with_menu(MENU_menu)
@@ -482,6 +486,7 @@ pub extern "C" fn reedline_create(rfm_functions: *const rfmFunctions) -> *mut Re
     Box::into_raw(Box::new(ReedlineHandle {
         inner: engine,
         history_path, // 存储路径到句柄
+        break_signal: break_signal.clone(),
     }))
 }
 
@@ -491,7 +496,7 @@ pub const REEDLINE_INTERRUPTED: &'static str = "reedline_interrupted";
 pub extern "C" fn reedline_readline(
     handle: *mut ReedlineHandle,
     prompt: *const c_char,
-    rfm_functions: *const rfmFunctions,
+    _rfm_functions: *const rfmFunctions,
 ) -> *mut c_char {
    assert!(!handle.is_null());
    let handle = unsafe { &mut *handle };
@@ -519,7 +524,8 @@ pub extern "C" fn reedline_readline(
    match result {
         Ok(Signal::Success(line)) => CString::new(line).unwrap().into_raw(),
         Ok(Signal::CtrlD | Signal::CtrlC) => ptr::null_mut(), // 处理Ctrl-C/Ctrl-D
-        Ok(Signal::Interrupted) => CString::new(REEDLINE_INTERRUPTED).unwrap().into_raw(),
+        Ok(Signal::ExternalBreak(_line)) => CString::new(REEDLINE_INTERRUPTED).unwrap().into_raw(),
+        Ok(_) => ptr::null_mut(), // 处理其他 Signal 变体 (如 HostCommand)
         Err(e) => {
             warn!("Reedline error: {}", e);
             ptr::null_mut()
@@ -531,7 +537,7 @@ pub extern "C" fn reedline_readline(
 pub extern "C" fn reedline_interrupt(handle: *mut ReedlineHandle) {
     assert!(!handle.is_null());
     let handle = unsafe { &mut *handle };
-    handle.inner.interrupt();
+    handle.break_signal.store(true, Ordering::Relaxed);
 }
 
 #[no_mangle]
@@ -672,9 +678,10 @@ impl RfmEditor {
 			}
                     }
 		}
-		Signal::CtrlC | Signal::CtrlD | Signal::Interrupted => {
+		Signal::CtrlC | Signal::CtrlD | Signal::ExternalBreak(_) => {
                     break;
 		}
+                _ => {}
             }
 	}
 	

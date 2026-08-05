@@ -1,7 +1,7 @@
 //GPL-3 许可by guyuming
 
 //这个程序用于rfm(通过命令结尾&)打开的新的终端模拟器窗口内补全
-use reedline::{Completer, Reedline, Signal, Suggestion, Span, MenuBuilder, ColumnarMenu, ReedlineMenu, DefaultPrompt, DefaultPromptSegment, KeyCode, KeyModifiers, ReedlineEvent,default_emacs_keybindings,Emacs, FileBackedHistory};
+use reedline::{Completer, Reedline, Signal, Suggestion, Span, MenuBuilder, ColumnarMenu, ReedlineMenu, DefaultPrompt, DefaultPromptSegment, KeyCode, KeyModifiers, ReedlineEvent,default_emacs_keybindings,Emacs, FileBackedHistory, CompletionResult};
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 use std::env;
@@ -23,7 +23,7 @@ extern "C" {
 struct ReadlineCompleter;
 
 impl Completer for ReadlineCompleter {
-    fn complete(&mut self, line: &str, _pos: usize) -> Vec<Suggestion> {
+    fn complete(&mut self, line: &str, _pos: usize) -> CompletionResult {
         let mut suggestions = Vec::new();
         let context = CString::new(line).unwrap();
 
@@ -53,7 +53,7 @@ impl Completer for ReadlineCompleter {
                 libc::free(result_ptr as *mut _);
             }
         }
-        suggestions
+        CompletionResult::fresh(suggestions)
     }
 }
 
@@ -137,7 +137,7 @@ fn main() {
             Ok(Signal::CtrlC) => {
                 println!("");
             }
-            Ok(Signal::Interrupted) => {
+            Ok(Signal::ExternalBreak(_)) => {
                 println!("");
             }
             Err(err) => {
@@ -152,6 +152,7 @@ fn main() {
                     std::process::exit(2);
                 }
             }
+            Ok(_) => todo!()
         }
     //}
 }
