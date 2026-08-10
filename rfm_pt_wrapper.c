@@ -216,7 +216,15 @@ void pt_request_repaint(PtHandle* handle) {
 }
 
 void pt_set_selection_star(gboolean show) {
-    _call_python_void(pt_set_selection_star_func);
+    if (!pt_set_selection_star_func) return;
+    PyGILState_STATE gstate = PyGILState_Ensure();
+    PyObject *args = Py_BuildValue("(i)", show ? 1 : 0);
+    PyObject *result = PyObject_CallObject(pt_set_selection_star_func, args);
+    if (!result) PyErr_Print();
+    Py_XDECREF(result);
+    Py_DECREF(args);
+    PyGILState_Release(gstate);
+
     // 如果正在 readline 中，请求重绘
     _call_python_void(pt_request_repaint_func);
 }
