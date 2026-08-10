@@ -401,7 +401,9 @@ class RfmPromptToolkit:
             return None
 
     def interrupt(self):
-        """发送 SIGINT 以中断阻塞的 prompt()"""
+        """发送 SIGINT 以中断阻塞的 prompt()
+        注意：模块级 interrupt() 已设置 _sigint_received 标志，此处只负责发信号。"""
+        import os
         import signal
         os.kill(os.getpid(), signal.SIGINT)
 
@@ -437,51 +439,71 @@ class RfmPromptToolkit:
 
 _session_instance: RfmPromptToolkit = None
 
+# SIGINT 标志：由 signal handler 设置，readline() 读取后重置
+# signal handler 在 create_handle() 中安装（运行在主线程）
+_sigint_received = False
+
+
+def _sigint_handler(signum, frame):
+    """SIGINT 处理器 — 只设置标志位，不抛异常。
+    KeyboardInterrupt 由 CPython C 层 eval breaker 机制负责触发。"""
+    global _sigint_received
+    _sigint_received = True
+
 
 # ── C 可调用接口 ────────────────────────────────────────────
 
 
 def create_handle(history_path: str):
-    """初始化 session"""
+    """初始化 session。
+    在主线程中调用（pt_create → GTK main thread），在此安装 SIGINT handler。"""
     global _session_instance
     _ensure_prompt_toolkit()
     _session_instance = RfmPromptToolkit(history_path)
+
+    # 在主线程安装 SIGINT handler（signal.signal 主线程限制）
+    import signal
+    try:
+        signal.signal(signal.SIGINT, _sigint_handler)
+    except ValueError:
+        # 如果不在主线程（异常情况），忽略
+        logger.warning("Cannot install SIGINT handler (not in main thread)")
+
     return _session_instance
 
 
 def readline(prompt_text: str):
-    """阻塞读取一行"""
-    global _session_instance
+    """阻塞读取一行。
+    在 readline 线程中调用，不直接操作 signal。
+    通过模块级 _sigint_received 标志判断是否被 interrupt() 中断。"""
+    global _session_instance, _sigint_received
     if _session_instance is None:
         raise RuntimeError("RfmPromptToolkit not initialized. Call create_handle() first.")
 
-    import signal
-
-    old_handler = signal.getsignal(signal.SIGINT)
-    received_sigint = [False]
-
-    def _sigint_handler(signum, frame):
-        received_sigint[0] = True
-        # 不在此处 raise，让 prompt_toolkit 的事件循环自然终止
-
-    signal.signal(signal.SIGINT, _sigint_handler)
+    _sigint_received = False
 
     try:
         result = _session_instance.readline(prompt_text)
-        if received_sigint[0]:
+        if _sigint_received:
             return REEDLINE_INTERRUPTED
         if result is None:
             return None
         return result
-    finally:
-        signal.signal(signal.SIGINT, old_handler)
+    except KeyboardInterrupt:
+        if _sigint_received:
+            return REEDLINE_INTERRUPTED
+        return None
 
 
 def interrupt():
-    """中断当前 readline"""
-    global _session_instance
-    if _session_instance:
-        _session_instance.interrupt()
+    """中断当前 readline — 从 GTK 主线程调用。
+    通过 os.kill 发送 SIGINT 到进程，C 层信号处理器触发 eval breaker，
+    使 readline 线程中的 prompt() 抛出 KeyboardInterrupt。"""
+    global _sigint_received
+    _sigint_received = True
+    import os
+    import signal
+    os.kill(os.getpid(), signal.SIGINT)
 
 
 def request_repaint():

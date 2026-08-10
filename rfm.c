@@ -6342,9 +6342,15 @@ static int setup()
    }
    
    //block Ctrl+C. Without this, Ctrl+C in readline will terminate rfm. Now, if you run htop with readline, Ctrl+C only terminate htop. BTW, it's strange that i had tried sigprocmask, pthread_sigmask, and rl_clear_signals, and they didn't work.
+#if !defined(prompt_toolkit)
+   // prompt_toolkit 需要 SIGINT 正常工作：
+   // 1) 用户 Ctrl+C → prompt_toolkit 内部捕获并转为 KeyboardInterrupt
+   // 2) interrupt() 通过 os.kill(SIGINT) 中断阻塞的 prompt()
+   // Python 的 signal handler 已在 create_handle()（pt_create → GTK主线程）中安装
    ignore_SIGINT.sa_handler = SIG_IGN;
    ignore_SIGINT.sa_flags = 0;
    sigaction(SIGINT, &ignore_SIGINT,NULL);
+#endif
 
    return 0;
 }
