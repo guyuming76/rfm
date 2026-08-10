@@ -15,9 +15,11 @@ languageInclude = Chinese.h
 GitIntegration = -DGitIntegration
 #GitIntegration =
 
-READLINE_LIB = -Dreedline
+#READLINE_LIB = -Dreedline
 # if you don't use rust on your system, comment out, reedline and use GNU_readline below. you will lose the multiline editting and interactive menu selection with arrow keys in TAB completion in command input.
 #READLINE_LIB = -DGNU_readline
+READLINE_LIB = -Dprompt_toolkit
+# Use Python prompt_toolkit instead of Rust reedline. Requires PythonEmbedded and prompt_toolkit package.
 
 PythonEmbedded = -DPythonEmbedded
 #PythonEmbedded =

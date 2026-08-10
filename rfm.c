@@ -33,6 +33,9 @@
 #ifdef reedline
 #include "reedline_wrapper.h"
 #endif
+#ifdef prompt_toolkit
+#include "prompt_toolkit_wrapper.h"
+#endif
 #include <wordexp.h>
 #include <stdarg.h>
 #include <regex.h>
@@ -321,9 +324,14 @@ static char *rfm_historyFileLocation;
 static char *rfm_historyDirectory_FileLocation;//used by script rfmReadlineWithSpecificHistoryFile.sh 
 static gboolean showHelpOnStart = TRUE;
 static char* InheritedPrompt = "";
+#if defined(reedline) || defined(prompt_toolkit)
+static rfmFunctions functionPointersForReedlineWrapper;
+#endif
 #ifdef reedline
 static ReedlineHandle *reedline_handle = NULL;
-static rfmFunctions functionPointersForReedlineWrapper;
+#endif
+#ifdef prompt_toolkit
+static PtHandle *pt_handle = NULL;
 #endif
 
 #ifdef RFM_AddOn
@@ -331,7 +339,7 @@ gchar* Addon_Prompt = NULL;
 static NO_FREE char *AddOnStatus(RFM_FileAttributes* fileAttribs, guint ExtColumnHashTableIndex);
 static void unload_addon_filemenu_func();
 #endif
-#ifdef reedline
+#if defined(reedline) || defined(prompt_toolkit)
 static GPtrArray *rfm_filename_completion(const char *text, int *count);
 #endif
 static char* rfm_custom_filename_completion(const char *text, int state);
@@ -374,7 +382,7 @@ static void stdin_command_help(wordexp_t * parsed_msg, GString* readline_result_
 static void cmd_glog(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
 static gboolean cmd_GUI_cmd_wrapper(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
 static void cmd_setenv(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
-#ifdef reedline
+#if defined(reedline) || defined(prompt_toolkit)
 static gboolean In_rfm_editor = FALSE;
 static GPtrArray* rfm_editor_completion_based_on_search_result(char *text);
 static void rfmEdit(gchar* filepath);
@@ -522,7 +530,7 @@ static void call_g_dir_read_name_recursivly_to_get_dir_names_as_dimension_member
 static char **get_rfm_dimension_members_for_one_dimension(const char *dimension_localAddress, int start, int end);
 static void cmd_set_dimension_value_for_selected_files(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
 static void set_dimension_value_by_creating_soft_links_to_selected_files(gchar* dimNameAndValue[2]);
-#ifdef reedline
+#if defined(reedline) || defined(prompt_toolkit)
 static GPtrArray *rfm_completion_based_on_dimensions(char *text);
 #endif
 /******Dimension related definitions end******/
@@ -2881,10 +2889,16 @@ static void selectionChanged(GtkWidget *view, gpointer user_data)
 
   if (rfm_prePath!=NULL) { g_free(rfm_prePath); rfm_prePath=NULL; } //可能是因为 refresh_store 里 RFM_AUTOSELECT_OLDPWD_IN_VIEW 的情况，这里要清空。而 cd - 用的是环境变量OLDPWD,所以这里不影响。
 
+#if defined(reedline) || defined(prompt_toolkit)
+  // 通知 readline 提示符更新选中状态（显示/隐藏 *）
 #ifdef reedline
-  // 通知 reedline 提示符更新选中状态（显示/隐藏 *）
   reedline_set_selection_star(ItemSelected > 0);
   if (reedline_handle) reedline_request_repaint(reedline_handle);
+#endif
+#ifdef prompt_toolkit
+  pt_set_selection_star(ItemSelected > 0);
+  if (pt_handle) pt_request_repaint(pt_handle);
+#endif
 #endif
 }
 
@@ -3396,10 +3410,15 @@ static void cmd_handle_escape_key() {
         } else {
             gtk_icon_view_unselect_all(GTK_ICON_VIEW(icon_or_tree_view));
         }
+#if defined(reedline) || defined(prompt_toolkit)
+        // 通知 readline 提示符更新选中状态
 #ifdef reedline
-        // 通知 reedline 提示符更新选中状态
         reedline_set_selection_star(FALSE);
         if (reedline_handle) reedline_request_repaint(reedline_handle);
+#endif
+#ifdef prompt_toolkit
+        pt_set_selection_star(FALSE);
+#endif
 #endif
     } else if (escaped_selection != NULL) {
         // 没有选中文件且保存了之前选中的内容：恢复选中
@@ -3408,10 +3427,15 @@ static void cmd_handle_escape_key() {
         // 清空保存的选中内容
         g_list_free_full(escaped_selection, (GDestroyNotify)gtk_tree_path_free);
         escaped_selection = NULL;
+#if defined(reedline) || defined(prompt_toolkit)
+        // 通知 readline 提示符更新选中状态
 #ifdef reedline
-        // 通知 reedline 提示符更新选中状态
         reedline_set_selection_star(TRUE);
         if (reedline_handle) reedline_request_repaint(reedline_handle);
+#endif
+#ifdef prompt_toolkit
+        pt_set_selection_star(TRUE);
+#endif
 #endif
     }
 }
@@ -3428,7 +3452,7 @@ static gboolean view_key_press(GtkWidget *widget, GdkEvent *event) {
   } else if (ek->keyval == GDK_KEY_Escape) {
     cmd_handle_escape_key();
     return TRUE;
-#ifndef reedline
+#if !defined(reedline) && !defined(prompt_toolkit)
   } else if (ek->keyval == GDK_KEY_Tab){
     g_message("This is the command window");
 #endif
@@ -4073,6 +4097,9 @@ void save_current_history() {
 #ifdef reedline
     reedline_save_history(reedline_handle);
 #endif
+#ifdef prompt_toolkit
+    pt_save_history(pt_handle);
+#endif
 }
 
 void load_history_for_prompt() {
@@ -4273,7 +4300,7 @@ static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResult
             //InIconview 本来是作为showCondition函数，用来控制文件集合操作上下文菜单项只在IconView显示的，以便在导出当前查询结果的时候只导出文件路径列。但用下来发觉总是要切换到Iconview操作麻烦，又不想在config.h定义里面为文件菜单定义扩展出额外的属性列，就把InIconView函数放在func列作为标志使用，func列在file_menu_exec 函数中会被赋值给childAttribs->customCallBackFunc. 下面一句覆盖掉前先把标志转移到 export_filepath_only. 也许把这个InIconView函数名改为export_filepath_only函数更好，保留InIconview名字是考虑到也许将来别的地方会用到这个函数 
 
             childAttribs->customCallBackFunc =
-#ifdef reedline
+#if defined(reedline) || defined(prompt_toolkit)
                                                g_spawn_async_callback_to_new_readline_thread; //reedline 下，!from_stdin_readline的时候 readlineThread 也会被interrupt_readline掉
 #endif
 #ifdef GNU_readline
@@ -4622,7 +4649,7 @@ static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs) {
   if(startWithTerm() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)){
     // 在读取终端输入前，确保 rfm 在前台进程组
     ensure_foreground_process(FALSE);
-#ifdef reedline
+#if defined(reedline) || defined(prompt_toolkit)
     // rfmEdit 其实也可以只在readlineInSeperateThread 里完成 parse 和执行，而不是像现在那样和其他命令一样在gtk线程里面parse,然后绕一个圈子又回到readlineInSeperateThread里执行。现在这样，好处是可以利用 leading_space 消除，当前选中文件补全等 gtk 线程里面的功能，并且将来还有可能扩展
     if (childAttribs && childAttribs->rfmEditFilePath) { rfmEdit(childAttribs->rfmEditFilePath); free_child_attribs(childAttribs); }
 #endif
@@ -4642,16 +4669,21 @@ static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs) {
     // NoIndicatorPrompt::render_prompt_left 根据 SELECTION_STAR 原子变量动态控制。
     // 这样 repaint 时提示符能自动反映 GTK 窗口中最新的选中状态。
     if (keep_selection_on_view_across_refresh && In_refresh_store) strcat(prompt,exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread ? "?]":"?>");
-#ifdef reedline
+#if defined(reedline) || defined(prompt_toolkit)
     else strcat(prompt,exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread ? "]":">");
+#ifdef reedline
     reedline_set_selection_star(ItemSelected > 0);
+#endif
+#ifdef prompt_toolkit
+    pt_set_selection_star(ItemSelected > 0);
+#endif
 #else
     else if (ItemSelected==0) strcat(prompt,exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread ? "]":">");
     else strcat(prompt,exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread ? "*]":"*>");
 #endif
 
     if (OriginalReadlineResult)
-#ifdef reedline
+#if defined(reedline) || defined(prompt_toolkit)
         string_free(OriginalReadlineResult);
 #else
         g_free(OriginalReadlineResult);
@@ -4669,9 +4701,12 @@ static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs) {
 #ifdef reedline
            reedline_readline(reedline_handle, prompt, &functionPointersForReedlineWrapper)
 #endif
+#ifdef prompt_toolkit
+           pt_readline(pt_handle, prompt, &functionPointersForReedlineWrapper)
+#endif
 	   )==NULL){ g_debug("readline return null, %d",i++);}
 
-#ifdef reedline
+#if defined(reedline) || defined(prompt_toolkit)
       if (strcmp(OriginalReadlineResult, REEDLINE_INTERRUPTED)!=0)
 #endif
 #ifdef GNU_readline
@@ -5276,7 +5311,7 @@ static char **get_rfm_dimension_members_for_one_dimension(const char *dimension_
     }else return NULL;
 }
 
-#ifdef reedline
+#if defined(reedline) || defined(prompt_toolkit)
 static GPtrArray* rfm_editor_completion_based_on_search_result(char *text) {
   GPtrArray* ret = g_ptr_array_new();
   int ExtColumnHashTable_column_index_as_ret_row_index = 0;
@@ -5583,9 +5618,14 @@ static void combine_command_with_selected_files_and_setenv(CALLER_OWN GString* r
 }
 
 static void CancelReadInput(RFM_ChildAttribs* childAttribs) {
-#ifdef reedline
+#if defined(reedline) || defined(prompt_toolkit)
   if (readlineThread) {
+#ifdef reedline
     reedline_interrupt(reedline_handle);//下面g_thread_join 从效果上相当于 reedline_interrupt 是同步的
+#endif
+#ifdef prompt_toolkit
+    pt_interrupt(pt_handle);
+#endif
     g_thread_join(readlineThread); g_debug("g_thread_join finished for readlineThread %p when !from_stdin_readline",readlineThread);readlineThread=NULL;
   }//we won't have more than one readlineThread running at the same time since we join before new thread here
 #endif
@@ -5734,7 +5774,7 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
               wordexp_t parsed_msg;
 	      int wordexp_retval = wordexp(readlineResult,&parsed_msg,0);
 	      if (wordexp_retval==0 && parsed_msg.we_wordc>0 && (
-#ifdef reedline
+#if defined(reedline) || defined(prompt_toolkit)
 					parse_rfmEdit(childAttribs->readlineResultString, childAttribs) ||
 #endif
 					parse_and_exec_stdin_builtin_command_in_gtk_thread(&parsed_msg, childAttribs->readlineResultString, childAttribs))){ //wordexp_retval 0 means success
@@ -5769,7 +5809,7 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
 
           // Pass the original readlineResultString (potentially NULL if handled by builtin) to the next thread
           // The next thread will use the global current_stdin_cmd_interpretor for its prompt
-#ifdef reedline
+#if defined(reedline) || defined(prompt_toolkit)
           if ((!childAttribsCopyForCondition.SearchResultAsInput || childAttribsCopyForCondition.newVT_with_proxy) && (
 				       current_stdin_cmd_interpretor_pointer!=cmd_interpretor_pointer //切换命令解释器  // 在本函数开头运行current_stdin_cmd_interpretor_pointer = &(stdin_cmd_interpretors[i]) 或 current_stdin_cmd_interpretor_pointer = new_cmd_interpretor, 接着 goto switchToReadlineThread 时，满足此行条件。
 				       || !ret //命令失败
@@ -6054,7 +6094,7 @@ static char* rfm_custom_filename_completion(const char *text, int state) {
 static char** rfm_filename_completion(const char *text, int *count){
 #endif
 
-#ifdef reedline
+#if defined(reedline) || defined(prompt_toolkit)
 static GPtrArray* rfm_filename_completion(const char *text, int *count){
   if (g_strcmp0(text, BuiltInCmd_dimension)==0){
     return rfm_completion_based_on_dimensions("");
@@ -6071,7 +6111,7 @@ static GPtrArray* rfm_filename_completion(const char *text, int *count){
 #ifdef GNU_readline
     return ret;
 #endif
-#ifdef reedline
+#if defined(reedline) || defined(prompt_toolkit)
     return g_ptr_array_new_from_array(ret, g_strv_length(ret),NULL,NULL,(GDestroyNotify)g_free); // -1 means ret end with null
   }else { //没有文件被选中，或光标前有非空字符
     GPtrArray* ret = rfm_editor_completion_based_on_search_result(text);
@@ -6248,6 +6288,14 @@ static int setup()
   functionPointersForReedlineWrapper.toggle_recursive_completion_fn = toggle_rfm_custom_filename_completion_recursive;
   reedline_handle = reedline_create(&functionPointersForReedlineWrapper);
   if (!reedline_handle) g_error("reedline_create return NULL handle");
+#endif
+#ifdef prompt_toolkit
+  functionPointersForReedlineWrapper.get_completion_fn = rfm_filename_completion;
+  functionPointersForReedlineWrapper.get_menu_completion_fn = rfm_menu_completion;
+  functionPointersForReedlineWrapper.g_idle_add_once_handle_escape = g_idle_add_once_handle_escape_key;
+  functionPointersForReedlineWrapper.toggle_recursive_completion_fn = toggle_rfm_custom_filename_completion_recursive;
+  pt_handle = pt_create(&functionPointersForReedlineWrapper);
+  if (!pt_handle) g_error("pt_create return NULL handle");
 #endif
 
    rfm_prePath= getenv("OLDPWD");

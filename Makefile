@@ -39,6 +39,13 @@ GTK_CFLAGS = `pkg-config --cflags ${GTK_VERSION} json-glib-1.0`
 CFLAGS += -g -Wall -std=c11 -O0 -fPIC -pie -Wno-error=incompatible-pointer-types ${GTK_CFLAGS} ${INCS} ${CPPFLAGS}
 LDFLAGS += -g ${LIBS}
 
+# prompt_toolkit 依赖 PythonEmbedded
+ifeq (${READLINE_LIB},-Dprompt_toolkit)
+ifneq (${PythonEmbedded},-DPythonEmbedded)
+$(error prompt_toolkit requires PythonEmbedded. Set "PythonEmbedded = -DPythonEmbedded" in config.mk)
+endif
+endif
+
 ifneq (${PythonEmbedded}, )
 CFLAGS += `python3-config --cflags`
 LDFLAGS += `python3-config --ldflags --embed`
@@ -80,6 +87,13 @@ rfm.o: build_reedline
 endif
 endif
 
+ifeq (${READLINE_LIB},-Dprompt_toolkit)
+rfm: rfm_pt_wrapper.o
+rfm_pt_wrapper.o: rfm_pt_wrapper.c prompt_toolkit_wrapper.h
+	@echo CC $<
+	@${CC} -c ${CFLAGS} $<
+endif
+
 ifneq ($(RFM_FILE_CHOOSER),)
 rfm.o: config.h rfmFileChooser.h
 else
@@ -92,7 +106,11 @@ config.h:
 
 rfm: rfm.o
 	@echo CC -o $@
+ifeq (${READLINE_LIB},-Dprompt_toolkit)
+	@${CC} -o $@ rfm.o rfm_pt_wrapper.o -lstdc++ ${LDFLAGS}
+else
 	@${CC} -o $@ rfm.o -lstdc++ ${LDFLAGS}
+endif
 
 ifneq ($(RFM_FILE_CHOOSER),)
 ${LIBNAME}: rfm.o
@@ -133,6 +151,10 @@ ifeq ($(READLINE_LIB),-Dreedline)
 	@echo "Cleaning rfmReedline..."
 	@cd rfmReedline && cargo clean && cd ..
 endif
+ifeq ($(READLINE_LIB),-Dprompt_toolkit)
+	@rm -f rfm_pt_wrapper.o
+	@rm -rf rfm_prompt_toolkit/__pycache__
+endif
 
 install:
 	@echo installing files to ${DESTDIR}${PREFIX}/{bin,lib}
@@ -149,6 +171,10 @@ ifeq ($(READLINE_LIB),-Dreedline)
 	@cp -f reedline_wrapper/target/debug/libreedline_wrapper.so ${DESTDIR}${PREFIX}/lib64/libreedline_wrapper.so.new
 	@mv -f ${DESTDIR}${PREFIX}/lib64/libreedline_wrapper.so.new ${DESTDIR}${PREFIX}/lib64/libreedline_wrapper.so
 	@cp -f rfmReedline/target/debug/rfmReedline ${DESTDIR}${PREFIX}/bin
+	@cp -f scripts/rfmReedlineWithSpecificHistoryFile.sh ${DESTDIR}${PREFIX}/bin/rfmReadlineWithSpecificHistoryFile.sh
+else ifeq ($(READLINE_LIB),-Dprompt_toolkit)
+	@mkdir -p ${DESTDIR}${PREFIX}/bin/rfm_prompt_toolkit
+	@cp -rf rfm_prompt_toolkit/*.py ${DESTDIR}${PREFIX}/bin/rfm_prompt_toolkit/
 	@cp -f scripts/rfmReedlineWithSpecificHistoryFile.sh ${DESTDIR}${PREFIX}/bin/rfmReadlineWithSpecificHistoryFile.sh
 else
 	@cp -f scripts/rfmBashReadWithSpecificHistoryFile.sh ${DESTDIR}${PREFIX}/bin/rfmReadlineWithSpecificHistoryFile.sh
