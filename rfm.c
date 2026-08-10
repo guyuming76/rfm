@@ -6289,14 +6289,6 @@ static int setup()
   reedline_handle = reedline_create(&functionPointersForReedlineWrapper);
   if (!reedline_handle) g_error("reedline_create return NULL handle");
 #endif
-#ifdef prompt_toolkit
-  functionPointersForReedlineWrapper.get_completion_fn = rfm_filename_completion;
-  functionPointersForReedlineWrapper.get_menu_completion_fn = rfm_menu_completion;
-  functionPointersForReedlineWrapper.g_idle_add_once_handle_escape = g_idle_add_once_handle_escape_key;
-  functionPointersForReedlineWrapper.toggle_recursive_completion_fn = toggle_rfm_custom_filename_completion_recursive;
-  pt_handle = pt_create(&functionPointersForReedlineWrapper);
-  if (!pt_handle) g_error("pt_create return NULL handle");
-#endif
 
    rfm_prePath= getenv("OLDPWD");
    if (rfm_prePath!=NULL) rfm_prePath=strdup(rfm_prePath); //i don't remember exactly, but i think i do this because i read somewhere that getenv result is special and i should not free it.
@@ -6329,6 +6321,15 @@ static int setup()
 #ifdef PythonEmbedded
    startPythonEmbedding();
 #endif
+#ifdef prompt_toolkit
+  functionPointersForReedlineWrapper.get_completion_fn = rfm_filename_completion;
+  functionPointersForReedlineWrapper.get_menu_completion_fn = rfm_menu_completion;
+  functionPointersForReedlineWrapper.g_idle_add_once_handle_escape = g_idle_add_once_handle_escape_key;
+  functionPointersForReedlineWrapper.toggle_recursive_completion_fn = toggle_rfm_custom_filename_completion_recursive;
+  pt_handle = pt_create(&functionPointersForReedlineWrapper);
+  if (!pt_handle) g_error("pt_create return NULL handle");
+#endif
+
    if (initDir == NULL) initDir = cwd;
    set_rfm_curPath(initDir);
    RFM_ChildAttribs *childAttribs_for_ReadFromPipeStdin = calloc(1, sizeof(RFM_ChildAttribs));
