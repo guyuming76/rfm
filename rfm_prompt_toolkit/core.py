@@ -16,6 +16,11 @@ import sys
 import ctypes as ct
 import logging
 
+try:
+    from prompt_toolkit.completion import Completer
+except ImportError:
+    Completer = object
+
 logger = logging.getLogger(__name__)
 
 # ── 常量 ────────────────────────────────────────────────────
@@ -131,7 +136,7 @@ def _ensure_prompt_toolkit():
 
 # ── RfmCompleter ────────────────────────────────────────────────
 
-class RfmCompleter:
+class RfmCompleter(Completer):
     """prompt_toolkit Completer，桥接 C 补全函数。
 
     补全模式由全局 _completion_mode 控制：
