@@ -26,7 +26,7 @@ if not logger.handlers:
     _h = logging.StreamHandler(sys.stderr)
     _h.setFormatter(logging.Formatter("[%(name)s] %(message)s"))
     logger.addHandler(_h)
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.WARNING)
 
 
 # ── GPtrArray ctypes 结构体 ─────────────────────────────────
@@ -331,7 +331,7 @@ class RfmPromptToolkit:
             # 颜色类样式通过 Completion.style 字段设置
         })
 
-        from prompt_toolkit.shortcuts import PromptSession
+        from prompt_toolkit.shortcuts import PromptSession, CompleteStyle
         self._session = PromptSession(
             history=self._history,
             key_bindings=self._key_bindings,
@@ -339,6 +339,7 @@ class RfmPromptToolkit:
             auto_suggest=AutoSuggestFromHistory(),
             style=self._style,
             complete_while_typing=False,
+            #complete_style=CompleteStyle.READLINE_LIKE,
             multiline=True,
             enable_history_search=True,
             wrap_lines=False,
