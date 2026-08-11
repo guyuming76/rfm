@@ -37,17 +37,17 @@ static PyObject *pt_free_handle_func = NULL;
 // Python 侧通过 ctypes 将其转换为可调用对象
 static PyObject* _make_completion_capsule(GetCompletionFn fn) {
     if (!fn) Py_RETURN_NONE;
-    return PyCapsule_New((void*)fn, "rfm_completion_fn", NULL);
+    return PyCapsule_New((void*)fn, NULL, NULL);
 }
 
 static PyObject* _make_escape_capsule(EscapeHandler fn) {
     if (!fn) Py_RETURN_NONE;
-    return PyCapsule_New((void*)fn, "rfm_escape_fn", NULL);
+    return PyCapsule_New((void*)fn, NULL, NULL);
 }
 
 static PyObject* _make_toggle_recursive_capsule(ToggleRecursiveCompletionFn fn) {
     if (!fn) Py_RETURN_NONE;
-    return PyCapsule_New((void*)fn, "rfm_toggle_recursive_fn", NULL);
+    return PyCapsule_New((void*)fn, NULL, NULL);
 }
 
 // 将 Python 函数调用结果转换为 C 字符串 (malloc, caller frees with string_free)
