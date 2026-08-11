@@ -28,6 +28,13 @@ if not logger.handlers:
     logger.addHandler(_h)
     logger.setLevel(logging.DEBUG)
 
+
+# ── GPtrArray ctypes 结构体 ─────────────────────────────────
+# GLib struct _GPtrArray { gpointer *pdata; guint len; };
+
+class _GPtrArray(ct.Structure):
+    _fields_ = [("pdata", ct.POINTER(ct.c_void_p)), ("len", ct.c_uint)]
+
 # ── 常量 ────────────────────────────────────────────────────
 REEDLINE_INTERRUPTED = "reedline_interrupted"
 
@@ -234,15 +241,12 @@ class RfmCompleter(Completer):
             logger.debug("_do_complete: NULL result_ptr, returning")
             return
 
-        # 解析 GPtrArray
-        # GPtrArray 内存布局 (glib garray.h):
-        #   offset 0 = pdata (gpointer*, 8 bytes on 64-bit)
-        #   offset 8 = len   (guint,    4 bytes)
-        # 注意：C 函数 rfm_filename_completion 的 else 分支未设置 *count，
-        #   因此以 GPtrArray 自身的 len 为准。
+        # 解析 GPtrArray — 使用 ctypes Structure 精确定义
+        # GLib struct _GPtrArray { gpointer *pdata; guint len; };
         try:
-            pdata = ct.cast(result_ptr, ct.POINTER(ct.POINTER(ct.c_char)))
-            gp_array_len = ct.cast(result_ptr + 8, ct.POINTER(ct.c_uint))[0]
+            parray = ct.cast(result_ptr, ct.POINTER(_GPtrArray)).contents
+            gp_array_len = parray.len
+            pdata_ptr = parray.pdata  # gpointer* → 数组首地址
         except Exception as e:
             logger.debug("_do_complete: GPtrArray parse failed: %s", e)
             return
@@ -258,13 +262,14 @@ class RfmCompleter(Completer):
 
         logger.debug("_do_complete: iterating %d items", num)
         for i in range(num):
-            item_ptr = pdata[i]
+            item_ptr = pdata_ptr[i]  # c_void_p，即文件中某个 gpointer 值
             if not item_ptr:
                 continue
             try:
                 raw = ct.cast(item_ptr, ct.c_char_p).value
                 if not raw:
                     continue
+                logger.debug("_do_complete: item[%d] raw bytes=%r", i, raw)
                 result_str = raw.decode("utf-8", errors="replace")
                 if not result_str:
                     continue
