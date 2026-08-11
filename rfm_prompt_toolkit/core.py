@@ -387,8 +387,9 @@ class RfmPromptToolkit:
                 b.start_completion(select_first=False)
 
         @kb.add(Keys.F2)
+        @kb.add(Keys.F16)  # Menu 键 → ^[[29~ → prompt_toolkit 映射为 F16
         def _(event):
-            """F2 → 菜单命令补全"""
+            """F2 / Menu 键 → 菜单命令补全"""
             global _completion_mode
             _completion_mode = "menu"
             b = event.current_buffer
