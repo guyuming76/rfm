@@ -235,15 +235,23 @@ class RfmCompleter(Completer):
             return
 
         # 解析 GPtrArray
-        # GPtrArray 内存布局: offset 0 = len (guint, 4字节 + 4padding), offset 8 = pdata (gpointer*)
+        # GPtrArray 内存布局 (glib garray.h):
+        #   offset 0 = pdata (gpointer*, 8 bytes on 64-bit)
+        #   offset 8 = len   (guint,    4 bytes)
+        # 注意：C 函数 rfm_filename_completion 的 else 分支未设置 *count，
+        #   因此以 GPtrArray 自身的 len 为准。
         try:
-            pdata_addr = result_ptr + 8
-            pdata = ct.cast(pdata_addr, ct.POINTER(ct.POINTER(ct.c_char)))
+            pdata = ct.cast(result_ptr, ct.POINTER(ct.POINTER(ct.c_char)))
+            gp_array_len = ct.cast(result_ptr + 8, ct.POINTER(ct.c_uint))[0]
         except Exception as e:
             logger.debug("_do_complete: GPtrArray parse failed: %s", e)
             return
 
-        num = count.value
+        logger.debug("_do_complete: gp_array_len=%d, count=%d", gp_array_len, count.value)
+
+        # count.value 仅在 ItemSelected 分支被设置；else 分支未设置。
+        # 优先使用 GPtrArray 自身的 len，其次用 *count。
+        num = gp_array_len if gp_array_len > 0 else count.value
         if num <= 0:
             logger.debug("_do_complete: num=%d, no items", num)
             return
