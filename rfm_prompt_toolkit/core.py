@@ -339,17 +339,6 @@ class RfmPromptToolkit:
             wrap_lines=False,
         )
 
-        # Monkey-patch: 将 escape 超时从 0.5s 降为 0.05s。
-        # prompt_toolkit 3.0.52 的 Application.ttimeoutlen 是硬编码属性，
-        # 无法通过 __init__ 参数设置。缩短超时可让 ESC 键快速响应。
-        # 注意：需要保留足够时间以区分 ESC 和 ESC-prefix 序列（如方向键）。
-        _orig_create_app = self._session._create_application
-        def _create_app(*args, **kwargs):
-            app = _orig_create_app(*args, **kwargs)
-            app.ttimeoutlen = 0.05  # 50ms (默认 500ms)
-            return app
-        self._session._create_application = _create_app
-
     def _create_key_bindings(self):
         from prompt_toolkit.key_binding import KeyBindings
         from prompt_toolkit.keys import Keys
