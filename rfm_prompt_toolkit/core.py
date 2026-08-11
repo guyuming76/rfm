@@ -22,6 +22,11 @@ except ImportError:
     Completer = object
 
 logger = logging.getLogger(__name__)
+if not logger.handlers:
+    _h = logging.StreamHandler(sys.stderr)
+    _h.setFormatter(logging.Formatter("[%(name)s] %(message)s"))
+    logger.addHandler(_h)
+    logger.setLevel(logging.DEBUG)
 
 # ── 常量 ────────────────────────────────────────────────────
 REEDLINE_INTERRUPTED = "reedline_interrupted"
@@ -153,6 +158,9 @@ class RfmCompleter(Completer):
         mode = _completion_mode
         _completion_mode = "tab"  # 重置
 
+        logger.debug("get_completions: mode=%s, text=%r, cursor=%d",
+                     mode, document.text_before_cursor, document.cursor_position)
+
         if mode == "shift_tab":
             toggle_fn = _get_toggle_recursive_fn()
             if toggle_fn:
@@ -169,14 +177,17 @@ class RfmCompleter(Completer):
         else:
             # "tab" — 先 C 补全，fallback 到 WordCompleter
             completion_fn = _get_completion_fn()
+            logger.debug("get_completions: completion_fn=%s", completion_fn is not None)
             if completion_fn:
                 yielded = False
                 for c in self._do_complete(document, completion_fn, is_menu=False):
                     yielded = True
                     yield c
                 if yielded:
+                    logger.debug("get_completions: C completer yielded, skip fallback")
                     return
             # Fallback: 文件路径补全（prompt_toolkit 内置）
+            logger.debug("get_completions: falling back to PathCompleter")
             from prompt_toolkit.completion import PathCompleter
             _path_completer = PathCompleter(expanduser=True)
             yield from _path_completer.get_completions(document, complete_event)
@@ -201,6 +212,8 @@ class RfmCompleter(Completer):
             start_pos = pos
             word = ""
 
+        logger.debug("_do_complete: word=%r, is_menu=%s", word, is_menu)
+
         # 编码为 bytes 传给 C
         text_bytes = word.encode("utf-8") + b"\x00"
         count = ct.c_int(0)
@@ -214,21 +227,36 @@ class RfmCompleter(Completer):
             logger.debug("C completion call failed: %s", e)
             return
 
-        if not result_ptr:
-            return
+        logger.debug("_do_complete: result_ptr=%s, count=%d",
+                     hex(result_ptr) if result_ptr else "NULL", count.value)
 
-        num = count.value
-        if num <= 0:
+        if not result_ptr:
+            logger.debug("_do_complete: NULL result_ptr, returning")
             return
 
         # 解析 GPtrArray
-        # GPtrArray 内存布局: offset 0 = len (guint, 4字节 + 4padding), offset 8 = pdata (gpointer*)
+        # GPtrArray 内存布局 (glib garray.h):
+        #   offset 0 = pdata (gpointer*, 8 bytes on 64-bit)
+        #   offset 8 = len   (guint,    4 bytes)
+        # 注意：C 函数 rfm_filename_completion 的 else 分支未设置 *count，
+        #   因此以 GPtrArray 自身的 len 为准。
         try:
-            pdata_addr = result_ptr + 8
-            pdata = ct.cast(pdata_addr, ct.POINTER(ct.POINTER(ct.c_char)))
-        except Exception:
+            pdata = ct.cast(result_ptr, ct.POINTER(ct.POINTER(ct.c_char)))
+            gp_array_len = ct.cast(result_ptr + 8, ct.POINTER(ct.c_uint))[0]
+        except Exception as e:
+            logger.debug("_do_complete: GPtrArray parse failed: %s", e)
             return
 
+        logger.debug("_do_complete: gp_array_len=%d, count=%d", gp_array_len, count.value)
+
+        # count.value 仅在 ItemSelected 分支被设置；else 分支未设置。
+        # 优先使用 GPtrArray 自身的 len，其次用 *count。
+        num = gp_array_len if gp_array_len > 0 else count.value
+        if num <= 0:
+            logger.debug("_do_complete: num=%d, no items", num)
+            return
+
+        logger.debug("_do_complete: iterating %d items", num)
         for i in range(num):
             item_ptr = pdata[i]
             if not item_ptr:
@@ -241,6 +269,7 @@ class RfmCompleter(Completer):
                 if not result_str:
                     continue
 
+                logger.debug("_do_complete: item[%d]=%r", i, result_str)
                 display, style = _parse_completion_color(result_str)
                 # prompt_toolkit Completion
                 # start_position: 负偏移量，表示从光标前几个字符开始替换
@@ -309,6 +338,17 @@ class RfmPromptToolkit:
             enable_history_search=True,
             wrap_lines=False,
         )
+
+        # Monkey-patch: 将 escape 超时从 0.5s 降为 0.05s。
+        # prompt_toolkit 3.0.52 的 Application.ttimeoutlen 是硬编码属性，
+        # 无法通过 __init__ 参数设置。缩短超时可让 ESC 键快速响应。
+        # 注意：需要保留足够时间以区分 ESC 和 ESC-prefix 序列（如方向键）。
+        _orig_create_app = self._session._create_application
+        def _create_app(*args, **kwargs):
+            app = _orig_create_app(*args, **kwargs)
+            app.ttimeoutlen = 0.05  # 50ms (默认 500ms)
+            return app
+        self._session._create_application = _create_app
 
     def _create_key_bindings(self):
         from prompt_toolkit.key_binding import KeyBindings
@@ -386,13 +426,15 @@ class RfmPromptToolkit:
 
     def readline(self, prompt_text: str) -> str:
         """阻塞读取一行。返回值: 字符串 / None (Ctrl+C/D) / HostCommand"""
-        from prompt_toolkit.formatted_text import HTML
 
-        display_prompt = self._build_prompt(prompt_text)
+        # 使用可调用对象而非静态字符串，使 _selection_star 变化后
+        # invalidate() → 重绘时能动态反映 * 的显示/隐藏
+        def _dynamic_prompt():
+            return self._build_prompt(prompt_text)
 
         try:
             result = self._session.prompt(
-                display_prompt,
+                _dynamic_prompt,
                 key_bindings=self._key_bindings,
             )
             # result 可能是字符串（用户输入）或 HostCommand（app.exit(result=...)）
