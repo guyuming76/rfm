@@ -422,16 +422,32 @@ class RfmPromptToolkit:
 
     def readline(self, prompt_text: str) -> str:
         """阻塞读取一行。返回值: 字符串 / None (Ctrl+C/D) / HostCommand"""
+        global _current_app
 
         # 使用可调用对象而非静态字符串，使 _selection_star 变化后
         # invalidate() → 重绘时能动态反映 * 的显示/隐藏
         def _dynamic_prompt():
             return self._build_prompt(prompt_text)
 
+        def _capture_app():
+            # pre_run 在 app 的事件循环线程（readline 线程）内、set_app 之后执行，
+            # 此时 get_app() 可返回正在运行的 Application。
+            global _current_app, _sigint_received
+            from prompt_toolkit.application.current import get_app
+            app = get_app()
+            _current_app = app
+            # 补漏：若 interrupt() 在本线程进入事件循环之前已被调用（此时
+            # _current_app 尚未捕获，interrupt() 无法通过 call_soon_threadsafe 唤醒），
+            # 在这里主动注入 send_sigint 触发 KeyboardInterrupt，保证不漏中断。
+            # 用 call_soon 而非直接调用，确保事件循环完全就绪（input attach 等）后再处理。
+            if _sigint_received:
+                app.loop.call_soon(app.key_processor.send_sigint)
+
         try:
             result = self._session.prompt(
                 _dynamic_prompt,
                 key_bindings=self._key_bindings,
+                pre_run=_capture_app,
             )
             # result 可能是字符串（用户输入）或 HostCommand（app.exit(result=...)）
             if result is None:
@@ -442,13 +458,14 @@ class RfmPromptToolkit:
             return None
         except EOFError:
             return None
+        finally:
+            # prompt() 返回后 app.loop 已被 set_loop 清空，避免 interrupt()
+            # 继续持有一个已结束的 Application。
+            _current_app = None
 
     def interrupt(self):
-        """发送 SIGINT 以中断阻塞的 prompt()
-        注意：模块级 interrupt() 已设置 _sigint_received 标志，此处只负责发信号。"""
-        import os
-        import signal
-        os.kill(os.getpid(), signal.SIGINT)
+        """中断阻塞的 prompt()。实际逻辑见模块级 interrupt()。"""
+        interrupt()
 
     def request_repaint(self):
         """请求重绘"""
@@ -485,6 +502,14 @@ _session_instance: RfmPromptToolkit = None
 # SIGINT 标志：由 signal handler 设置，readline() 读取后重置
 # signal handler 在 create_handle() 中安装（运行在主线程）
 _sigint_received = False
+
+# 运行中的 prompt_toolkit Application 引用。
+# 由 readline() 的 pre_run 回调在 readline 线程（事件循环线程）中捕获，
+# interrupt()（运行在 GTK 主线程）通过它调用 loop.call_soon_threadsafe
+# 向事件循环注入 send_sigint，可靠地唤醒阻塞在 select() 上的 readline 线程。
+# （简单的对象引用赋值/读取在 GIL 下是原子的；interrupt() 经由 pt_interrupt
+#   通过 PyGILState_Ensure 持有 GIL 调用，故不存在竞态。）
+_current_app = None
 
 
 def _sigint_handler(signum, frame):
@@ -523,30 +548,57 @@ def readline(prompt_text: str):
     if _session_instance is None:
         raise RuntimeError("RfmPromptToolkit not initialized. Call create_handle() first.")
 
-    _sigint_received = False
+    # 若 interrupt() 在本次 readline 真正开始前已被调用（例如 readline 线程
+    # 尚在启动、还未进入 prompt() 时，GTK 线程就执行了 CancelReadInput→pt_interrupt），
+    # 则立即返回 REEDLINE_INTERRUPTED 并消费该标志，避免后续 g_thread_join 死等。
+    if _sigint_received:
+        _sigint_received = False
+        return REEDLINE_INTERRUPTED
 
     try:
         result = _session_instance.readline(prompt_text)
         if _sigint_received:
+            _sigint_received = False
             return REEDLINE_INTERRUPTED
         if result is None:
             return None
         return result
     except KeyboardInterrupt:
         if _sigint_received:
+            _sigint_received = False
             return REEDLINE_INTERRUPTED
         return None
 
 
 def interrupt():
     """中断当前 readline — 从 GTK 主线程调用。
-    通过 os.kill 发送 SIGINT 到进程，C 层信号处理器触发 eval breaker，
-    使 readline 线程中的 prompt() 抛出 KeyboardInterrupt。"""
-    global _sigint_received
+
+    通过 app.loop.call_soon_threadsafe 向 readline 线程的事件循环注入
+    key_processor.send_sigint —— 这正是 prompt_toolkit 自身在主线程收到
+    SIGINT 时做的事。call_soon_threadsafe 会向 asyncio 的 self-pipe 写字节，
+    从而唤醒阻塞在 select() 上的 readline 线程，随后 <sigint> 键绑定
+    （PromptSession 内置）调用 app.exit(exception=KeyboardInterrupt)，
+    使 prompt() 抛出 KeyboardInterrupt。
+
+    不能用 os.kill(SIGINT)：Python 的 signal handler 只能在主线程执行，
+    而 readline 线程阻塞在 select() 时 SIGINT 只会设置 eval breaker 标志，
+    既不唤醒 select（PEP 475 会让 select 重试），也不抛 KeyboardInterrupt，
+    这正是 g_thread_join 长时间阻塞的根因。
+    """
+    global _sigint_received, _current_app
     _sigint_received = True
-    import os
-    import signal
-    os.kill(os.getpid(), signal.SIGINT)
+
+    app = _current_app
+    if app is None:
+        return
+    loop = getattr(app, "loop", None)
+    if loop is None or loop.is_closed():
+        return
+    try:
+        loop.call_soon_threadsafe(app.key_processor.send_sigint)
+    except (RuntimeError, AttributeError):
+        # 事件循环已停止或 app 结构异常时忽略
+        pass
 
 
 def request_repaint():
