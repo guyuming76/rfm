@@ -142,7 +142,7 @@ if [ -n "$VIRTUAL_ENV" ]; then
     # valgrind --tool=memcheck rfm
 
     # MALLOC_CHECK_=1 RUST_LOG=rfm=warn rfm "${processed_args[@]}" --InheritedPrompt "($venv_name) "
-    MALLOC_CHECK_=1 RUST_LOG=reedline_wrapper=warn rfm "${processed_args[@]}" --InheritedPrompt "($venv_name) "
+    MALLOC_CHECK_=1 RUST_LOG=reedline_wrapper=warn "$SCRIPT_DIR/rfm" "${processed_args[@]}" --InheritedPrompt "($venv_name) "
 else
-    MALLOC_CHECK_=1 RUST_LOG=reedline_wrapper=warn rfm "${processed_args[@]}"
+    MALLOC_CHECK_=1 RUST_LOG=reedline_wrapper=warn "$SCRIPT_DIR/rfm" "${processed_args[@]}"
 fi

@@ -160,7 +160,7 @@ ifneq (${CmarkTools},)
 	@cp -f extractJsonFromMarkdown ${DESTDIR}${PREFIX}/bin
 endif
 	@cp -f rfm ${DESTDIR}${PREFIX}/bin
-	@cp -f scripts/rfm.sh ${DESTDIR}${PREFIX}/bin
+	@cp -f rfm.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmRefreshImage.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmVTforCMD.sh ${DESTDIR}${PREFIX}/bin
 	@cp -f scripts/rfmCopyMove_${languageInclude}.sh ${DESTDIR}${PREFIX}/bin/rfmCopyMove.sh
