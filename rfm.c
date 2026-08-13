@@ -5880,7 +5880,19 @@ static GPtrArray* rfm_menu_completion(const char *text, int *count){
   
   g_mutex_lock(&data->mutex);
   while (!data->completed) {
-    g_cond_wait(&data->cond, &data->mutex);
+    // 5,000ms 超时：防止 GTK 主线程被阻塞（如 g_thread_join）时，
+    // readline 线程在此永久等待 GTK 回调 → 死锁。
+    // 超时后返回一个可见的提示项，让 readline 线程能正常退出，同时用户能看到发生了超时。
+    gint64 end_time = g_get_monotonic_time() + 5000000;
+    if (!g_cond_wait_until(&data->cond, &data->mutex, end_time)) {
+      g_mutex_unlock(&data->mutex);
+      g_mutex_clear(&data->mutex);
+      g_cond_clear(&data->cond);
+      // data 故意不释放：idle callback 仍挂起，之后会访问 data
+      GPtrArray* timeout_result = g_ptr_array_new();
+      g_ptr_array_add(timeout_result, g_strdup("rfm_menu_completion timeout"));
+      return timeout_result;
+    }
   }
   g_mutex_unlock(&data->mutex);
   
