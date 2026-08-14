@@ -15,6 +15,7 @@
 #define MSG_cannot_enter_directory "\n\nCan't enter directory!"
 #define MSG_cannot_enter_deleted_directory "\n\nPlease show content of deleted directory with the 'git ls-files' in toolbar"
 #define MSG_rfm_in_background "rfm PID %d (and its descendents if any) runs in background (PGID: %d, foreground PGID: %d)。if terminal prompt is shown instead of rfm prompt，try fg command to bring rfm into foreground"
+#define MSG_SearchResultColumnSeperator_in_filename "filename (%s) contains SearchResultColumnSeperator %s"
 #define PageUp  "PageUp"
 #define PageDown  "PageDown"
 #define Previous "Back"
