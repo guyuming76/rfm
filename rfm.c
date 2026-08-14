@@ -6711,7 +6711,7 @@ static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboo
 		         g_assert(col->enumCol==NUM_COLS);
 			 g_assert(col->ValueFunc==getExtColumnValueFromHashTable);
 		         col->enumCol = current_Ext_Column;
-
+			 g_debug("bind col title=%s enumCol=%d (current_Ext_Column=%d)", col->title, col->enumCol, current_Ext_Column);
                          col = get_treeviewColumnByTitle(currentColumnTitleIndexName);
 			 
 			 current_Ext_Column++;
@@ -7190,10 +7190,13 @@ static void showSearchResultExtColumnsBasedOnHashTableValues(){
          g_free(tmp_strings); g_free(column_titles_begin_and_end_with_comma);
 
   }else if(SearchResultContainNonFilenameColumn){//只显示文件名和这些列,而不显示那些常规的如文件大小日期列,如要显示这些列,可在 showcolumn 里面指定.
+         g_debug("SearchResultContainNonFilenameColumn is TRUE, show only filename and these extra columns without standard file metadata such as size and dates");
          show_hide_treeview_columns_enum(3, INT_MAX,COL_FILENAME,INT_MAX);
 	 enum RFM_treeviewCol previousColumn = COL_FILENAME;
 	 for(int i=COL_Ext1; i<FirstDimensionCol;i++){ //DimensionColumn在dimProps->use_getExtColumnValueFromHashTable的情况下，总是会填充值的，及时.Show 属性值是false的情况下，并且，一般是不会把DimensionValue通过查询结果类型读入的，除非将来通过withTitle的方式，批次读入，用以批次更新 DimensionValue, 当前条件分支上一个分支内的TODO
-	   if (ExtColumnHashTable[i-COL_Ext1]!=NULL){
+	   //RFM_treeviewColumn *c = get_treeviewColumnByEnum(i);
+	   //g_debug("i=%d hash[%d]=%p col=%p title=%s enumCol=%d",i, i-COL_Ext1, ExtColumnHashTable[i-COL_Ext1],(void*)c, c?c->title:"NULL", c?c->enumCol:-1);
+          if (ExtColumnHashTable[i-COL_Ext1]!=NULL){
 	     show_hide_treeview_columns_enum(3, previousColumn,i,INT_MAX);//INT_MAX 结尾表示只显示指明的列,不显示其他默认显示常规列如文件大小日期.这样设计的出发点是:当我们在查询结果里只包含文件名时,我们希望显示文件名,大小,日期等如同目录视图一样的列. 而当查询结果包含除文件名之外的扩展列时,我们希望只显示文件名和这些扩展列,而不包括文件大小日期等常规列,以便让用户注意力能集中在这些扩展列上
 	     previousColumn = i;
 	   }
