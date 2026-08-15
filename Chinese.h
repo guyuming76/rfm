@@ -16,7 +16,6 @@
 #define MSG_cannot_enter_directory "\n\n不能进入目录!"
 #define MSG_cannot_enter_deleted_directory "\n\n请使用工具栏上'git ls-files'命令查看已删除的目录内容"
 #define MSG_rfm_in_background "rfm进程PID %d (及其后代，如果有) 运行于后台 (进程组 PGID: %d, 前台进程组 PGID: %d)。如果当前显示终端命令提示符而不是rfm命令提示符，尝试使用 fg 命令将rfm拉回前台"
-#define MSG_SearchResultColumnSeperator_in_filename  "文件名（%s）包含查询列分割符%s"
 #define PageUp  "上葉"
 #define PageDown  "下葉"
 #define Previous "后退"

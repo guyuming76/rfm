@@ -430,9 +430,7 @@ static const RFM_Thumbnailer thumbnailers[] = {
 #define MOD_KEY GDK_SUPER_MASK // the windows logo key
 //#define MOD_KEY GDK_META_MASK // the Alt key
 
-static gboolean ignored_filename(const gchar *name) {
-  if (strstr(name,SearchResultColumnSeperator)!=NULL) g_warning(MSG_SearchResultColumnSeperator_in_filename,name, SearchResultColumnSeperator);
-  //上面的提醒放在这里会重复，比较的也不是完整路径，但好处是用户定制方便，再说重要的事多说几遍也不是坏事
+static gboolean ignored_filename(const gchar *name){
   if (basename(name)[0]=='.') return TRUE; /* Don't show hidden files */
   if (strstr(name,"/.")!=NULL) return TRUE;
   if (strcmp(name, "gmon.out")==0) return TRUE;
