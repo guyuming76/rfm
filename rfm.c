@@ -6721,9 +6721,13 @@ static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboo
 		         //我们假定搜索结果每行列数都是相同的,第二行数据用 get_treeviewColumnByTitle(C1) 一定可以找到第一行为C1分配的位置
 		         //但这里currentColumnTitle do while 循环最后会调用get_treeviewColumnByTitle(C2), 对于本方法并没有问题,因为while 判断会结束循环
 		         //但如果ProcessKeyValuePairInFilesFromSearchResult 调用本方法,get_treeviewColumnByTitle(C2) 会返回NULL,所以下面语句加了if NULL 判断
-		         if ((col = get_treeviewColumnByTitle(currentColumnTitleIndexName)))
+			 col = get_treeviewColumnByTitle(currentColumnTitleIndexName);
+                         if (col && col->enumCol != NUM_COLS){
 			     current_Ext_Column = col->enumCol;
-			 else current_Ext_Column = NUM_COLS;
+                         } else {
+			   g_warning("search result line %d(%s) has more columns than the first line(SearchResultColumnSeperator might be in data column such as filename), extra data ignored", fileAttributeID, oneline);
+                             current_Ext_Column = NUM_COLS;
+			 }
 		    }
 
 	       } while(current_Ext_Column<NUM_COLS && seperatorPointerAfterCurrentExtColumnValue);
@@ -6733,16 +6737,19 @@ static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboo
 	     SearchResultFileNameList=g_list_prepend(SearchResultFileNameList, strdup(filename));
 	     SearchResultFileNameListLength++;
 	     g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"appended into SearchResultFileNameList:%s", filename);
-	   }
+           }
+	   if (fileAttributeID==1) {
+	     currentSearchResultTypeStartingColumnTitleIndex = currentColumnTitleIndex;
+	     currentPageStartingColumnTitleIndex = currentSearchResultTypeStartingColumnTitleIndex;
+	     //首行记录已经被分配掉的列序号
+	   }else if (currentColumnTitleIndex < currentSearchResultTypeStartingColumnTitleIndex)
+	     g_warning("search result line %d has fewer columns (%d) than the first line (%d)", fileAttributeID, currentColumnTitleIndex, currentSearchResultTypeStartingColumnTitleIndex);
 	   return currentColumnTitleIndex;
 }
 
+//deprecated. 因为不是static的，担心那个rfm_addon里用到了，所以留着这个函数
 void CallDefaultSearchResultFunctionForNewSearch(CALLER_OWN char *one_line_in_search_result, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs){
-     if (fileAttributeID==1) {
-       currentSearchResultTypeStartingColumnTitleIndex = ProcessOnelineForSearchResult(one_line_in_search_result,TRUE, cmdTemplate, fileAttributes, childAttribs);
-       currentPageStartingColumnTitleIndex = currentSearchResultTypeStartingColumnTitleIndex;
-     //首行记录在  ProcessOnelineForSearchResult 里已经被分配掉的列序号
-     }else ProcessOnelineForSearchResult(one_line_in_search_result, TRUE, cmdTemplate, fileAttributes, childAttribs);
+  ProcessOnelineForSearchResult(one_line_in_search_result, TRUE, cmdTemplate, fileAttributes, childAttribs);
 }
 
 // 处理存储键值对文件(类似INI)数据,每行一个文件,每个文件可包含不同的键
@@ -6750,7 +6757,7 @@ void CallDefaultSearchResultFunctionForNewSearch(CALLER_OWN char *one_line_in_se
 // if new_search, oneline contains leading filename plus optional columns, otherwise, oneline contains only filename
 int ProcessKeyValuePairInFilesFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs){
    if (new_search){
-     CallDefaultSearchResultFunctionForNewSearch(oneline, TRUE, cmdTemplate, fileAttributes, childAttribs);
+     ProcessOnelineForSearchResult(oneline, TRUE, cmdTemplate, fileAttributes, childAttribs);
      return 0;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
    }
 
@@ -6864,7 +6871,7 @@ static int ProcessJsonStr(CALLER_OWN gchar* json_data){
 
 static int ProcessJsonFileFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs){
    if (new_search){
-     CallDefaultSearchResultFunctionForNewSearch(oneline, TRUE, cmdTemplate, fileAttributes, childAttribs);
+     ProcessOnelineForSearchResult(oneline, TRUE, cmdTemplate, fileAttributes, childAttribs);
      return 0;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
    }
    gchar * absolute_address = g_canonicalize_filename(oneline, rfm_SearchResultPath);
@@ -6902,7 +6909,7 @@ int ProcessJsonInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean ne
 //SearchResultType 里面定义的cmdTemplate格式是独特的：一方面，可以指明cmd_interpretor, 使用match_cmd_str_array_with_interpretors, 另一方面，却又不是通过parse_and_exec_command_in_gtk_thread来执行，通过调用cmd_interpretor的cmdTransformer来转换成 g_spawn_wrapper接受的形式。同时做了一个简单的把cmdTemplate中%s替换成查询结果文件名oneline的操作，这个替换既没使用build_cmd_vector中的文件名替换，又没使用parse_and_exec_command_in_gtk_thread中的选中文件名替换
 static int ProcessCmdOutputFromSearchResultWithFunction(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate, RFM_FileAttributes* fileAttributes, RFM_ChildAttribs* child_attribs, int (*func)(RFM_ChildAttribs*)){
    if (new_search){
-     CallDefaultSearchResultFunctionForNewSearch(oneline, TRUE, cmdtemplate, fileAttributes, child_attribs);
+     ProcessOnelineForSearchResult(oneline, TRUE, cmdtemplate, fileAttributes, child_attribs);
      return 0;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
    }
 
@@ -7012,7 +7019,7 @@ static int ProcessKeyValuePairInData(GKeyFile *keyfile, char* groupname){
  static int CallMatchingProcessorForSearchResultLine(char *oneline, gboolean new_search, char *cmdtemplate, RFM_FileAttributes* fileAttributes, RFM_ChildAttribs* childAttribs){
    assert(childAttribs && g_strcmp0(childAttribs->SearchResultTypePointer->name,SrchRsltType_multitype)==0);
    if (new_search){
-     CallDefaultSearchResultFunctionForNewSearch(oneline, TRUE, cmdtemplate, fileAttributes , childAttribs);
+     ProcessOnelineForSearchResult(oneline, TRUE, cmdtemplate, fileAttributes , childAttribs);
      return 0;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
    }
 
