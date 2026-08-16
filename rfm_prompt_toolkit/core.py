@@ -448,6 +448,7 @@ class RfmPromptToolkit:
                 _dynamic_prompt,
                 key_bindings=self._key_bindings,
                 pre_run=_capture_app,
+                bottom_toolbar="[Shift+]TAB[包含子目录]补全 Alt+Enter多行编辑添加行 F2工具栏|文件菜单命令 Ctrl+(r|s)在历史输入中(后向|前向)搜索 Alt+方向键切换目录",
             )
             # result 可能是字符串（用户输入）或 HostCommand（app.exit(result=...)）
             if result is None:
@@ -670,9 +671,10 @@ def edit_file(filename: str) -> int:
         history=InMemoryHistory(),
         key_bindings=kb,
         multiline=True,
+        bottom_toolbar="Ctrl+x不保存退出 Ctrl+o保存退出 Ctrl+(r|s)(后向|前向)搜索",
     )
 
-    print("\x1b[33mCtrl+o save and exit; Ctrl+x exit without saving\x1b[0m")
+    #print("\x1b[33mCtrl+o save and exit; Ctrl+x exit without saving\x1b[0m")
 
     try:
         edit_session.prompt("[rfmEdit] ", default=content, key_bindings=kb)
