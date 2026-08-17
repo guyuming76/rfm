@@ -466,7 +466,7 @@ class RfmPromptToolkit:
                 # -n 启动时 C 侧会 setenv("RFM_showHelpOnStart", "false")，此时显示当前路径
                 return _getenv("rfm_curPath") or ""
             # 默认（环境变量不存在或不为 "false"）显示帮助提示
-            return "[Shift+]TAB[包含子目录]补全 Alt+Enter多行编辑添加行 F2工具栏|文件菜单命令 Ctrl+(r|s)在历史输入中(后向|前向)搜索 Alt+方向键切换目录"
+            return "[Shift+]TAB[包含子目录]补全 Alt+Enter多行编辑添加行 F2工具栏|文件菜单命令 Ctrl+r在历史输入中搜索"
 
         try:
             # 在 -n 模式（RFM_showHelpOnStart=false）下，用 rprompt 在输入行右侧显示
