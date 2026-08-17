@@ -38,6 +38,24 @@ class _GPtrArray(ct.Structure):
 # ── 常量 ────────────────────────────────────────────────────
 REEDLINE_INTERRUPTED = "reedline_interrupted"
 
+# ── 实时读取环境变量 ─────────────────────────────────────────
+# 注意：在 Python 嵌入模式下，os.getenv / os.environ 是 CPython 在 os 模块
+# 首次使用时对 libc environ 的一次性快照。C 侧在 Python 初始化之后通过
+# g_setenv("rfm_curPath", ...) 做的修改，无法被 os.getenv 感知（实测如此）。
+# 因此这里用 ctypes 直接调用 libc 的 getenv()，它始终读取当前进程的实时 environ。
+_libc = ct.CDLL(None)
+_libc.getenv.restype = ct.c_char_p
+_libc.getenv.argtypes = [ct.c_char_p]
+
+
+def _getenv(name: str):
+    """读取当前进程实时环境变量（绕过 os.environ 快照）。"""
+    try:
+        val = _libc.getenv(name.encode("utf-8"))
+    except Exception:
+        return None
+    return val.decode("utf-8") if val else None
+
 # ── 全局状态 ────────────────────────────────────────────────
 _selection_star = False
 _completion_mode = "tab"  # "tab" | "menu" | "shift_tab"
@@ -443,12 +461,19 @@ class RfmPromptToolkit:
             if _sigint_received:
                 app.loop.call_soon(app.key_processor.send_sigint)
 
+        def _bottom_toolbar():
+            if _getenv("RFM_showHelpOnStart") == "false":
+                # -n 启动时 C 侧会 setenv("RFM_showHelpOnStart", "false")，此时显示当前路径
+                return _getenv("rfm_curPath") or ""
+            # 默认（环境变量不存在或不为 "false"）显示帮助提示
+            return "[Shift+]TAB[包含子目录]补全 Alt+Enter多行编辑添加行 F2工具栏|文件菜单命令 Ctrl+(r|s)在历史输入中(后向|前向)搜索 Alt+方向键切换目录"
+
         try:
             result = self._session.prompt(
                 _dynamic_prompt,
                 key_bindings=self._key_bindings,
                 pre_run=_capture_app,
-                bottom_toolbar="[Shift+]TAB[包含子目录]补全 Alt+Enter多行编辑添加行 F2工具栏|文件菜单命令 Ctrl+(r|s)在历史输入中(后向|前向)搜索 Alt+方向键切换目录",
+                bottom_toolbar=_bottom_toolbar(),
             )
             # result 可能是字符串（用户输入）或 HostCommand（app.exit(result=...)）
             if result is None:

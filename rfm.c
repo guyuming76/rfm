@@ -6524,7 +6524,7 @@ int main(int argc, char *argv[])
 	printf(rfmLaunchHelp, PROG_NAME);
 	return 0;
       case 'n':
-	showHelpOnStart = FALSE;
+	showHelpOnStart = FALSE;setenv("RFM_showHelpOnStart", "false", 1);
 	break;
       case 'H': pauseInotifyHandler=TRUE; break;
       case 'r':
