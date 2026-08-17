@@ -360,7 +360,7 @@ class RfmPromptToolkit:
             #complete_style=CompleteStyle.READLINE_LIKE,
             multiline=True,
             enable_history_search=True,
-            wrap_lines=False,
+            wrap_lines=True,
         )
 
     def _create_key_bindings(self):
