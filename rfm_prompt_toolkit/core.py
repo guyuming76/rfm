@@ -469,11 +469,21 @@ class RfmPromptToolkit:
             return "[Shift+]TAB[包含子目录]补全 Alt+Enter多行编辑添加行 F2工具栏|文件菜单命令 Ctrl+(r|s)在历史输入中(后向|前向)搜索 Alt+方向键切换目录"
 
         try:
+            # 在 -n 模式（RFM_showHelpOnStart=false）下，用 rprompt 在输入行右侧显示
+            # 当前路径，而不是用 bottom_toolbar 在屏幕底部绘制。
+            # bottom_toolbar 依赖 CPR + 精确光标跟踪，且要在屏幕底部“向下滚动”绘制；
+            # 在 Wayland(foot) 下窗口 resize（dwl 的 master/stack 切换）时，foot 会先
+            # reflow 网格，而 prompt_toolkit 的事件循环跑在非主线程（readline 线程），
+            # SIGWINCH 被禁用，只能靠 0.5s 轮询发现尺寸变化，此时内部光标位置已与终端
+            # 实际位置不一致，erase/redraw 会漏擦底部那行路径，导致每切换一次就残留一行
+            # 重复的“路径 + 提示符”。改为 rprompt（画在输入行右侧）即可绕开这个脆弱路径。
+            _show_path_rprompt = (_getenv("RFM_showHelpOnStart") == "false")
             result = self._session.prompt(
                 _dynamic_prompt,
                 key_bindings=self._key_bindings,
                 pre_run=_capture_app,
-                bottom_toolbar=_bottom_toolbar(),
+                rprompt=(_getenv("rfm_curPath") or "") if _show_path_rprompt else None,
+                bottom_toolbar=None if _show_path_rprompt else _bottom_toolbar(),
             )
             # result 可能是字符串（用户输入）或 HostCommand（app.exit(result=...)）
             if result is None:
