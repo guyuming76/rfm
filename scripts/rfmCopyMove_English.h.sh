@@ -1,6 +1,16 @@
 #!/bin/bash
 # Accept one or more filenames as parameters, currently receiving full path filenames from rfm context menu clicks
 
+# Pause on error exit so the user can read the error message before the terminal closes
+exit_with_pause_on_error() {
+    local status=$?
+    if [[ $status -ne 0 ]]; then
+        echo
+        read -p "Press Enter to close the window" -r
+    fi
+}
+trap exit_with_pause_on_error EXIT
+
 #set -x
 
 echo "Press enter to copy selected filenames to clipboard;"
@@ -19,6 +29,57 @@ if [[ -z "$input_destination" ]]; then
        	fi
 	printf '%s\n' "${@:2}" | rfmToClipboard.sh
 else
+	if [[ "$1" == "sl" ]];then
+		read -p "Use relative paths when creating symlinks? (y/n, default y): " -r useRelativeInSL
+
+	        # -s 表示不解析符号链接
+		destination="$(realpath -s $input_destination)";
+
+		if [[ -e "$destination" ]]; then
+			if [ ! -d "$destination" ];then
+				echo "Destination exists but is not a directory, cannot create symlinks inside" >&2
+				exit 3
+			fi
+			# Existing directory is used as the symlink parent directory
+			sl_parent_dir="$destination"
+		else
+			read -p "Destination does not exist. Enter y (default) to create it as a directory and create a symlink named after each selected file inside it; enter n to treat this path as the symlink filename itself (only works for a single selected file). Create directory? (y/n, default y): " -r mkdir_input_destination
+			if [[ -z "$mkdir_input_destination" || "$mkdir_input_destination" == "y" || "$mkdir_input_destination" == "Y" ]];then
+				mkdir -p "$destination"
+				sl_parent_dir="$destination"
+			else
+				# Treat the non-existing destination path as the symlink filename
+				if [[ $# -gt 2 ]]; then
+					echo "More than one file selected, cannot map multiple sources to a single symlink filename" >&2
+					exit 4
+				fi
+				sourcefile="${@:2:1}"
+				mkdir -p "$(dirname "$destination")"
+				if [[ -z "$useRelativeInSL" || "$useRelativeInSL" == "y" || "$useRelativeInSL" == "Y" ]];then
+					ln -sr "$sourcefile" "$destination" || exit
+				else
+					ln -s "$sourcefile" "$destination" || exit
+				fi
+				rfm -n -d "$destination"
+				exit 0
+			fi
+		fi
+
+		autoselection=""
+		for sourcefile in "${@:2}"; do
+			basename_sourcefile=$(basename "$sourcefile")
+			if [[ -z "$useRelativeInSL" || "$useRelativeInSL" == "y" || "$useRelativeInSL" == "Y" ]];then
+				ln -sr "$sourcefile" "$sl_parent_dir/$basename_sourcefile" || exit
+			else
+				ln -s "$sourcefile" "$sl_parent_dir/$basename_sourcefile" || exit
+			fi
+			autoselection+=" $sl_parent_dir/$basename_sourcefile"
+		done
+
+		rfm -n -d $autoselection
+		exit 0
+	fi
+
 	read -p "Check and repair broken symbolic links after operation? (y/n, default y): " -r check_and_update_symbolic_link
 
         # -s 表示不解析符号链接
@@ -86,7 +147,7 @@ else
 			fi
 		fi
 	else
-		echo "parameter 1 should be either cp or mv" > 2
+		echo "parameter 1 should be either cp or mv or sl" > 2
 		exit 2
 	fi
 

@@ -24,6 +24,7 @@
 #define Menu "菜单"
 #define RunActionCopy "复制文件至目标路径 或复制文件名至剪贴板"
 #define RunActionMove "移动(改名)文件至目标路径 或复制文件名至剪贴板"
+#define RunActionCreateSoftLink "创建软链接指向选中文件 或复制文件名至剪贴板"
 #define RunActionDelete "删除"
 #define RunActionSL "文件集合操作: 创建指向选中文件的软链接"
 #define RunActionFindSL "文件集合操作: 在新窗口查找(find)指向选中文件的链接"

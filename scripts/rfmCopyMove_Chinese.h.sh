@@ -1,6 +1,16 @@
 #!/bin/bash
 # 接受一个或多个文件名作为参数,目前从rfm上下文菜单点击操作里面传出的都是完整路径文件名
 
+# 脚本出错退出时暂停，等待用户按回车，以便在终端关闭前查看错误信息
+exit_with_pause_on_error() {
+    local status=$?
+    if [[ $status -ne 0 ]]; then
+        echo
+        read -p "按回车关闭窗口" -r
+    fi
+}
+trap exit_with_pause_on_error EXIT
+
 #set -x
 
 echo "直接回车复制当前选中文件名至剪贴板;"
@@ -17,6 +27,57 @@ if [[ -z "$input_destination" ]]; then
     	fi
     	printf '%s\n' "${@:2}" | rfmToClipboard.sh
 else
+	if [[ "$1" == "sl" ]];then
+		read -p "是否(y/n)使用相对路径创建软链接?默认是(y)" -r useRelativeInSL
+
+	        # -s 表示不解析符号链接
+		destination="$(realpath -s $input_destination)";
+
+		if [[ -e "$destination" ]]; then
+			if [ ! -d "$destination" ];then
+				echo "目的路径存在但不是目录，无法在其中创建软链接" >&2
+				exit 3
+			fi
+			# 已存在的目录作为软链接父目录
+			sl_parent_dir="$destination"
+		else
+			read -p "目的路径不存在。输入 y(默认) 则创建该目录，并在其中为每个选中文件创建同名软链接；输入 n 则把该路径当作要创建的软链接文件名(仅适用于单个选中文件)。是否创建目录? (y/n, 默认y)" -r mkdir_input_destination
+			if [[ -z "$mkdir_input_destination" || "$mkdir_input_destination" == "y" || "$mkdir_input_destination" == "Y" ]];then
+				mkdir -p "$destination"
+				sl_parent_dir="$destination"
+			else
+				# 把不存在的目的路径当作软链接文件名
+				if [[ $# -gt 2 ]]; then
+					echo "选中的文件不止一个，无法用单个软链接文件名对应多个源文件" >&2
+					exit 4
+				fi
+				sourcefile="${@:2:1}"
+				mkdir -p "$(dirname "$destination")"
+				if [[ -z "$useRelativeInSL" || "$useRelativeInSL" == "y" || "$useRelativeInSL" == "Y" ]];then
+					ln -sr "$sourcefile" "$destination" || exit
+				else
+					ln -s "$sourcefile" "$destination" || exit
+				fi
+				rfm -n -d "$destination"
+				exit 0
+			fi
+		fi
+
+		autoselection=""
+		for sourcefile in "${@:2}"; do
+			basename_sourcefile=$(basename "$sourcefile")
+			if [[ -z "$useRelativeInSL" || "$useRelativeInSL" == "y" || "$useRelativeInSL" == "Y" ]];then
+				ln -sr "$sourcefile" "$sl_parent_dir/$basename_sourcefile" || exit
+			else
+				ln -s "$sourcefile" "$sl_parent_dir/$basename_sourcefile" || exit
+			fi
+			autoselection+=" $sl_parent_dir/$basename_sourcefile"
+		done
+
+		rfm -n -d $autoselection
+		exit 0
+	fi
+
 	read -p "是否(y/n)检查移动或复制造成的符号链接破坏并修复?默认是(y)" -r check_and_update_symbolic_link
 
         # -s 表示不解析符号链接
@@ -84,7 +145,7 @@ else
 			fi
 		fi
 	else
-		echo "parameter 1 should be either cp or mv" > 2
+		echo "parameter 1 should be either cp or mv or sl" > 2
 		exit 2
 	fi
 

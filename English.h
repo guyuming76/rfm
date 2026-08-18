@@ -23,6 +23,7 @@
 #define Menu "Menu"
 #define RunActionCopy "Copy files to destination, or copy filenames to clipboard"
 #define RunActionMove "Move(rename) files to destination, or copy filenames to clipboard"
+#define RunActionCreateSoftLink "Create SoftLink to selected files, or copy filenames to clipboard"
 #define RunActionDelete "Delete"
 #define RunActionSL "File Set Operation: Create SoftLink to selected files"
 #define RunActionFindSL "File Set Operation: Find soft links to files in new term"

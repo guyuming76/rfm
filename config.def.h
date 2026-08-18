@@ -119,6 +119,7 @@ static const char *filter_selected_searchresult[] = { stdin_cmd_interpretors[0].
 static const char *f_rm[]   = { "$RFM_TERM", "$RFM_TERM_E", rfmBinPath "rfmRemove.sh",NULL };
 static const char *f_cp[]   = { "$RFM_TERM", "$RFM_TERM_E", rfmBinPath "rfmCopyMove.sh","cp", NULL };
 static const char *f_mv[]   = { "$RFM_TERM", "$RFM_TERM_E", rfmBinPath "rfmCopyMove.sh", "mv",NULL };
+static const char *f_sl[]   = { "$RFM_TERM", "$RFM_TERM_E", rfmBinPath "rfmCopyMove.sh", "sl",NULL };
 static const char *cp_clipboard_to_curPath[] = { "$RFM_TERM", "$RFM_TERM_E", rfmBinPath "rfmCopyMoveToCurPath.sh","cp",NULL };
 static const char *mv_clipboard_to_curPath[] = { "$RFM_TERM", "$RFM_TERM_E", rfmBinPath "rfmCopyMoveToCurPath.sh","mv",NULL };
 static const char *ln_clipboard_to_curPath[] = { "$RFM_TERM", "$RFM_TERM_E", rfmBinPath "rfmCopyMoveToCurPath.sh","sl",NULL };
@@ -232,6 +233,7 @@ static RFM_MenuItem run_actions[] = {
    /* name           mime root        mime sub type            filenameSuffix           OrSearchResultType	func		runCmd            		showCondition	*/
    { RunActionCopy,  "*",              "*",                    NULL,			NULL,			NULL,		f_cp,             		NULL },
    { RunActionMove,  "*",              "*",                    NULL,			NULL,	refresh_store_on_searchresult,  f_mv,             		NULL },
+   { RunActionCreateSoftLink, "*",     "*",                    NULL,			NULL,			NULL,		f_sl,             		NULL },
    { RunActionDelete, "*",             "*",                    NULL,			NULL,   refresh_store_on_searchresult,	f_rm,             		NULL },
    { RunActionCD,    "*",              "*",                    NULL,                    NULL,                   NULL,           cd_in_searchresult,             InSearchResultView },
 #ifdef GitIntegration
