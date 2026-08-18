@@ -173,7 +173,15 @@ class RfmCompleter(Completer):
     - "tab"       → get_completion_fn（文件名/搜索结果/维度）
     - "menu"      → get_menu_completion_fn（菜单/工具栏/内置命令）
     - "shift_tab" → toggle_recursive + get_completion_fn + toggle_recursive
+
+    relative_to: 可选目录路径。当传入时（rfmEdit 场景），文件路径补全结果
+    会被转换为相对于该目录的路径，与 reedline 版 CCompleter 的
+    use_relative_path 行为一致。
     """
+
+    def __init__(self, relative_to: str = None):
+        self._relative_to = relative_to
+        super().__init__()
 
     def get_completions(self, document, complete_event):
         from prompt_toolkit.completion import Completion
@@ -221,21 +229,18 @@ class RfmCompleter(Completer):
         from prompt_toolkit.completion import Completion
 
         line = document.text_before_cursor
-        pos = document.cursor_position
 
-        # 确定补全前缀（模拟 reedline 的 context_for_cursor 逻辑）
-        before_cursor = line[:pos]
-        if before_cursor:
-            last_space = before_cursor.rfind(" ")
-            if last_space >= 0:
-                start_pos = last_space + 1
-                word = before_cursor[start_pos:]
-            else:
-                start_pos = 0
-                word = before_cursor
+        # 确定补全前缀（模拟 reedline 的 context_for_cursor 逻辑：
+        # 先定位到光标所在的当前行，再取当前行内最后一个空格之后的部分）。
+        # rfmEdit 是多行编辑器，若用整段文本 rfind(" ") 会误取上一行的空格，
+        # 导致换行后按 TAB 无法触发"补全当前选中文件"（word 不为空）。
+        last_newline = line.rfind("\n")
+        current_line = line[last_newline + 1:] if last_newline >= 0 else line
+        last_space = current_line.rfind(" ")
+        if last_space >= 0:
+            word = current_line[last_space + 1:]
         else:
-            start_pos = pos
-            word = ""
+            word = current_line
 
         logger.debug("_do_complete: word=%r, is_menu=%s", word, is_menu)
 
@@ -293,6 +298,18 @@ class RfmCompleter(Completer):
                     continue
 
                 logger.debug("_do_complete: item[%d]=%r", i, result_str)
+                # rfmEdit 场景：文件路径补全结果（无 | } = * # 前缀）转换为
+                # 相对于被编辑文件所在目录的路径，与 reedline 版
+                # CCompleter 的 use_relative_path 行为一致。
+                # 注意：仅转换绝对路径；相对路径（如 "./foo"）保持原样，
+                # 与 reedline 的 pathdiff::diff_paths 行为一致（相对/绝对
+                # 不一致时返回 None → 保留原值）。
+                if self._relative_to and os.path.isabs(result_str) \
+                        and not result_str.startswith(("|", "}", "=", "*", "#")):
+                    try:
+                        result_str = os.path.relpath(result_str, self._relative_to)
+                    except ValueError:
+                        pass  # 路径跨设备等情况，保留原值
                 display, style = _parse_completion_color(result_str)
                 # prompt_toolkit Completion
                 # start_position: 负偏移量，表示从光标前几个字符开始替换
@@ -681,6 +698,17 @@ def edit_file(filename: str) -> int:
 
     kb = KeyBindings()
 
+    @kb.add(Keys.Tab)
+    def _(event):
+        """Tab → C 文件补全（补全当前 rfm GUI 选中的文件）"""
+        global _completion_mode
+        _completion_mode = "tab"
+        b = event.current_buffer
+        if b.complete_state:
+            b.complete_next()
+        else:
+            b.start_completion(select_first=False)
+
     @kb.add(Keys.ControlO)
     def _(event):
         nonlocal saved
@@ -702,9 +730,15 @@ def edit_file(filename: str) -> int:
         if fn:
             fn()
 
+    # 补全器：桥接 C 侧文件名补全，并把补全结果转为相对于被编辑文件
+    # 所在目录的路径（与 reedline 版 RfmEditor 的 use_relative_path 一致）
+    relative_to = os.path.dirname(os.path.abspath(filename))
+    completer = RfmCompleter(relative_to=relative_to)
+
     edit_session = PromptSession(
         history=InMemoryHistory(),
         key_bindings=kb,
+        completer=completer,
         multiline=True,
         bottom_toolbar="Ctrl+x不保存退出 Ctrl+o保存退出 Ctrl+(r|s)(后向|前向)搜索",
     )
