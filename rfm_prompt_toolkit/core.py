@@ -499,7 +499,7 @@ class RfmPromptToolkit:
                 _dynamic_prompt,
                 key_bindings=self._key_bindings,
                 pre_run=_capture_app,
-                rprompt=(_getenv("rfm_curPath") or "") if _show_path_rprompt else None,
+                rprompt=[("ansigreen", _getenv("rfm_curPath") or "")] if _show_path_rprompt else None,
                 bottom_toolbar=None if _show_path_rprompt else _bottom_toolbar(),
             )
             # result 可能是字符串（用户输入）或 HostCommand（app.exit(result=...)）
