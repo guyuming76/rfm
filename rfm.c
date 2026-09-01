@@ -4649,6 +4649,11 @@ static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs) {
   if(startWithTerm() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)){
     // 在读取终端输入前，确保 rfm 在前台进程组
     ensure_foreground_process(FALSE);
+    // 通知 Python 侧当前命令解释器名（供 prompt_toolkit 自定义补全判断 owner 是否匹配）。
+    // 每次 readline 线程启动时设置一次，这样即使某个 addon 的补全钩子因切换解释器而残留，
+    // 只要当前解释器名与钩子 owner 不一致，就不会错误弹出命令补全。
+    if (current_stdin_cmd_interpretor_pointer && current_stdin_cmd_interpretor_pointer->name)
+        setenv("RFM_CURRENT_CMD_INTERPRETOR", current_stdin_cmd_interpretor_pointer->name, 1);
 #if defined(reedline) || defined(prompt_toolkit)
     // rfmEdit 其实也可以只在readlineInSeperateThread 里完成 parse 和执行，而不是像现在那样和其他命令一样在gtk线程里面parse,然后绕一个圈子又回到readlineInSeperateThread里执行。现在这样，好处是可以利用 leading_space 消除，当前选中文件补全等 gtk 线程里面的功能，并且将来还有可能扩展
     if (childAttribs && childAttribs->rfmEditFilePath) { rfmEdit(childAttribs->rfmEditFilePath); free_child_attribs(childAttribs); }

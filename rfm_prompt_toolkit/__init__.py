@@ -11,6 +11,8 @@ from rfm_prompt_toolkit.core import (
     interrupt,
     request_repaint,
     set_selection_star,
+    set_custom_completer,
+    clear_custom_completer,
     save_history,
     free_handle,
     edit_file,

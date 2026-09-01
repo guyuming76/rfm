@@ -59,12 +59,41 @@ def _getenv(name: str):
 # ── 全局状态 ────────────────────────────────────────────────
 _selection_star = False
 _completion_mode = "tab"  # "tab" | "menu" | "shift_tab"
+_custom_completer = None  # 自定义补全器（TinyAgent t> 模式安装），仅用于 complete_while_typing 自动补全
+_custom_completer_owner = None  # 自定义补全器所属的命令解释器名，用于防止切换解释器后补全残留
+# _auto_complete_debug_count = 0  # 诊断用：限制自动补全调试打印次数
 
 
 def set_selection_star(show: bool):
     """C 接口：设置选中标记"""
     global _selection_star
     _selection_star = show
+
+
+def set_custom_completer(completer, owner=None):
+    """安装自定义补全器（供 addon，如 TinyAgent t> 模式调用）。
+
+    complete_while_typing 自动触发补全时，若本对象非 None，则优先调用它
+    （用于 / 命令补全）；按 Tab 手动补全仍走原 C 文件名补全。
+
+    owner: 安装此补全器的命令解释器名（stdin_cmd_interpretor.name，如 "TinyAgent"）。
+    自动补全仅在 rfm 当前解释器名（环境变量 RFM_CURRENT_CMD_INTERPRETOR，由 rfm.c
+    在 readline 线程启动时设置）与 owner 一致时才生效，避免切换到其它解释器后
+    残留的补全钩子错误弹出命令补全。
+    """
+    global _custom_completer, _custom_completer_owner
+    # print("[rfm-pt] set_custom_completer called with %s" % type(completer).__name__,
+    #       file=sys.stderr, flush=True)
+    _custom_completer = completer
+    _custom_completer_owner = owner
+
+
+def clear_custom_completer():
+    """卸载自定义补全器。"""
+    global _custom_completer, _custom_completer_owner
+    # print("[rfm-pt] clear_custom_completer called", file=sys.stderr, flush=True)
+    _custom_completer = None
+    _custom_completer_owner = None
 
 
 # ── PyCapsule → ctypes 可调用对象转换 ────────────────────────
@@ -187,6 +216,27 @@ class RfmCompleter(Completer):
         from prompt_toolkit.completion import Completion
 
         global _completion_mode
+
+        # ── complete_while_typing 自动触发（非用户按 Tab）──
+        # 仅当有自定义补全器（TinyAgent t> 模式）时才自动弹出命令补全；
+        # 否则（bash 等模式）直接返回，避免每次按键都走 C 文件名补全。
+        if not complete_event.completion_requested:
+            custom = _custom_completer
+            owner = _custom_completer_owner
+            # global _auto_complete_debug_count
+            # if _auto_complete_debug_count < 3:
+            #     _auto_complete_debug_count += 1
+            #     print("[rfm-pt] auto-complete: text=%r custom=%s" % (
+            #         document.text_before_cursor,
+            #         type(custom).__name__ if custom is not None else "None"),
+            #         file=sys.stderr, flush=True)
+            # owner 校验：仅当 rfm 当前解释器名与 owner 一致（或未指定 owner）时才生效，
+            # 避免切换到内置解释器（d>/b>/p> 等）后残留的补全钩子错误弹出命令补全。
+            if custom is not None and (
+                owner is None or _getenv("RFM_CURRENT_CMD_INTERPRETOR") == owner
+            ):
+                yield from custom.get_completions(document, complete_event)
+            return
 
         mode = _completion_mode
         _completion_mode = "tab"  # 重置
@@ -373,10 +423,13 @@ class RfmPromptToolkit:
             completer=self._completer,
             auto_suggest=AutoSuggestFromHistory(),
             style=self._style,
-            complete_while_typing=False,
+            complete_while_typing=True,
             #complete_style=CompleteStyle.READLINE_LIKE,
             multiline=True,
-            enable_history_search=True,
+            # 注意：prompt_toolkit 规定 enable_history_search 与 complete_while_typing
+            # 互斥（见 shortcuts/prompt.py 中 Buffer 的 Condition）。为启用自动命令补全，
+            # 这里关闭 enable_history_search（失去 Ctrl+R 增量历史搜索，up/down 浏览历史不受影响）。
+            enable_history_search=False,
             wrap_lines=True,
         )
 
@@ -402,14 +455,20 @@ class RfmPromptToolkit:
 
         @kb.add(Keys.Tab)
         def _(event):
-            """Tab → C 补全"""
+            """Tab → 手动补全（文件名），与 complete_while_typing 自动命令补全区分"""
+            from prompt_toolkit.completion import CompleteEvent
             global _completion_mode
             _completion_mode = "tab"
             b = event.current_buffer
+            # 若自动补全菜单已打开（命令补全），先关闭它，再以"手动补全"重新触发；
+            # 否则 buffer._async_completer 会因 complete_state 已存在而直接返回，
+            # 无法从命令补全切换到文件名补全。
             if b.complete_state:
-                b.complete_next()
-            else:
-                b.start_completion(select_first=False)
+                b.cancel_completion()
+            b.start_completion(
+                select_first=False,
+                complete_event=CompleteEvent(completion_requested=True),
+            )
 
         @kb.add(Keys.BackTab)
         def _(event):
@@ -483,7 +542,7 @@ class RfmPromptToolkit:
                 # -n 启动时 C 侧会 setenv("RFM_showHelpOnStart", "false")，此时显示当前路径
                 return _getenv("rfm_curPath") or ""
             # 默认（环境变量不存在或不为 "false"）显示帮助提示
-            return "[Shift+]TAB[包含子目录]补全 Alt+Enter多行编辑添加行 F2工具栏|文件菜单命令 Ctrl+r在历史输入中搜索"
+            return "[Shift+]TAB[包含子目录]补全 Alt+Enter多行编辑添加行 F2工具栏|文件菜单命令"
 
         try:
             # 用 rprompt 在输入行右侧显示当前路径，
