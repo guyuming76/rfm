@@ -16,6 +16,10 @@ import sys
 import ctypes as ct
 import logging
 
+import rfm_pybridge
+from rfm_pybridge import getenv as _getenv
+from rfm_pybridge import GPtrArray as _GPtrArray
+
 try:
     from prompt_toolkit.completion import Completer
 except ImportError:
@@ -29,32 +33,8 @@ if not logger.handlers:
     logger.setLevel(logging.WARNING)
 
 
-# ── GPtrArray ctypes 结构体 ─────────────────────────────────
-# GLib struct _GPtrArray { gpointer *pdata; guint len; };
-
-class _GPtrArray(ct.Structure):
-    _fields_ = [("pdata", ct.POINTER(ct.c_void_p)), ("len", ct.c_uint)]
-
 # ── 常量 ────────────────────────────────────────────────────
 REEDLINE_INTERRUPTED = "reedline_interrupted"
-
-# ── 实时读取环境变量 ─────────────────────────────────────────
-# 注意：在 Python 嵌入模式下，os.getenv / os.environ 是 CPython 在 os 模块
-# 首次使用时对 libc environ 的一次性快照。C 侧在 Python 初始化之后通过
-# g_setenv("rfm_curPath", ...) 做的修改，无法被 os.getenv 感知（实测如此）。
-# 因此这里用 ctypes 直接调用 libc 的 getenv()，它始终读取当前进程的实时 environ。
-_libc = ct.CDLL(None)
-_libc.getenv.restype = ct.c_char_p
-_libc.getenv.argtypes = [ct.c_char_p]
-
-
-def _getenv(name: str):
-    """读取当前进程实时环境变量（绕过 os.environ 快照）。"""
-    try:
-        val = _libc.getenv(name.encode("utf-8"))
-    except Exception:
-        return None
-    return val.decode("utf-8") if val else None
 
 # ── 全局状态 ────────────────────────────────────────────────
 _selection_star = False
@@ -117,26 +97,10 @@ _TOGGLE_RECURSIVE_CFUNC = ct.CFUNCTYPE(None)
 
 def _capsule_to_cfunc(capsule_attr_name, cfunc_type):
     """从 PyCapsule 属性中提取函数指针并转换为 ctypes 可调用对象"""
-    import sys
-    core_mod = sys.modules.get("rfm_prompt_toolkit.core")
+    core_mod = sys.modules.get(__name__)
     if core_mod is None:
         return None
-
-    capsule = getattr(core_mod, capsule_attr_name, None)
-    if capsule is None:
-        return None
-
-    # 通过 ctypes 调用 CPython C API: PyCapsule_GetPointer
-    try:
-        pyapi = ct.pythonapi
-        pyapi.PyCapsule_GetPointer.argtypes = [ct.py_object, ct.c_char_p]
-        pyapi.PyCapsule_GetPointer.restype = ct.c_void_p
-        ptr_val = pyapi.PyCapsule_GetPointer(capsule, None)
-        if ptr_val:
-            return ct.cast(ptr_val, cfunc_type)
-    except Exception as e:
-        logger.debug("Failed to extract capsule %s: %s", capsule_attr_name, e)
-    return None
+    return rfm_pybridge.capsule_to_cfunc(core_mod, capsule_attr_name, cfunc_type)
 
 
 def _get_completion_fn():
