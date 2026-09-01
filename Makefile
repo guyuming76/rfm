@@ -94,6 +94,16 @@ rfm_pt_wrapper.o: rfm_pt_wrapper.c prompt_toolkit_wrapper.h
 	@${CC} -c ${CFLAGS} $<
 endif
 
+# 公共 C↔Python 嵌入胶水层：编译进 rfm 主程序，插件通过 -rdynamic 导出的符号调用
+ifeq (${PythonEmbedded}, )
+PYBRIDGE_OBJ =
+else
+PYBRIDGE_OBJ = rfm_pybridge.o
+rfm_pybridge.o: rfm_pybridge.c rfm_pybridge.h
+	@echo CC $<
+	@${CC} -c ${CFLAGS} $<
+endif
+
 ifneq ($(RFM_FILE_CHOOSER),)
 rfm.o: config.h rfmFileChooser.h
 else
@@ -104,12 +114,12 @@ config.h:
 	@echo creating $@ from config.def.h
 	@cp config.def.h $@
 
-rfm: rfm.o
+rfm: rfm.o ${PYBRIDGE_OBJ}
 	@echo CC -o $@
 ifeq (${READLINE_LIB},-Dprompt_toolkit)
-	@${CC} -o $@ rfm.o rfm_pt_wrapper.o -lstdc++ ${LDFLAGS}
+	@${CC} -o $@ rfm.o rfm_pt_wrapper.o ${PYBRIDGE_OBJ} -lstdc++ ${LDFLAGS}
 else
-	@${CC} -o $@ rfm.o -lstdc++ ${LDFLAGS}
+	@${CC} -o $@ rfm.o ${PYBRIDGE_OBJ} -lstdc++ ${LDFLAGS}
 endif
 
 ifneq ($(RFM_FILE_CHOOSER),)
@@ -154,6 +164,9 @@ endif
 ifeq ($(READLINE_LIB),-Dprompt_toolkit)
 	@rm -f rfm_pt_wrapper.o
 	@rm -rf rfm_prompt_toolkit/__pycache__
+endif
+ifneq (${PythonEmbedded}, )
+	@rm -f rfm_pybridge.o
 endif
 
 install:
@@ -220,6 +233,8 @@ endif
 	@cp -f scripts/rfmConcatVideos.sh ${DESTDIR}${PREFIX}/bin/
 ifneq (${PythonEmbedded}, )
 	@cp -f scripts/rfmShareDir.py ${DESTDIR}${PREFIX}/bin/
+	@cp -f rfm_pybridge.py ${DESTDIR}${PREFIX}/bin/
+	@cp -f rfm_pybridge.h ${DESTDIR}${PREFIX}/include
 else
 	@cp -f scripts/rfmShareDir.sh ${DESTDIR}${PREFIX}/bin/
 endif
@@ -341,6 +356,8 @@ endif
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmConcatVideos.sh
 ifneq (${PythonEmbedded}, )
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmShareDir.py
+	@rm -f ${DESTDIR}${PREFIX}/bin/rfm_pybridge.py
+	@rm -f ${DESTDIR}${PREFIX}/include/rfm_pybridge.h
 else
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmShareDir.sh
 endif
