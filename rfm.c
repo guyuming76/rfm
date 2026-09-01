@@ -75,8 +75,7 @@ static GList * stdin_cmd_selection_list=NULL; //selected files used in stdin cmd
 /****************************************************/
 /******Terminal Emulator related definitions*********/
 #ifdef PythonEmbedded
-#define PY_SSIZE_T_CLEAN
-#include <Python.h>
+#include "rfm_pybridge.h"
 /*https://docs.python.org/3.10/extending/embedding.html*/
 static  wchar_t *pyProgramName=NULL;
 static void startPythonEmbedding(){
@@ -128,11 +127,12 @@ static PyObject *p_ftp_manager=NULL;
 static PyObject *p_http_manager=NULL;
 
 static void cmdStartShare(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution) {
+    (void)readline_result_string_after_file_name_substitution;
     gint port = -1;
     gchar password[20] = {'p','a','s','s','w','o','r','d','\0'};
     gchar perm[20] = {'e','l','r','a','d','f','m','w','\0'};
-    gboolean ftp =False;
-    gboolean http=False;
+    gboolean ftp = False;
+    gboolean http = False;
     gboolean *no_firewall = False;
     GError *error = NULL;
     GOptionEntry entries[] = {
@@ -149,133 +149,122 @@ static void cmdStartShare(wordexp_t * parsed_msg, GString* readline_result_strin
     if (!g_option_context_parse_strv(context, &(parsed_msg->we_wordv), &error)) {
       g_warning("错误: %s", error->message);
       g_error_free(error);
+      g_option_context_free(context);
       return;
     }
 
-    PyGILState_STATE gstate;
-    gstate = PyGILState_Ensure();
+    RFM_PY_GIL_SCOPE;
 
-    if (py_rfmShareDir_module==NULL){
-      // 添加当前执行文件绝对路径到sys.path
+    if (py_rfmShareDir_module == NULL) {
+      /* 添加当前执行文件所在目录到 sys.path，以便 import rfmShareDir */
       char buf[PATH_MAX];
-      char *program_dir = NULL;
       ssize_t len = readlink("/proc/self/exe", buf, PATH_MAX - 1);
-      if (len != -1) {
-        buf[len] = '\0';                       // 确保字符串正确终止
-        program_dir = g_path_get_dirname(buf); // 获取目录部分
-      } else {
+      if (len == -1) {
         g_debug("readlink /proc/self/exe return -1");
+        g_option_context_free(context);
         return;
       }
-      PyRun_SimpleString("import sys, os");
-      gchar *insert_program_dir_to_path = g_strdup_printf("sys.path.insert(0, '%s')", program_dir);
-      PyRun_SimpleString(insert_program_dir_to_path);
-      g_free(insert_program_dir_to_path);
-      // 导入自定义模块
-      py_rfmShareDir_module = PyImport_ImportModule("rfmShareDir");
+      buf[len] = '\0';
+      gchar *program_dir = g_path_get_dirname(buf);
+      py_rfmShareDir_module = rfm_py_import("rfmShareDir", program_dir);
+      g_free(program_dir);
     }
-    if (py_rfmShareDir_module != NULL) {
-      // ensure ServiceManagerFactory类
-      if (!pFactoryClass && !(pFactoryClass = PyObject_GetAttrString(py_rfmShareDir_module, "ServiceManagerFactory"))){
-        if (PyErr_Occurred()) {PyErr_Print();PyErr_Clear();}
-        Py_DECREF(py_rfmShareDir_module); py_rfmShareDir_module = NULL;
-        goto quit;
-      }
-      if (!PyObject_HasAttrString(pFactoryClass, "create_manager")) {
-	Py_DECREF(pFactoryClass); pFactoryClass = NULL;
-        Py_DECREF(py_rfmShareDir_module); py_rfmShareDir_module = NULL;
-	g_warning("no create_manager method for ServiceManagerFactory");
-        goto quit;
-      }
+    if (py_rfmShareDir_module == NULL) {
+      rfm_py_clear_error("import rfmShareDir");
+      g_option_context_free(context);
+      return;
+    }
 
-      if (ftp){
-      if ((p_ftp_manager || (p_ftp_manager = PyObject_CallMethod(pFactoryClass, "create_manager", "s", "ftp")))){
-	PyObject *start_server_method = NULL;
-        if ((start_server_method = PyObject_GetAttrString(p_ftp_manager, "start_server"))) {
-	    PyObject *args = Py_BuildValue("sisssO", "0.0.0.0",port,"rfm", password, rfm_curPath, (no_firewall ? Py_False : Py_True)); // 构建位置参数元组
-	    PyObject *kwargs = Py_BuildValue("{s:s}", "perm", perm); //构建关键字参数字典
-            PyObject *pResult = PyObject_Call(start_server_method, args,kwargs);
-            if (PyErr_Occurred()) {
-              PyErr_Print(); // 打印异常信息
-              PyErr_Clear(); // 清除异常状态，以便程序继续运行（可选）
-            } else Py_XDECREF(pResult);
-	    Py_XDECREF(start_server_method);
-	    Py_XDECREF(args);
-	    Py_XDECREF(kwargs);
-        }else{ if (PyErr_Occurred()) {PyErr_Print();PyErr_Clear();}}
-      }else { if (PyErr_Occurred()) {PyErr_Print();PyErr_Clear();}}
-      }//ftp
+    /* ensure ServiceManagerFactory类 */
+    if (pFactoryClass == NULL) {
+      pFactoryClass = rfm_py_getattr(py_rfmShareDir_module, "ServiceManagerFactory");
+      if (pFactoryClass == NULL) {
+        rfm_py_clear_error("ServiceManagerFactory");
+        Py_CLEAR(py_rfmShareDir_module);
+        g_option_context_free(context);
+        return;
+      }
+    }
+    if (!PyObject_HasAttrString(pFactoryClass, "create_manager")) {
+      Py_CLEAR(pFactoryClass);
+      Py_CLEAR(py_rfmShareDir_module);
+      g_warning("no create_manager method for ServiceManagerFactory");
+      g_option_context_free(context);
+      return;
+    }
 
-      if (http){
-      if ((p_http_manager || (p_http_manager = PyObject_CallMethod(pFactoryClass, "create_manager", "s", "http")))){
-        if (PyObject_HasAttrString(p_http_manager, "start_server")) {
-            PyObject *pResult = PyObject_CallMethod(p_http_manager, "start_server", "siOssO","0.0.0.0",port,Py_None,password,rfm_curPath,no_firewall?Py_False:Py_True);
-            if (PyErr_Occurred()) { PyErr_Print(); PyErr_Clear();
-            } else Py_XDECREF(pResult);
-        }else{ g_warning("no start_server method for http_manager");}
-      }else {if (PyErr_Occurred()) {PyErr_Print();PyErr_Clear();}}
-      }//http
-      if (!ftp && !http) g_warning("add --ftp or --http or both as parameter, at least one of them");
-    }else{ PyErr_Print();PyErr_Clear();} //py_rfmShareDir_module == NULL
- quit:
-    PyGILState_Release(gstate);
+    if (ftp) {
+      if (p_ftp_manager == NULL) {
+        p_ftp_manager = rfm_py_call_method(pFactoryClass, "create_manager", "s", "ftp");
+        if (p_ftp_manager == NULL) rfm_py_clear_error("create_manager(ftp)");
+      }
+      if (p_ftp_manager != NULL) {
+        RFM_PY_AUTO PyObject *args = Py_BuildValue("sisssO", "0.0.0.0", port, "rfm", password, rfm_curPath, (no_firewall ? Py_False : Py_True));
+        RFM_PY_AUTO PyObject *kwargs = Py_BuildValue("{s:s}", "perm", perm);
+        RFM_PY_AUTO PyObject *pResult = rfm_py_call_method_obj(p_ftp_manager, "start_server", args, kwargs);
+        rfm_py_clear_error("ftp start_server");
+      }
+    }
+
+    if (http) {
+      if (p_http_manager == NULL) {
+        p_http_manager = rfm_py_call_method(pFactoryClass, "create_manager", "s", "http");
+        if (p_http_manager == NULL) rfm_py_clear_error("create_manager(http)");
+      }
+      if (p_http_manager != NULL) {
+        RFM_PY_AUTO PyObject *pResult = rfm_py_call_method(p_http_manager, "start_server", "siOssO", "0.0.0.0", port, Py_None, password, rfm_curPath, no_firewall ? Py_False : Py_True);
+        rfm_py_clear_error("http start_server");
+      }
+    }
+
+    if (!ftp && !http) g_warning("add --ftp or --http or both as parameter, at least one of them");
+
     g_option_context_free(context);
 }
 
 static void cmdStopShare(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution) {
-  PyGILState_STATE gstate;
-  gstate = PyGILState_Ensure();
-  if (p_ftp_manager){
-    if (PyObject_HasAttrString(p_ftp_manager, "stop_server")) {
-    PyObject *pResult = PyObject_CallMethod(p_ftp_manager, "stop_server", NULL);
-    if (PyErr_Occurred()) { PyErr_Print();PyErr_Clear();
-    } else {
-      if (pResult == Py_True){
-	Py_XDECREF(p_ftp_manager);
-	p_ftp_manager = NULL;
-      }
-      Py_XDECREF(pResult); // 确保释放 result（如果非空）
-    }
-    }else g_warning("no stop_server method for ftp_manager");
-  }else {g_debug("no ftp_manager");}
-  
-  if (p_http_manager){
-    if (PyObject_HasAttrString(p_http_manager, "stop_server")) {
-    PyObject *pResult = PyObject_CallMethod(p_http_manager, "stop_server", NULL);
-    if (PyErr_Occurred()) { PyErr_Print(); PyErr_Clear();
-    } else {
-      if (pResult == Py_True){
-	Py_XDECREF(p_http_manager);
-	p_http_manager = NULL;
-      }
-      Py_XDECREF(pResult); // 确保释放 result（如果非空）
-    }
-    }else g_warning("no stop_server method for http_manager");
-  }else g_debug("no http_manager");
-  PyGILState_Release(gstate);
+  (void)parsed_msg;
+  (void)readline_result_string_after_file_name_substitution;
+  RFM_PY_GIL_SCOPE;
+
+  if (p_ftp_manager) {
+    RFM_PY_AUTO PyObject *pResult = rfm_py_call_method(p_ftp_manager, "stop_server", NULL);
+    rfm_py_clear_error("ftp stop_server");
+    if (pResult == Py_True) Py_CLEAR(p_ftp_manager);
+  } else {
+    g_debug("no ftp_manager");
+  }
+
+  if (p_http_manager) {
+    RFM_PY_AUTO PyObject *pResult = rfm_py_call_method(p_http_manager, "stop_server", NULL);
+    rfm_py_clear_error("http stop_server");
+    if (pResult == Py_True) Py_CLEAR(p_http_manager);
+  } else {
+    g_debug("no http_manager");
+  }
 }
 
 static void change_ftp_server_root(gchar *newroot) {
-  PyGILState_STATE gstate;
-  gstate = PyGILState_Ensure();
-  if (p_ftp_manager){
-    if (PyObject_HasAttrString(p_ftp_manager, "change_root_directory")) {
-      PyObject *pResult = PyObject_CallMethod(p_ftp_manager, "change_root_directory", "s", rfm_curPath);
-      if (PyErr_Occurred()) { PyErr_Print(); PyErr_Clear();
-      } else g_debug("ftp server root changed to %s",rfm_curPath);
-      Py_XDECREF(pResult); // 确保释放 result（如果非空）
-    }else g_warning("no change_root_directory method for ftp_manager");
-  }else g_debug("no ftp_manager");
-  if (p_http_manager){
-    if (PyObject_HasAttrString(p_http_manager, "change_root_directory")) {
-      PyObject *pResult = PyObject_CallMethod(p_http_manager, "change_root_directory", "s", rfm_curPath);
-      if (PyErr_Occurred()) { PyErr_Print(); PyErr_Clear();
-      } else g_debug("http server root changed to %s",rfm_curPath);
-      Py_XDECREF(pResult); // 确保释放 result（如果非空）
-    }else g_warning("no change_root_directory method for http_manager");
-  }else g_debug("no http_manager");
-  PyGILState_Release(gstate);
-}  
+  (void)newroot;  /* 原实现使用全局 rfm_curPath，参数保留以兼容调用处 */
+  RFM_PY_GIL_SCOPE;
+
+  if (p_ftp_manager) {
+    RFM_PY_AUTO PyObject *pResult = rfm_py_call_method(p_ftp_manager, "change_root_directory", "s", rfm_curPath);
+    if (pResult != NULL) g_debug("ftp server root changed to %s", rfm_curPath);
+    rfm_py_clear_error("ftp change_root_directory");
+  } else {
+    g_debug("no ftp_manager");
+  }
+
+  if (p_http_manager) {
+    RFM_PY_AUTO PyObject *pResult = rfm_py_call_method(p_http_manager, "change_root_directory", "s", rfm_curPath);
+    if (pResult != NULL) g_debug("http server root changed to %s", rfm_curPath);
+    rfm_py_clear_error("http change_root_directory");
+  } else {
+    g_debug("no http_manager");
+  }
+}
+
 #endif
 
 enum rfmTerminal {
