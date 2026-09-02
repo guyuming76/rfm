@@ -163,9 +163,6 @@ static const char *ffmpegThumb[] =  { "/usr/bin/ffmpeg", "-i",RFM_selected_filen
 static const char *geogebraThumb[] = { rfmBinPath "rfmMakeThumbnailForGGB.sh",thumbnailsize_str,NULL };
 static const char *term_cmd[]  = { "$RFM_TERM", NULL };
 static const char *new_rfm[]  = { "$RFM_TERM", "$RFM_TERM_E", rfmBinPath "rfm", NULL };
-#ifndef PythonEmbedded
-static const char *share_dir[] = { "$RFM_TERM", "$RFM_TERM_E", rfmBinPath "rfmShareDir.sh", NULL };
-#endif
 //TODO: to get thumbnail from .desktop file
 #ifdef GitIntegration
 static const char *git_ls_files_cmd[] = {"git", "ls-files", "--deduplicate",NULL};
@@ -192,8 +189,6 @@ static RFM_builtinCMD builtinCMD[] = {
 #ifdef PythonEmbedded
         {"py",     startPythonEmbedding,    "Embedding Python" },
         {"pyq",    endPythonEmbedding,      "quit Python Embedding" },
-        {"startshare",                         cmdStartShare,                          "start inprocess http/ftp server. ftp username 'rfm' hardcoded: startshare [--http] [--ftp] [--port xxxx(default 8080/2121 depends on http/ftp)] [--password xxxx(default empty)] [--no_firewall] [--perm xxxx(default elradfmw for ftp)]"},
-        {"stopshare",                          cmdStopShare,                           "stop inprocess http/ftp server"},
 //      {"oh",                                 cmdOpenHarness,                         "OpenHarness AI agent: oh [prompt] | oh -c for continuous conversation | oh -c -m MODEL for specific model"},
 #endif
 #ifdef RFM_FILE_CHOOSER
@@ -338,9 +333,6 @@ static RFM_ToolButton tool_buttons[] = {
    { Next,           "go-next",                 next_path_clicked,      NULL,              FALSE,          TRUE,      GDK_KEY_Right,         BuiltInCmd_Next_Description,NULL},
    { "Refresh",      "view-refresh",            refresh_store,          NULL,              TRUE,           TRUE,      0,                      NULL,                   NULL},
    { FIND_FILES,     NULL,                      NULL,                   find_files,        FALSE,          TRUE,      0,                      NULL,                   NULL},
-#ifndef PythonEmbedded
-   { "Share",        NULL,                      NULL,                   share_dir,         FALSE,          TRUE,      0,                      "share directory",      NULL},
-#endif
 // { "Terminal",     "utilities-terminal",      NULL,                   term_cmd,          TRUE,           TRUE,      0,                      NULL,                   NULL},
 // { "rfm",          "system-file-manager",     NULL,                   new_rfm,           TRUE,           TRUE,      0,                      NULL,                   NULL},
    { "Stop",         "process-stop",            rfm_stop_all,           NULL,              TRUE,           TRUE,      0,                      NULL,                   NULL},

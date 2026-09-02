@@ -121,150 +121,6 @@ static void endPythonEmbedding(){
     pyProgramName=NULL;
 }
 
-static PyObject *py_rfmShareDir_module=NULL;
-static PyObject *pFactoryClass=NULL;
-static PyObject *p_ftp_manager=NULL;
-static PyObject *p_http_manager=NULL;
-
-static void cmdStartShare(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution) {
-    (void)readline_result_string_after_file_name_substitution;
-    gint port = -1;
-    gchar password[20] = {'p','a','s','s','w','o','r','d','\0'};
-    gchar perm[20] = {'e','l','r','a','d','f','m','w','\0'};
-    gboolean ftp = False;
-    gboolean http = False;
-    gboolean *no_firewall = False;
-    GError *error = NULL;
-    GOptionEntry entries[] = {
-      {"port", 'p', 0, G_OPTION_ARG_INT, &port, "FTP port", "PORT"},
-      {"password", 'w', 0, G_OPTION_ARG_STRING, &password, "FTP password", "PWD"},
-      {"perm", 'r', 0, G_OPTION_ARG_STRING, &perm, "user permission default elradfmw", "permission default elradfmw"},
-      {"no_firewall", 'n', 0, G_OPTION_ARG_NONE, &no_firewall, "without firewall command", NULL},
-      {"ftp", 'f', 0, G_OPTION_ARG_NONE, &ftp, "ftp server", NULL},
-      {"http", 'h', 0, G_OPTION_ARG_NONE, &http, "http server", NULL},
-      {NULL}
-    };
-    GOptionContext *context = g_option_context_new("ShareDir");
-    g_option_context_add_main_entries(context, entries, NULL);
-    if (!g_option_context_parse_strv(context, &(parsed_msg->we_wordv), &error)) {
-      g_warning("错误: %s", error->message);
-      g_error_free(error);
-      g_option_context_free(context);
-      return;
-    }
-
-    RFM_PY_GIL_SCOPE;
-
-    if (py_rfmShareDir_module == NULL) {
-      /* 添加当前执行文件所在目录到 sys.path，以便 import rfmShareDir */
-      char buf[PATH_MAX];
-      ssize_t len = readlink("/proc/self/exe", buf, PATH_MAX - 1);
-      if (len == -1) {
-        g_debug("readlink /proc/self/exe return -1");
-        g_option_context_free(context);
-        return;
-      }
-      buf[len] = '\0';
-      gchar *program_dir = g_path_get_dirname(buf);
-      py_rfmShareDir_module = rfm_py_import("rfmShareDir", program_dir);
-      g_free(program_dir);
-    }
-    if (py_rfmShareDir_module == NULL) {
-      rfm_py_clear_error("import rfmShareDir");
-      g_option_context_free(context);
-      return;
-    }
-
-    /* ensure ServiceManagerFactory类 */
-    if (pFactoryClass == NULL) {
-      pFactoryClass = rfm_py_getattr(py_rfmShareDir_module, "ServiceManagerFactory");
-      if (pFactoryClass == NULL) {
-        rfm_py_clear_error("ServiceManagerFactory");
-        Py_CLEAR(py_rfmShareDir_module);
-        g_option_context_free(context);
-        return;
-      }
-    }
-    if (!PyObject_HasAttrString(pFactoryClass, "create_manager")) {
-      Py_CLEAR(pFactoryClass);
-      Py_CLEAR(py_rfmShareDir_module);
-      g_warning("no create_manager method for ServiceManagerFactory");
-      g_option_context_free(context);
-      return;
-    }
-
-    if (ftp) {
-      if (p_ftp_manager == NULL) {
-        p_ftp_manager = rfm_py_call_method(pFactoryClass, "create_manager", "s", "ftp");
-        if (p_ftp_manager == NULL) rfm_py_clear_error("create_manager(ftp)");
-      }
-      if (p_ftp_manager != NULL) {
-        RFM_PY_AUTO PyObject *args = Py_BuildValue("sisssO", "0.0.0.0", port, "rfm", password, rfm_curPath, (no_firewall ? Py_False : Py_True));
-        RFM_PY_AUTO PyObject *kwargs = Py_BuildValue("{s:s}", "perm", perm);
-        RFM_PY_AUTO PyObject *pResult = rfm_py_call_method_obj(p_ftp_manager, "start_server", args, kwargs);
-        rfm_py_clear_error("ftp start_server");
-      }
-    }
-
-    if (http) {
-      if (p_http_manager == NULL) {
-        p_http_manager = rfm_py_call_method(pFactoryClass, "create_manager", "s", "http");
-        if (p_http_manager == NULL) rfm_py_clear_error("create_manager(http)");
-      }
-      if (p_http_manager != NULL) {
-        RFM_PY_AUTO PyObject *pResult = rfm_py_call_method(p_http_manager, "start_server", "siOssO", "0.0.0.0", port, Py_None, password, rfm_curPath, no_firewall ? Py_False : Py_True);
-        rfm_py_clear_error("http start_server");
-      }
-    }
-
-    if (!ftp && !http) g_warning("add --ftp or --http or both as parameter, at least one of them");
-
-    g_option_context_free(context);
-}
-
-static void cmdStopShare(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution) {
-  (void)parsed_msg;
-  (void)readline_result_string_after_file_name_substitution;
-  RFM_PY_GIL_SCOPE;
-
-  if (p_ftp_manager) {
-    RFM_PY_AUTO PyObject *pResult = rfm_py_call_method(p_ftp_manager, "stop_server", NULL);
-    rfm_py_clear_error("ftp stop_server");
-    if (pResult == Py_True) Py_CLEAR(p_ftp_manager);
-  } else {
-    g_debug("no ftp_manager");
-  }
-
-  if (p_http_manager) {
-    RFM_PY_AUTO PyObject *pResult = rfm_py_call_method(p_http_manager, "stop_server", NULL);
-    rfm_py_clear_error("http stop_server");
-    if (pResult == Py_True) Py_CLEAR(p_http_manager);
-  } else {
-    g_debug("no http_manager");
-  }
-}
-
-static void change_ftp_server_root(gchar *newroot) {
-  (void)newroot;  /* 原实现使用全局 rfm_curPath，参数保留以兼容调用处 */
-  RFM_PY_GIL_SCOPE;
-
-  if (p_ftp_manager) {
-    RFM_PY_AUTO PyObject *pResult = rfm_py_call_method(p_ftp_manager, "change_root_directory", "s", rfm_curPath);
-    if (pResult != NULL) g_debug("ftp server root changed to %s", rfm_curPath);
-    rfm_py_clear_error("ftp change_root_directory");
-  } else {
-    g_debug("no ftp_manager");
-  }
-
-  if (p_http_manager) {
-    RFM_PY_AUTO PyObject *pResult = rfm_py_call_method(p_http_manager, "change_root_directory", "s", rfm_curPath);
-    if (pResult != NULL) g_debug("http server root changed to %s", rfm_curPath);
-    rfm_py_clear_error("http change_root_directory");
-  } else {
-    g_debug("no http_manager");
-  }
-}
-
 #endif
 
 enum rfmTerminal {
@@ -865,6 +721,9 @@ static GHashTable* addons; // RFM_ADDON as value
 static GHashTable* all_addon_definitions_by_dir; // addon definition file directory as key, nested ghashtable as value; in nested ghashtable, addon definition file fullpath as key, addon type definition str such as "const enum RFM_ADDON_TYPE addon_type = DirectoryTree;" as value
 static GHashTable* addons_hash; //use addon hash as key, addon pointer as value to detect duplicate load
 static GHashTable* addons_filename; //use filename as key, to detect duplicate load, such as different versions of the same addon
+static GHashTable* addon_dir_change_callbacks; // key: addon hash (plugin id), value: RFM_DirChangeCallback
+static void rfm_addon_remove_dir_change_callback(const gchar *addon_id);
+static void unload_all_addons(void);
 static void locate_all_addons_callback(RFM_ChildAttribs* child_attribs);
 static void load_addon(CALLER_OWN char* addon_fullpath);
 static void load_addon_dir(char* addon_dir);
@@ -2754,8 +2613,16 @@ static void set_rfm_curPath_internal(CALLER_OWN const gchar* path){
    //when we run commands such as echo $PWD, we spawn child process with working directory rfm_curPath, so, even we do not set $PWD, we get result as expected with this kind of commands.
    //so, we should first know the relationship between working directory parameter in g_spawn and PWD env value inheritence before we do anything furthur here.
    //anyway, setting OLDPWD is necessary for us here.
-#ifdef PythonEmbedded
-	 change_ftp_server_root(rfm_curPath);
+#ifdef RFM_AddOn
+	 if (addon_dir_change_callbacks) {
+	   GHashTableIter ht_iter;
+	   gpointer cb_key, cb_value;
+	   g_hash_table_iter_init(&ht_iter, addon_dir_change_callbacks);
+	   while (g_hash_table_iter_next(&ht_iter, &cb_key, &cb_value)) {
+	     RFM_DirChangeCallback dir_change_cb = (RFM_DirChangeCallback)cb_value;
+	     if (dir_change_cb) dir_change_cb(rfm_curPath);
+	   }
+	 }
 #endif
 #ifdef RFM_AddOn
 	 if (!disable_addon){
@@ -6379,10 +6246,10 @@ static void cleanup()
 #ifdef GNU_readline
    rl_attempted_completion_function = OLD_rl_attempted_completion_function;
 #endif
-#ifdef PythonEmbedded
-   cmdStopShare(NULL, NULL);
-   //endPythonEmbedding(); py_finializeex() cause sigsegv on my laptop
+#ifdef RFM_AddOn
+   unload_all_addons();
 #endif
+   //endPythonEmbedding(); py_finializeex() cause sigsegv on my laptop
    gtk_main_quit();
    window = NULL; //这里window 作为标志位，防止 quit 命令执行完cleanup后，继续新建 readlineThread
 }
@@ -6443,6 +6310,9 @@ int main(int argc, char *argv[])
    addons = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
    addons_hash = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, NULL);
    addons_filename = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, NULL);
+#ifdef RFM_AddOn
+   addon_dir_change_callbacks = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
+#endif
 
    rfm_mountMonitor=g_unix_mount_monitor_get();
    delayedRefresh_GSourceID=0;
@@ -8032,6 +7902,16 @@ static void find_and_unload_addons_before_leaving_current_directory(CALLER_OWN c
     if (needs_regenerate) regenerate_merged_menu_and_toolbars();
 }
 
+void rfm_addon_register_dir_change_callback(const gchar *addon_id, RFM_DirChangeCallback callback) {
+  if (!addon_dir_change_callbacks || !addon_id || !callback) return;
+  g_hash_table_insert(addon_dir_change_callbacks, g_strdup(addon_id), (gpointer)callback);
+}
+
+static void rfm_addon_remove_dir_change_callback(const gchar *addon_id) {
+  if (!addon_dir_change_callbacks || !addon_id) return;
+  g_hash_table_remove(addon_dir_change_callbacks, addon_id);
+}
+
 static void unload_local_extension(RFM_ADDON *addon) {
   if (addon->addon_so_handle) {
         g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Unloading local extension. %s", addon->addon_so_fullpath);
@@ -8044,6 +7924,7 @@ static void unload_local_extension(RFM_ADDON *addon) {
              g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Function %s not found in %s (optional).", RFM_ADDON_LEAVE_FUNC, addon->addon_so_fullpath);
         }
         remove_addon_treeviewColumns(addon);
+        rfm_addon_remove_dir_change_callback(addon->addon_hash);
         if (dlclose(addon->addon_so_handle) != 0) {
              g_warning("dlclose failed: %s", dlerror());
         }
@@ -8056,6 +7937,22 @@ static void free_addon(RFM_ADDON *addon){
         g_free(addon->addon_hash);
         g_free(addon->addon_base_filename);
         free(addon);
+}
+
+//退出 rfm 前卸载所有已加载插件，让每个插件的 leave 函数有机会做清理。
+static void unload_all_addons(void) {
+  if (!addons) return;
+  GHashTableIter ht_iter;
+  gpointer key, value;
+  g_hash_table_iter_init(&ht_iter, addons);
+  while (g_hash_table_iter_next(&ht_iter, &key, &value)) {
+    RFM_ADDON *addon = value;
+    g_hash_table_iter_remove(&ht_iter);
+    g_hash_table_remove(addons_hash, addon->addon_hash);
+    g_hash_table_remove(addons_filename, addon->addon_base_filename);
+    unload_local_extension(addon);
+    free_addon(addon);
+  }
 }
 
 static NO_FREE char *AddOnStatus(RFM_FileAttributes* fileAttribs, guint ExtColumnHashTableIndex) {

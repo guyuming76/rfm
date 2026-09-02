@@ -308,6 +308,16 @@ enum RFM_ADDON_TYPE {
   Global,
 };
 
+/* ── 插件回调注册 ────────────────────────────────────────────────────
+ * rfm 主程序维护一个以插件 id 为 key 的目录切换回调 hashtable。
+ * 插件在 rfm_addon_activating() 里调用下面的注册函数；rfm 在
+ * set_rfm_curPath_internal() 中遍历并调用这些回调。
+ * 推荐使用 rfm_addon_c_file_hash（插件 .c 文件 hash）作为 addon_id，
+ * 该值与 rfm 卸载插件时用于删除记录的 key 一致。 */
+typedef void (*RFM_DirChangeCallback)(gchar *new_path);
+
+void rfm_addon_register_dir_change_callback(const gchar *addon_id, RFM_DirChangeCallback callback);
+
 #define RFM_LOG_ADDON "rfm-addon"
 
 // 使用编译时gcc -DRFM_ADDON_C_HASH=xxxxxx 传入的值来初始化这个常量指针

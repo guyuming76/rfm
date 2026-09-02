@@ -10,3 +10,6 @@
 [submodule "mail_addon"]
 	path = mail_addon
 	url = https://gitee.com/guyuming76/rfm-mail.git
+[submodule "py_ftp_http_server.rfm_addon"]
+	path = py_ftp_http_server.rfm_addon
+	url = https://gitee.com/guyuming76/py_ftp_http_server.rfm_addon.git

@@ -232,11 +232,8 @@ endif
 	@cp -f scripts/rfmFind_DIMENSION_PROPERTIES_FILEs.sh ${DESTDIR}${PREFIX}/bin/
 	@cp -f scripts/rfmConcatVideos.sh ${DESTDIR}${PREFIX}/bin/
 ifneq (${PythonEmbedded}, )
-	@cp -f scripts/rfmShareDir.py ${DESTDIR}${PREFIX}/bin/
 	@cp -f rfm_pybridge.py ${DESTDIR}${PREFIX}/bin/
 	@cp -f rfm_pybridge.h ${DESTDIR}${PREFIX}/include
-else
-	@cp -f scripts/rfmShareDir.sh ${DESTDIR}${PREFIX}/bin/
 endif
 ifneq (${RFM_AddOn},)
 	@cp -f scripts/rfmEnsurePythonVenv.sh ${DESTDIR}${PREFIX}/bin/
@@ -297,11 +294,6 @@ endif
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmMount.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmFind_DIMENSION_PROPERTIES_FILEs.sh
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmConcatVideos.sh
-ifneq (${PythonEmbedded}, )
-	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmShareDir.py
-else
-	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmShareDir.sh
-endif
 ifneq (${RFM_AddOn},)
 	@chmod +x ${DESTDIR}${PREFIX}/bin/rfmEnsurePythonVenv.sh
 endif
@@ -355,11 +347,8 @@ endif
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmFind_DIMENSION_PROPERTIES_FILEs.sh
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmConcatVideos.sh
 ifneq (${PythonEmbedded}, )
-	@rm -f ${DESTDIR}${PREFIX}/bin/rfmShareDir.py
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfm_pybridge.py
 	@rm -f ${DESTDIR}${PREFIX}/include/rfm_pybridge.h
-else
-	@rm -f ${DESTDIR}${PREFIX}/bin/rfmShareDir.sh
 endif
 ifneq (${RFM_AddOn},)
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmEnsurePythonVenv.sh
