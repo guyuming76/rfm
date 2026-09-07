@@ -6,8 +6,7 @@
 //   1. 导入 rfm_prompt_toolkit 模块
 //   2. 将 C 补全函数指针通过 PyCapsule 传递给 Python
 //   3. GIL 管理与 C↔Python 调用（复用 rfm_pybridge 公共胶水层）
-
-#include "rfm_pybridge.h"
+#include "rfm_addon.h"
 #include "prompt_toolkit_wrapper.h"
 #include <stdlib.h>
 #include <string.h>

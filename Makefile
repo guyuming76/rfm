@@ -99,7 +99,7 @@ ifeq (${PythonEmbedded}, )
 PYBRIDGE_OBJ =
 else
 PYBRIDGE_OBJ = rfm_pybridge.o
-rfm_pybridge.o: rfm_pybridge.c rfm_pybridge.h
+rfm_pybridge.o: rfm_pybridge.c rfm_addon.h
 	@echo CC $<
 	@${CC} -c ${CFLAGS} $<
 endif
@@ -233,7 +233,6 @@ endif
 	@cp -f scripts/rfmConcatVideos.sh ${DESTDIR}${PREFIX}/bin/
 ifneq (${PythonEmbedded}, )
 	@cp -f rfm_pybridge.py ${DESTDIR}${PREFIX}/bin/
-	@cp -f rfm_pybridge.h ${DESTDIR}${PREFIX}/include
 endif
 ifneq (${RFM_AddOn},)
 	@cp -f scripts/rfmEnsurePythonVenv.sh ${DESTDIR}${PREFIX}/bin/
@@ -348,7 +347,6 @@ endif
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmConcatVideos.sh
 ifneq (${PythonEmbedded}, )
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfm_pybridge.py
-	@rm -f ${DESTDIR}${PREFIX}/include/rfm_pybridge.h
 endif
 ifneq (${RFM_AddOn},)
 	@rm -f ${DESTDIR}${PREFIX}/bin/rfmEnsurePythonVenv.sh
