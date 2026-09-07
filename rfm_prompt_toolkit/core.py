@@ -539,9 +539,6 @@ class RfmPromptToolkit:
             # 继续持有一个已结束的 Application。
             _current_app = None
 
-    def interrupt(self):
-        """中断阻塞的 prompt()。实际逻辑见模块级 interrupt()。"""
-        interrupt()
 
     def request_repaint(self):
         """请求重绘"""

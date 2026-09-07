@@ -124,9 +124,6 @@ PyObject *rfm_py_call_method(PyObject *obj, const char *method, const char *fmt,
     return result;
 }
 
-PyObject *rfm_py_get_singleton(PyObject *module, const char *factory_name) {
-    return rfm_py_call_attr(module, factory_name, NULL);
-}
 
 PyObject *rfm_py_call_method_obj(PyObject *obj, const char *method, PyObject *args, PyObject *kwargs) {
     PyObject *callable = rfm_py_getattr(obj, method);
@@ -148,9 +145,4 @@ gchar *rfm_py_to_cstr(PyObject *obj) {
     gchar *r = s ? g_strdup(s) : NULL;
     Py_DECREF(str);
     return r;
-}
-
-PyObject *rfm_py_capsule_from_fn(void *fn) {
-    if (!fn) Py_RETURN_NONE;
-    return PyCapsule_New(fn, NULL, NULL);
 }

@@ -176,7 +176,7 @@ static rfmFunctions functionPointersForReedlineWrapper;
 static ReedlineHandle *reedline_handle = NULL;
 #endif
 #ifdef prompt_toolkit
-static PtHandle *pt_handle = NULL;
+static PtHandle *pt_handle = NULL;//这里虽然有一个变量，传来传去的，但实际上传入 rfm_prompt_toolkit c wrapper 层面后都没有使用，直接吞掉了，实际使用的是python层面 core.py 里面的_session_instance 全局变量。为啥会这样？我估计是因为最初是让deepseek-v4-pro 根据 rust reedline 方案的现有代码抄的，而prompt_toolkit 的中断处理有独特之处，deepseek-v4-pro就选择绕过这个变量，使用python层内部的全局变量。保留现状的好处是尽量保持 python 和 rust两个接口一致
 #endif
 
 #ifdef RFM_AddOn

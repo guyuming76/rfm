@@ -87,15 +87,8 @@ PyObject *rfm_py_call_attr(PyObject *obj, const char *attr, const char *fmt, ...
 /* 调用 obj.method(fmt, ...)，与 rfm_py_call_attr 语义一致。 */
 PyObject *rfm_py_call_method(PyObject *obj, const char *method, const char *fmt, ...);
 
-/* 常见的 "获取单例" 模式：module.factory_name()（无参）。 */
-PyObject *rfm_py_get_singleton(PyObject *module, const char *factory_name);
-
 /* 把 Python 对象转成 C 字符串（g_malloc，调用方 g_free）。
  * obj 为 NULL 或 Py_None 时返回 NULL；失败时设置 Python 异常。 */
 gchar *rfm_py_to_cstr(PyObject *obj);
-
-/* 把 C 函数指针包成 PyCapsule（供 Python 侧 ctypes 提取）。
- * fn 为 NULL 时返回 Py_None（new reference）。 */
-PyObject *rfm_py_capsule_from_fn(void *fn);
 
 #endif /* RFM_PYBRIDGE_H */

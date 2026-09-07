@@ -30,7 +30,11 @@ static PyObject *pt_set_selection_star_func = NULL;
 static PyObject *pt_save_history_func = NULL;
 static PyObject *pt_free_handle_func = NULL;
 
-// ── 内部辅助 ──────────────────────────────────────────────
+// ── 内部辅助，没有放到rfm_pybridge 的原因是可能会用 cython 方案取代，rfm_pybridge 里面是c调python的的，cython是python调c的──────
+static PyObject *rfm_py_capsule_from_fn(void *fn) {
+    if (!fn) Py_RETURN_NONE;
+    return PyCapsule_New(fn, NULL, NULL);
+}
 
 // 在持有 GIL 的前提下，把 C 函数指针以 PyCapsule 注入 module
 static void _set_capsule_attr(PyObject *module, const char *name, void *fn) {
