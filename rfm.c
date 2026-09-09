@@ -4089,8 +4089,8 @@ static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousRea
                 (childAttribs->customCallBackFunc)(childAttribs);
                 add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);//TODO: 这里readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution 其实就是 childAttribs->readlineResultString. 所以要在free_child_attribs 调用前调用本函数，否则在这里调用 ExecCallback_freeChildAttribs(childAttribs)更为合理，但似乎要重构ExecCallback_freeChildAttribs，把add_history_after_stdin_command_execution 移入其中。
 	        g_debug("exec_stdin_command run the 'OpenHarness' branch");
-	        free_child_attribs(childAttribs);
 	        if (!childAttribs->parse_and_exec_stdin_command_in_gtk_thread_called_nested_so_do_not_new_readlineThread_afterwards && readlineThread==NULL) readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);//这个为OpenHarness新添加的分支在parse_and_exec_command_in_gtk_thread中不满足 g_thread_new 的判断条件，所以在这里new thread. TODO：因为这里添加了判断条件，还是整体考虑一下能够利用parse_and_exec_command_in_gtk_thread里的统一new thread入口为好
+	        free_child_attribs(childAttribs);
                 return TRUE;
           }
           childAttribs->RunCmd = cmd_interpretor_pointer->cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE);
@@ -4133,8 +4133,8 @@ static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousRea
 //this runs in gtk main thread
 static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, gboolean from_stdin_readline, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *childAttribs){
             if (readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution==NULL){
+              if (!childAttribs->parse_and_exec_stdin_command_in_gtk_thread_called_nested_so_do_not_new_readlineThread_afterwards && readlineThread==NULL) readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);
               free_child_attribs(childAttribs);
-	      if (!childAttribs->parse_and_exec_stdin_command_in_gtk_thread_called_nested_so_do_not_new_readlineThread_afterwards && readlineThread==NULL) readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);
 	      return;
 	    }
 
@@ -4142,8 +4142,8 @@ static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResult
 
             if (cmd_interpretor_pointer->cmdTransformer==NULL){
 	      g_warning("TODO:cmd_interpretor_pointer->cmdTransformer==NULL");//might be in OpenHarness.rfm_addon.c
+              if (!childAttribs->parse_and_exec_stdin_command_in_gtk_thread_called_nested_so_do_not_new_readlineThread_afterwards && readlineThread==NULL) readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);
               free_child_attribs(childAttribs);
-	      if (!childAttribs->parse_and_exec_stdin_command_in_gtk_thread_called_nested_so_do_not_new_readlineThread_afterwards && readlineThread==NULL) readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);
 	      //TODO: 1.本函数里重复出现的上面两行代码，如何重构下;
 	      return;
 	    }
@@ -4175,8 +4175,8 @@ static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResult
 		    add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
 		}
 	        childAttribs->no_free = FALSE;
+	        if (!childAttribs->parse_and_exec_stdin_command_in_gtk_thread_called_nested_so_do_not_new_readlineThread_afterwards && readlineThread==NULL) readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);//SearchResultAsInput情况下，g_spawn 失败,（命令根本就没执行，比如命令没找到），从这里新建readline
 	        free_child_attribs(childAttribs);
-		if (!childAttribs->parse_and_exec_stdin_command_in_gtk_thread_called_nested_so_do_not_new_readlineThread_afterwards && readlineThread==NULL) readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);//SearchResultAsInput情况下，g_spawn 失败,（命令根本就没执行，比如命令没找到），从这里新建readline
 	    } else {
 	        writeSearchResultIntoFD_in_gtk_thread(childAttribs->stdIn_fd,export_filepath_only, childAttribs);
 		add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
@@ -4495,11 +4495,20 @@ static void writeSearchResultIntoFD_in_gtk_thread(gint fd,gboolean exportFilePat
 
 static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs) {
   g_debug("readlineInSeperateThread in thread %p", readlineThread);
+#if defined(reedline) || defined(prompt_toolkit)
+  /* exec_stdin_command 在 rfmEditFilePath==NULL 时会释放 childAttribs。
+     提前保存唯一后续还会用到的字段，避免 free 后再解引用 childAttribs。
+     rfmEditFilePath 非空时 exec_stdin_command 不会释放 childAttribs，
+     此时 childAttribs 仍有效，稍后由 rfmEdit 分支释放。 */
+  gchar *rfmEditFilePath = childAttribs ? childAttribs->rfmEditFilePath : NULL;
+#endif
   if (childAttribs && !childAttribs->exec_stdin_command_in_gtk_thread && !childAttribs->execStdinCmdInNewVT) {
     g_debug("exec_stdin_command in readlineInSeperateThread");
     exec_stdin_command(childAttribs->readlineResultString, childAttribs->cmd_interpretor , childAttribs);
   }
   //这里不用 free childAttribs, 因为如果上一步if条件没满足，没有执行exec_stdin_command ，一定是在gtk_thread里面执行了 exec 的某个版本，但因为是异步的，这里我又不方便加assert判断 childAttribs
+  //注意：exec_stdin_command 之后 childAttribs 可能已被释放（当 rfmEditFilePath 为 NULL 时），
+  //     此后只有 rfmEditFilePath 非空时才可继续使用 childAttribs。
   
   if(startWithTerm() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)){
     // 在读取终端输入前，确保 rfm 在前台进程组
@@ -4511,7 +4520,7 @@ static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs) {
         setenv("RFM_CURRENT_CMD_INTERPRETOR", current_stdin_cmd_interpretor_pointer->name, 1);
 #if defined(reedline) || defined(prompt_toolkit)
     // rfmEdit 其实也可以只在readlineInSeperateThread 里完成 parse 和执行，而不是像现在那样和其他命令一样在gtk线程里面parse,然后绕一个圈子又回到readlineInSeperateThread里执行。现在这样，好处是可以利用 leading_space 消除，当前选中文件补全等 gtk 线程里面的功能，并且将来还有可能扩展
-    if (childAttribs && childAttribs->rfmEditFilePath) { rfmEdit(childAttribs->rfmEditFilePath); free_child_attribs(childAttribs); }
+    if (rfmEditFilePath) { rfmEdit(rfmEditFilePath); free_child_attribs(childAttribs); }
 #endif
     // Allocate more space for potentially longer AI prompts
     gchar *prompt = calloc(strlen(InheritedPrompt)+256, sizeof(gchar));
