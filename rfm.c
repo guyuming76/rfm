@@ -239,8 +239,8 @@ gchar* stdin_cmd_template_bash_newVT_nonHold[] = { "$RFM_TERM", "/bin/bash", "-i
 gchar* stdin_cmd_template_bash_newVT_nonHold_with_e[] = { "$RFM_TERM", "$RFM_TERM_E" ,"/bin/bash", "-i", "-c", "shell_cmd_buffer", NULL };
 static gchar* stdin_cmd_template_nu_newVT_nonHold[] = { "$RFM_TERM", "nu", "-i", "-c", "shell_cmd_buffer", NULL };
 static gchar* stdin_cmd_template_nu_newVT_nonHold_with_e[] = { "$RFM_TERM", "$RFM_TERM_E" ,"nu", "-i", "-c", "shell_cmd_buffer", NULL };
-static NO_FREE gchar** stdin_command_bash(CALLER_OWN gchar* user_input_cmd, gboolean inNewVT);
-static NO_FREE gchar** stdin_command_nu(CALLER_OWN gchar* user_input_cmd, gboolean inNewVT);
+NO_FREE gchar** stdin_command_bash(RFM_ChildAttribs* childAttribs);
+static NO_FREE gchar** stdin_command_nu(RFM_ChildAttribs* childAttribs);
 
 static void null_log_handler(const gchar *log_domain,GLogLevelFlags log_level,const gchar *message,gpointer user_data){
 }
@@ -3868,8 +3868,9 @@ gchar** replace_shell_cmd_buffer(gchar **strv, gchar *buffer) {
    return strv;
 }
 
-static NO_FREE gchar** stdin_command_bash(CALLER_OWN gchar* user_input_cmd, gboolean inNewVT) {
+NO_FREE gchar** stdin_command_bash(RFM_ChildAttribs* childAttribs) {
   gchar** ret;
+  gchar* user_input_cmd = childAttribs->readlineResultString->str;
   gchar* shell_cmd_buffer = calloc(ARG_MAX, sizeof(gchar));
   gchar* rfm_alias = getenv("RFM_ALIAS");
   char tempfilename[256]="/tmp/RFM_COMMAND_XXXXXX";
@@ -3891,7 +3892,7 @@ static NO_FREE gchar** stdin_command_bash(CALLER_OWN gchar* user_input_cmd, gboo
     close(fd);
   }
 
-  if (inNewVT){
+  if (childAttribs->execStdinCmdInNewVT){
     if (rfm_alias!=NULL && strcmp(rfm_alias,"")!=0) snprintf(shell_cmd_buffer,PATH_MAX,"source %s; set -o history; source %s;read -p '\033[33m%s\033[0m'; exit \$? 2>/dev/null", rfm_alias, tempfilename, PRESS_ENTER_TO_CLOSE_WINDOW);
     else snprintf(shell_cmd_buffer,PATH_MAX,"set -o history; %s;read -p '\033[33m%s\033[0m'; exit \$? 2>/dev/null", user_input_cmd, PRESS_ENTER_TO_CLOSE_WINDOW);
     //without set -o history and "bash -i", bash builtin history command will not show results.
@@ -3907,13 +3908,14 @@ static NO_FREE gchar** stdin_command_bash(CALLER_OWN gchar* user_input_cmd, gboo
   }
   return replace_shell_cmd_buffer(ret, shell_cmd_buffer);
 }
-static NO_FREE gchar** stdin_command_nu(CALLER_OWN gchar* user_input_cmd, gboolean inNewVT) {
+static NO_FREE gchar** stdin_command_nu(RFM_ChildAttribs* childAttribs) {
 //TODO: add read -p into shell_cmd_buffer when inNewVT like stdin_command_bash
-  gchar** ret;
+  gchar **ret;
+  gchar* user_input_cmd = childAttribs->readlineResultString->str;
   gchar* shell_cmd_buffer = calloc(ARG_MAX, sizeof(gchar));
   snprintf(shell_cmd_buffer,PATH_MAX,"%s",user_input_cmd);
   gchar * term_e = getenv("RFM_TERM_E");
-  ret = inNewVT? ((term_e!=NULL && strcmp(term_e,"")!=0) ? stdin_cmd_template_nu_newVT_nonHold_with_e : stdin_cmd_template_nu_newVT_nonHold ) : stdin_cmd_template_nu;
+  ret = childAttribs->execStdinCmdInNewVT? ((term_e!=NULL && strcmp(term_e,"")!=0) ? stdin_cmd_template_nu_newVT_nonHold_with_e : stdin_cmd_template_nu_newVT_nonHold ) : stdin_cmd_template_nu;
   return replace_shell_cmd_buffer(ret, shell_cmd_buffer);
 }
 
@@ -3987,7 +3989,8 @@ static void add_history_after_stdin_command_execution(GString * readlineResultSt
 void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *child_attribs){
   if (cmd_interpretor_pointer->cmdTransformer){
 	      // this child_attribs will be freed by g_spawn_wrapper call tree
-	      child_attribs->RunCmd = cmd_interpretor_pointer->cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str, TRUE);
+              assert(child_attribs->execStdinCmdInNewVT);
+              child_attribs->RunCmd = cmd_interpretor_pointer->cmdTransformer(child_attribs);
 	      child_attribs->runOpts = G_SPAWN_STDOUT_TO_DEV_NULL|G_SPAWN_STDERR_TO_DEV_NULL|G_SPAWN_STDIN_FROM_DEV_NULL;
 	      child_attribs->spawn_async = TRUE;
 	      g_spawn_wrapper_(NULL, NULL, child_attribs);
@@ -4082,9 +4085,9 @@ static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousRea
 		return ret;
 	  }
 #endif
-          /* cmdTransformer==NULL + customCallBackFunc -> persistent dialogue mode:
-           * skip subprocess spawn, call callback in-process (e.g. OpenHarness). */
-          if (cmd_interpretor_pointer->customCallBackFunc && cmd_interpretor_pointer->cmdTransformer == NULL) {
+          // skip subprocess spawn, call callback in-process (e.g. TinyAgent).
+          // 之前 cmd_interpretor_pointer->customCallBackFunc 非NULL 的时候，TinyAgent以及OpenHarness cmdTransformer 也为NULL,现在，先把TinyAgent的 cmdTransformer 设为和 customCallBackFunc 同样的指针，用来在 newTerm 情况下生成TinyAgent python cli.py 命令字符串。 当前函数里 childAttribs->execStdinCmdInNewVT 为false，不会用到 cmdTransformer 函数指针，只是这里判断条件变了，从之前的 cmdTransformer==NULL 变为 cmdTransformer==customCallBackFunc
+          if (cmd_interpretor_pointer->customCallBackFunc && cmd_interpretor_pointer->cmdTransformer == cmd_interpretor_pointer->customCallBackFunc) {
                 childAttribs->customCallBackFunc = cmd_interpretor_pointer->customCallBackFunc;
                 (childAttribs->customCallBackFunc)(childAttribs);
                 add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);//TODO: 这里readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution 其实就是 childAttribs->readlineResultString. 所以要在free_child_attribs 调用前调用本函数，否则在这里调用 ExecCallback_freeChildAttribs(childAttribs)更为合理，但似乎要重构ExecCallback_freeChildAttribs，把add_history_after_stdin_command_execution 移入其中。
@@ -4093,7 +4096,8 @@ static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousRea
 	        free_child_attribs(childAttribs);
                 return TRUE;
           }
-          childAttribs->RunCmd = cmd_interpretor_pointer->cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE);
+          assert(!childAttribs->execStdinCmdInNewVT);
+          childAttribs->RunCmd = cmd_interpretor_pointer->cmdTransformer(childAttribs);
           if (childAttribs->SearchResultTypePointer) {
 	    if (childAttribs->exec_stdin_command_in_gtk_thread){
 	        childAttribs->runOpts |= G_SPAWN_SEARCH_PATH|G_SPAWN_CHILD_INHERITS_STDIN|G_SPAWN_CHILD_INHERITS_STDERR;
@@ -4147,8 +4151,8 @@ static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResult
 	      //TODO: 1.本函数里重复出现的上面两行代码，如何重构下;
 	      return;
 	    }
-
-	    childAttribs->RunCmd = cmd_interpretor_pointer->cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE);
+            assert(!childAttribs->execStdinCmdInNewVT);
+	    childAttribs->RunCmd = cmd_interpretor_pointer->cmdTransformer(childAttribs);
 	    childAttribs->stdIn_fd = -1; //set to non-zero, and will be set to a valid fd by g_spawn_async_with_pipes
 
             gboolean export_filepath_only = (childAttribs->customCallBackFunc == InIconView);
@@ -6788,14 +6792,14 @@ static int ProcessCmdOutputFromSearchResultWithFunction(CALLER_OWN char *oneline
    char SearchResultOnelineDocProcessingCmd[PATH_MAX];
 
    stdin_cmd_interpretor *cmd_interpretor_pointer = match_cmd_str_array_with_interpretors(cmdtemplate);//TODO:这个函数扩充到AI,Addon interpretor
-   char** cmd;
+   gchar** (*cmdTransformer)(RFM_ChildAttribs*);
    gchar * absolute_address = g_canonicalize_filename(oneline, rfm_SearchResultPath);
    if (cmd_interpretor_pointer){//用户在config.h里定义的命令模板字符串数组，如果第0个字符串指定命令解释器，则第1个字符串指定命令模板; 否则，第0个字符串即是命令模板
      snprintf(SearchResultOnelineDocProcessingCmd,PATH_MAX,cmdtemplate[1],quote_path(&absolute_address));
-     cmd = cmd_interpretor_pointer->cmdTransformer(SearchResultOnelineDocProcessingCmd, FALSE);
+     cmdTransformer = cmd_interpretor_pointer->cmdTransformer;
    }else{
      snprintf(SearchResultOnelineDocProcessingCmd,PATH_MAX,cmdtemplate[0],quote_path(&absolute_address));
-     cmd = current_stdin_cmd_interpretor_pointer->cmdTransformer(SearchResultOnelineDocProcessingCmd, FALSE);
+     cmdTransformer = current_stdin_cmd_interpretor_pointer->cmdTransformer;
    }
 
    g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"ProcessCmdOutputFromSearchResultWithFunction file:%s, cmd:%s, MatchedCmdInterpretor:%s, current_stdin_cmd_interpretor %s", absolute_address, SearchResultOnelineDocProcessingCmd, cmd_interpretor_pointer?cmd_interpretor_pointer->name:"null", current_stdin_cmd_interpretor_pointer?current_stdin_cmd_interpretor_pointer->name:"null");
@@ -6803,7 +6807,8 @@ static int ProcessCmdOutputFromSearchResultWithFunction(CALLER_OWN char *oneline
 
    RFM_ChildAttribs *childAttribs = calloc(1, sizeof(RFM_ChildAttribs));
    childAttribs->customCallBackFunc = func;
-   childAttribs->RunCmd = cmd;
+   childAttribs->readlineResultString = g_string_new(SearchResultOnelineDocProcessingCmd);
+   childAttribs->RunCmd = cmdTransformer(childAttribs);
    childAttribs->spawn_async = FALSE;
    childAttribs->output_read_by_program=TRUE;
    childAttribs->setsid = child_attribs->setsid;

@@ -168,7 +168,7 @@ typedef struct {
   gchar* name;
   gchar* activationKey;
   gchar* prompt;
-  gchar** (*cmdTransformer)(gchar *, gboolean inNewVT);
+  gchar** (*cmdTransformer)(RFM_ChildAttribs*);
   gchar* HistoryFilename;
   void (*customCallBackFunc)(RFM_ChildAttribs*);
 } stdin_cmd_interpretor;
