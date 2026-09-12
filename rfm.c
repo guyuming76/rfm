@@ -207,6 +207,7 @@ static void ensure_foreground_process(gboolean set_foreground);
 static void ReadFromPipeStdinIfAny(char *fd, RFM_ChildAttribs *childAttribs);
 void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *child_attribs);
 static void exec_stdin_command_in_new_VT_with_proxy(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *child_attribs);
+static void exec_cmd_interpretor_customCallbackFunc(RFM_ChildAttribs *childAttribs);
 static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *childAttribs);
 static void g_spawn_async_callback_to_new_readline_thread(RFM_ChildAttribs *child_attribs);
 static void regcomp_for_regex_rules();
@@ -4067,6 +4068,15 @@ static void exec_stdin_command_in_new_VT_with_proxy(GString * readlineResultStri
   add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
 }
 
+static void exec_cmd_interpretor_customCallbackFunc(RFM_ChildAttribs *childAttribs) {
+	        g_debug("exec_cmd_interpretor_customCallbackFunc");
+                childAttribs->customCallBackFunc = childAttribs->cmd_interpretor->customCallBackFunc;
+                (childAttribs->customCallBackFunc)(childAttribs);
+                add_history_after_stdin_command_execution(childAttribs->readlineResultString);//TODO: 这里 childAttribs->readlineResultString 就是readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution. 所以要在free_child_attribs 调用前调用本函数，否则在这里调用 ExecCallback_freeChildAttribs(childAttribs)更为合理，但似乎要重构ExecCallback_freeChildAttribs，把add_history_after_stdin_command_execution 移入其中。
+	        if (!childAttribs->parse_and_exec_stdin_command_in_gtk_thread_called_nested_so_do_not_new_readlineThread_afterwards && readlineThread==NULL) readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);//这个为OpenHarness新添加的分支在parse_and_exec_command_in_gtk_thread中不满足 g_thread_new 的判断条件，所以在这里new thread. TODO：因为这里添加了判断条件，还是整体考虑一下能够利用parse_and_exec_command_in_gtk_thread里的统一new thread入口为好
+	        free_child_attribs(childAttribs);
+}
+
 static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *childAttribs){
   gboolean ret = FALSE;
   
@@ -4085,12 +4095,7 @@ static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousRea
           /* cmdTransformer==NULL + customCallBackFunc -> persistent dialogue mode:
            * skip subprocess spawn, call callback in-process (e.g. OpenHarness). */
           if (cmd_interpretor_pointer->customCallBackFunc && cmd_interpretor_pointer->cmdTransformer == NULL) {
-                childAttribs->customCallBackFunc = cmd_interpretor_pointer->customCallBackFunc;
-                (childAttribs->customCallBackFunc)(childAttribs);
-                add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);//TODO: 这里readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution 其实就是 childAttribs->readlineResultString. 所以要在free_child_attribs 调用前调用本函数，否则在这里调用 ExecCallback_freeChildAttribs(childAttribs)更为合理，但似乎要重构ExecCallback_freeChildAttribs，把add_history_after_stdin_command_execution 移入其中。
-	        g_debug("exec_stdin_command run the 'OpenHarness' branch");
-	        if (!childAttribs->parse_and_exec_stdin_command_in_gtk_thread_called_nested_so_do_not_new_readlineThread_afterwards && readlineThread==NULL) readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);//这个为OpenHarness新添加的分支在parse_and_exec_command_in_gtk_thread中不满足 g_thread_new 的判断条件，所以在这里new thread. TODO：因为这里添加了判断条件，还是整体考虑一下能够利用parse_and_exec_command_in_gtk_thread里的统一new thread入口为好
-	        free_child_attribs(childAttribs);
+	        exec_cmd_interpretor_customCallbackFunc(childAttribs);
                 return TRUE;
           }
           childAttribs->RunCmd = cmd_interpretor_pointer->cmdTransformer(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,FALSE);
