@@ -1208,7 +1208,7 @@ static gboolean g_spawn_async_with_pipes_wrapper(CALLER_OWN gchar **v, RFM_Child
 	 rfm_childListLength++;
          //gtk_widget_set_sensitive(GTK_WIDGET(info_button), TRUE);
       }else{
-	g_warning("g_spawn_async_with_pipe error:%s",err->message);
+	g_warning("g_spawn_async_with_pipe error:%s",err? err->message: "NULL");
 	g_error_free(err);
       }
    }
@@ -1226,7 +1226,7 @@ static MEM_ALLOC gchar **build_cmd_vector(CALLER_OWN const char **cmd, CALLER_OW
    if((v=calloc((RFM_MX_ARGS), sizeof(gchar*)))==NULL)
       return NULL;
 
-   while (cmd[j]!=NULL && j<RFM_MX_ARGS) {
+   while (cmd && cmd[j] && j<RFM_MX_ARGS) {
      if (strcmp(cmd[j],RFM_selected_filename_placeholder)==0 && (file_list||dest_path)){//如果file_list为NULL,而cmd里面有 RFM_selected_filename_picker, 如%s,并且dest_path 不为空，可以用dest_path来替换%s，相当于dest_path 作为最后一个元素加入file_list
        // before this commit, file_list and dest_path are all appended after cmd, but commands like ffmpeg to create thumbnail need to have file name in the middle of the argv, appended at the end won't work. So i modify the rule here so that if we have placeholder in cmd, we replace it with item in file_list. So, file_list can work as generic argument list later, not necessarily the filename. And replacing empty string place holders in cmd with items in file_list can be something like printf.
        if (file_list) {
