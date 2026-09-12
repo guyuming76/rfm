@@ -3993,7 +3993,7 @@ void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPreviousRead
 	      g_spawn_wrapper_(NULL, NULL, child_attribs);
               g_debug("exec_stdin_command_in_new_VT(%s,cmd_interpretor name:%s)",readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution->str,cmd_interpretor_pointer->name);
 	      add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
-  }else g_warning("TODO:cmd_interpretor_pointer->cmdTransformer==NULL");//might be in OpenHarness.rfm_addon.c
+  }else g_warning("exec_stdin_command_in_new_VT TODO:cmd_interpretor_pointer->cmdTransformer==NULL");//might be in OpenHarness.rfm_addon.c
 }
 
 // exec_stdin_command_in_new_VT_with_proxy: like exec_stdin_command_in_new_VT but uses
@@ -4002,7 +4002,7 @@ void exec_stdin_command_in_new_VT(GString * readlineResultStringFromPreviousRead
 // either >SearchResultType suffix or SearchResult| prefix (or both).
 static void exec_stdin_command_in_new_VT_with_proxy(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *child_attribs){
   if (!cmd_interpretor_pointer->cmdTransformer){
-    g_warning("TODO:cmd_interpretor_pointer->cmdTransformer==NULL");
+    g_warning("exec_stdin_command_in_new_VT_with_proxy TODO:cmd_interpretor_pointer->cmdTransformer==NULL");
     return;
   }
 
@@ -4141,7 +4141,7 @@ static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResult
             if (!SearchResultViewInsteadOfDirectoryView) Switch_SearchResultView_DirectoryView();
 
             if (cmd_interpretor_pointer->cmdTransformer==NULL){
-	      g_warning("TODO:cmd_interpretor_pointer->cmdTransformer==NULL");//might be in OpenHarness.rfm_addon.c
+	      g_warning("exec_stdin_command_with_SearchResultAsInput TODO:cmd_interpretor_pointer->cmdTransformer==NULL");//might be in OpenHarness.rfm_addon.c
               if (!childAttribs->parse_and_exec_stdin_command_in_gtk_thread_called_nested_so_do_not_new_readlineThread_afterwards && readlineThread==NULL) readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);
               free_child_attribs(childAttribs);
 	      //TODO: 1.本函数里重复出现的上面两行代码，如何重构下;
