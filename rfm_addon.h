@@ -168,9 +168,10 @@ typedef struct {
   gchar* name;
   gchar* activationKey;
   gchar* prompt;
-  gchar** (*cmdTransformer)(RFM_ChildAttribs*);
+  gchar** (*cmdTransformer)(RFM_ChildAttribs*);//这个函数，1. 最初用于为用户输入的命令套壳，套壳后的命令作为g_spawn_wrapper 系列函数的参数，用于生成rfm的子进程执行. 比如b]提示符下的bash命令解释器，用户输入的命令无论是否带&后缀，都会g_spawn出子进程执行，区别只是根据 childattribs->execstdincmdinnewvt的值生成不同的命令套壳。2. 后来，对于TinyAgent这样的rfm进程内命令处理程序，这个函数专名处理其用户输入的带&后缀的命令。
   gchar* HistoryFilename;
-  void (*customCallBackFunc)(RFM_ChildAttribs*);
+  void (*customCallBackFunc)(RFM_ChildAttribs*);//这个函数用于：1. rfm进程内的命令处理程序，如TinyAgent用户输入的不带&后缀的命令。2. 之所以函数名叫这个，是因为最初用于 rfmAskOpenRouter.sh 等脚本AI 完成后的回调，这类脚本会在rfm 个gpawn出的子进程中执行，执行完调用此rfm进程内回调函数，处理一些rfm GUI显示上的任务，比如把最新保存的会话历史记录添加进rfm查询结果窗口。和上面cmdTransformer 函数类似，对于不同的命令解释程序，这个函数可以有不同的用法.
+  //总结一下：命令解释器入口无非工作在rfm进程内或g_spawn出的子进程。1. 在进程内时，需要customCallBackFunc作为入口(这种情况下，这个指针名的确有些令人困惑)，并且这种情况下，&后缀的命令是不可能在rfm进程内执行的，可以把cmdTransformer用做套壳命令生成器入口，而这两个指针实际指向命令解释器的同一入口函数。**这里两个函数指针指向同一个函数是作为命令解释器的这种工作模式的识别标志**2. 作为rfm g_spawn出的子进程时， cmdTransformer 函数被用于生成g_spawn需要的命令套壳，无论命令是否带&后缀，而 customCallBackFunc 正好被用来作为回调函数(这时候这个指针名就不会显得名不副实了)，执行一些必须在rfm进程内完成的动作.
 } stdin_cmd_interpretor;
 
 enum RFM_treeviewCol{

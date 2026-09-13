@@ -4087,6 +4087,7 @@ static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousRea
 #endif
           // skip subprocess spawn, call callback in-process (e.g. TinyAgent).
           // 之前 cmd_interpretor_pointer->customCallBackFunc 非NULL 的时候，TinyAgent以及OpenHarness cmdTransformer 也为NULL,现在，先把TinyAgent的 cmdTransformer 设为和 customCallBackFunc 同样的指针，用来在 newTerm 情况下生成TinyAgent python cli.py 命令字符串。 当前函数里 childAttribs->execStdinCmdInNewVT 为false，不会用到 cmdTransformer 函数指针，只是这里判断条件变了，从之前的 cmdTransformer==NULL 变为 cmdTransformer==customCallBackFunc
+          //这里也解释下为啥要把cmdTransformer函数的输入参数改得和customCallBackFunc一样：因为当前函数后面的一个执行代码块也把cmd_interpretor_pointer->customCallBackFunc非空作为判断条件，但是那里customCallBackFunc不是作为命令解释器的命令处理入口，而是作为cmdTransformer得到的命令执行后的回调函数，用来执行rfm GUI操作。于是，同样customCallBackFunc非空且cmdTransformer非空，我们需要一种规则来区分这两条执行路径，当前执行路径是把customCallBackFunc作为命令解释器命令处理入口，cmdTransformer 虽非空，但不在这条exec_stdin_command执行路径中使用，而是用在为命令解释器处理&后缀命令生成套壳命令，所以可以在命令解释器里把cmdTransformer 和 customCallBackFunc 指向同一个函数，把这两个函数指针相同用作当前执行分支的门控。这个被指向的命令解释器函数可以根据传入参数的 childattribs->execstdincmdinnewvt 值来判断是要执行命令还是要生成&后缀命令套壳
           if (cmd_interpretor_pointer->customCallBackFunc && cmd_interpretor_pointer->cmdTransformer == cmd_interpretor_pointer->customCallBackFunc) {
                 childAttribs->customCallBackFunc = cmd_interpretor_pointer->customCallBackFunc;
                 (childAttribs->customCallBackFunc)(childAttribs);
@@ -4117,7 +4118,7 @@ static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousRea
 	    childAttribs->name = strdup(childAttribs->SearchResultTypePointer->name);
 	    }
 	  }else{
-	    if (cmd_interpretor_pointer->customCallBackFunc){
+	    if (cmd_interpretor_pointer->customCallBackFunc){//这里customCallBackFunc不是作为命令解释器的命令处理入口，而是作为命令子进程执行完后的回调函数，执行一些需要在rfm进程内执行的操作
 	      childAttribs->spawn_async = TRUE; childAttribs->keep_total_buffer_in_show_child_output = TRUE; childAttribs->customCallBackFunc = cmd_interpretor_pointer->customCallBackFunc; //这一行设置被用作在ExecCallback_freeChildattribs 里面 g_thread_new readline thread 的一个条件，这组条件也可以看作有parse_and_exec_command_in_gtk_thread 中的条件 (effective_cmd_interpretor_pointer->customCallBackFunc && !execCmdInNewVT && !execStdinCmdInNewVT) 得来
 	      //之所以用spawn_async, 是因为可以使用 g_spawn_async_with_pipes_wrapper_child_supervisor来读取和处理AI脚本输出,而不是让 AI 脚本进程直接继承终端输出.
 	      childAttribs->g_idle_add_once_to_run_CallBackFunc = TRUE;
