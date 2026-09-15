@@ -6590,20 +6590,33 @@ static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboo
 			 g_assert(col->ValueFunc==getExtColumnValueFromHashTable);
 		         col->enumCol = current_Ext_Column;
 			 g_debug("bind col title=%s enumCol=%d (current_Ext_Column=%d)", col->title, col->enumCol, current_Ext_Column);
-                         col = get_treeviewColumnByTitle(currentColumnTitleIndexName);
-			 
-			 current_Ext_Column++;
-			 current_Ext_Column=get_available_ExtColumn(current_Ext_Column);
+			 //只有本行确实还有下一列时(后面还有分隔符),才需要为下一列做准备(找到 C_{k+1} 列、
+			 //并为它预留一个 Ext 列)。否则本列就是本行最后一列,while 判断随后就会结束循环。
+			 //之前的代码无条件做这一步,除了白算一次之外，还可能打印"no available extended column
+			 //since column enum ..."这类无意义的警告。
+			 if (seperatorPointerAfterCurrentExtColumnValue){
+			     col = get_treeviewColumnByTitle(currentColumnTitleIndexName);
+			     current_Ext_Column++;
+			     current_Ext_Column=get_available_ExtColumn(current_Ext_Column);
+			 } else current_Ext_Column = NUM_COLS;
 		    }else {
 		         //如果搜索结果为 filename:xxx 的形式,column title 会是 filename C1
 		         //我们假定搜索结果每行列数都是相同的,第二行数据用 get_treeviewColumnByTitle(C1) 一定可以找到第一行为C1分配的位置
 		         //但这里currentColumnTitle do while 循环最后会调用get_treeviewColumnByTitle(C2), 对于本方法并没有问题,因为while 判断会结束循环
 		         //但如果ProcessKeyValuePairInFilesFromSearchResult 调用本方法,get_treeviewColumnByTitle(C2) 会返回NULL,所以下面语句加了if NULL 判断
-			 col = get_treeviewColumnByTitle(currentColumnTitleIndexName);
+		         //注意:和上面第一行的分支一样,查"下一列"C_{k+1} 必须在"本行确实还有下一列"时才做。
+		         //之前的代码无条件查找并告警,于是处理完每行最后一列时都会拿第一行从未用过的 C_{k+1}
+		         //去查(必然查不到),导致第一行之后每一行都白报一条 "has more columns than the first line
+		         //..., extra data ignored"(实际并没有多余数据被丢弃,参见 2026-09-16 的 rfm-data-search 日志:
+		         //每行的 C1..C5 都已完整插入)。真正的"行比第一行列多"的情况仍然会走下面的告警分支。
+			 col = seperatorPointerAfterCurrentExtColumnValue ? get_treeviewColumnByTitle(currentColumnTitleIndexName) : NULL;
                          if (col && col->enumCol != NUM_COLS){
 			     current_Ext_Column = col->enumCol;
                          } else {
-			   g_warning("search result line %d(%s) has more columns than the first line(SearchResultColumnSeperator might be in data column such as filename), extra data ignored", fileAttributeID, oneline);
+			   if (seperatorPointerAfterCurrentExtColumnValue){
+			     g_warning("search result line %d(%s) has more columns than the first line(SearchResultColumnSeperator might be in data column such as filename), extra data ignored", fileAttributeID, oneline);
+			     g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"search result line %d(%s): C_%d column not bound by the first line, extra data ignored", fileAttributeID, oneline, currentColumnTitleIndex);
+			   }
                              current_Ext_Column = NUM_COLS;
 			 }
 		    }
