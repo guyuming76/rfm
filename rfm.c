@@ -668,6 +668,7 @@ static gboolean window_focus_in_event(GtkWidget *widget, GdkEventFocus *event, g
 #include "config.h"
 
 #define SEARCH_RESULT_COLUMN_SEPERATOR(overriding_child_attribts) ((overriding_child_attribts && overriding_child_attribts->SearchResultTypePointer && overriding_child_attribts->SearchResultTypePointer->SearchResultColumnSeperator) ? overriding_child_attribts->SearchResultTypePointer->SearchResultColumnSeperator : SearchResultColumnSeperator)
+const char* rfm_get_search_result_column_seperator(const RFM_ChildAttribs* ca){ return SEARCH_RESULT_COLUMN_SEPERATOR(ca);}//插件比如TinyAgent使用，如果把宏移到rfm_addon.h 里，所有的插件是不是都得加 extern SearchResultColumnSeperator?
 /* non-static so addons can reset it on /quit etc. */
 stdin_cmd_interpretor * current_stdin_cmd_interpretor_pointer = &(stdin_cmd_interpretors[0]);
 static GtkWidget *add_view();
