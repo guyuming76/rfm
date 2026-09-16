@@ -532,7 +532,7 @@ static void set_pagesize_for_searchresultview(const char *pagesize);
 static void cmdPagesize(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
 void addToSearchResult(FREE char *fileFullpath);
 static void cmd_addToSearchResult(CALLER_OWN wordexp_t *parsed_msg,CALLER_OWN  GString *readline_result_string_after_file_name_substitution);
-static void writeSearchResultIntoFD_in_gtk_thread(gint fd, gboolean exportFilePathOnly, RFM_ChildAttribs* childAttribs);
+void writeSearchResultIntoFD_in_gtk_thread(gint fd, gboolean exportFilePathOnly, RFM_ChildAttribs* childAttribs);
 static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, gboolean from_stdin_readline, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *childAttribs);
 /******Search Result related definitions end*********/
 /****************************************************/
@@ -4425,7 +4425,7 @@ static gpointer newTermProxy_thread(gpointer data){
   return NULL;
 }
 
-static void writeSearchResultIntoFD_in_gtk_thread(gint fd,gboolean exportFilePathOnly, RFM_ChildAttribs* childAttribs){
+void writeSearchResultIntoFD_in_gtk_thread(gint fd,gboolean exportFilePathOnly, RFM_ChildAttribs* childAttribs){
   g_debug("writeSearchResultIntoFD(%d)",fd);
   if (SearchResultViewInsteadOfDirectoryView){
     GList* columns=NULL;
