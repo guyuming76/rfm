@@ -507,7 +507,7 @@ static int FileNameIndexInColumnTitles=FALSE;
 static gchar** search_result_type_withtitle_column_title_array = NULL;
 static gchar* stdout_read_by_search_result=NULL;
 static gboolean showSearchResultExtColumnsBasedOnHashTableValues_has_already_been_called_for_searchresult = FALSE;//方便用showcolumn命令手工调整SearchResult的列布局
-static void update_SearchResultFileNameList_and_refresh_store(RFM_ChildAttribs *childAttribs);
+void update_SearchResultFileNameList_and_refresh_store(RFM_ChildAttribs *childAttribs);
 static void showSearchResultExtColumnsBasedOnHashTableValues();
 static int ProcessOnelineForSearchResult(CALLER_OWN gchar *oneline, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs);
 static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboolean new_search, int first_line_column_title, RFM_ChildAttribs *childAttribs);
@@ -7138,7 +7138,7 @@ static void showSearchResultExtColumnsBasedOnHashTableValues(){
 // 两次调用通过 newsearch 参数区别
 // 本函数是newsearch 为True, 对应新的查询结果集
 // fill_fileAttributeList_with_filenames_from_search_result_and_then_insert_into_store 里的调用 newsearch 为false,对应页面刷新以及翻页
-static void update_SearchResultFileNameList_and_refresh_store(RFM_ChildAttribs *childAttribs){
+void update_SearchResultFileNameList_and_refresh_store(RFM_ChildAttribs *childAttribs){
   g_assert(childAttribs && childAttribs->SearchResultTypePointer);
   gchar *filenamelist = childAttribs->stdOut;
   
