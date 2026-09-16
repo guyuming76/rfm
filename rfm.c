@@ -533,6 +533,14 @@ static void cmdPagesize(wordexp_t * parsed_msg, GString* readline_result_string_
 void addToSearchResult(FREE char *fileFullpath);
 static void cmd_addToSearchResult(CALLER_OWN wordexp_t *parsed_msg,CALLER_OWN  GString *readline_result_string_after_file_name_substitution);
 void writeSearchResultIntoFD_in_gtk_thread(gint fd, gboolean exportFilePathOnly, RFM_ChildAttribs* childAttribs);
+/* 把当前查询结果视图导出成文本（语义同 SearchResult| 管道：有选中只导出选中行），
+ * 供进程内 addon 命令解释器（TinyAgent/OpenHarness 等）作为上下文使用，
+ * 由 exec_stdin_command_with_SearchResultAsInput() 调用。 */
+MEM_ALLOC gchar* rfm_get_search_result_as_text(gboolean exportFilePathOnly, RFM_ChildAttribs *childAttribs);
+/* 进程内 addon 命令解释器（customCallBackFunc 型）的两段公共逻辑：
+ * 判断能否进程内处理 / 进程内处理并在结束后收尾（历史、新 readline 线程、释放）。 */
+static gboolean addon_cmd_interpretor_runs_in_process(const stdin_cmd_interpretor *cmd_interpretor_pointer);
+static gboolean call_addon_cmd_interpretor_in_process(RFM_ChildAttribs *childAttribs, NO_FREE const stdin_cmd_interpretor *cmd_interpretor_pointer, GString *readlineResultString);
 static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, gboolean from_stdin_readline, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *childAttribs);
 /******Search Result related definitions end*********/
 /****************************************************/
@@ -4071,6 +4079,52 @@ static void exec_stdin_command_in_new_VT_with_proxy(GString * readlineResultStri
   add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
 }
 
+/* ══════════════════════════════════════════════════════════════════
+ *  进程内 addon 命令解释器（TinyAgent / OpenHarness / AI 等）的公共入口
+ * ══════════════════════════════════════════════════════════════════ */
+/*
+ * 这类解释器用 customCallBackFunc 在 rfm 进程内直接处理用户输入，而不是 g_spawn
+ * 子进程。为区分"进程内执行"与"生成 & 后缀命令套壳"两条路径，addon 会把
+ * cmdTransformer 与 customCallBackFunc 指向同一个函数（TinyAgent 就是这么做的），
+ * 或者保持 cmdTransformer 为 NULL（OpenHarness）。
+ *
+ * 下面两个函数把原来只写在 exec_stdin_command() 里的这段门控 + 收尾逻辑抽出来，
+ * 让 exec_stdin_command_with_SearchResultAsInput()（即 "SearchResult|" 前缀路径）
+ * 也能进入 addon，而不是去 g_spawn 一个并不存在的子进程
+ * （那种情况下 addon 的 cmdTransformer 会被当成"命令套壳函数"调用，产生
+ *  "Failed to spawn search command" 之类的假错误）。
+ */
+static gboolean addon_cmd_interpretor_runs_in_process(const stdin_cmd_interpretor *cmd_interpretor_pointer)
+{
+    return cmd_interpretor_pointer
+        && cmd_interpretor_pointer->customCallBackFunc
+        && (cmd_interpretor_pointer->cmdTransformer == NULL
+            || cmd_interpretor_pointer->cmdTransformer == cmd_interpretor_pointer->customCallBackFunc);
+}
+
+/* 让 addon 在进程内处理本次输入，并完成收尾工作。
+ * 返回 TRUE 表示已处理（调用方不要再 g_spawn、也不要再走其它执行分支）。 */
+static gboolean call_addon_cmd_interpretor_in_process(RFM_ChildAttribs *childAttribs,
+        NO_FREE const stdin_cmd_interpretor *cmd_interpretor_pointer,
+        GString *readlineResultString)
+{
+    if (!childAttribs || !addon_cmd_interpretor_runs_in_process(cmd_interpretor_pointer)) return FALSE;
+
+    childAttribs->customCallBackFunc = cmd_interpretor_pointer->customCallBackFunc;
+    (childAttribs->customCallBackFunc)(childAttribs);
+    add_history_after_stdin_command_execution(readlineResultString);
+    g_debug("call_addon_cmd_interpretor_in_process: 命令解释器 %s 已在进程内处理本次输入",
+            cmd_interpretor_pointer->name ? cmd_interpretor_pointer->name : "(null)");
+
+    /* 这个分支在 parse_and_exec_command_in_gtk_thread 中不满足 g_thread_new 的
+     * 判断条件，所以在这里新建 readline 线程（与原来 exec_stdin_command 内一致）。 */
+    if (!childAttribs->parse_and_exec_stdin_command_in_gtk_thread_called_nested_so_do_not_new_readlineThread_afterwards
+        && readlineThread == NULL)
+        readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);
+    free_child_attribs(childAttribs);
+    return TRUE;
+}
+
 static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution, NO_FREE stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs *childAttribs){
   gboolean ret = FALSE;
   
@@ -4087,17 +4141,14 @@ static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousRea
 	  }
 #endif
           // skip subprocess spawn, call callback in-process (e.g. TinyAgent).
+          // 这段"门控判断 + 进程内调用 + 收尾（历史/新 readline 线程/释放）"已抽到
+          // call_addon_cmd_interpretor_in_process()，exec_stdin_command_with_SearchResultAsInput()
+          // （SearchResult| 前缀路径）也复用同一个函数。
           // 之前 cmd_interpretor_pointer->customCallBackFunc 非NULL 的时候，TinyAgent以及OpenHarness cmdTransformer 也为NULL,现在，先把TinyAgent的 cmdTransformer 设为和 customCallBackFunc 同样的指针，用来在 newTerm 情况下生成TinyAgent python cli.py 命令字符串。 当前函数里 childAttribs->execStdinCmdInNewVT 为false，不会用到 cmdTransformer 函数指针，只是这里判断条件变了，从之前的 cmdTransformer==NULL 变为 cmdTransformer==customCallBackFunc
           //这里也解释下为啥要把cmdTransformer函数的输入参数改得和customCallBackFunc一样：因为当前函数后面的一个执行代码块也把cmd_interpretor_pointer->customCallBackFunc非空作为判断条件，但是那里customCallBackFunc不是作为命令解释器的命令处理入口，而是作为cmdTransformer得到的命令执行后的回调函数，用来执行rfm GUI操作。于是，同样customCallBackFunc非空且cmdTransformer非空，我们需要一种规则来区分这两条执行路径，当前执行路径是把customCallBackFunc作为命令解释器命令处理入口，cmdTransformer 虽非空，但不在这条exec_stdin_command执行路径中使用，而是用在为命令解释器处理&后缀命令生成套壳命令，所以可以在命令解释器里把cmdTransformer 和 customCallBackFunc 指向同一个函数，把这两个函数指针相同用作当前执行分支的门控。这个被指向的命令解释器函数可以根据传入参数的 childattribs->execstdincmdinnewvt 值来判断是要执行命令还是要生成&后缀命令套壳
-          if (cmd_interpretor_pointer->customCallBackFunc && (cmd_interpretor_pointer->cmdTransformer == NULL || cmd_interpretor_pointer->cmdTransformer == cmd_interpretor_pointer->customCallBackFunc)) {
-                childAttribs->customCallBackFunc = cmd_interpretor_pointer->customCallBackFunc;
-                (childAttribs->customCallBackFunc)(childAttribs);
-                add_history_after_stdin_command_execution(readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);//TODO: 这里readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution 其实就是 childAttribs->readlineResultString. 所以要在free_child_attribs 调用前调用本函数，否则在这里调用 ExecCallback_freeChildAttribs(childAttribs)更为合理，但似乎要重构ExecCallback_freeChildAttribs，把add_history_after_stdin_command_execution 移入其中。
-	        g_debug("exec_stdin_command run the 'OpenHarness' branch");
-	        if (!childAttribs->parse_and_exec_stdin_command_in_gtk_thread_called_nested_so_do_not_new_readlineThread_afterwards && readlineThread==NULL) readlineThread = g_thread_new("readline", readlineInSeperateThread, NULL);//这个为OpenHarness新添加的分支在parse_and_exec_command_in_gtk_thread中不满足 g_thread_new 的判断条件，所以在这里new thread. TODO：因为这里添加了判断条件，还是整体考虑一下能够利用parse_and_exec_command_in_gtk_thread里的统一new thread入口为好
-	        free_child_attribs(childAttribs);
+          if (call_addon_cmd_interpretor_in_process(childAttribs, cmd_interpretor_pointer,
+                                                    readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution))
                 return TRUE;
-          }
           assert(!childAttribs->execStdinCmdInNewVT);
           childAttribs->RunCmd = cmd_interpretor_pointer->cmdTransformer(childAttribs);
           if (childAttribs->SearchResultTypePointer) {
@@ -4145,6 +4196,25 @@ static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResult
 	    }
 
             if (!SearchResultViewInsteadOfDirectoryView) Switch_SearchResultView_DirectoryView();
+
+            /* ── 进程内 addon 命令解释器（TinyAgent / OpenHarness / AI 等）──
+             * 这类解释器没有子进程可 g_spawn（它们的 customCallBackFunc 就是命令处理入口），
+             * 所以这里直接把当前查询结果文本放进 childAttribs->stdOut，然后进入 addon。
+             * addon 侧因此拿到：
+             *   childAttribs->SearchResultAsInput = TRUE   （"SearchResult|" 前缀已被本函数上方流程剥掉）
+             *   childAttribs->readlineResultString          剥掉前缀后的用户输入
+             *   childAttribs->stdOut                        当前查询结果文本（有选中则只含选中行；
+             *                                               treeview 下首行是含"文件名"的列标题行）
+             * 这样 addon 不必自己调 writeSearchResultIntoFD_in_gtk_thread()/memfd 去取数据。
+             * stdOut 归 childAttribs 所有，由 free_child_attribs() 释放；
+             * addon 若把 childAttribs 交给 update_SearchResultFileNameList_and_refresh_store()
+             * 之类的接口延时使用，则自行置 no_free（TinyAgent 的 >类型 分支就是这么做的）。 */
+            if (addon_cmd_interpretor_runs_in_process(cmd_interpretor_pointer)) {
+              childAttribs->stdOut = rfm_get_search_result_as_text(FALSE, childAttribs);
+              call_addon_cmd_interpretor_in_process(childAttribs, cmd_interpretor_pointer,
+                                                    readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
+              return;
+            }
 
             if (cmd_interpretor_pointer->cmdTransformer==NULL){
 	      g_warning("exec_stdin_command_with_SearchResultAsInput TODO:cmd_interpretor_pointer->cmdTransformer==NULL");//might be in OpenHarness.rfm_addon.c
@@ -4497,6 +4567,34 @@ void writeSearchResultIntoFD_in_gtk_thread(gint fd,gboolean exportFilePathOnly, 
     }else g_warning("empty search result view!");
   }else g_warning("currently not in search result view!");
   close(fd);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+ *  把当前查询结果视图导出成文本（供进程内 addon 命令解释器使用）
+ * ══════════════════════════════════════════════════════════════════ */
+/*
+ * 语义与 "SearchResult|管道" 完全一致（同一份实现）：
+ *   - 有选中则只导出选中行，否则导出全部；
+ *   - treeview 模式下首行是当前显示各列的标题行（含"文件名"列），
+ *     列分隔符取自 SEARCH_RESULT_COLUMN_SEPERATOR(childAttribs)（传 NULL 时用全局值）；
+ *   - exportFilePathOnly 为 TRUE 时只导出文件路径列。
+ * 必须在 GTK 主线程调用。
+ * 返回新分配字符串（free() 可释放）；不在查询结果视图 / 视图为空时返回空串。
+ *
+ * 实现说明：writeSearchResultIntoFD_in_gtk_thread() 只有 fd 出口，这里借它写进一个
+ * 临时文件再读回，读完立即删除（rfm.c 里 newTermProxy 也是用临时文件这条思路）。
+ */
+MEM_ALLOC gchar* rfm_get_search_result_as_text(gboolean exportFilePathOnly, RFM_ChildAttribs *childAttribs){
+  gchar *tmpname = NULL;
+  gint fd = g_file_open_tmp("rfm_search_result_XXXXXX", &tmpname, NULL);//TODO:不要用落盘的文件。tinyagent 会话20260916_155412里有方案比较。rfm还有多处用了临时文件，可以一并考虑
+  if (fd < 0) { g_warning("rfm_get_search_result_as_text: 无法创建临时文件"); return NULL; }
+  writeSearchResultIntoFD_in_gtk_thread(fd, exportFilePathOnly, childAttribs); //内部会 close(fd)
+  gchar *text = NULL;
+  if (!g_file_get_contents(tmpname, &text, NULL, NULL))
+    g_warning("rfm_get_search_result_as_text: 读回临时文件 %s 失败", tmpname);
+  unlink(tmpname);
+  g_free(tmpname);
+  return text;   /* 可能为 NULL（读回失败）或空串（视图为空） */
 }
 
 static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs) {
