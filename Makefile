@@ -54,6 +54,10 @@ endif
 ifneq (${RFM_AddOn},)
 LDFLAGS += -rdynamic
 CPPFLAGS += -DRFM_AddOn_H_filepath=\"${DESTDIR}${PREFIX}/include/rfm_addon.h\"
+# 语言头文件（config.mk 的 languageInclude：Chinese.h / English.h）安装成 rfmLanguage.h，
+# 与 rfm_addon.h 同目录。rfm 编译插件时会把它也 -include 进去，这样插件里可以直接
+# 使用 fld_FileName 等语言相关宏（见 rfm.c: compile_local_extension()）。
+CPPFLAGS += -DRFM_Language_H_filepath=\"${DESTDIR}${PREFIX}/include/rfmLanguage.h\"
 endif
 
 # compiler and linker
@@ -242,6 +246,7 @@ ifneq ($(CalledByEbuild),YES)
 # the CalledByEbuild variable is exported in rfm ebuild
 # there will be sandbox error in gentoo ebuild run
 	@cp -f rfm_addon.h ${DESTDIR}${PREFIX}/include
+	@cp -f ${languageInclude} ${DESTDIR}${PREFIX}/include/rfmLanguage.h   # 语言头：安装成 rfmLanguage.h，供 rfm 编译插件时 -include（插件里可用 fld_FileName）
 	-cp -f rfm.svg /usr/share/icons/hicolor/scalable/apps/rfm.svg
 	-gtk-update-icon-cache -f /usr/share/icons/hicolor
 	-cp -f rfm.desktop /usr/share/applications/rfm.desktop
@@ -354,6 +359,7 @@ endif
 
 ifneq ($(CalledByEbuild),YES)
 	@rm -f ${DESTDIR}${PREFIX}/include/rfm_addon.h
+	@rm -f ${DESTDIR}${PREFIX}/include/rfmLanguage.h
 	-xdg-desktop-menu uninstall rfm.desktop
 	-rm -f /usr/share/applications/rfm.desktop
 	-rm -f /usr/share/icons/hicolor/scalable/apps/rfm.svg
