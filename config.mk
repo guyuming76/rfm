@@ -33,6 +33,11 @@ CmarkTools = -DCmarkTools
 # CmarkTools is used to extract markdown title and content, for example, returned by AI LLM
 
 RFM_AddOn = -DRFM_AddOn=\"$(shell md5sum rfm_addon.h | cut -d' ' -f1)\"
+# 语言头（上面的 languageInclude）的 hash 写进 rfm_addon.h 首行注释：
+# 语言头变化（或换语言）⇒ rfm_addon.h 内容变 ⇒ RFM_AddOn（rfm_addon.h 的 md5）变
+# ⇒ rfm 触发所有插件重编。直接复用既有的 rfm_addon.h 哈希机制，rfm.c 无需改动。
+# 注意：本行会（在内容变化时）自动改写 rfm_addon.h 首行，别手动编辑那一行。
+#$(shell scripts/rfmUpdateAddonHeaderLanguageHash.sh $(languageInclude) rfm_addon.h)
 #RFM_LOCAL =
 #features such as LLM AI client is implemented as addon
 
