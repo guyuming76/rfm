@@ -75,6 +75,7 @@ static GList * stdin_cmd_selection_list=NULL; //selected files used in stdin cmd
 /****************************************************/
 /******Terminal Emulator related definitions*********/
 #ifdef PythonEmbedded
+#include "rfm_pybridge.h"
 /*https://docs.python.org/3.10/extending/embedding.html*/
 static  wchar_t *pyProgramName=NULL;
 static void startPythonEmbedding(){
@@ -7681,7 +7682,7 @@ static gboolean compile_local_extension(RFM_ADDON* addon) {
     gchar* rfm_local_c_compile_cmd = g_strdup_printf(rfm_local_c_compile_cmd_template, RFM_AddOn_H_filepath, DCmarkTools, DGitIntegration, rfmLANGUAGE, RFM_SearchResultTypeNamePrefix, RFM_NEW_TERM_SUFFIX, RFM_selected_filename_placeholder, RFM_SEARCH_RESULT_AS_INPUT_PREFIX, addon->addon_so_fullpath, rfm_addon_C_hash_via_gcc, addon->addon_c_fullpath, rfm_addon_H_hash_via_gcc);
 #ifdef PythonEmbedded
     /* Append Python flags so addons can use #include <Python.h> */
-    gchar *rfm_local_c_compile_cmd_with_python = g_strdup_printf("%s -DPythonEmbedded $(python3-config --cflags)", rfm_local_c_compile_cmd);
+    gchar *rfm_local_c_compile_cmd_with_python = g_strdup_printf("%s $(python3-config --cflags)", rfm_local_c_compile_cmd);
     g_free(rfm_local_c_compile_cmd);
     rfm_local_c_compile_cmd = rfm_local_c_compile_cmd_with_python;
 #endif

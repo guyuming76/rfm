@@ -5,7 +5,8 @@
  * 这些函数被编译进 rfm 主程序，插件通过 -rdynamic 导出的符号在 dlopen 时解析。
  */
 #include <stdarg.h>
-#include "rfm_addon.h"
+
+#include "rfm_pybridge.h"
 
 PyObject *rfm_py_import(const char *module_name, const char *path_dir) {
     if (path_dir && path_dir[0]) {
