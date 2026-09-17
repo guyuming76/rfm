@@ -1,10 +1,17 @@
 #ifndef RFM_ADDON_H
 #define RFM_ADDON_H
 
-//rfm项目里目前有两个.h文件： rfm_local.h 和 config.h.
+#ifdef PythonEmbedded
+#include "rfm_pybridge.h"
+#endif
+
+#ifdef RFM_ADDON_H_HASH
+#include "rfmLanguage.h"
+#endif
+
 //最初只有config.h,用于suckless风格的定制，自定义文件菜单之类
-//rfm_local.h的加入是为了满足 rfm_local.c 的动态编译。rfm_local.h 要在 rfm.c 和 rfm_local.c 之间共享
-//事实上，config.h里面的定义也是依赖rfm_local.h内数据类型定义的，但config.h内无需#include rfm_local.h,这时因为在rfm.c里面对于config.h的引用出现在对rfm_local.h的应用的后面，c语言编译器似乎可以处理这种情况
+//rfm_addon.h的加入是为了满足 rfm_addon.c 的动态编译。rfm_addon.h 要在 rfm.c 和 rfm_addon.c 之间共享
+//事实上，config.h里面的定义也是依赖rfm_addon.h内数据类型定义的，但config.h内无需#include rfm_local.h,这时因为在rfm.c里面对于config.h的引用出现在对rfm_local.h的应用的后面，c语言编译器似乎可以处理这种情况
 #include <gtk-3.0/gtk/gtk.h>
 #include <wordexp.h>
 //在C语言中，使用`-include`参数包含的头文件会出现在所有其他头文件之前。因此，如果在rfm_addon.h中没有包含`glib.h`，那么就会导致这些类型未知。之前在 rfm_addon.c (rfm_local.c) 中，rfm_addon.h是在gtk.h后面include的，现在通过 -include 参数传递给gcc来编译rfm_addon.c, 就不得不在这里加 gtk.h

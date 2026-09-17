@@ -7682,7 +7682,7 @@ static gboolean compile_local_extension(RFM_ADDON* addon) {
     gchar* rfm_local_c_compile_cmd = g_strdup_printf(rfm_local_c_compile_cmd_template, RFM_AddOn_H_filepath, DCmarkTools, DGitIntegration, rfmLANGUAGE, RFM_SearchResultTypeNamePrefix, RFM_NEW_TERM_SUFFIX, RFM_selected_filename_placeholder, RFM_SEARCH_RESULT_AS_INPUT_PREFIX, addon->addon_so_fullpath, rfm_addon_C_hash_via_gcc, addon->addon_c_fullpath, rfm_addon_H_hash_via_gcc);
 #ifdef PythonEmbedded
     /* Append Python flags so addons can use #include <Python.h> */
-    gchar *rfm_local_c_compile_cmd_with_python = g_strdup_printf("%s $(python3-config --cflags)", rfm_local_c_compile_cmd);
+    gchar *rfm_local_c_compile_cmd_with_python = g_strdup_printf("%s -DPythonEmbedded $(python3-config --cflags)", rfm_local_c_compile_cmd);
     g_free(rfm_local_c_compile_cmd);
     rfm_local_c_compile_cmd = rfm_local_c_compile_cmd_with_python;
 #endif
@@ -7852,6 +7852,7 @@ static void load_addon(CALLER_OWN char* addon_fullpath){
            // compile_needed might have been set true inside the dlopen/dlsym block
 
            g_free(addon_c_hash_in_SO);
+	   g_free(addon_h_hash_in_SO);
        }
 
         if (compile_needed) {
