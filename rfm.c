@@ -533,10 +533,10 @@ static void cmdPagesize(wordexp_t * parsed_msg, GString* readline_result_string_
 void addToSearchResult(FREE char *fileFullpath);
 static void cmd_addToSearchResult(CALLER_OWN wordexp_t *parsed_msg,CALLER_OWN  GString *readline_result_string_after_file_name_substitution);
 void writeSearchResultIntoFD_in_gtk_thread(gint fd, gboolean exportFilePathOnly, RFM_ChildAttribs* childAttribs);
-/* 把当前查询结果视图导出成文本（语义同 SearchResult| 管道：有选中只导出选中行），
- * 供进程内 addon 命令解释器（TinyAgent/OpenHarness 等）作为上下文使用，
- * 由 exec_stdin_command_with_SearchResultAsInput() 调用。 */
-MEM_ALLOC gchar* rfm_get_search_result_as_text(gboolean exportFilePathOnly, RFM_ChildAttribs *childAttribs);
+/* 说明：这个函数导出给插件用（TinyAgent 插件用 memfd 当出口，把当前查询结果读成文本，
+ * 见 TinyAgent.rfm_addon.c: ta_get_search_result_text()）。语义同 SearchResult| 管道：
+ * 有选中只导出选中行；treeview 下首行是含"文件名"的列标题行；调用方负责 fd 的关闭
+ * （本函数结尾会 close 传入的 fd，所以想读回要先 dup）。必须在 GTK 主线程调用。 */
 /* 进程内 addon 命令解释器（customCallBackFunc 型）的两段公共逻辑：
  * 判断能否进程内处理 / 进程内处理并在结束后收尾（历史、新 readline 线程、释放）。 */
 static gboolean addon_cmd_interpretor_runs_in_process(const stdin_cmd_interpretor *cmd_interpretor_pointer);
@@ -4199,18 +4199,15 @@ static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResult
 
             /* ── 进程内 addon 命令解释器（TinyAgent / OpenHarness / AI 等）──
              * 这类解释器没有子进程可 g_spawn（它们的 customCallBackFunc 就是命令处理入口），
-             * 所以这里直接把当前查询结果文本放进 childAttribs->stdOut，然后进入 addon。
-             * addon 侧因此拿到：
+             * 所以直接进入 addon。此时 addon 侧拿到：
              *   childAttribs->SearchResultAsInput = TRUE   （"SearchResult|" 前缀已被本函数上方流程剥掉）
              *   childAttribs->readlineResultString          剥掉前缀后的用户输入
-             *   childAttribs->stdOut                        当前查询结果文本（有选中则只含选中行；
-             *                                               treeview 下首行是含"文件名"的列标题行）
-             * 这样 addon 不必自己调 writeSearchResultIntoFD_in_gtk_thread()/memfd 去取数据。
-             * stdOut 归 childAttribs 所有，由 free_child_attribs() 释放；
-             * addon 若把 childAttribs 交给 update_SearchResultFileNameList_and_refresh_store()
-             * 之类的接口延时使用，则自行置 no_free（TinyAgent 的 >类型 分支就是这么做的）。 */
+             * 查询结果文本由 addon 自己取：调 writeSearchResultIntoFD_in_gtk_thread()
+             * （TinyAgent 用 memfd_create() 当出口，不落盘，读法见
+             *   TinyAgent.rfm_addon.c: ta_get_search_result_text()）。
+             * 之所以把取数放在插件侧：用户除了写 "SearchResult|" 前缀，还可能只是让大模型
+             * 调用工具去读查询结果，那条路没有 rfm 的前缀处理，只能在插件侧取。 */
             if (addon_cmd_interpretor_runs_in_process(cmd_interpretor_pointer)) {
-              childAttribs->stdOut = rfm_get_search_result_as_text(FALSE, childAttribs);
               call_addon_cmd_interpretor_in_process(childAttribs, cmd_interpretor_pointer,
                                                     readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
               return;
@@ -4567,34 +4564,6 @@ void writeSearchResultIntoFD_in_gtk_thread(gint fd,gboolean exportFilePathOnly, 
     }else g_warning("empty search result view!");
   }else g_warning("currently not in search result view!");
   close(fd);
-}
-
-/* ══════════════════════════════════════════════════════════════════
- *  把当前查询结果视图导出成文本（供进程内 addon 命令解释器使用）
- * ══════════════════════════════════════════════════════════════════ */
-/*
- * 语义与 "SearchResult|管道" 完全一致（同一份实现）：
- *   - 有选中则只导出选中行，否则导出全部；
- *   - treeview 模式下首行是当前显示各列的标题行（含"文件名"列），
- *     列分隔符取自 SEARCH_RESULT_COLUMN_SEPERATOR(childAttribs)（传 NULL 时用全局值）；
- *   - exportFilePathOnly 为 TRUE 时只导出文件路径列。
- * 必须在 GTK 主线程调用。
- * 返回新分配字符串（free() 可释放）；不在查询结果视图 / 视图为空时返回空串。
- *
- * 实现说明：writeSearchResultIntoFD_in_gtk_thread() 只有 fd 出口，这里借它写进一个
- * 临时文件再读回，读完立即删除（rfm.c 里 newTermProxy 也是用临时文件这条思路）。
- */
-MEM_ALLOC gchar* rfm_get_search_result_as_text(gboolean exportFilePathOnly, RFM_ChildAttribs *childAttribs){
-  gchar *tmpname = NULL;
-  gint fd = g_file_open_tmp("rfm_search_result_XXXXXX", &tmpname, NULL);//TODO:不要用落盘的文件。tinyagent 会话20260916_155412里有方案比较。rfm还有多处用了临时文件，可以一并考虑
-  if (fd < 0) { g_warning("rfm_get_search_result_as_text: 无法创建临时文件"); return NULL; }
-  writeSearchResultIntoFD_in_gtk_thread(fd, exportFilePathOnly, childAttribs); //内部会 close(fd)
-  gchar *text = NULL;
-  if (!g_file_get_contents(tmpname, &text, NULL, NULL))
-    g_warning("rfm_get_search_result_as_text: 读回临时文件 %s 失败", tmpname);
-  unlink(tmpname);
-  g_free(tmpname);
-  return text;   /* 可能为 NULL（读回失败）或空串（视图为空） */
 }
 
 static void readlineInSeperateThread(RFM_ChildAttribs *childAttribs) {
