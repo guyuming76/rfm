@@ -63,7 +63,7 @@
 
 #define AI_MODEL_AS_CMD_INTERPRETER "切换到当前AI模型回答模式，下面AI MODELS部分列出所有候选模型，首列是切换至此模型的命令"
 
-#define TOOL_TIP_PathAndRepositoryNameDisplay "点击在目录视图和搜索结果间切换，或使用//命令; \n可用 pagesize xxx 命令设置搜索结果视图每葉条数"
+#define TOOL_TIP_PathAndRepositoryNameDisplay "点击在目录视图和搜索结果间切换(GUI快捷键ALT+\\)，或命令窗口内使用//命令; \n可用 pagesize xxx 命令设置搜索结果视图每葉条数"
 
 #define PRESS_ENTER_TO_CLOSE_WINDOW "按回车键关闭当前窗口"
 

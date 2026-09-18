@@ -2,7 +2,7 @@
 //   本区块由 config.mk 调用 scripts/rfmSyncAddonIncludedHeaderHashes.sh 自动生成，请勿手工编辑。
 //   作用：这里列出的头文件一旦变化，rfm_addon.h 的内容就变化 ⇒ RFM_AddOn(=rfm_addon.h 的 md5) 变
 //         ⇒ 重编 rfm ⇒ 运行时 rfm 用新 md5 与各插件 .so 里记录的旧值比对 ⇒ 触发所有插件重编。
-// RFM_INCLUDED_HEADER_HASH: rfmLanguage.h 1ced54b200e46a2d992e2b8ecaed1743    <- Chinese.h
+// RFM_INCLUDED_HEADER_HASH: rfmLanguage.h bdf6a2a00da4bdeec8c567af9740bd53    <- Chinese.h
 // RFM_INCLUDED_HEADER_HASH: rfm_pybridge.h 7a5aa8def4270765b44f9d3b855a1a02    <- rfm_pybridge.h
 // RFM_INCLUDED_HEADER_HASHES_END
 #ifndef RFM_ADDON_H

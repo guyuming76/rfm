@@ -3292,8 +3292,10 @@ static gboolean view_key_press(GtkWidget *widget, GdkEvent *event) {
     return TRUE;
 #if !defined(reedline) && !defined(prompt_toolkit)
   } else if (ek->keyval == GDK_KEY_Tab){
-    g_message("This is the command window");
+    g_message("This is the command window");//在 reedline 和 prompt_toolkit 下，实现了ESC键切换文件选中，同时命令窗口提示符*会显示或消失，也就是说，在GUI窗口按键，对应命令窗口有变化，所以就不用显示这一句消息了。gnu readline下没这个功能，借此帮助用户找到GUI对应的命令窗口
 #endif
+  } else if (ek->keyval == GDK_KEY_backslash && (ek->state & GDK_MOD1_MASK) == GDK_MOD1_MASK) {
+    Switch_SearchResultView_DirectoryView();
   } else {
     for (guint i = 0; i < Merged_tool_buttons->len; i++) {
       RFM_ToolButton *button = (RFM_ToolButton*)g_ptr_array_index(Merged_tool_buttons, i);
@@ -5331,9 +5333,8 @@ static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(CALLER_OWN wo
 	  cleanup();
         }else if (g_strcmp0(parsed_msg->we_wordv[0],"/")==0) {
 	  switch_iconview_treeview();
-	}else if (g_strcmp0(parsed_msg->we_wordv[0],"//")==0) {
+	}else if (g_strcmp0(parsed_msg->we_wordv[0],"//")==0 || g_strcmp0(parsed_msg->we_wordv[0],"\\")==0) {// TODO:我希望\和//一样可以用来切换视图，但是在prompt_toolkit下测试 \ 键回车后编辑就换行了。
 	  Switch_SearchResultView_DirectoryView();
-
         }else{
 	  gchar** dimNameAndValue = g_strsplit(parsed_msg->we_wordv[0],"=",2);
 	  if (g_strv_length(dimNameAndValue)==2){
