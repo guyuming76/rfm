@@ -5581,15 +5581,16 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
               readlineResult[len - 1] = '\0';
               len--;
             } // remove ending space
-              //  
+              // TODO:这里在设完 stdin_cmd_ending_space 后为啥要把空格给去掉？如果某个特殊的命令解释器需要区分输入命令结尾是一个空格还是两个空格怎么办？
             // Check if the command starts with an interpreter prefix to override execution
             gboolean prefix_found = FALSE;
             int prefix_len;
             for (guint i = 0; i < G_N_ELEMENTS(stdin_cmd_interpretors); i++) {
-
+                    gchar* activationKey_right_trimmed = g_strchomp(g_strdup(stdin_cmd_interpretors[i].activationKey));
                     prefix_len = strlen(stdin_cmd_interpretors[i].activationKey);
-	            if (g_strcmp0(readlineResult, stdin_cmd_interpretors[i].activationKey)==0){
-		       save_current_history();
+	            //if (g_strcmp0(readlineResult, stdin_cmd_interpretors[i].activationKey)==0){ 因为前面去除了readlineResult 的结尾空格，所以这里拿 activationKey_right_trimmed 比较。将来如果完成上面TODO,也就是不去除 readlineResult 的结尾空格，再恢复成用 activationKey比较
+                    if (g_strcmp0(readlineResult, activationKey_right_trimmed)==0){
+                       save_current_history();
 		       current_stdin_cmd_interpretor_pointer = &(stdin_cmd_interpretors[i]);
 #ifdef RFM_AddOn
 		       g_free(Addon_Prompt);Addon_Prompt = NULL;
@@ -5607,6 +5608,7 @@ gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboo
                         g_debug("Detected '%s' prefix. Will run as %s command: %s",stdin_cmd_interpretors[i].activationKey, stdin_cmd_interpretors[i].name, readlineResult);
                         break; // Found the prefix, stop checking
                     }
+                    g_free(activationKey_right_trimmed);
             }
 
 #ifdef RFM_AddOn

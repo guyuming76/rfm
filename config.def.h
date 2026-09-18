@@ -42,7 +42,7 @@ static gboolean keep_selection_on_view_across_refresh = TRUE;
 //do not change the order of the following array,or change with care, it's referenced as stdin_cmd_interpretor[0] in code below
 const stdin_cmd_interpretor stdin_cmd_interpretors[] = {
         //Name             activationKey          prompt            cmdTransformer       HistoryFilename       customCallbackFunc
-	{"Bash",           "b>",                  "b",              stdin_command_bash,  ".rfm_history",       NULL },
+	{"Bash",           "b ",                  "b",              stdin_command_bash,  ".rfm_history",       NULL },
 	{"NuShell",        "n>",                  "n",              stdin_command_nu,    ".rfm_history",       NULL },
 #ifdef PythonEmbedded
         {"PythonEmbedded", "p>",                  "p",              NULL,                ".rfm_history_python",NULL },
