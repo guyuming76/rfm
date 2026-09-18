@@ -32,13 +32,19 @@ CmarkTools = -DCmarkTools
 #CmarkTools =
 # CmarkTools is used to extract markdown title and content, for example, returned by AI LLM
 
+# ┌─ 把 rfm_addon.h 所 include 的头文件的 hash 同步进 rfm_addon.h ────────────────────────────
+# 被 rfm_addon.h include 的头文件（rfmLanguage.h ← languageInclude、rfm_pybridge.h ...）一变
+#   ⇒ rfm_addon.h 内容变 ⇒ RFM_AddOn（= rfm_addon.h 的 md5，见下一行）变，并被烤进 rfm 二进制
+#   ⇒ 运行时 rfm 用新的 md5 与插件 .so 里记录的旧 md5 比对，不等 ⇒ 触发所有插件重编。
+# 于是 rfm_addon.h 可以直接 include 别的头文件，而不必把这些头的内容都搬进来。
+# 用 := 立即求值，保证在本文件下面求 rfm_addon.h 的 md5 之前先执行；脚本在内容无变化时不改文件。
+# 要新增"被 include 的头"，只需在下面的调用里再追加一项 <label>=<headerpath>。
+# 注意：Makefile 里 rfm.o 必须把 rfm_addon.h 及这些头列为依赖，否则新 md5 不会被烤进二进制。
+RFM_SyncIncludedHeaderHashes := $(shell scripts/rfmSyncAddonIncludedHeaderHashes.sh rfm_addon.h rfmLanguage.h=$(languageInclude) rfm_pybridge.h=rfm_pybridge.h)
+
 RFM_AddOn = -DRFM_AddOn=\"$(shell md5sum rfm_addon.h | cut -d' ' -f1)\"
-# 语言头（上面的 languageInclude）的 hash 写进 rfm_addon.h 首行注释：
-# 语言头变化（或换语言）⇒ rfm_addon.h 内容变 ⇒ RFM_AddOn（rfm_addon.h 的 md5）变
-# ⇒ rfm 触发所有插件重编。直接复用既有的 rfm_addon.h 哈希机制，rfm.c 无需改动。
-# 注意：本行会（在内容变化时）自动改写 rfm_addon.h 首行，别手动编辑那一行。
-#$(shell scripts/rfmUpdateAddonHeaderLanguageHash.sh $(languageInclude) rfm_addon.h)
-#RFM_LOCAL =
+
+#RFM_AddOn =            #注释掉上面的 RFM_AddOn 即禁用 addon（老名字叫 RFM_LOCAL，已废弃）
 #features such as LLM AI client is implemented as addon
 
 #CFLAGS = -fsanitize=address

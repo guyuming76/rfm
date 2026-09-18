@@ -212,17 +212,14 @@ static gboolean exec_stdin_command(GString * readlineResultStringFromPreviousRea
 static void g_spawn_async_callback_to_new_readline_thread(RFM_ChildAttribs *child_attribs);
 static void regcomp_for_regex_rules();
 static void set_stdin_cmd_leading_space_true(RFM_ChildAttribs* childAttribs);
-static NO_FREE stdin_cmd_interpretor* match_cmd_str_array_with_interpretors(gchar** RunCmd);
+static NO_FREE stdin_cmd_interpretor* match_cmd_str_array_with_interpretors(const gchar** RunCmd);
 static void combine_command_with_selected_files_and_setenv(CALLER_OWN GString* readlineResultString, gboolean cmd_end_with_space, gchar** *env, GList* fullpath_list_as_parameter);
-gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboolean const from_stdin_readline, NO_FREE const stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs* childAttribs);
 static void parse_and_exec_stdin_command_in_gtk_thread(gchar *readlineResult);
 static void parse_and_exec_cmd_in_gtk_thread (gchar * cmd);
 static gboolean parse_and_exec_stdin_builtin_command_in_gtk_thread(wordexp_t * parsed_msg, GString* readline_result_string, RFM_ChildAttribs* childAttribs);
 static void toggle_exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread();
 static void add_history_timestamp();
 static void add_history_after_stdin_command_execution(GString * readlineResultStringFromPreviousReadlineCall_AfterFilenameSubstitution);
-void load_history_for_prompt();
-void save_current_history();
 static void stdin_command_help(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
 static void cmd_glog(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
 static gboolean cmd_GUI_cmd_wrapper(wordexp_t *parsed_msg, GString *readline_result_string_after_file_name_substitution);
@@ -233,14 +230,12 @@ static GPtrArray* rfm_editor_completion_based_on_search_result(char *text);
 static void rfmEdit(gchar* filepath);
 static gboolean parse_rfmEdit(GString *readline_result_string_after_file_name_substitution,RFM_ChildAttribs *childAttribs);
 #endif
-gchar** replace_shell_cmd_buffer(gchar **strv, gchar *buffer);
 gchar* stdin_cmd_template_bash[]={"/bin/bash","-i","-c", "shell_cmd_buffer", NULL};
 static gchar* stdin_cmd_template_nu[]={"nu","-c", "shell_cmd_buffer", NULL};
 gchar* stdin_cmd_template_bash_newVT_nonHold[] = { "$RFM_TERM", "/bin/bash", "-i", "-c", "shell_cmd_buffer", NULL };
 gchar* stdin_cmd_template_bash_newVT_nonHold_with_e[] = { "$RFM_TERM", "$RFM_TERM_E" ,"/bin/bash", "-i", "-c", "shell_cmd_buffer", NULL };
 static gchar* stdin_cmd_template_nu_newVT_nonHold[] = { "$RFM_TERM", "nu", "-i", "-c", "shell_cmd_buffer", NULL };
 static gchar* stdin_cmd_template_nu_newVT_nonHold_with_e[] = { "$RFM_TERM", "$RFM_TERM_E" ,"nu", "-i", "-c", "shell_cmd_buffer", NULL };
-NO_FREE gchar** stdin_command_bash(RFM_ChildAttribs* childAttribs);
 static NO_FREE gchar** stdin_command_nu(RFM_ChildAttribs* childAttribs);
 
 static void null_log_handler(const gchar *log_domain,GLogLevelFlags log_level,const gchar *message,gpointer user_data){
@@ -271,15 +266,6 @@ static gboolean newTermProxy_process_output_in_gtk(gpointer data);
 static gboolean newTermProxy_cleanup_in_gtk(gpointer data);
 static gpointer newTermProxy_thread(gpointer data);
 
-// ── RfmFifoSet forward declarations (implementations follow below) ──
-RfmFifoSet *rfm_fifo_set_create(const char *dir_template, int pipe_mask);
-gboolean rfm_fifo_open_read(RfmFifoSet *fset);
-gboolean rfm_fifo_open_write(RfmFifoSet *fset, gboolean nonblock);
-void rfm_fifo_poll_read(RfmFifoSet *fset,
-    RfmFifoDataCallback on_stdout, RfmFifoDataCallback on_stderr,
-    void *stdout_ud, void *stderr_ud, int timeout_ms);
-void rfm_fifo_set_cleanup(RfmFifoSet *fset);
-void g_string_append_len_callback(const char *data, int len, void *user_data);
 
 static void free_child_attribs(FREE_FULL RFM_ChildAttribs *child_attribs);
 static gchar *choose_working_directory_for_g_spawn(RFM_ChildAttribs *childAttribs);
@@ -287,11 +273,9 @@ static void g_spawn_wrapper_for_selected_fileList_(FREE_FULL RFM_ChildAttribs *c
 /* instantiate childAttribs and call g_spawn_wrapper_ */
 /* caller should g_list_free(file_list), but usually not g_list_free_full, since the file char* is usually owned by rfm_fileattributes */
 /* callbackfuncUserData can be pointer of any type, but callbackfunc should take RFM_ChildAttribs* as input parameter, and retrieve callbackfuncUserData with (RFM_ChildAttribs *)->customCallbackUserData; */
-gboolean g_spawn_wrapper(CALLER_OWN const char **action, CALLER_OWN GList *file_list, const int run_opts, FREE const gchar** env, const char *dest_path, const gboolean async,const void(*callbackfunc)(gpointer),CALLER_OWN const gpointer callbackfuncUserData,const gboolean output_read_by_program);
 gboolean g_spawn_wrapper_wordexp(CALLER_OWN const char *cmd, CALLER_OWN GList *file_list, const int run_opts, FREE const gchar** env, const char *dest_path, const gboolean async,const void(*callbackfunc)(gpointer),CALLER_OWN const gpointer callbackfuncUserData,const gboolean output_read_by_program);
 /* call build_cmd_vector to create the argv parameter for g_spawn_* */
 /* call different g_spawn_* functions based on child_attribs->spawn_async and child_attribs->runOpts */
-gboolean g_spawn_wrapper_(CALLER_OWN GList *file_list, CALLER_OWN const char *dest_path, FREE_FULL RFM_ChildAttribs * childAttribs);
 /* create argv parameter for g_spawn functions  */
 /* The char* in file_list will be used (WITHOUT strdup) in returned gchar** v and owned by rfm_FileAttributelist before */
 static MEM_ALLOC gchar **build_cmd_vector(CALLER_OWN const char **cmd, CALLER_OWN GList *file_list, CALLER_OWN const char *dest_path);
@@ -508,18 +492,13 @@ static int FileNameIndexInColumnTitles=FALSE;
 static gchar** search_result_type_withtitle_column_title_array = NULL;
 static gchar* stdout_read_by_search_result=NULL;
 static gboolean showSearchResultExtColumnsBasedOnHashTableValues_has_already_been_called_for_searchresult = FALSE;//方便用showcolumn命令手工调整SearchResult的列布局
-void update_SearchResultFileNameList_and_refresh_store(RFM_ChildAttribs *childAttribs);
 static void showSearchResultExtColumnsBasedOnHashTableValues();
 static int ProcessOnelineForSearchResult(CALLER_OWN gchar *oneline, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs);
 static int ProcessOnelineForSearchResult_internel(CALLER_OWN char* oneline, gboolean new_search, int first_line_column_title, RFM_ChildAttribs *childAttribs);
 static int ProcessOnelineForSearchResult_with_title(CALLER_OWN char* oneline, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs);
-void CallDefaultSearchResultFunctionForNewSearch(CALLER_OWN char *one_line_in_search_result, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs);
 int ProcessKeyValuePairInFilesFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs);
-int ProcessKeyValuePairInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char **cmdtemplate, RFM_FileAttributes* fileAttributes,RFM_ChildAttribs *childAttribs);
-int ProcessJsonInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate, RFM_FileAttributes* fileAttributes,RFM_ChildAttribs* child_attribs);
-static int ProcessCmdOutputFromSearchResultWithFunction(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate, RFM_FileAttributes* fileAttributes, RFM_ChildAttribs* child_attribs, int (*func)(RFM_ChildAttribs*));
+static int ProcessCmdOutputFromSearchResultWithFunction(CALLER_OWN char *oneline, gboolean new_search, const char** cmdtemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs* child_attribs, int (*func)(RFM_ChildAttribs*));
 static int ProcessKeyValuePairInData(GKeyFile* keyfile, char *groupname);
-void ProcessKeyValuePair(CALLER_OWN gchar *key, OWNER_CHANGE gchar* currentExtColumnValue, CALLER_OWN char* currentColumnOriginalTitle);
 static int ProcessGKeyfileStrWrapper(RFM_ChildAttribs *child_attribs);
 static int ProcessGKeyfileStr(CALLER_OWN gchar *cmdOutput);
 static int ProcessJsonStrWrapper(RFM_ChildAttribs *child_attribs);
@@ -531,9 +510,7 @@ static void cmdSearchResultColumnSeperator(wordexp_t * parsed_msg, GString* read
 static RFM_SearchResultType* MatchSearchResultType(gchar *readlineResult, RFM_ChildAttribs *childattribs);
 static void set_pagesize_for_searchresultview(const char *pagesize);
 static void cmdPagesize(wordexp_t * parsed_msg, GString* readline_result_string_after_file_name_substitution);
-void addToSearchResult(FREE char *fileFullpath);
 static void cmd_addToSearchResult(CALLER_OWN wordexp_t *parsed_msg,CALLER_OWN  GString *readline_result_string_after_file_name_substitution);
-void writeSearchResultIntoFD_in_gtk_thread(gint fd, gboolean exportFilePathOnly, RFM_ChildAttribs* childAttribs);
 /* 说明：这个函数导出给插件用（TinyAgent 插件用 memfd 当出口，把当前查询结果读成文本，
  * 见 TinyAgent.rfm_addon.c: ta_get_search_result_text()）。语义同 SearchResult| 管道：
  * 有选中只导出选中行；treeview 下首行是含"文件名"的列标题行；调用方负责 fd 的关闭
@@ -660,7 +637,6 @@ static void file_menu_exec_by_g_idle_add(RFM_MenuItem *file_menu_item_definition
  * the corresponding index in the run_actions_array.
  * Items are shown or hidden in popup_file_menu() depending on the selected files mime types.
  */
-void add_file_menuitems(GtkWidget ***menuitems, const RFM_MenuItem menuitem_definitions[], const size_t size);
 /* show/hide a filemenu based on mime type of the files selected and other critierias
  * If all files are the same type selection_mimeRoot and selection_mimeSub are set
  * If all files are the same mime root but different sub, then selection_mimeSub is set to NULL
@@ -681,7 +657,6 @@ const char* rfm_get_search_result_column_seperator(const RFM_ChildAttribs* ca){ 
 /* non-static so addons can reset it on /quit etc. */
 stdin_cmd_interpretor * current_stdin_cmd_interpretor_pointer = &(stdin_cmd_interpretors[0]);
 static GtkWidget *add_view();
-void add_toolbar_buttons(GtkWidget ***buttons, const RFM_ToolButton button_definitions[], const size_t size);
 static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixbufs);
 static void refresh_toolbar();
 static gboolean view_key_press(GtkWidget *widget, GdkEvent *event);
@@ -722,8 +697,6 @@ typedef struct {
 } RFM_ADDON;
 
 static gboolean disable_addon = FALSE;
-void remove_toolbar_buttons(FREE GtkWidget ***buttons, const size_t size);
-void remove_file_menuitems(FREE GtkWidget ***menuitems, const size_t size);
 
 static void free_addon(RFM_ADDON *addon);
 static GHashTable* addons; // RFM_ADDON as value
@@ -738,8 +711,8 @@ static void load_addon(CALLER_OWN char* addon_fullpath);
 static void load_addon_dir(char* addon_dir);
 static void append_addon_treeviewColumns(RFM_ADDON *addon,gboolean searchresultview, gboolean dirview);
 static void remove_addon_treeviewColumns(RFM_ADDON *addon);
-static void unload_local_extension(RFM_ADDON *addon);
-static gboolean compile_local_extension(RFM_ADDON *addon);
+static void unload_addon(RFM_ADDON *addon);
+static gboolean compile_addon(RFM_ADDON *addon);
 static gchar* calculate_file_hash(const gchar *filepath);
 static void find_and_unload_addons_before_leaving_current_directory(CALLER_OWN const gchar* path);
 #endif
@@ -2971,7 +2944,7 @@ static void g_spawn_wrapper_for_selected_fileList_(FREE_FULL RFM_ChildAttribs *c
 }
 
 //TODO: 目前这里config.h里面的bash,nu,python等interpreter,稍后再尝试 zsh等,都无需在AddOn里面. 如果需要用AI来解析命令,须参照parse_and_exec_command_in_gtk_thread 里面代码扩充此部分
-static NO_FREE stdin_cmd_interpretor* match_cmd_str_array_with_interpretors(gchar** RunCmd){
+static NO_FREE stdin_cmd_interpretor* match_cmd_str_array_with_interpretors(const gchar** RunCmd){
   for (int i=0; i<G_N_ELEMENTS(stdin_cmd_interpretors); i++){
     if (RunCmd[0] == stdin_cmd_interpretors[i].name)//注意这里比较的是两个字符串的地址，而不是用strcmp比较内容，这样不会因为恰巧相同的字符串造成误判
       return &(stdin_cmd_interpretors[i]);
@@ -5586,7 +5559,7 @@ static void CancelReadInput(RFM_ChildAttribs* childAttribs) {
 // this runs in gtk thread
 // from_stdin_readline 为 TRUE 时，表示用户从命令窗口输入的字符串，这时忽略 cmd_interpretor_index 参数为调用时的 current_stdin_cmd_interpretor
 // from_stdin_readline 为假时，readlineResults 通常是 config.h 里面配置好的命令字符串。此时命令字符串数组头部会配置 cmd_interpretor_index 对应的name
-// 目前布尔返回值只在!from_stdin_readline情况下返回 exec_stdin_command 的返回值，用于编译 rfm_local.c 后返回成败
+// 目前布尔返回值只在!from_stdin_readline情况下返回 exec_stdin_command 的返回值，用于编译 addon 的 .c 后返回成败
 gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboolean const from_stdin_readline, NO_FREE const stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs* childAttribs)
 {
         gboolean ret = FALSE;
@@ -6857,16 +6830,16 @@ static int ProcessJsonFileFromSearchResult(CALLER_OWN char *oneline, gboolean ne
 // cmdtemplate的解析结果会通过 cmdOutput 局部变量传递到下一环节。这个cmdOutput会对应到查询结果的一行
 // 而parse_and_exec_cmd_in_gtk_thread 里的readlineResult是返回这个查询结果多行记录的，每行一个文件。
 // 所以这两个函数看上去都是执行命令模板的，有类似之处，却不好合并
-int ProcessKeyValuePairInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate, RFM_FileAttributes* fileAttributes, RFM_ChildAttribs* childAttribs){
+int ProcessKeyValuePairInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, const char** cmdtemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs* childAttribs){
   ProcessCmdOutputFromSearchResultWithFunction(oneline,new_search,cmdtemplate,fileAttributes,childAttribs,ProcessGKeyfileStrWrapper);
 }
 
-int ProcessJsonInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate, RFM_FileAttributes* fileAttributes, RFM_ChildAttribs* child_attribs){
+int ProcessJsonInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, const char** cmdtemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs* child_attribs){
   ProcessCmdOutputFromSearchResultWithFunction(oneline,new_search,cmdtemplate,fileAttributes,child_attribs,ProcessJsonStrWrapper);
 }
 
 //SearchResultType 里面定义的cmdTemplate格式是独特的：一方面，可以指明cmd_interpretor, 使用match_cmd_str_array_with_interpretors, 另一方面，却又不是通过parse_and_exec_command_in_gtk_thread来执行，通过调用cmd_interpretor的cmdTransformer来转换成 g_spawn_wrapper接受的形式。同时做了一个简单的把cmdTemplate中%s替换成查询结果文件名oneline的操作，这个替换既没使用build_cmd_vector中的文件名替换，又没使用parse_and_exec_command_in_gtk_thread中的选中文件名替换
-static int ProcessCmdOutputFromSearchResultWithFunction(CALLER_OWN char *oneline, gboolean new_search, char** cmdtemplate, RFM_FileAttributes* fileAttributes, RFM_ChildAttribs* child_attribs, int (*func)(RFM_ChildAttribs*)){
+static int ProcessCmdOutputFromSearchResultWithFunction(CALLER_OWN char *oneline, gboolean new_search, const char** cmdtemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs* child_attribs, int (*func)(RFM_ChildAttribs*)){
    if (new_search){
      ProcessOnelineForSearchResult(oneline, TRUE, cmdtemplate, fileAttributes, child_attribs);
      return 0;// 对于new_search, 调用本方法的目的仅仅是调用default的ProcessOnelineForSearchResult
@@ -7651,8 +7624,8 @@ static gchar* calculate_file_hash(const gchar *filepath) {
     return hash_str;
 }
 
-// Compile rfm_local.c into rfm_local.so in the current directory
-static gboolean compile_local_extension(RFM_ADDON* addon) {
+// Compile an addon's .c into .so in the same directory
+static gboolean compile_addon(RFM_ADDON* addon) {
     gchar *c_file_hash = NULL; // To store the hash of the .c file
 
     // Calculate hash of the .c file
@@ -7660,7 +7633,7 @@ static gboolean compile_local_extension(RFM_ADDON* addon) {
     if (!c_file_hash) {
         g_warning("Failed to calculate hash for %s", addon->addon_c_fullpath);
         // No goto cleanup here, just return FALSE after freeing potential resources
-        // Note: local_c_path and local_so_path are freed in the caller (load_local_extension)
+        // Note: addon->addon_c_fullpath / addon->addon_so_fullpath are freed in the caller (load_addon)
         return FALSE;
     }
     g_debug("Hash of %s: %s", addon->addon_c_fullpath, c_file_hash);
@@ -7679,15 +7652,15 @@ static gboolean compile_local_extension(RFM_ADDON* addon) {
     DCmarkTools = "-DCmarkTools";
 #endif
 
-    gchar* rfm_local_c_compile_cmd = g_strdup_printf(rfm_local_c_compile_cmd_template, RFM_AddOn_H_filepath, DCmarkTools, DGitIntegration, rfmLANGUAGE, RFM_SearchResultTypeNamePrefix, RFM_NEW_TERM_SUFFIX, RFM_selected_filename_placeholder, RFM_SEARCH_RESULT_AS_INPUT_PREFIX, addon->addon_so_fullpath, rfm_addon_C_hash_via_gcc, addon->addon_c_fullpath, rfm_addon_H_hash_via_gcc);
+    gchar* rfm_addon_c_compile_cmd = g_strdup_printf(rfm_addon_c_compile_cmd_template, RFM_AddOn_H_filepath, DCmarkTools, DGitIntegration, rfmLANGUAGE, RFM_SearchResultTypeNamePrefix, RFM_NEW_TERM_SUFFIX, RFM_selected_filename_placeholder, RFM_SEARCH_RESULT_AS_INPUT_PREFIX, addon->addon_so_fullpath, rfm_addon_C_hash_via_gcc, addon->addon_c_fullpath, rfm_addon_H_hash_via_gcc);
 #ifdef PythonEmbedded
     /* Append Python flags so addons can use #include <Python.h> */
-    gchar *rfm_local_c_compile_cmd_with_python = g_strdup_printf("%s -DPythonEmbedded $(python3-config --cflags)", rfm_local_c_compile_cmd);
-    g_free(rfm_local_c_compile_cmd);
-    rfm_local_c_compile_cmd = rfm_local_c_compile_cmd_with_python;
+    gchar *rfm_addon_c_compile_cmd_with_python = g_strdup_printf("%s -DPythonEmbedded $(python3-config --cflags)", rfm_addon_c_compile_cmd);
+    g_free(rfm_addon_c_compile_cmd);
+    rfm_addon_c_compile_cmd = rfm_addon_c_compile_cmd_with_python;
 #endif
-    gboolean success = g_spawn_wrapper_wordexp(rfm_local_c_compile_cmd, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, FALSE, NULL, NULL, FALSE);
-    g_free(rfm_local_c_compile_cmd); g_free(rfm_addon_C_hash_via_gcc); g_free(rfm_addon_H_hash_via_gcc);
+    gboolean success = g_spawn_wrapper_wordexp(rfm_addon_c_compile_cmd, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, FALSE, NULL, NULL, FALSE);
+    g_free(rfm_addon_c_compile_cmd); g_free(rfm_addon_C_hash_via_gcc); g_free(rfm_addon_H_hash_via_gcc);
     return success;
 }
 
@@ -7878,8 +7851,8 @@ static void load_addon(CALLER_OWN char* addon_fullpath){
             }
             
             // 用户确认，继续编译
-            if (!compile_local_extension(addon)) {
-                g_warning("Compilation failed, cannot load local extension.");
+            if (!compile_addon(addon)) {
+                g_warning("Compilation failed, cannot load addon.");
                 goto cleanup;
             }
         }
@@ -7941,7 +7914,7 @@ static void load_addon(CALLER_OWN char* addon_fullpath){
 	g_free(addon_dir);
 	return; // 成功call enter funtion 就不要cleanup, unload 完再cleanup
     } else {
-         g_log(RFM_LOG_ADDON, G_LOG_LEVEL_DEBUG, "No local extension file %s found.", addon->addon_c_fullpath);
+         g_log(RFM_LOG_ADDON, G_LOG_LEVEL_DEBUG, "No addon file %s found.", addon->addon_c_fullpath);
     }
  cleanup:
     if (addon->addon_so_handle) {
@@ -7989,7 +7962,7 @@ static void find_and_unload_addons_before_leaving_current_directory(CALLER_OWN c
       gchar * addon_dir = g_path_get_dirname(value->addon_c_fullpath);
       if (value->addon_type==Directory || (value->addon_type==DirectoryTree && !g_str_has_prefix(path, addon_dir))) {
 	g_hash_table_iter_remove(&ht_iter);
-	unload_local_extension(value);
+	unload_addon(value);
 	free_addon(value);
         needs_regenerate = TRUE;
         g_debug("addons size after unloading:%d",g_hash_table_size(addons));
@@ -8009,9 +7982,9 @@ static void rfm_addon_remove_dir_change_callback(const gchar *addon_id) {
   g_hash_table_remove(addon_dir_change_callbacks, addon_id);
 }
 
-static void unload_local_extension(RFM_ADDON *addon) {
+static void unload_addon(RFM_ADDON *addon) {
   if (addon->addon_so_handle) {
-        g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Unloading local extension. %s", addon->addon_so_fullpath);
+        g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Unloading addon. %s", addon->addon_so_fullpath);
         if (addon->addon_leave_func) {
             g_log(RFM_LOG_ADDON, G_LOG_LEVEL_INFO, "Calling %s from %s", RFM_ADDON_LEAVE_FUNC, addon->addon_so_fullpath);
             (*(addon->addon_leave_func))(); //call leave function
@@ -8047,7 +8020,7 @@ static void unload_all_addons(void) {
     g_hash_table_iter_remove(&ht_iter);
     g_hash_table_remove(addons_hash, addon->addon_hash);
     g_hash_table_remove(addons_filename, addon->addon_base_filename);
-    unload_local_extension(addon);
+    unload_addon(addon);
     free_addon(addon);
   }
 }
@@ -8070,7 +8043,7 @@ static void unload_addon_filemenu_func() {
 	   g_hash_table_remove(addons, fileAttributes->path);
 	   g_hash_table_remove(addons_hash, addon->addon_hash);
 	   g_hash_table_remove(addons_filename, addon->addon_base_filename);
-	   unload_local_extension(addon);
+	   unload_addon(addon);
 	   free_addon(addon);
 	 }
          listElement=g_list_next(listElement);

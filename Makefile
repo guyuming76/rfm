@@ -56,7 +56,7 @@ LDFLAGS += -rdynamic
 CPPFLAGS += -DRFM_AddOn_H_filepath=\"${DESTDIR}${PREFIX}/include/rfm_addon.h\"
 # 语言头文件（config.mk 的 languageInclude：Chinese.h / English.h）安装成 rfmLanguage.h，
 # 与 rfm_addon.h 同目录。rfm 编译插件时会把它也 -include 进去，这样插件里可以直接
-# 使用 fld_FileName 等语言相关宏（见 rfm.c: compile_local_extension()）。
+# 使用 fld_FileName 等语言相关宏（见 rfm.c: compile_addon()）。
 CPPFLAGS += -DRFM_Language_H_filepath=\"${DESTDIR}${PREFIX}/include/rfmLanguage.h\"
 endif
 
@@ -112,6 +112,16 @@ ifneq ($(RFM_FILE_CHOOSER),)
 rfm.o: config.h rfmFileChooser.h
 else
 rfm.o: config.h
+endif
+
+ifneq ($(RFM_AddOn),)
+# rfm_addon.h 的 md5 经 -DRFM_AddOn 编进 rfm 二进制，运行时用来和插件 .so 里记录的 md5 比对
+# （见 rfm.c load_addon）。所以 rfm_addon.h 以及它 include 的那些头
+# 一变，就必须重编 rfm.o，否则新 md5 不会被烤进二进制，插件就不会被触发重编。
+rfm.o: rfm_addon.h ${languageInclude}
+ifneq (${PythonEmbedded}, )
+rfm.o: rfm_pybridge.h
+endif
 endif
 
 config.h:

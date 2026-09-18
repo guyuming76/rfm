@@ -1,3 +1,10 @@
+// RFM_INCLUDED_HEADER_HASHES_BEGIN
+//   本区块由 config.mk 调用 scripts/rfmSyncAddonIncludedHeaderHashes.sh 自动生成，请勿手工编辑。
+//   作用：这里列出的头文件一旦变化，rfm_addon.h 的内容就变化 ⇒ RFM_AddOn(=rfm_addon.h 的 md5) 变
+//         ⇒ 重编 rfm ⇒ 运行时 rfm 用新 md5 与各插件 .so 里记录的旧值比对 ⇒ 触发所有插件重编。
+// RFM_INCLUDED_HEADER_HASH: rfmLanguage.h 1ced54b200e46a2d992e2b8ecaed1743    <- Chinese.h
+// RFM_INCLUDED_HEADER_HASH: rfm_pybridge.h 7a5aa8def4270765b44f9d3b855a1a02    <- rfm_pybridge.h
+// RFM_INCLUDED_HEADER_HASHES_END
 #ifndef RFM_ADDON_H
 #define RFM_ADDON_H
 
@@ -14,6 +21,7 @@
 //事实上，config.h里面的定义也是依赖rfm_addon.h内数据类型定义的，但config.h内无需#include rfm_local.h,这时因为在rfm.c里面对于config.h的引用出现在对rfm_local.h的应用的后面，c语言编译器似乎可以处理这种情况
 #include <gtk-3.0/gtk/gtk.h>
 #include <wordexp.h>
+#include <linux/limits.h> //PATH_MAX，rfm.c 也用它；插件里要声明 rfm_historyFile_ParentDirectory[PATH_MAX]，所以本头文件必须自足
 //在C语言中，使用`-include`参数包含的头文件会出现在所有其他头文件之前。因此，如果在rfm_addon.h中没有包含`glib.h`，那么就会导致这些类型未知。之前在 rfm_addon.c (rfm_local.c) 中，rfm_addon.h是在gtk.h后面include的，现在通过 -include 参数传递给gcc来编译rfm_addon.c, 就不得不在这里加 gtk.h
 #define FREE //indicate that it is freed here
 #define FREE_FULL //indicate that it is freed full here
@@ -325,6 +333,83 @@ enum RFM_ADDON_TYPE {
 typedef void (*RFM_DirChangeCallback)(gchar *new_path);
 
 void rfm_addon_register_dir_change_callback(const gchar *addon_id, RFM_DirChangeCallback callback);
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * 可供插件调用的宿主函数与全局变量（本区是全项目里这些符号的【唯一权威声明】）
+ *
+ * 为什么放在这里：
+ *  1. rfm.c 也 #include 本头文件（rfm.c 顶部），所以宿主里的定义若与这里不一致，
+ *     宿主编译就会报 "conflicting types"——"签名变了"会在编译期被抓住，
+ *     而不是等插件加载后崩在调用点（动态加载只按符号名解析，C 的符号名不含类型）。
+ *  2. 插件里不要再手写 extern。手写的 extern 一旦过期，gcc 会报
+ *     "conflicting types for 'xxx'" 并给出新旧两个类型，明确指出是哪个函数/变量对不上。
+ *  3. 声明集中在文件末尾，是因为必须在所有 typedef 之后（RFM_FileAttributes/
+ *     RFM_ChildAttribs/RfmFifoSet/RFM_ToolButton/RFM_MenuItem 等）。
+ *  4. 【重要】全局变量只在这里写 extern 声明（extern 只是声明，不产生实例）；
+ *     真正的定义仍在 rfm.c / config.h 里。宿主侧目前只有 rfm.c 一个 TU 包含本头文件
+ *     （rfm_pybridge.c 只包含 rfm_pybridge.h）。将来若想在这里写"定义"而不是 extern，
+ *     必须保证宿主侧只有一个 TU 包含本头：一旦多出第二个（比如新增 rfm_xxx.c 也包含本头），
+ *     立刻就是链接期 multiple definition。所以现阶段请一律写 extern。
+ *  5. 关于"rfm.c 里定义了某个变量，又在同一个 TU 里看到它的 extern 声明"是否矛盾：
+ *     不矛盾，也不是笔误。extern 表示"这个名字具有外部链接、此处（在该点）不是它的定义"，
+ *     并不要求定义在别的文件里；同一个 TU 里先 `extern int x;` 再 `int x = 5;` 是标准写法
+ *     （C11 6.2.2/6.9.2），本文件上面的 rfm_addon_register_dir_change_callback、
+ *     以及所有 C 库的"头文件里声明 + .c 里定义（.c 包含自己的头）"都是这个模式。
+ *     它的价值恰恰在于：声明与定义一旦不一致，编译期就报 conflicting types。
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 全局变量（定义在 rfm.c / config.h；插件通过这里的 extern 引用同一个实例） ── */
+extern char rfm_historyFile_ParentDirectory[PATH_MAX];              //rfm.c
+extern const stdin_cmd_interpretor stdin_cmd_interpretors[];        //config.h（用户定制）
+extern stdin_cmd_interpretor *current_stdin_cmd_interpretor_pointer;//rfm.c
+extern gchar *Addon_Prompt;                                         //rfm.c，addon 可临时改写提示符
+extern gboolean exec_stdin_cmd_sync_by_calling_g_spawn_in_gtk_thread;//config.h（用户定制）
+extern gchar *stdin_cmd_template_bash[];                            //rfm.c
+extern gchar *stdin_cmd_template_bash_newVT_nonHold[];              //rfm.c
+extern gchar *stdin_cmd_template_bash_newVT_nonHold_with_e[];       //rfm.c
+extern GtkIconTheme *icon_theme;                                    //rfm.c
+extern int RFM_ICON_SIZE;                                           //config.h（用户定制）
+extern int currentPageStartingColumnTitleIndex;                     //rfm.c
+extern gchar *rfm_SearchResultPath;                                 //rfm.c，创建查询结果时的 rfm_curPath
+
+/* ── 历史记录 / 命令行 ── */
+void load_history_for_prompt();                                                                                                                             //rfm.c
+void save_current_history();                                                                                                                                //rfm.c
+gchar** replace_shell_cmd_buffer(gchar **strv, gchar *buffer);                                                                                               //rfm.c
+NO_FREE gchar** stdin_command_bash(RFM_ChildAttribs* childAttribs);                                                                                          //rfm.c
+gboolean parse_and_exec_command_in_gtk_thread (FREE gchar * readlineResult, gboolean const from_stdin_readline, NO_FREE const stdin_cmd_interpretor *cmd_interpretor_pointer, RFM_ChildAttribs* childAttribs); //rfm.c
+
+/* ── 菜单 / 工具栏 ── */
+void add_toolbar_buttons(GtkWidget ***buttons, const RFM_ToolButton button_definitions[], const size_t size);      //rfm.c
+void add_file_menuitems(GtkWidget ***menuitems, const RFM_MenuItem menuitem_definitions[], const size_t size);     //rfm.c
+void remove_toolbar_buttons(FREE GtkWidget ***buttons, const size_t size);                                         //rfm.c
+void remove_file_menuitems(FREE GtkWidget ***menuitems, const size_t size);                                        //rfm.c
+
+/* ── 查询结果处理 ──
+ * 注意 ProcessJsonInCmdOutputFromSearchResult 等的参数必须是 const 的：它们的地址
+ * 会赋给 RFM_SearchResultType.SearchResultLineProcessingFunc（见上），那个成员的类型
+ * 就是 const char** / const RFM_FileAttributes*；非 const 的签名会被 gcc 判为
+ * incompatible pointer type（插件编译命令里没有 -Wno-error=incompatible-pointer-types）。 */
+const char* rfm_get_search_result_column_seperator(const RFM_ChildAttribs* ca);                                     //rfm.c
+void update_SearchResultFileNameList_and_refresh_store(RFM_ChildAttribs *childAttribs);                             //rfm.c
+void CallDefaultSearchResultFunctionForNewSearch(CALLER_OWN char *one_line_in_search_result, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs); //rfm.c
+int ProcessKeyValuePairInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, const char** cmdtemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs* childAttribs); //rfm.c
+int ProcessJsonInCmdOutputFromSearchResult(CALLER_OWN char *oneline, gboolean new_search, const char** cmdtemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs* child_attribs);         //rfm.c
+void ProcessKeyValuePair(CALLER_OWN gchar *key, OWNER_CHANGE gchar* currentExtColumnValue, CALLER_OWN char* currentColumnOriginalTitle); //rfm.c
+void addToSearchResult(FREE char *fileFullpath);                                                                   //rfm.c
+void writeSearchResultIntoFD_in_gtk_thread(gint fd, gboolean exportFilePathOnly, RFM_ChildAttribs* childAttribs);    //rfm.c，TinyAgent 插件用 memfd 取查询结果文本
+
+/* ── 子进程 / 命名管道 ── */
+gboolean g_spawn_wrapper(CALLER_OWN const char **action, CALLER_OWN GList *file_list, const int run_opts, FREE const gchar** env, const char *dest_path, const gboolean async,const void(*callbackfunc)(gpointer),CALLER_OWN const gpointer callbackfuncUserData,const gboolean output_read_by_program); //rfm.c
+gboolean g_spawn_wrapper_(CALLER_OWN GList *file_list, CALLER_OWN const char *dest_path, FREE_FULL RFM_ChildAttribs * childAttribs); //rfm.c
+RfmFifoSet *rfm_fifo_set_create(const char *dir_template, int pipe_mask);                                          //rfm.c
+gboolean rfm_fifo_open_read(RfmFifoSet *fset);                                                                     //rfm.c
+gboolean rfm_fifo_open_write(RfmFifoSet *fset, gboolean nonblock);                                                 //rfm.c
+void rfm_fifo_poll_read(RfmFifoSet *fset,
+    RfmFifoDataCallback on_stdout, RfmFifoDataCallback on_stderr,
+    void *stdout_ud, void *stderr_ud, int timeout_ms);                                                               //rfm.c
+void rfm_fifo_set_cleanup(RfmFifoSet *fset);                                                                       //rfm.c
+void g_string_append_len_callback(const char *data, int len, void *user_data);                                     //rfm.c
 
 #define RFM_LOG_ADDON "rfm-addon"
 
