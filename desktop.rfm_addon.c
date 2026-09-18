@@ -14,21 +14,9 @@
    #define START_MENU "Start menu"
 #endif
 
-extern char rfm_historyFile_ParentDirectory[PATH_MAX];
-extern void load_history_for_prompt();
-extern void save_current_history();
-extern const stdin_cmd_interpretor stdin_cmd_interpretors[];
-extern void add_toolbar_buttons(GtkWidget ***buttons, const RFM_ToolButton button_definitions[], const size_t size);
-extern void add_file_menuitems(GtkWidget ***menuitems, const RFM_MenuItem menuitem_definitions[], const size_t size);
-extern void remove_toolbar_buttons(GtkWidget ***buttons, const size_t size);
-extern void remove_file_menuitems(GtkWidget ***menuitems, const size_t size);
+// 以下宿主函数/变量的声明已统一写入 rfm_addon.h（编译插件时由 -include 自动引入）。
+// 这里不要再手写 extern：手写的声明一旦与宿主不一致，编译期就会报 conflicting types 并给出新旧类型。
 
-extern GtkIconTheme *icon_theme;
-extern int RFM_ICON_SIZE;
-extern int currentPageStartingColumnTitleIndex;
-extern gchar *rfm_SearchResultPath;
-extern void ProcessKeyValuePair(CALLER_OWN gchar *key, OWNER_CHANGE gchar* currentExtColumnValue, CALLER_OWN char* currentColumnOriginalTitle);
-extern void CallDefaultSearchResultFunctionForNewSearch(CALLER_OWN char *one_line_in_search_result, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs);
 
 RFM_ADDON_RESOURCE_TYPE addon_resource = {0};
 const enum RFM_ADDON_TYPE addon_type = Global;

@@ -1,12 +1,9 @@
-#ifdef RFM_LOCAL_C_HASH
-// 使用编译时定义的宏 RFM_LOCAL_C_HASH 来初始化这个常量指针
-// 这个变量会成为 .so 文件中的一个符号，可以被 dlsym 找到
-const char * const rfm_local_c_file_hash = RFM_LOCAL_C_HASH;
-#else
-// 如果编译时没有定义 RFM_LOCAL_C_HASH 宏 (例如手动编译时忘了加 -D 参数)
-// 就发出警告，并将符号定义为 NULL，这样 rfm.c 加载时能发现哈希缺失
-#warning "RFM_LOCAL_C_HASH is not defined during compilation. Hash checking willlikely fail."
-const char * const rfm_local_c_file_hash = NULL;
+// 【已废弃的老机制】曾经用 RFM_LOCAL_C_HASH 在这里定义 rfm_local_c_file_hash 符号。
+// 现在插件 .c 与 rfm_addon.h 的 hash 由 rfm 编译插件时用 -DRFM_ADDON_C_HASH / -DRFM_ADDON_H_HASH 传入，
+// 并在 rfm_addon.h 里定义成符号 rfm_addon_c_file_hash / rfm_addon_h_file_hash 供 rfm.c 用 dlsym 读取。
+// 下面只保留"手动编译时忘了加 -D 参数"的提醒。
+#ifndef RFM_ADDON_C_HASH
+#warning "RFM_ADDON_C_HASH is not defined during compilation. Hash checking will likely fail."
 #endif
 
 #include <gtk/gtk.h>
@@ -17,14 +14,9 @@ const char * const rfm_local_c_file_hash = NULL;
 #include <limits.h>
 #include <rfm_addon.h>
 
-extern char rfm_historyFile_ParentDirectory[PATH_MAX];
-extern void load_history_for_prompt();
-extern void save_current_history();
-extern const stdin_cmd_interpretor stdin_cmd_interpretors[];
-extern void add_toolbar_buttons(GtkWidget ***buttons, const RFM_ToolButton button_definitions[], const size_t size);
-extern void add_file_menuitems(GtkWidget ***menuitems, const RFM_MenuItem menuitem_definitions[], const size_t size);
-extern void remove_toolbar_buttons(GtkWidget ***buttons, const size_t size);
-extern void remove_file_menuitems(GtkWidget ***menuitems, const size_t size);
+// 以下宿主函数/变量的声明已统一写入 rfm_addon.h（编译插件时由 -include 自动引入）。
+// 这里不要再手写 extern：手写的声明一旦与宿主不一致，编译期就会报 conflicting types 并给出新旧类型。
+
 
 RFM_ADDON_RESOURCE_TYPE addon_resource = {0};
 const enum RFM_ADDON_TYPE addon_type = DirectoryTree;
