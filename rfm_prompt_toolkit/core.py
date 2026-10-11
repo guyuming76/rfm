@@ -22,8 +22,14 @@ from rfm_pybridge import GPtrArray as _GPtrArray
 
 try:
     from prompt_toolkit.completion import Completer
+    # RfmPromptSession（见下）的基类。和 Completer 一样只在模块级尝试一次：
+    # prompt_toolkit 缺失时 rfm 仍能启动（真正 readline 时
+    # _ensure_prompt_toolkit() 会给出明确报错），只是 RfmPromptSession 退化成
+    # 一个没有 prompt_toolkit 行为的空壳。
+    from prompt_toolkit.shortcuts import PromptSession as _PromptSessionBase
 except ImportError:
     Completer = object
+    _PromptSessionBase = object
 
 logger = logging.getLogger(__name__)
 if not logger.handlers:
@@ -352,6 +358,122 @@ def _parse_completion_color(result_str: str):
         return result_str, "fg:ansiblue"
 
 
+# ── 矮窗口适配：RfmPromptSession ─────────────────────────────
+
+
+def _fit_tail(text: str, avail: int) -> str:
+    """把 text 裁到显示宽度 <= avail：保留尾部（通常是有用的当前目录名），前面加省略号。
+
+    avail 太小（连 "…x" 都放不下）或裁不出内容时返回 ""，调用方据此不显示。
+    用 get_cwidth 计算显示宽度，兼容 CJK 宽字符。
+    """
+    from prompt_toolkit.utils import get_cwidth
+
+    if not text or avail < 2:
+        return ""
+    if get_cwidth(text) <= avail:
+        return text
+
+    tail = ""
+    width = 0
+    for ch in reversed(text):
+        w = get_cwidth(ch)
+        if width + w > avail - 1:  # 留 1 列给省略号
+            break
+        tail = ch + tail
+        width += w
+    return "…" + tail if tail else ""
+
+
+def _terminal_rows():
+    """终端（输出设备）总行数；拿不到时返回 None。
+
+    优先问正在运行的 app：renderer 判高度用的就是它的 output.get_size().rows，
+    保持一致才能保证“布局的最小高度 <= 可用高度”。
+    """
+    try:
+        from prompt_toolkit.application.current import get_app_or_none
+
+        app = get_app_or_none()
+        if app is not None:
+            return app.output.get_size().rows
+    except Exception:
+        pass
+
+    # 还没有 running app（例如 prompt() 尚未开始）时退回 stdlib：
+    # 读 COLUMNS/LINES 环境变量，或对 stdout 做 ioctl。
+    try:
+        import shutil
+
+        return shutil.get_terminal_size().lines
+    except Exception:
+        return None
+
+
+class RfmPromptSession(_PromptSessionBase):
+    """PromptSession 子类：窗口太矮时也要把输入行（含左右提示符）画出来。
+
+    prompt_toolkit 原生在“编辑态”有两个硬性最小高度：
+
+    a) 输入框最小高度 = reserve_space_for_menu（默认 8，见 shortcuts/prompt.py
+       的 _get_default_buffer_control_height()，只在 not is_done 且开了
+       complete_while_typing 时生效）再加上 bottom_toolbar 的 1 行。一旦
+       `sum(最小高度) > 可用行数`，layout/containers.py 的
+       HSplit._divide_heights() 就返回 None，上层把 **整个 layout** 换成红色的
+       "Window too small..."（见 _window_too_small()）。这正是“同一个窗口，
+       滚屏看历史输出没事、一显示提示符就红字”的原因：非编辑态（is_done）
+       的最小高度只有 1 行。
+    b) bottom_toolbar 的最小高度是 1 行：窗口只剩 1 行时它会抢走唯一那一行，
+       输入行反而消失。
+
+    本类对这两点做自适应，且只影响“窗口不够高”的情形；窗口够高时行为与原生一致。
+
+    * _get_default_buffer_control_height()：按终端实际行数把 min 夹住。
+      **preferred 不动** —— renderer 用
+      `height = max(_min_available_height, last_height, preferred)` 算渲染高度，
+      首次渲染时前两项可能还是 0，preferred 若也被夹到 0 就什么都画不出来了。
+    * bottom_toolbar 属性：行数不足时对外表现为 None。toolbar 的
+      ConditionalContainer 的 filter（`self.bottom_toolbar is not None`）是
+      **渲染时**求值的，所以窗口在 prompt 显示期间被窗口管理器（dwl 切
+      master/stack）改矮后会立刻生效，不需要重新 prompt()。
+    """
+
+    #: 行数少于这个值就不显示 bottom_toolbar（1 行给它自己，至少 1 行留给输入行）
+    _MIN_ROWS_FOR_BOTTOM_TOOLBAR = 2
+
+    def _get_default_buffer_control_height(self):
+        from prompt_toolkit.layout.dimension import Dimension
+
+        d = super()._get_default_buffer_control_height()
+        if d.min <= 0:  # 没开 complete_while_typing / 没有 completer 时本来就是 0
+            return d
+
+        rows = _terminal_rows()
+        if rows is None:
+            return d
+
+        # 除输入框外还固定占行的：bottom_toolbar / ValidationToolbar /
+        # SearchToolbar 各 1 行，末尾再留 1 行余量。
+        limit = max(0, min(rows - 2, self.reserve_space_for_menu))
+        if d.min > limit:
+            return Dimension(min=limit, max=d.max)
+        return d
+
+    @property
+    def bottom_toolbar(self):
+        toolbar = getattr(self, "_rfm_bottom_toolbar", None)
+        if toolbar is None:
+            return None
+        rows = _terminal_rows()
+        if rows is not None and rows < self._MIN_ROWS_FOR_BOTTOM_TOOLBAR:
+            return None
+        return toolbar
+
+    @bottom_toolbar.setter
+    def bottom_toolbar(self, value):
+        self._rfm_bottom_toolbar = value
+
+
 # ── RfmPromptToolkit 主类 ──────────────────────────────────
 
 
@@ -380,8 +502,8 @@ class RfmPromptToolkit:
             # 颜色类样式通过 Completion.style 字段设置
         })
 
-        from prompt_toolkit.shortcuts import PromptSession, CompleteStyle
-        self._session = PromptSession(
+        from prompt_toolkit.shortcuts import CompleteStyle
+        self._session = RfmPromptSession(
             history=self._history,
             key_bindings=self._key_bindings,
             completer=self._completer,
@@ -508,6 +630,42 @@ class RfmPromptToolkit:
             # 默认（环境变量不存在或不为 "false"）显示帮助提示
             return "[Shift+]TAB[包含子目录]补全 Alt+Enter多行编辑添加行 F2工具栏|文件菜单命令"
 
+        def _dynamic_rprompt():
+            """输入行右侧的当前路径。
+
+            rprompt 在 prompt_toolkit 内部是一个 Float，且
+            shortcuts/prompt.py 的 _create_layout 里写死了
+            hide_when_covering_content=True：只有当它覆盖的那几个格子全是空格时
+            才会绘制；而它一旦比窗口还宽就会盖住整行 → 整行不空 → 完全不显示
+            （窄/矮窗口里路径就是这样丢掉的）。
+            所以这里按“窗口宽度 - 左侧提示符 - 本行已输入内容”动态裁剪：
+            放得下就整条显示，放不下就退化成路径尾部（通常是有用的当前目录名），
+            再放不下就不显示，把整行让给输入。
+            """
+            path = _getenv("rfm_curPath") or ""
+            if not path:
+                return []
+
+            try:
+                from prompt_toolkit.application.current import get_app
+                from prompt_toolkit.utils import get_cwidth
+
+                app = get_app()
+                cols = app.output.get_size().columns
+                # rprompt 固定画在 Float 顶部那一行，这里用光标所在行的已输入内容
+                # 估算占用宽度（多行输入时略有偏差，只会让路径早/晚一点让位）
+                line = app.current_buffer.document.current_line or ""
+                used = get_cwidth(prompt_text) + get_cwidth(line)
+
+                avail = cols - used - 1  # 末尾留 1 列，别贴到行尾
+                if avail < 4:
+                    return []  # 连 "…x" 都放不下，整行让给输入
+                text = _fit_tail(path, avail)
+                return [("ansigreen", text)] if text else []
+            except Exception:
+                # 任何意外都退回完整路径（宁可与输入行重叠一点，也别丢提示）
+                return [("ansigreen", path)]
+
         try:
             # 用 rprompt 在输入行右侧显示当前路径，
             # 在非 -n 模式（RFM_showHelpOnStart=false）下, 用 bottom_toolbar 在屏幕底显示快捷键。
@@ -518,11 +676,15 @@ class RfmPromptToolkit:
             # 实际位置不一致，erase/redraw 会漏擦底部那行路径，导致每切换一次就残留一行
             # 重复的“路径 + 提示符”。改为 rprompt（画在输入行右侧）即可绕开这个脆弱路径。
             _show_help_on_bottom = (_getenv("RFM_showHelpOnStart") != "false")
+            # 是否真的显示 bottom_toolbar 由 RfmPromptSession.bottom_toolbar 属性
+            # 按终端行数决定（只够 1 行时返回 None，免得它 1 行的最小高度把唯一的
+            # 输入行挤掉）。该 filter 在渲染时求值，所以 prompt 显示期间窗口被
+            # dwl 切到 stack 区变矮也会立刻生效，不必重新 prompt()。
             result = self._session.prompt(
                 _dynamic_prompt,
                 key_bindings=self._key_bindings,
                 pre_run=_capture_app,
-                rprompt=[("ansigreen", _getenv("rfm_curPath") or "")],
+                rprompt=_dynamic_rprompt,
                 bottom_toolbar=_bottom_toolbar() if _show_help_on_bottom else None,
             )
             # result 可能是字符串（用户输入）或 HostCommand（app.exit(result=...)）
@@ -700,7 +862,6 @@ def edit_file(filename: str) -> int:
     """编辑文件（rfmEdit）"""
     _ensure_prompt_toolkit()
 
-    from prompt_toolkit.shortcuts import PromptSession
     from prompt_toolkit.key_binding import KeyBindings
     from prompt_toolkit.keys import Keys
     from prompt_toolkit.history import InMemoryHistory
@@ -755,7 +916,7 @@ def edit_file(filename: str) -> int:
     relative_to = os.path.dirname(os.path.abspath(filename))
     completer = RfmCompleter(relative_to=relative_to)
 
-    edit_session = PromptSession(
+    edit_session = RfmPromptSession(
         history=InMemoryHistory(),
         key_bindings=kb,
         completer=completer,
