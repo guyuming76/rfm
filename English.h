@@ -242,8 +242,9 @@ BuiltInCmd_SearchResultColumnSeperator \
 "    Similiar as MIME type and file name suffix, search result type can be used to define default file openning behavior in config.h. for example, in muview search result, select a mail and press enter will open mail with mu view command.\n" \
 "    What follows are search result types:"
 
-#define SearchResultType_default "search result type number 0 read command output, which can be seperated into columns(like csv format. the default seperator is defined in config.h, and can be set with builtin rfm command or startup parameter). All rows in search result have the same number of columns, and the first column must contain filename with full path. There will be no column title line in command output for this type and columns after Filename will be named C1,C2,C3... Example:the second column in the following command is line number. select one row in search result and press enter, file will be opened in editor and it will jump to the specific line number, because environment variables named C1,C2,C3... are created with the same value as the columns, and these environment variables will be inherited by the child process which opens the file with editor\n" \
-"      locate /etc/portage|xargs grep -ns emacs>default"
+#define SearchResultType_default "search result type number 0 read command output, which can be seperated into columns(like csv format. the default seperator is defined in config.h, and can be set with builtin rfm command or startup parameter). All rows in search result have the same number of columns, and the first column must contain filename with full path. columns after Filename will be named C1,C2,C3... Example:the second column in the following command is line number. select one row in search result and press enter, file will be opened in editor and it will jump to the specific line number, because environment variables named C1,C2,C3... are created with the same value as the columns, and these environment variables will be inherited by the child process which opens the file with editor\n" \
+"      locate /etc/portage|xargs grep -ns emacs>default\n" \
+"    The command output may contain a column title line(the first line). No need to specify >withTitle: rfm will auto detect it -- if any column in the first line equals the Filename field(" fld_FileName "), the first line is treated as the column title line and will not appear as a file in the result. If the value of the first column is an existing file, the first line is still treated as a data line."
 
 #define SearchResultType_gkeyfile "default search result type will be called first to get command output, then the file in first column (Filename column) will be parsed with gtk keyfile format(key value pairs seperated by =). The parsed key value pair will be added as column title and value in search result. keyfiles in the same search result can have different keys. For example, I created a submodule named devPicAndVideo under rfm git repository to store documents and screenshots during development, where issue list can be queried with the following command:\n" \
 "      locate .rfmTODO.gkeyfile>gkeyfile\n" \
@@ -260,7 +261,7 @@ BuiltInCmd_SearchResultColumnSeperator \
 "      locate .rfmTODO.>"SrchRsltType_multitype"\n" \
 "      by the way, select one file in search result view and run rfm builtin cd command ending with space, we can go into the directory containning this selected file."
 
-#define SearchResultType_default_with_title "The same as the default search result type, except that the first row in command output contains column title.for example, to filter out the first row in current search result:\n" \ 
+#define SearchResultType_default_with_title "Deprecated, same as the default search result type. Kept only for backward compatibility with old commands such as SearchResult|head -n2>withTitle. The default search result type auto detects the column title line now, so withTitle need not be specified any more.\n" \
 "      SearchResult|head -n2>withTitle"
 
 #define SearchResultType_current "use the same type as in current search result view. use default if current is empty"

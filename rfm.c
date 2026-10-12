@@ -6520,34 +6520,58 @@ int main(int argc, char *argv[])
    return 0;
 }
 
+// 自动检测查询结果首行是否为表头(列标题)行。
+// 判据: 用分隔符把首行切成多列, 若其中某一列正好等于 fld_FileName(文件名列标题), 则首行即表头行。
+// 加固: 还要求首列(在按"文件名在第一列"解释时)不是一个已存在的文件, 以免数据行被误判为表头行。
+//       例如 grep 风格输出 "./a.txt:12:文件名", 第三列恰好是"文件名", 但首列 ./a.txt 是真实文件, 故仍按数据行处理。
+// 判定为表头时: 设置全局 FileNameIndexInColumnTitles(>=1) 和 search_result_type_withtitle_column_title_array(供列标题显示)。
+// 返回值即"首行是否为表头行"。
+static gboolean DetectColumnTitlesInSearchResultFirstLine(const char* oneline, RFM_ChildAttribs *childAttribs){
+  gchar** column_title_array = g_strsplit(oneline, SEARCH_RESULT_COLUMN_SEPERATOR(childAttribs), TREEVIEW_COLUMNS_array_size);
+  gboolean first_line_is_column_title = FALSE;
+  for (uint i=0; column_title_array[i]; i++){
+    if (strcmp(column_title_array[i], fld_FileName)==0){
+      FileNameIndexInColumnTitles = i + 1; //filename_index_in_column_titles start with 1
+      first_line_is_column_title = TRUE;
+      break;
+    }
+  }
+  if (first_line_is_column_title){
+    gchar *first_column_as_filename = g_canonicalize_filename(column_title_array[0], rfm_SearchResultPath);
+    if (g_file_test(first_column_as_filename, G_FILE_TEST_EXISTS)){
+      g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"DetectColumnTitlesInSearchResultFirstLine: first line contains %s column, but its first column %s is an existing file, so treat first line as data line", fld_FileName, first_column_as_filename);
+      first_line_is_column_title = FALSE;
+    }
+    g_free(first_column_as_filename);
+  }
+  if (first_line_is_column_title){
+    search_result_type_withtitle_column_title_array = column_title_array;
+    g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"DetectColumnTitlesInSearchResultFirstLine: first line is column title line, FileNameIndexInColumnTitles:%d", FileNameIndexInColumnTitles);
+  }else{
+    g_strfreev(column_title_array);
+    FileNameIndexInColumnTitles = FALSE;
+  }
+  return first_line_is_column_title;
+}
+
 static int ProcessOnelineForSearchResult(CALLER_OWN char* oneline, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs){
-  FileNameIndexInColumnTitles = FALSE;
-  if (search_result_type_withtitle_column_title_array) { g_strfreev(search_result_type_withtitle_column_title_array);search_result_type_withtitle_column_title_array=NULL; }
+  // 每个新查询只做一次: 复位上一轮的表头标志/标题数组, 并自动检测本次查询首行是否为表头行。
+  // 所有查询结果类型在 new_search(第一遍)阶段都会先调用本函数, 因此无需用户再用 >withTitle 指明,
+  // 只要命令输出的首行里含有 fld_FileName 列, 首行就会自动被当作表头行处理。
+  if (new_search && fileAttributeID==1){
+    if (search_result_type_withtitle_column_title_array) { g_strfreev(search_result_type_withtitle_column_title_array);search_result_type_withtitle_column_title_array=NULL; }
+    FileNameIndexInColumnTitles = FALSE;
+    if (oneline) DetectColumnTitlesInSearchResultFirstLine(oneline, childAttribs);
+  }
   return ProcessOnelineForSearchResult_internel(oneline, new_search, FileNameIndexInColumnTitles, childAttribs);
 }
 
+// 保留 withTitle 查询结果类型仅为向后兼容。default 类型现在也会自动检测首行是否为表头行,
+// 所以 withTitle 与 default 行为一致, 这里直接转调 default 的处理函数, 以免旧命令
+// (如 "SearchResult|...>withTitle"、Union_SearchResult_clipboard 等)失效。
 static int ProcessOnelineForSearchResult_with_title(CALLER_OWN char* oneline, gboolean new_search, const char** cmdTemplate, const RFM_FileAttributes* fileAttributes, RFM_ChildAttribs *childAttribs){
   g_log(RFM_LOG_DATA_SEARCH,G_LOG_LEVEL_DEBUG,"ProcessOnelineForSearchResult_with_title(%s, new_search:%d) fileAttributeID:%d", oneline, new_search,fileAttributeID);
-  if (childAttribs->SearchResultAsInput && !treeview){//iconview视图下面查询结果第一行不会导出文件名标题列(参见writeSearchResultIntoFD_in_gtk_thread)，所以读入的时候也如同没有 _with_title 一样。
-    FileNameIndexInColumnTitles = FALSE;
-    return ProcessOnelineForSearchResult_internel(oneline, new_search, FileNameIndexInColumnTitles, childAttribs);
-  }
-
-  if (fileAttributeID==1){
-    if (search_result_type_withtitle_column_title_array) { g_strfreev(search_result_type_withtitle_column_title_array);search_result_type_withtitle_column_title_array=NULL; }
-    search_result_type_withtitle_column_title_array = g_strsplit(oneline, SEARCH_RESULT_COLUMN_SEPERATOR(childAttribs), TREEVIEW_COLUMNS_array_size);
-    uint i=0;
-    while(search_result_type_withtitle_column_title_array[i]){
-      if (strcmp(search_result_type_withtitle_column_title_array[i], fld_FileName)==0){
-	FileNameIndexInColumnTitles = i + 1; //filename_index_in_column_titles start with 1
-	return ProcessOnelineForSearchResult_internel(oneline, new_search, FileNameIndexInColumnTitles, childAttribs);
-      }
-      i++;
-    }
-    g_warning("no %s field in search result!",fld_FileName);
-    g_strfreev(search_result_type_withtitle_column_title_array);search_result_type_withtitle_column_title_array=NULL;
-    return 0;
-  }else return ProcessOnelineForSearchResult_internel(oneline, new_search, FileNameIndexInColumnTitles, childAttribs);
+  return ProcessOnelineForSearchResult(oneline, new_search, cmdTemplate, fileAttributes, childAttribs);
 }
 
 // default search result processing function
@@ -7185,6 +7209,12 @@ static void showSearchResultExtColumnsBasedOnHashTableValues(){
 void update_SearchResultFileNameList_and_refresh_store(RFM_ChildAttribs *childAttribs){
   g_assert(childAttribs && childAttribs->SearchResultTypePointer);
   gchar *filenamelist = childAttribs->stdOut;
+  
+  // 新查询开始: 复位表头标志和标题数组。正常情况下的自动检测在
+  // ProcessOnelineForSearchResult(fileAttributeID==1)里做; 这里复位是为了
+  // 查询结果为空(下面的循环一次都不会执行)时, 不会残留上一轮查询的列标题。
+  FileNameIndexInColumnTitles = FALSE;
+  if (search_result_type_withtitle_column_title_array) { g_strfreev(search_result_type_withtitle_column_title_array);search_result_type_withtitle_column_title_array=NULL; }
   
   GList * old_filenamelist = SearchResultFileNameList;
   static GHashTable* old_ExtColumnHashTable[NUM_Ext_Columns + 1]; //静态存储期（static storage duration）的变量（包括全局变量和用static 关键字声明的局部变量）如果没有显式初始化，会被自动初始化为零。

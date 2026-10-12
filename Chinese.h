@@ -246,8 +246,9 @@ BuiltInCmd_SearchResultColumnSeperator \
 "    简单地说，查询(或叫搜索)就是找到满足某种条件的文件，而查询结果类型是使用特定代码解析查询到的某个文件，获得数据列，理论上讲，也可以把解析文件的逻辑合并到查询代码中，返回文件的同时就返回数据列，但这样的一个问题是数据的列名比较难处理，在查询语句返回文件名，数据列的同时，还要返回每个数据列的列名。所以这里就采取了用查询，和查询结果类型两步处理的设计。0号默认查询结果类型可以从查询获得除文件名外的数据列，但不需要列名，采用C1,C2,C3,...这样的顺序列名.\n" \
 "    下面是全部的查询结果类型:"
 
-#define SearchResultType_default "0号查询结果类型读取命令输出的行,每行可由分隔符分成多列(类似csv格式,config.h里包含分隔符默认值,可由内置命令或rfm启动参数动态定制,以配合不同的命令输出). 所有行包含列数相同. 首列必须是文件路径名. 命令输出不包含标题行,除首列文件名外,后续列在查询结果视图里依次自动分配列名C1,C2,C3....命令举例:下面命令输出第二列是行号,选中一个文件回车打开文本编辑器会跳转到此行,是因为创建shell子进程执行文件操作时会生成同名环境变量C1,C2...把列值传递到子进程,打开文本编辑器的脚本可以使用继承的环境变量\n" \
-"      locate /etc/portage|xargs grep -ns emacs>default"
+#define SearchResultType_default "0号查询结果类型读取命令输出的行,每行可由分隔符分成多列(类似csv格式,config.h里包含分隔符默认值,可由内置命令或rfm启动参数动态定制,以配合不同的命令输出). 所有行包含列数相同. 首列必须是文件路径名. 除首列文件名外,后续列在查询结果视图里依次自动分配列名C1,C2,C3....命令举例:下面命令输出第二列是行号,选中一个文件回车打开文本编辑器会跳转到此行,是因为创建shell子进程执行文件操作时会生成同名环境变量C1,C2...把列值传递到子进程,打开文本编辑器的脚本可以使用继承的环境变量\n" \
+"      locate /etc/portage|xargs grep -ns emacs>default\n" \
+"    命令输出可以包含标题行(第一行为列标题)。无需用 >withTitle 指明,rfm 会自动检测: 只要首行里含有文件名字段(" fld_FileName ")列,就把它当作列标题行,标题行本身不会作为一个文件出现在结果里。首列的值若是一个已存在的文件,则仍按数据行处理。"
 
 #define SearchResultType_gkeyfile "首先调用default查询结果类型获取命令输出行列,再用gtk keyfile 文件格式(等号分割的键值对行)解析首列文件内容,键名显示为列名,键值为列值. 每个keyfile文件内可包含不同的键名.命令举例,在rfm项目git仓库下,我建了一个devPicAndVideo子仓库,里面包含项目开发过程中的以下文档,可用下面命令查询问题列表:\n" \
 "      locate .rfmTODO.gkeyfile>gkeyfile\n" \
@@ -265,7 +266,7 @@ BuiltInCmd_SearchResultColumnSeperator \
 "      locate .rfmTODO.>"SrchRsltType_multitype"\n" \
 "    最后,在查询结果视图选中一条文件, 执行前述rfm内置的cd后接空格命令,就可以直接切换到包含此文件的目录.上面例子里文件是一条rfm TODO 事项描述文件,目录可以是为此事项专门建立,用以保存此事项相关图片等文档. 对比常见的关系数据库应用,查询结果里的扩展列相当于表字段; 我们用来在locate命令里匹配文件路径名的字符串起着关系数据库名及表名的作用; 两条不同表的记录的关联可以通过多种方式实现,最简单直观的就是两个文件位于同一文件目录下面. 上面例子若是在电子邮件系统里实现, rfmTODO 事项描述文件内容通常放在邮件正文里, 而事项相关文档都需要通过附件形式打包到邮件内, 也不如在rfm里面简单放在一个文件目录下方便."
 
-#define SearchResultType_default_with_title "类似0号default查询结果类型,区别仅在于首行包含的是列标题,而不是实际数据.举例,过滤出当前查询结果第一行，参数-n2是因为title占一行，加上一行数据：\n" \
+#define SearchResultType_default_with_title "已废弃,与0号default查询结果类型相同,仅为向后兼容旧命令(如 SearchResult|head -n2>withTitle)而保留.0号default类型现在会自动检测首行是否为列标题行,故无需再指明withTitle\n" \
 "      SearchResult|head -n2>withTitle\n"
 
 #define SearchResultType_current "当前查询结果视图的类型，如果当前为空，则使用默认类型"
