@@ -2415,11 +2415,231 @@ static gint sort_func(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, gpoin
    return rv;
 }
 
+/* ============== 按工具栏可用宽度决定 PathAndRepositoryNameDisplay 的 label ==============
+ * GtkToolbar 在宽度不够时(参见 GTK 源码 gtk_toolbar.c 的 gtk_toolbar_allocate())，会在右边显示一个
+ * 向下箭头的溢出按钮，并把放不下的那个工具项、以及排在它后面的所有工具项一起塞进那个下拉菜单。
+ * PathAndRepositoryNameDisplay 又恰好是工具栏里的第一个工具项，所以一旦它自己都放不下，整个工具栏
+ * 就只剩下一个箭头，按钮位置看上去就是空白的。下面的代码按 GtkToolbar 的这套算法(可用宽度先扣掉
+ * 箭头按钮的宽度，再从左往右一个个减去各工具项的宽度)算出这个按钮最多能有多宽，标题太长就把左边
+ * 一段换成省略号，好让它仍然显示在工具栏上，而不是被折叠进溢出菜单。*/
+#define RFM_MAX_HOMOGENEOUS_N_CHARS 13     /* 同 GTK gtk_toolbar.c 里的 MAX_HOMOGENEOUS_N_CHARS */
+#define RFM_PATH_LABEL_MIN_USABLE_WIDTH 90 /* 路径文字不足这么多像素时，宁可让其它工具按钮进溢出菜单，
+					      也要尽量多显示一点路径(单位: 像素，只算文字部分，可按需调整) */
+#define RFM_PATH_LABEL_OVERFLOW_MARK "…"
+#define RFM_PATH_LABEL_SAFETY_MARGIN 4     /* 估算宽度时留一点余量: 免得因主题 CSS 差异把可用宽度算大而仍被折叠 */
+
+/* 用 widget 的字体测量一段文字占多少像素宽 */
+static gint rfm_measure_text_width(GtkWidget *widget, const gchar *text)
+{
+   PangoLayout *layout = gtk_widget_create_pango_layout(widget, text);
+   gint width=0, height=0;
+   pango_layout_get_pixel_size(layout, &width, &height);
+   g_object_unref(layout);
+   return width;
+}
+
+/* 工具项的自然宽度，对应 gtk_toolbar.c 的 toolbar_content_size_request() */
+static gint rfm_toolbar_item_natural_width(GtkWidget *item)
+{
+   GtkRequisition requisition;
+   gtk_widget_get_preferred_size(item, &requisition, NULL);
+   return requisition.width;
+}
+
+/* 同 gtk_toolbar.c 的 toolbar_content_visible() */
+static gboolean rfm_toolbar_item_visible(GtkWidget *item)
+{
+   return gtk_widget_get_visible(item) && gtk_tool_item_get_visible_horizontal(GTK_TOOL_ITEM(item));
+}
+
+/* 同 gtk_toolbar.c 的 toolbar_content_is_homogeneous(): 这类"同宽按钮"在工具栏里统一按其中最宽的
+ * 那个来分配宽度(button_maxw)，所以算它们占用的总宽度时都得用这个最宽值 */
+static gboolean rfm_toolbar_item_is_homogeneous(GtkWidget *item, gint max_homogeneous_pixels)
+{
+   if (rfm_toolbar_item_natural_width(item) > max_homogeneous_pixels) return FALSE;
+   if (GTK_IS_SEPARATOR_TOOL_ITEM(item)) return FALSE;
+   if (!gtk_tool_item_get_homogeneous(GTK_TOOL_ITEM(item))) return FALSE;
+   if (gtk_tool_item_get_is_important(GTK_TOOL_ITEM(item)) &&
+       gtk_toolbar_get_style(GTK_TOOLBAR(tool_bar))==GTK_TOOLBAR_BOTH_HORIZ) return FALSE;
+   return TRUE;
+}
+
+/* 同 gtk_toolbar.c 的 calculate_max_homogeneous_pixels() */
+static gint rfm_toolbar_max_homogeneous_pixels(void)
+{
+   PangoContext *context = gtk_widget_get_pango_context(tool_bar);
+   PangoFontMetrics *metrics = pango_context_get_metrics(context, pango_context_get_font_description(context), pango_context_get_language(context));
+   gint char_width = pango_font_metrics_get_approximate_char_width(metrics);
+   pango_font_metrics_unref(metrics);
+   return PANGO_PIXELS(RFM_MAX_HOMOGENEOUS_N_CHARS * char_width);
+}
+
+/* 工具栏自身 CSS padding/border 的宽度: GtkToolbar 的布局是在扣掉它们的"内容区"里做的 */
+static gint rfm_toolbar_css_extra_width(void)
+{
+   GtkStyleContext *context = gtk_widget_get_style_context(tool_bar);
+   GtkBorder padding, border;
+   gtk_style_context_get_padding(context, gtk_style_context_get_state(context), &padding);
+   gtk_style_context_get_border(context, gtk_style_context_get_state(context), &border);
+   return padding.left + padding.right + border.left + border.right;
+}
+
+/* GtkToolButton -> 内部 GtkButton -> GtkLabel。GTK_TOOLBAR_ICONS 样式下，没有图标的工具按钮会把
+ * label 直接放进内部按钮里；拿它来量文字宽度，字体就和按钮里实际显示的一致 */
+static GtkWidget *PathAndRepositoryNameDisplay_label_widget(void)
+{
+   if (PathAndRepositoryNameDisplay==NULL || !GTK_IS_BIN(PathAndRepositoryNameDisplay)) return NULL;
+   GtkWidget *button = gtk_bin_get_child(GTK_BIN(PathAndRepositoryNameDisplay));
+   if (button==NULL || !GTK_IS_BIN(button)) return NULL;
+   GtkWidget *label = gtk_bin_get_child(GTK_BIN(button));
+   return (label!=NULL && GTK_IS_LABEL(label))? label: NULL;
+}
+
+/* 按钮宽度里除 label 文字之外的开销(按钮内边距、边框等)。它与文字内容无关，取当前值即可 */
+static gint PathAndRepositoryNameDisplay_label_overhead(void)
+{
+   GtkWidget *label = PathAndRepositoryNameDisplay_label_widget();
+   gint text_width;
+   if (label!=NULL){
+     gint minimum=0, natural=0;
+     gtk_widget_get_preferred_width(label, &minimum, &natural);
+     text_width = natural;
+   } else
+     text_width = rfm_measure_text_width(PathAndRepositoryNameDisplay, gtk_tool_button_get_label(GTK_TOOL_BUTTON(PathAndRepositoryNameDisplay)));
+   return MAX(rfm_toolbar_item_natural_width(PathAndRepositoryNameDisplay) - text_width, 0);
+}
+
+/* 返回 PathAndRepositoryNameDisplay 的 label 文字最多能有多宽(像素)；<=0 表示这次算不出结果，不要动 label */
+static gint PathAndRepositoryNameDisplay_label_width_budget(void)
+{
+   if (no_window || tool_bar==NULL || PathAndRepositoryNameDisplay==NULL) return -1;
+   if (!gtk_widget_get_visible(tool_bar)) return -1;
+   gint css_extra = rfm_toolbar_css_extra_width();
+   gint available = gtk_widget_get_allocated_width(tool_bar) - css_extra - RFM_PATH_LABEL_SAFETY_MARGIN;
+   if (available <= 1) return -1; /* 还没完成过布局(例如刚启动时)，此时无从比较 */
+
+   /* 除本按钮外，其它可见工具项在工具栏里占用的总宽度，算法同 gtk_toolbar.c 的 get_item_size() */
+   gint max_homogeneous_pixels = rfm_toolbar_max_homogeneous_pixels();
+   gint homogeneous_max_width = 0;
+   GList *children = gtk_container_get_children(GTK_CONTAINER(tool_bar));
+   for (GList *node=children; node!=NULL; node=node->next){
+      GtkWidget *item = GTK_WIDGET(node->data);
+      if (rfm_toolbar_item_visible(item) && rfm_toolbar_item_is_homogeneous(item, max_homogeneous_pixels))
+        homogeneous_max_width = MAX(homogeneous_max_width, rfm_toolbar_item_natural_width(item));
+   }
+   gint others_width = 0;
+   for (GList *node=children; node!=NULL; node=node->next){
+      GtkWidget *item = GTK_WIDGET(node->data);
+      if (item==PathAndRepositoryNameDisplay || !rfm_toolbar_item_visible(item)) continue;
+      gint width = rfm_toolbar_item_natural_width(item);
+      others_width += rfm_toolbar_item_is_homogeneous(item, max_homogeneous_pixels)? MAX(homogeneous_max_width, width): width;
+   }
+   g_list_free(children);
+
+   /* 溢出箭头按钮的宽度: gtk_toolbar_measure() 里，横向时的 minimum 就是这个箭头按钮的宽度(再加上
+    * 工具栏自身的 padding/border)，如此就不必去访问 GtkToolbar 内部那个私有的箭头按钮 */
+   gint arrow_width = 0;
+   if (gtk_toolbar_get_show_arrow(GTK_TOOLBAR(tool_bar))){
+      gint minimum=0;
+      gtk_widget_get_preferred_width(tool_bar, &minimum, NULL);
+      arrow_width = MAX(minimum - css_extra, 0);
+   }
+   gint overhead = PathAndRepositoryNameDisplay_label_overhead();
+   /* 文字不超过这个宽度时，工具栏既不需要箭头，所有工具按钮也都显示得出来 */
+   gint text_width_without_arrow = available - others_width - overhead;
+   /* 工具栏已经窄到必须有箭头时，文字不超过这个宽度就还能和箭头一起显示出来 */
+   gint text_width_with_arrow = available - arrow_width - overhead;
+   gint budget = (text_width_without_arrow >= RFM_PATH_LABEL_MIN_USABLE_WIDTH)?
+     text_width_without_arrow: MAX(text_width_without_arrow, text_width_with_arrow);
+   g_log(RFM_LOG_GTK, G_LOG_LEVEL_DEBUG, "PathAndRepositoryNameDisplay label budget: available=%d arrow=%d others=%d overhead=%d no_arrow=%d with_arrow=%d -> %d",
+	 available, arrow_width, others_width, overhead, text_width_without_arrow, text_width_with_arrow, budget);
+   GtkWidget *font_widget = PathAndRepositoryNameDisplay_label_widget();
+   if (font_widget==NULL) font_widget = PathAndRepositoryNameDisplay;
+   /* 连一个省略号都放不下就不折腾了: 保持原样，至少用户还能从溢出菜单里看到完整路径 */
+   if (budget < rfm_measure_text_width(font_widget, RFM_PATH_LABEL_OVERFLOW_MARK)) return -1;
+   return budget;
+}
+
+/* 把 text 左边的一段换成省略号，使其宽度不超过 max_width: 二分查找右边要保留多少个字符 */
+static gchar *rfm_ellipsize_text_at_start(GtkWidget *font_widget, const gchar *text, gint max_width)
+{
+   gint n_chars = g_utf8_strlen(text, -1);
+   gint low = 0, high = n_chars;
+   const gchar *best_start = NULL;
+   while (low <= high){
+      gint keep = (low + high) / 2;
+      const gchar *start = g_utf8_offset_to_pointer(text, n_chars - keep);
+      gchar *candidate = g_strconcat(RFM_PATH_LABEL_OVERFLOW_MARK, start, NULL);
+      if (rfm_measure_text_width(font_widget, candidate) <= max_width){ best_start = start; low = keep + 1; }
+      else high = keep - 1;
+      g_free(candidate);
+   }
+   return best_start==NULL? g_strdup(RFM_PATH_LABEL_OVERFLOW_MARK): g_strconcat(RFM_PATH_LABEL_OVERFLOW_MARK, best_start, NULL);
+}
+
+/* 这个按钮上完整的标题(未省略)。窗口宽度变化时要用它按新宽度重算 label */
+static gchar *PathAndRepositoryNameDisplay_full_title = NULL;
+static guint PathAndRepositoryNameDisplay_label_reset_idle_id = 0;
+static void schedule_reset_of_PathAndRepositoryNameDisplay_label(void);
+
+/* 按工具栏当前可用宽度返回要显示在这个按钮上的字符串(需要调用者 g_free)。
+ * schedule_if_width_unknown: 宽度还测不出来时(例如刚启动、窗口还没显示出来)，是否安排一次空闲重算 */
+static gchar *button_label_for_title(const gchar *title, gboolean schedule_if_width_unknown)
+{
+   if (title==NULL) return NULL;
+   gint budget = PathAndRepositoryNameDisplay_label_width_budget();
+   if (budget <= 0){
+     /* 工具栏还没完成布局，此时无从比较宽度 */
+     if (schedule_if_width_unknown) schedule_reset_of_PathAndRepositoryNameDisplay_label();
+     return g_strdup(title);
+   }
+   GtkWidget *font_widget = PathAndRepositoryNameDisplay_label_widget();
+   if (font_widget==NULL) font_widget = PathAndRepositoryNameDisplay;
+   if (rfm_measure_text_width(font_widget, title) <= budget) return g_strdup(title); /* 放得下就原样显示 */
+   return rfm_ellipsize_text_at_start(font_widget, title, budget);
+}
+
+static gboolean reset_PathAndRepositoryNameDisplay_label_when_idle(gpointer unused)
+{
+   PathAndRepositoryNameDisplay_label_reset_idle_id = 0;
+   if (no_window || PathAndRepositoryNameDisplay==NULL || PathAndRepositoryNameDisplay_full_title==NULL) return G_SOURCE_REMOVE;
+   /* 这里不要再安排新的空闲回调(宽度还是测不出来就什么都不做，等窗口 size-allocate 时自然会再安排一次)，
+    * 否则会变成空转的循环 */
+   gchar *button_label = button_label_for_title(PathAndRepositoryNameDisplay_full_title, FALSE);
+   if (g_strcmp0(button_label, gtk_tool_button_get_label(GTK_TOOL_BUTTON(PathAndRepositoryNameDisplay)))!=0)
+     gtk_tool_button_set_label(GTK_TOOL_BUTTON(PathAndRepositoryNameDisplay), button_label);
+   g_free(button_label);
+   return G_SOURCE_REMOVE;
+}
+
+static void schedule_reset_of_PathAndRepositoryNameDisplay_label(void)
+{
+   if (no_window || PathAndRepositoryNameDisplay==NULL) return;
+   if (PathAndRepositoryNameDisplay_label_reset_idle_id==0)
+     PathAndRepositoryNameDisplay_label_reset_idle_id = g_idle_add(reset_PathAndRepositoryNameDisplay_label_when_idle, NULL);
+}
+
+/* 窗口宽度变化后，工具栏可能重新决定要不要折叠这个按钮，所以延迟到空闲时按新宽度重算一次
+ * (在 size-allocate 里直接改 label 会打断 GtkToolbar 正在进行的布局) */
+static gboolean window_size_allocate_reset_PathAndRepositoryNameDisplay_label(GtkWidget *widget, GdkRectangle *allocation, gpointer user_data)
+{
+   static gint last_width = -1;
+   if (allocation->width!=last_width){
+     last_width = allocation->width;
+     schedule_reset_of_PathAndRepositoryNameDisplay_label();
+   }
+   return FALSE;
+}
+
 static void set_Titles(CALLER_OWN const gchar * title){
    if (title==NULL || no_window) return;
    gboolean title_is_rfm_curPath = (title[0]=='/');
    if (title_is_rfm_curPath) gtk_window_set_title(GTK_WINDOW(window), title);
-   gtk_tool_button_set_label(GTK_TOOL_BUTTON(PathAndRepositoryNameDisplay), title);
+   g_free(PathAndRepositoryNameDisplay_full_title);
+   PathAndRepositoryNameDisplay_full_title = g_strdup(title);
+   gchar *button_label = button_label_for_title(title, TRUE);
+   gtk_tool_button_set_label(GTK_TOOL_BUTTON(PathAndRepositoryNameDisplay), button_label);
+   g_free(button_label);
    if (title_is_rfm_curPath && startWithTerm() && !(StartedAs_rfmFileChooser && rfmFileChooserReturnSelectionIntoFilename==NULL)) set_terminal_window_title(title);
 }
 
@@ -3535,6 +3755,10 @@ static void add_toolbar(GtkWidget *rfm_main_box, RFM_defaultPixbufs *defaultPixb
 
    //we add the following toolbutton here instead of define in config.def.h because we need its global reference.
    PathAndRepositoryNameDisplay = gtk_tool_button_new(NULL,rfm_curPath);
+   /* 这个按钮的宽度由目录路径长度决定，不要让它参与"同宽按钮"的宽度计算，否则 GtkToolbar 会把
+    * 其它图标按钮也拉成和它一样宽(见 gtk_toolbar.c 的 button_maxw)，而且 set_Titles() 里按
+    * gtk_toolbar_allocate() 算法算它可用宽度时也会因此反反复复 */
+   gtk_tool_item_set_homogeneous(GTK_TOOL_ITEM(PathAndRepositoryNameDisplay), FALSE);
    gtk_toolbar_insert(GTK_TOOLBAR(tool_bar), GTK_TOOL_BUTTON(PathAndRepositoryNameDisplay), -1);
    g_signal_connect(PathAndRepositoryNameDisplay, "clicked", G_CALLBACK(Switch_SearchResultView_DirectoryView),NULL);
    
@@ -6073,6 +6297,8 @@ static int setup()
    window=gtk_window_new(GTK_WINDOW_TOPLEVEL);
    gtk_window_set_default_size(GTK_WINDOW(window), 640, 400);
    g_signal_connect(window, "focus-in-event", G_CALLBACK(window_focus_in_event), NULL);
+   /* 窗口宽度变化后要重算 PathAndRepositoryNameDisplay 的 label，否则工具栏会把放不下的它折叠掉 */
+   g_signal_connect(window, "size-allocate", G_CALLBACK(window_size_allocate_reset_PathAndRepositoryNameDisplay_label), NULL);
 
    if (getenv("rfmFontCSS")){//可以在rfm.sh里面设置字体环境变量
      GtkCssProvider *provider = gtk_css_provider_new();
