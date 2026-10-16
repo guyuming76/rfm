@@ -13,7 +13,7 @@ for video in "$@"; do
     videos+=("$video")
 done
 # 按文件名升序排序
-IFS=$'\n' sorted_videos=($(sort <<< "${videos[*]}"))
+IFS=$'\n' sorted_videos=($(sort -r <<< "${videos[*]}"))
 unset IFS
 
 # 输出接收到的文件名列表
