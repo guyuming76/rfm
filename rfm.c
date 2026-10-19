@@ -1224,46 +1224,51 @@ static MEM_ALLOC gchar **build_cmd_vector(CALLER_OWN const char **cmd, CALLER_OW
    gchar **v=NULL;
    file_list=g_list_first(file_list);
   
-   if((v=calloc((RFM_MX_ARGS), sizeof(gchar*)))==NULL)
+   //多申请1个元素，保证数组永远以NULL结尾（返回值现在用 g_strfreev 释放，失败路径也不会越界读）
+   if((v=calloc((RFM_MX_ARGS+1), sizeof(gchar*)))==NULL)
       return NULL;
 
+   /* 注意这里的"所有权"约定：v 里的每一个 gchar* 都是本函数 g_strdup 出来的副本，
+    * 所以调用方用 g_strfreev(v) 一次性释放即可，和 child_attribs->RunCmd（借用，由 free_child_attribs 释放）互不影响。
+    * 以前这里是直接借用 cmd[j] / file_list->data / dest_path 的指针，只有 $ENV 那一项是 strdup 的副本，
+    * 结果谁都不敢用 g_strfreev，只能 free(v)，那些 $ENV 副本（例如每个新终端窗口模板里的 $RFM_TERM）就漏掉了。 */
    while (cmd && cmd[j] && j<RFM_MX_ARGS) {
      if (strcmp(cmd[j],RFM_selected_filename_placeholder)==0 && (file_list||dest_path)){//如果file_list为NULL,而cmd里面有 RFM_selected_filename_picker, 如%s,并且dest_path 不为空，可以用dest_path来替换%s，相当于dest_path 作为最后一个元素加入file_list
        // before this commit, file_list and dest_path are all appended after cmd, but commands like ffmpeg to create thumbnail need to have file name in the middle of the argv, appended at the end won't work. So i modify the rule here so that if we have placeholder in cmd, we replace it with item in file_list. So, file_list can work as generic argument list later, not necessarily the filename. And replacing empty string place holders in cmd with items in file_list can be something like printf.
        if (file_list) {
-	 v[j-empty_args_in_cmd]=file_list->data; //this data is owned by rfm_FileAttributes and was not freed before, but now, v and file_list share the reference.  g_list_free_full never called on file_list, and filename char* is not freed when free(v),  but freed with rfm_FileAttributes.
+	 v[j-empty_args_in_cmd]=g_strdup(file_list->data); //file_list->data 的所有权在 rfm_FileAttributes 那边，这里复制一份，免得 v 和它共享引用
 	 file_list=g_list_next(file_list);
        }else{
-	 v[j-empty_args_in_cmd]=dest_path; dest_path=NULL;
+	 v[j-empty_args_in_cmd]=g_strdup(dest_path); dest_path=NULL;
        }
      }else if (cmd[j][0]=='$' && strlen(cmd[j])>1){
        const char* envName = cmd[j] + sizeof(char); //remove leading $ in cmd[j] to get envName
        char* envValue = getenv(envName);
        if (envValue==NULL){
 	 g_warning("environment variable name %s is used, but NULL returned for value.",envName);
-	 free(v);
+	 g_strfreev(v);
 	 return NULL;
        }else if (strlen(envValue)>0){
-	 v[j-empty_args_in_cmd]=strdup(envValue);
+	 v[j-empty_args_in_cmd]=g_strdup(envValue);
        }else { empty_args_in_cmd++; } //当环境变量值为空值“”，非NULL时,如RFM_TERM_E,跳过，也不增加j，否则 foot "" ls 这样的命令会报错
      }else if (strcmp(cmd[j],"")!=0){
-       v[j-empty_args_in_cmd]=(gchar*)cmd[j]; /* FIXME: gtk spawn functions require gchar*, but we have const gchar*; should probably g_strdup() and create a free_cmd_vector() function */
+       v[j-empty_args_in_cmd]=g_strdup(cmd[j]); //gtk spawn 函数要 gchar* 而 cmd 是 const，正好复制一份，也免得借用 RunCmd 的元素
      }//else { continue; } //走到这里表示cmd[j] 等于 ""，按照前面环境变量值为空非NULL时直接跳过并不增加j，这里似乎也应该这样处理，但有没有可能用户就是要放一个空字符串在这里？
      j++;
    }
    if (j==RFM_MX_ARGS) {
       g_warning("build_cmd_vector: %s: RFM_MX_ARGS exceeded. Check config.h!",v[0]);
-      free(v);
+      g_strfreev(v);
       return NULL;
    }
    //把没用完的file_list成员append到命令结尾
    while (file_list!=NULL) {
-      v[j-empty_args_in_cmd]=file_list->data;
+      v[j-empty_args_in_cmd]=g_strdup(file_list->data);
       j++;
       file_list=g_list_next(file_list);
    }
 
-   v[j-empty_args_in_cmd]=dest_path; /* This may be NULL anyway */
+   v[j-empty_args_in_cmd]=g_strdup(dest_path); /* dest_path 可能是 NULL, g_strdup(NULL) 返回 NULL，正好当结尾标记 */
    v[++j-empty_args_in_cmd]=NULL;
 
    return v;
@@ -1354,7 +1359,7 @@ gboolean g_spawn_wrapper_(CALLER_OWN GList *file_list, CALLER_OWN const char *de
 	       }
       }
       g_free(argv);
-      free(v); //only free v, but char* data such as filename in command not freed here.
+      g_strfreev(v); //v 里每个字符串都是 build_cmd_vector 复制出来的副本，可以整体释放；char* 数据（如文件名）不再和 RunCmd/file_list 共享引用
    }
    else{
       g_warning("g_spawn_wrapper_: %s failed to execute: build_cmd_vector() returned NULL.",child_attribs->RunCmd[0]);
