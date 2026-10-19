@@ -5592,7 +5592,16 @@ static void cmd_cd(wordexp_t *parsed_msg, GString *readline_result_string_after_
 	    }else if (g_strcmp0(addr, "-")==0){
 	      set_rfm_curPath(getenv("OLDPWD"));
 	    }else{
-	      gchar* full_addr = (addr[0]=='/') ? strdup(addr) : g_build_filename(rfm_curPath, addr, NULL);
+	      /* 这里不能再用 g_build_filename(rfm_curPath, addr): 它只做简单的拼接, 不折叠 "./" 或 "a/../b"
+	       * 这类成分, 于是 "cd ./PicAndVideo" 会得到 /cwd/./PicAndVideo; 而 set_rfm_curPath 只在
+	       * UseTargetAddressWhenEnterSymbloicLinkForDir 为 TRUE 时(默认为 FALSE)才做 canonicalize_file_name,
+	       * 结果 rfm_curPath / 提示符 / OLDPWD 里都会留着 "/./", 并且随后 up_clicked() 用
+	       * g_path_get_dirname(rfm_curPath) 得到的是 "/cwd/." 而不是 "/cwd", cd .. 就不再往上跳了。
+	       * g_canonicalize_filename 是纯词法规范化(折叠 "."、".."、多余的 '/', 去掉结尾 '/'),
+	       * 不解析符号链接, 所以不会违背 UseTargetAddressWhenEnterSymbloicLinkForDir 的意图,
+	       * 也与 up_clicked()/g_path_get_dirname() 的逻辑路径处理方式一致(等价于 bash 的 cd -L)。
+	       * 它同样接受绝对路径(此时第二个参数被忽略), 所以不用再区分 addr[0]=='/'。 */
+	      gchar* full_addr = g_canonicalize_filename(addr, rfm_curPath); //caller owns full_addr
 	      struct stat statbuf;
               if (stat(full_addr,&statbuf)!=0){
 		g_warning("Can't stat %s\n", full_addr);
