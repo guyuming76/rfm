@@ -234,8 +234,16 @@ gchar* stdin_cmd_template_bash[]={"/bin/bash","-i","-c", "shell_cmd_buffer", NUL
 static gchar* stdin_cmd_template_nu[]={"nu","-c", "shell_cmd_buffer", NULL};
 gchar* stdin_cmd_template_bash_newVT_nonHold[] = { "$RFM_TERM", "/bin/bash", "-i", "-c", "shell_cmd_buffer", NULL };
 gchar* stdin_cmd_template_bash_newVT_nonHold_with_e[] = { "$RFM_TERM", "$RFM_TERM_E" ,"/bin/bash", "-i", "-c", "shell_cmd_buffer", NULL };
-static gchar* stdin_cmd_template_nu_newVT_nonHold[] = { "$RFM_TERM", "nu", "-i", "-c", "shell_cmd_buffer", NULL };
-static gchar* stdin_cmd_template_nu_newVT_nonHold_with_e[] = { "$RFM_TERM", "$RFM_TERM_E" ,"nu", "-i", "-c", "shell_cmd_buffer", NULL };
+/* nu 的新终端窗口模板：外圈是 /bin/sh，由 sh 去跑 nu，nu 退出后再"等回车"，
+ * 和 stdin_command_bash 里那个 "read -p" 等价（nonHold 的终端窗口否则会在命令结束瞬间关闭）。
+ * 停顿为什么不能写在 nu 自己的脚本里：nu -c 只打印最后一条表达式的值，如果在用户命令后面追加
+ * "print -n ...; ^sh -c 'read _'" 之类的语句，用户命令的表格式输出就整个消失了；改用管道把它
+ * 送去 print 又会把外部命令的 stdout 变成管道，vi/nano 这类交互式程序就没法在窗口里用了。
+ * 外层 sh 还顺便保住了退出码（bash 那边是靠 "exit \$?" 写在命令里实现的）。
+ * $1 = 用户命令（由 replace_shell_cmd_buffer 填进来），$2 = 提示语，
+ * 用户命令不拼进任何脚本字符串，省掉一层转义。 */
+static gchar* stdin_cmd_template_nu_newVT_nonHold[] = { "$RFM_TERM", "/bin/sh", "-c", "nu -i -c \"$1\"; rfm_exit_code=$?; printf '\\033[33m%s\\033[0m' \"$2\"; read _; exit $rfm_exit_code", "sh", "shell_cmd_buffer", PRESS_ENTER_TO_CLOSE_WINDOW, NULL };
+static gchar* stdin_cmd_template_nu_newVT_nonHold_with_e[] = { "$RFM_TERM", "$RFM_TERM_E" ,"/bin/sh", "-c", "nu -i -c \"$1\"; rfm_exit_code=$?; printf '\\033[33m%s\\033[0m' \"$2\"; read _; exit $rfm_exit_code", "sh", "shell_cmd_buffer", PRESS_ENTER_TO_CLOSE_WINDOW, NULL };
 static NO_FREE gchar** stdin_command_nu(RFM_ChildAttribs* childAttribs);
 
 static void null_log_handler(const gchar *log_domain,GLogLevelFlags log_level,const gchar *message,gpointer user_data){
@@ -4117,17 +4125,27 @@ NO_FREE gchar** stdin_command_bash(RFM_ChildAttribs* childAttribs) {
   }
   return replace_shell_cmd_buffer(ret, shell_cmd_buffer);
 }
+
+/* 本函数与 stdin_command_bash 逐段对应，只有下面几处是 nu 与 bash 语言本身的差异，故意保留：
+ * 1. 不做 RFM_ALIAS 处理，也不需要把用户命令写进临时文件：RFM_ALIAS 里是 rfm.sh 生成的 bash 语法
+ *    alias（alias imv='...'），nu 无法 source。bash 之所以要"写临时文件再 source"，是因为
+ *    "bash -i -c" 里内联的 alias 定义对同一条命令不生效；而 nu 的 alias 来自 config.nu，
+ *    即使定义在同一条 -c 脚本里，对后续语句也是生效的（nu 0.115.1 实测），所以不需要这个绕行。
+ * 2. 非新终端窗口分支不补 exit $?：bash 必须显式 exit 才能把退出码传出来，nu -c 本身就是以
+ *    最后一条命令的退出码退出（外部命令也一样），无需额外包装。
+ * 3. 新终端窗口的"按回车键关闭窗口"不写在这里，而是写在模板里的外层 sh 中，
+ *    原因见 stdin_cmd_template_nu_newVT_nonHold* 上面的注释。 */
 static NO_FREE gchar** stdin_command_nu(RFM_ChildAttribs* childAttribs) {
-//TODO: add read -p into shell_cmd_buffer when inNewVT like stdin_command_bash
-  gchar **ret;
+  gchar** ret;
   gchar* user_input_cmd = childAttribs->readlineResultString->str;
   gchar* shell_cmd_buffer = calloc(ARG_MAX, sizeof(gchar));
-  snprintf(shell_cmd_buffer,PATH_MAX,"%s",user_input_cmd);
   gchar * term_e = getenv("RFM_TERM_E");
-  //这里必须像 stdin_command_bash 一样先用 g_strdupv 复制模板：
-  //replace_shell_cmd_buffer 会把 "shell_cmd_buffer" 那一项 g_free 掉，
-  //如果直接把静态模板数组传进去，g_free 的实参是字符串字面量（只读段里的地址），
-  //glibc 会报 free(): invalid pointer 并 abort，rfm 就崩了。
+  /* 用户命令原样放进去，前面不能拼任何 nu 语句：nu -c 只打印最后一条表达式的值，
+   * 拼了别的东西，用户命令的表格式输出就没了。 */
+  snprintf(shell_cmd_buffer,PATH_MAX,"%s",user_input_cmd);
+  /* 模板都是静态数组，元素是字符串字面量，必须先 g_strdupv 再交给 replace_shell_cmd_buffer：
+   * 它会 g_free 掉 "shell_cmd_buffer" 那一项，直接把静态模板传进去就是 free 只读段里的字面量，
+   * glibc 会报 free(): invalid pointer 然后 abort。 */
   if (childAttribs->execStdinCmdInNewVT) {
     if (term_e!=NULL && strcmp(term_e,"")!=0) ret = g_strdupv(stdin_cmd_template_nu_newVT_nonHold_with_e);
     else ret = g_strdupv(stdin_cmd_template_nu_newVT_nonHold);
