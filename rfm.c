@@ -2209,11 +2209,12 @@ static void read_git_status_porcelain_cmd_output_into_hashtable(gpointer *child_
       //and insert into gitTrackedfiles two lines:
       //D filename1
       //A filename2
-      gchar** filenames=calloc(sizeof(gchar*), 2);
+      gchar** filenames;
       if (g_strcmp0(status, "R ")==0){
 	filenames = g_strsplit(beginfilename, " -> ", 2);
       }else{
-	filenames[0]=g_strndup(beginfilename,strlen(oneline)-3);
+	filenames=calloc(sizeof(gchar*), 2);
+        filenames[0]=g_strndup(beginfilename,strlen(oneline)-3);
 	filenames[1]=NULL;
       }
 
