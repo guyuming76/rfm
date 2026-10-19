@@ -1966,7 +1966,12 @@ static void load_ExtColumns_and_iconview_markup_tooltip(RFM_FileAttributes* file
 	      gchar* ExtColumn_cmd_template[] = {"/bin/bash", "-c", ExtColumn_cmd, NULL};
 	      //TODO: 列表视图里自定义列的ValueCmd目前还只是用 bash 解析，将来也许可以考虑扩展成指定 cmd_interpretor , 比如用 AI 来执行
 	      g_spawn_wrapper(ExtColumn_cmd_template, NULL, G_SPAWN_DEFAULT, NULL, NULL, FALSE, Update_Store_ExtColumns, &cell, TRUE);
-	    }else if (TREEVIEW_COLUMNS[i].ValueFunc==getExtColumnValueFromHashTable){ //TODO: TreeView中只显示第一行不应该绑定在getExtColumnValueFromHashTable函数上，可以考虑给Column加个属性，但这样一来config.h中Column属性又要变宽了，所以可以考虑定义一个getExtColumnFirstLineValueFromHashTable函数用在这里，然后在定制代码中决定是否用这个函数
+	      g_free(ExtColumn_cmd); //g_spawn_wrapper 内部会用 g_strdupv 复制 argv，这个临时命令字符串可以马上释放
+	      /* cell 的所有权已经交给 Update_Store_ExtColumns 回调（它最后会 g_free(cell)），
+	       * 所以这里 continue，跳过下面那条统一的 g_free(cell)。 */
+	      continue;
+	    }
+	    if (TREEVIEW_COLUMNS[i].ValueFunc==getExtColumnValueFromHashTable){ //TODO: TreeView中只显示第一行不应该绑定在getExtColumnValueFromHashTable函数上，可以考虑给Column加个属性，但这样一来config.h中Column属性又要变宽了，所以可以考虑定义一个getExtColumnFirstLineValueFromHashTable函数用在这里，然后在定制代码中决定是否用这个函数
 	      //ExtColumnValueInHashTable 可能包含多行字符串，\n分割，这里，用第一行更新store. TODO:也序定制 gtkCellRenderer或实现一个自定义的Renderer更好。
 	      gchar *ExtColumnValueInHashTable=TREEVIEW_COLUMNS[i].ValueFunc(fileAttributes,TREEVIEW_COLUMNS[i].enumCol-COL_Ext1);
 	      if (ExtColumnValueInHashTable){
@@ -1991,6 +1996,11 @@ static void load_ExtColumns_and_iconview_markup_tooltip(RFM_FileAttributes* file
 	      }
 	      if (cell->iconview_tooltip) gtk_list_store_set(store, cell->iter, COL_ICONVIEW_TOOLTIP, &enumColValue, -1);
 	    }
+	    /* 走到这里说明 cell 没有交给任何回调：上面几条分支，包括一条都不匹配的情况
+	     * （例如 show 为 TRUE 但既没有 ValueCmd 也没有 ValueFunc 的内建列），用完就得自己释放，
+	     * 否则每刷新一次目录就按"文件数×列数"漏 sizeof(RFM_store_cell)：
+	     * valgrind 里 load_ExtColumns_and_iconview_markup_tooltip 那一大条就是这个。 */
+	    g_free(cell);
 	  }//endif treeviewColumns[i].MIME_sub 为*, 或者和当前文件相同
 	}
       }  
