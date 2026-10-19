@@ -1749,13 +1749,20 @@ static RFM_FileAttributes *get_fileAttributes_for_a_file(const gchar *name, guin
    fileAttributes->owner = g_file_info_get_attribute_as_string(info, G_FILE_ATTRIBUTE_OWNER_USER);
    fileAttributes->group = g_file_info_get_attribute_as_string(info, G_FILE_ATTRIBUTE_OWNER_GROUP);
    
-   if (canonicalize_file_name(absoluteaddr)==NULL){
+   /* canonicalize_file_name() 的返回值是 malloc 出来的（glibc 的 realpath 包装），
+    * 这里只需要"路径能不能解析"这个信息，以前把返回值直接丢掉，于是每个文件漏一份路径字符串
+    * （valgrind: 44,839 bytes in 519 blocks，分配栈就在这一行）。
+    * 特意不用 absoluteaddr 代替它：absoluteaddr 是 g_canonicalize_filename() 的结果，
+    * 它只做字符串层面的规整，不验证路径是否真的存在，语义不一样。 */
+   gchar *canonicalized_filepath = canonicalize_file_name(absoluteaddr);
+   if (canonicalized_filepath==NULL){
      g_warning("invalid address:%s",name);
      fileAttributes->pixbuf=g_object_ref(defaultPixbufs->broken);
      fileAttributes->mime_root=g_strdup("na");
      fileAttributes->mime_sub_type=g_strdup("na");
      return fileAttributes;
    }
+   g_free(canonicalized_filepath);
 
    fileAttributes->file_size=g_file_info_get_attribute_uint64(info, G_FILE_ATTRIBUTE_STANDARD_SIZE);
    fileType=g_file_info_get_file_type(info);
