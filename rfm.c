@@ -887,6 +887,16 @@ static void rfm_stop_all() {
 static gboolean ExecCallback_freeChildAttribs(FREE_FULL RFM_ChildAttribs * child_attribs){
    if(child_attribs->exitcode==0 && (child_attribs->customCallBackFunc)!=NULL){
        (child_attribs->customCallBackFunc)(child_attribs);
+   }else{
+       /* 带 ">SearchResultType" 后缀的 stdin 命令，childAttribs->no_free 会被置为 TRUE，因为它的所有权要
+        * 转交给全局 childAttribsForCurrentDisplayingSearchResult（见 update_SearchResultFileNameList_and_refresh_store
+        * 末尾的接管，以及 cleanup 里的释放）。但这个转交只发生在上面的回调里：命令非零退出（exitcode!=0）时
+        * 回调不会被调用，它就没被任何人接管，而 free_child_attribs 见到 no_free==TRUE 会立刻 return，
+        * 于是 childAttribs 连同它的 RunCmd（stdin_command_bash/stdin_command_nu 返回的数组，里面还装着
+        * calloc(ARG_MAX) 的 shell_cmd_buffer）、stdOut/stdErr 就全漏掉了。
+        * 所以在这个"回调没被调用"的分支里解除 no_free，下面 free_child_attribs 才能真正释放它；
+        * no_free 本来就是 FALSE 的情形，这一句赋值也无害。 */
+       child_attribs->no_free = FALSE;
    }
 
    // Restart readline if this was a search command from readlineinput and it failed
