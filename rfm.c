@@ -2145,10 +2145,10 @@ static void GitStatusForDirectory(gchar * filename, const char* status) {
       gchar *savedptr1=NULL;
       if (ignored_filename(basename(filename))) return;//防止子目录里添加的隐藏文件影响目录的gitstatus列，引起误解
       //TODO:如果文件本身不是隐藏文件，但是位于一个隐藏的子目录，怎么办?得识别路径上各层目录有无隐藏，不过这种情况我这里暂时没遇到
-      gchar *status_=g_strdup(status);
       gchar *dirname=strtok_r(filename,"/",&savedptr1);//TODO:这里找第一个/符号，实际上找的是当前目录下第一层子目录，再下层的子目录不会显示在当前目录视图里，也就没必要更新gitstatus列了。这里主要是考虑目录视图，搜索结果视图(如git ls-files>0)一般无需显示目录，这里暂不考虑，如果将来有需求，需要找第二，第三个/符号,更新各级目录
       if (dirname!=NULL){
-	gchar *dir_fullpath=curPathRelativeToGitRoot ? g_build_filename(git_root,curPathRelativeToGitRoot,dirname,NULL) : g_build_filename(git_root,dirname,NULL);
+	gchar *status_=g_strdup(status);
+        gchar *dir_fullpath=curPathRelativeToGitRoot ? g_build_filename(git_root,curPathRelativeToGitRoot,dirname,NULL) : g_build_filename(git_root,dirname,NULL);
 	gchar* existingStatus=g_hash_table_lookup(gitTrackedFiles, dir_fullpath);
 	if (existingStatus){
           for (int i = 0; i <= 1; i++) {
