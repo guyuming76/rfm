@@ -4271,6 +4271,7 @@ static void exec_stdin_command_in_new_VT_with_proxy(GString * readlineResultStri
   proxy->fset = rfm_fifo_set_create("/tmp/rfm_proxy_XXXXXX", pipe_mask);
   if (!proxy->fset){
     g_warning("exec_stdin_command_in_new_VT_with_proxy: rfm_fifo_set_create failed");
+    child_attribs->no_free = FALSE; //上面已经把它置成 TRUE，这里还没 spawn 任何子进程，不解除的话 free_child_attribs 会直接 return，childAttribs 就漏了
     free_child_attribs(child_attribs);
     g_free(proxy);
     return;
