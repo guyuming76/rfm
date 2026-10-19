@@ -2061,6 +2061,11 @@ static void Insert_fileAttributes_into_store_and_set_GtkTreeIter(RFM_FileAttribu
       gchar * gitStatus=g_strdup(g_hash_table_lookup(gitTrackedFiles, fileAttributes->path));
       //gchar * git_commit_msg=g_hash_table_lookup(gitCommitMsg,fileAttributes->path);
 #endif
+      /* size_display 和下面 #ifdef 里的 gitStatus 都是"用完即弃"的临时字符串：
+       * gtk_list_store_insert_with_values() 会把字符串复制进 model，所以 insert 之后必须自己释放，
+       * 否则每插入一行（每个文件）就漏一份——g_format_size_full 的返回值是新分配的，
+       * gitStatus 以前更是从头到尾没人释放。 */
+      gchar *size_display = g_format_size_full(fileAttributes->file_size, G_FORMAT_SIZE_LONG_FORMAT);
       fileAttributes->mime_sort=g_strjoin(NULL,fileAttributes->mime_root,fileAttributes->mime_sub_type,NULL);
       fileAttributes->mtime= fileAttributes->file_mtime==NULL ? NULL : g_date_time_format(fileAttributes->file_mtime,RFM_DATETIME_FORMAT);
       fileAttributes->atime= fileAttributes->file_atime==NULL ? NULL : g_date_time_format(fileAttributes->file_atime,RFM_DATETIME_FORMAT);
@@ -2075,7 +2080,7 @@ static void Insert_fileAttributes_into_store_and_set_GtkTreeIter(RFM_FileAttribu
 			  COL_MTIME, fileAttributes->file_mtime==NULL? 0 : g_date_time_to_unix(fileAttributes->file_mtime),
 			  COL_MTIME_STR,fileAttributes->mtime,
              		  COL_SIZE,fileAttributes->file_size,
-			  COL_SIZE_DISPLAY,g_format_size_full(fileAttributes->file_size, G_FORMAT_SIZE_LONG_FORMAT),
+			  COL_SIZE_DISPLAY,size_display,
                           COL_ATTR, fileAttributes,
                           COL_OWNER,fileAttributes->owner,
 			  COL_GROUP,fileAttributes->group,
@@ -2092,6 +2097,10 @@ static void Insert_fileAttributes_into_store_and_set_GtkTreeIter(RFM_FileAttribu
 			  COL_ICONVIEW_MARKUP, fileAttributes->file_name_escaped_for_iconview_markup_column,
 			  COL_ICONVIEW_TOOLTIP,NULL,
                           -1);
+      g_free(size_display);
+#ifdef GitIntegration
+      g_free(gitStatus);
+#endif
 
       g_log(RFM_LOG_DATA,G_LOG_LEVEL_DEBUG,"Inserted into store:%s",fileAttributes->file_name);
       
