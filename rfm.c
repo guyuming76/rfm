@@ -2220,9 +2220,7 @@ static void read_git_status_porcelain_cmd_output_into_hashtable(gpointer *child_
       for (int i=0;i<=1 && filenames[i];i++){ //如果 filenames[1]==NULL, 循环一次,否则循环两次
 	if (filenames[1]){//上面 status 为"R "的情况
 	  if (i==0) sprintf(status,"D ");
-	  //status 是本函数自己的临时缓冲区（下面放进哈希表的一律是 g_strdup 的副本），所以这里可以放心换内容；
-	  //换成 "A " 之前要先把原来的 g_strndup 缓冲区释放掉，否则这一段就漏了
-	  else { g_free(status); status=g_strdup("A "); }
+	  else { sprintf(status, "A "); }
 	}
 	if (!SearchResultViewInsteadOfDirectoryView && curPathRelativeToGitRoot && !g_str_has_prefix(filenames[i],curPathRelativeToGitRoot)) continue;//只处理当前目录树
       //TODO: remove ending "/"
