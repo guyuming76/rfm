@@ -4124,7 +4124,14 @@ static NO_FREE gchar** stdin_command_nu(RFM_ChildAttribs* childAttribs) {
   gchar* shell_cmd_buffer = calloc(ARG_MAX, sizeof(gchar));
   snprintf(shell_cmd_buffer,PATH_MAX,"%s",user_input_cmd);
   gchar * term_e = getenv("RFM_TERM_E");
-  ret = childAttribs->execStdinCmdInNewVT? ((term_e!=NULL && strcmp(term_e,"")!=0) ? stdin_cmd_template_nu_newVT_nonHold_with_e : stdin_cmd_template_nu_newVT_nonHold ) : stdin_cmd_template_nu;
+  //这里必须像 stdin_command_bash 一样先用 g_strdupv 复制模板：
+  //replace_shell_cmd_buffer 会把 "shell_cmd_buffer" 那一项 g_free 掉，
+  //如果直接把静态模板数组传进去，g_free 的实参是字符串字面量（只读段里的地址），
+  //glibc 会报 free(): invalid pointer 并 abort，rfm 就崩了。
+  if (childAttribs->execStdinCmdInNewVT) {
+    if (term_e!=NULL && strcmp(term_e,"")!=0) ret = g_strdupv(stdin_cmd_template_nu_newVT_nonHold_with_e);
+    else ret = g_strdupv(stdin_cmd_template_nu_newVT_nonHold);
+  }else ret = g_strdupv(stdin_cmd_template_nu);
   return replace_shell_cmd_buffer(ret, shell_cmd_buffer);
 }
 
