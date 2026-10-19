@@ -465,7 +465,7 @@ static gboolean show_gitColumns(RFM_FileAttributes * fileAttributes);
 static gboolean show_gitMenus(RFM_FileAttributes * fileAttributes);
 static void readLatestGitLogForFileAndUpdateStore(RFM_ChildAttribs * childAttribs);
 static void GitStatusForDirectory(gchar * filename, const char* status);
-static void insert_deleted_for_git(gchar *fullpath, gchar *filename, gchar *status, gchar *mime_root, gchar *mime_sub);
+static void insert_deleted_for_git(gchar *fullpath, gchar *filename, const gchar *status, gchar *mime_root, gchar *mime_sub);
 static void read_git_ls_files_cmd_output_into_hashtable(gpointer *child_attribs);
 static void read_git_status_porcelain_cmd_output_into_hashtable(gpointer *child_attribs);
 static void load_gitTrackedFiles_HashTable();
@@ -2203,7 +2203,9 @@ static void read_git_status_porcelain_cmd_output_into_hashtable(gpointer *child_
       for (int i=0;i<=1 && filenames[i];i++){ //如果 filenames[1]==NULL, 循环一次,否则循环两次
 	if (filenames[1]){//上面 status 为"R "的情况
 	  if (i==0) sprintf(status,"D ");
-	  else status=strdup("A ");
+	  //status 是本函数自己的临时缓冲区（下面放进哈希表的一律是 g_strdup 的副本），所以这里可以放心换内容；
+	  //换成 "A " 之前要先把原来的 g_strndup 缓冲区释放掉，否则这一段就漏了
+	  else { g_free(status); status=g_strdup("A "); }
 	}
 	if (!SearchResultViewInsteadOfDirectoryView && curPathRelativeToGitRoot && !g_str_has_prefix(filenames[i],curPathRelativeToGitRoot)) continue;//只处理当前目录树
       //TODO: remove ending "/"
@@ -2226,20 +2228,26 @@ static void read_git_status_porcelain_cmd_output_into_hashtable(gpointer *child_
 	}else if (g_strcmp0(status, "D ")==0 && g_strcmp0(existingStatus, "??")==0){
 	  status[1]='?';
 	}
-	g_hash_table_replace(gitTrackedFiles, g_strdup(fullpath), status);
+	/* 这里必须 g_strdup(status)：status 是本函数的临时缓冲区，
+	 * 而 GitStatusForDirectory 内部会往同一张表 g_hash_table_replace 同一个 key，
+	 * 那会把旧 value（以前就是这里的 status 指针本身）通过 value_destroy(g_free) 释放掉，
+	 * 之后本函数还要用 status（insert_deleted_for_git 和后面的 GitStatusForDirectory），
+	 * 就变成了 use-after-free（valgrind: Invalid read ... free'd by g_hash_table_replace）。 */
+	g_hash_table_replace(gitTrackedFiles, g_strdup(fullpath), g_strdup(status));
 	//TODO: can there be something like "A "+" D"="AD"?
-      }else g_hash_table_insert(gitTrackedFiles,g_strdup(fullpath),status);
+      }else g_hash_table_insert(gitTrackedFiles,g_strdup(fullpath),g_strdup(status));
 
       insert_deleted_for_git(fullpath, filenames[i], status, "na", "na");
       GitStatusForDirectory(curPathRelativeToGitRoot?(filenames[i]+strlen(curPathRelativeToGitRoot)):filenames[i], status);//git status --porcelain 输出的文件名格式同git ls-files --full-name， 所以这里要去掉curPathRelativeToGitRoot前缀。并且上面代码已经过滤掉了输出里面不包含curPathRelativeToGitRoot前缀的路径了
       }
       
       g_strfreev(filenames);
+      g_free(status); //status 只是本函数的临时缓冲区，哈希表里存的是 g_strdup 出来的副本
       oneline=strtok_r(NULL, "\n",&savedptr);
     }
 }
 
-static void insert_deleted_for_git(gchar *fullpath, gchar *filename, gchar *status, gchar *mime_root, gchar *mime_sub) {
+static void insert_deleted_for_git(gchar *fullpath, gchar *filename, const gchar *status, gchar *mime_root, gchar *mime_sub) {
       struct stat statbuff;
       if ((SearchResultViewInsteadOfDirectoryView^1)
 	  && (status[1]=='D' || status[0]=='D')
