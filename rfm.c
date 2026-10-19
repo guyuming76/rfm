@@ -1347,6 +1347,13 @@ gboolean g_spawn_wrapper_(CALLER_OWN GList *file_list, CALLER_OWN const char *de
 			  child_attribs->runOpts = (child_attribs->runOpts | G_SPAWN_CHILD_INHERITS_STDIN) & (~G_SPAWN_STDIN_FROM_DEV_NULL);
 			  g_debug("g_spawn_wrapper_, re-run g_spawn_wrapper with setsid false for child that requires stdin");
 			  // fzf>0 这样的命令需要读取标准输入， setsid 要设为FALSE, 而 locate AI 对话工具栏命令等后台长时间运行的命令需要setsid为TRUE，参见commit ba793c2c82166dca837b6e72c5f63a72476b8243. TODO:如何才能区分这两种命令呢？ 目前我没法事前区分，只有在报错后改变 setsid及runOpts 的值，然后重新执行一下命令。
+			  /* 重跑之前必须先把这一次的 argv/v 释放掉：下面这条 return 会跳过函数末尾的
+			   * g_free(argv); g_strfreev(v);，不释放的话每触发一次 setsid 重跑就漏掉一份
+			   * argv 副本和 build_cmd_vector 分配的整个字符串向量（valgrind 里
+			   * build_cmd_vector -> g_spawn_wrapper_ 那条 1,032 direct + 139 indirect 字节就是这个）。
+			   * 递归调用会按新的 runOpts 重新 build 一份。 */
+			  g_free(argv);
+			  g_strfreev(v);
 			  return g_spawn_wrapper_(file_list, dest_path, child_attribs);
 			}
 		      }
