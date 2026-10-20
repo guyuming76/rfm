@@ -17,3 +17,4 @@ pathdiff = "0.2"
 #glib = { version = "0.10.3", features = ["v2_60", "c_glib"] } 
 glib-sys = "0.15"
 crossterm = "0.29.0"
+unicode-width = "0.2"   # 计算路径的终端显示宽度（CJK 宽字符按 2 列算），用于裁剪右提示符

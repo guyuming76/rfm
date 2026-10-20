@@ -16,7 +16,7 @@ use glib_sys::{GPtrArray};
 use std::io::stdout;
 use std::borrow::Cow;
 use crossterm::execute;
-use crossterm::terminal::supports_keyboard_enhancement;
+use crossterm::terminal::{size as terminal_size, supports_keyboard_enhancement};
 use crossterm::event::{PushKeyboardEnhancementFlags, KeyboardEnhancementFlags, PopKeyboardEnhancementFlags};
 // deepwiki 回答说 line 只包含光标前的字符串，光标及其后面字符都不包含，输入abcd,然后光标向左一道c下，则line只包含ab. 也就是说代码里检查cursor_and_after后面的部分貌似目前都没有用，但还是留着。
 fn context_for_cursor(line: &str, pos: usize, completion_start_pos: &mut usize) -> CString {
@@ -519,7 +519,7 @@ pub extern "C" fn reedline_readline(
    let handle = unsafe { &mut *handle };
    let prompt_str = unsafe { CStr::from_ptr(prompt).to_string_lossy() };
    let rfm_functions = unsafe { &*rfm_functions_ptr };
-   let prompt_obj = NoIndicatorPrompt { left: prompt_str.to_string() };
+   let prompt_obj = NoIndicatorPrompt::new(prompt_str.to_string(), true);
 
    // read_line 在遇到 HostCommand (如 ExecuteHostCommand) 时会退出。
    // 对于 "esc" 命令，我们在 reedline_wrapper 内部处理：
@@ -686,8 +686,8 @@ impl RfmEditor {
 	
 	// 3. 将文件内容加载到编辑器缓冲区
         self.line_editor.set_line_buffer(line_buffer, UndoBehavior::CreateUndoPoint);
-	// 4. 创建编辑提示符
-	let prompt = NoIndicatorPrompt { left: "".to_string() };
+	// 4. 创建编辑提示符（文件编辑时不显示右侧的当前目录路径）
+	let prompt = NoIndicatorPrompt::new(String::new(), false);
 	
 	// 5. 显示用户提示信息
 	println!("\x1b[33mCtrl+o save and exit; Ctrl+x exit without saving\x1b[0m");
@@ -768,8 +768,64 @@ pub extern "C" fn rfm_editor_edit_file(
 }
 
 
-struct NoIndicatorPrompt {
+/// 读取 rfm 的当前目录。
+///
+/// 与 prompt_toolkit 版保持一致：环境变量 rfm_curPath 由 rfm.c 的
+/// set_rfm_curPath_internal() 在每次切换目录时用 g_setenv 更新，读它比
+/// 用进程 cwd 更贴合 rfm 的“视图所在目录”语义（两者通常相同，因为
+/// set_rfm_curPath_internal 里也 chdir 了，但这里有兜底总归稳一点）。
+/// 每次绘制提示符都重新读取，所以 cd 之后（甚至 repaint 之后）显示的都是最新路径。
+fn current_dir_prompt() -> String {
+    match std::env::var("rfm_curPath") {
+        Ok(path) if !path.is_empty() => path,
+        _ => std::env::current_dir()
+            .map(|p| p.to_string_lossy().into_owned())
+            .unwrap_or_default(),
+    }
+}
+
+/// 把 text 裁到显示宽度 <= avail：保留尾部（通常就是有用的当前目录名），前面加省略号。
+///
+/// 行为对齐 python 版 rfm_prompt_toolkit/core.py 里的 _fit_tail：宽度按 unicode
+/// 显示宽度算，兼容 CJK 宽字符；avail 太小（连 “…”+1 个字符都放不下）时返回空串，
+/// 调用方据此不显示右提示符，把整行让给输入。
+fn fit_tail(text: &str, avail: usize) -> String {
+    use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
+
+    if text.is_empty() || avail < 2 {
+        return String::new();
+    }
+    if text.width() <= avail {
+        return text.to_string();
+    }
+
+    let mut tail = String::new();
+    let mut width = 0;
+    for ch in text.chars().rev() {
+        let w = ch.width().unwrap_or(0);
+        if width + w > avail - 1 {   // 留 1 列给省略号
+            break;
+        }
+        tail.insert(0, ch);
+        width += w;
+    }
+    if tail.is_empty() { String::new() } else { format!("…{}", tail) }
+}
+
+/// rfm 命令窗口的提示符。
+///
+/// left 由 C 侧拼好后传进来（含解释器提示符和状态括号），
+/// right 是当前目录路径，画在输入行最右侧（右对齐），对应 prompt_toolkit 的 rprompt。
+pub struct NoIndicatorPrompt {
     left: String,
+    /// 是否在右侧显示当前目录（文件编辑器 rfmEdit 里不显示）
+    show_dir_right: bool,
+}
+
+impl NoIndicatorPrompt {
+    fn new(left: String, show_dir_right: bool) -> Self {
+        Self { left, show_dir_right }
+    }
 }
 
 impl Prompt for NoIndicatorPrompt {
@@ -782,8 +838,42 @@ impl Prompt for NoIndicatorPrompt {
             Cow::Borrowed(&self.left)
         }
     }
+    /// 右对齐的当前目录路径。
+    ///
+    /// reedline 在 painter 里把它画在 `terminal_width - width(right)` 处，
+    /// 也就是贴着终端右边缘（等价于 prompt_toolkit 的 rprompt）；若和输入内容会重叠，
+    /// reedline 会整条不画，不会盖住用户输入。
+    /// Prompt trait 不提供“用户已输入多宽”的信息，所以这里只能按终端宽度和左侧
+    /// 提示符宽度估算一个预算，窄窗口时退化成路径尾部，避免长路径把整行挤掉。
     fn render_prompt_right(&self) -> Cow<'_, str> {
-        Cow::Borrowed("")
+        use unicode_width::UnicodeWidthStr;
+
+        if !self.show_dir_right {
+            return Cow::Borrowed("");
+        }
+        let path = current_dir_prompt();
+        if path.is_empty() {
+            return Cow::Borrowed("");
+        }
+
+        // 拿不到终端尺寸时按常规 80 列估算
+        let (cols, _rows) = terminal_size().unwrap_or((80, 24));
+        // 扣掉左侧提示符宽度，再留 2 列免得贴到行尾
+        let budget = (cols as usize)
+            .saturating_sub(self.left.width())
+            .saturating_sub(2);
+        if budget < 4 {
+            return Cow::Borrowed("");   // 窗口太窄，整行让给输入
+        }
+        // 路径最多占预算的 2/3，剩下的留给正在输入的命令
+        let avail = std::cmp::max(budget * 2 / 3, 8).min(budget);
+
+        let text = fit_tail(&path, avail);
+        if text.is_empty() {
+            Cow::Borrowed("")
+        } else {
+            Cow::Owned(text)
+        }
     }
     fn render_prompt_indicator(&self, _edit_mode: PromptEditMode) -> Cow<'_, str> {
         Cow::Borrowed("")   // 关键：不返回任何指示符
@@ -793,5 +883,40 @@ impl Prompt for NoIndicatorPrompt {
     }
     fn render_prompt_history_search_indicator(&self, _hs: PromptHistorySearch) -> Cow<'_, str> {
         Cow::Borrowed("")
+    }
+    /// 右提示符的颜色：和 prompt_toolkit 版的 ansigreen 对齐（默认是紫色）
+    fn get_prompt_right_color(&self) -> Color {
+        Color::Green
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::fit_tail;
+
+    #[test]
+    fn fit_tail_keeps_whole_path_when_it_fits() {
+        assert_eq!(fit_tail("/home/guyuming/rfm1", 40), "/home/guyuming/rfm1");
+        // 正好等于可用宽度时也不裁
+        assert_eq!(fit_tail("/home/guyuming/rfm1", 19), "/home/guyuming/rfm1");
+    }
+
+    #[test]
+    fn fit_tail_keeps_the_cwd_tail_with_ellipsis() {
+        // avail=8：留 1 列给省略号，保留尾部 7 列 -> "ng/rfm1"
+        assert_eq!(fit_tail("/home/guyuming/rfm1", 8), "…ng/rfm1");
+        // 空串 / 连省略号都放不下时不显示
+        assert_eq!(fit_tail("", 20), "");
+        assert_eq!(fit_tail("/home/guyuming/rfm1", 1), "");
+    }
+
+    #[test]
+    fn fit_tail_uses_display_width_for_cjk() {
+        // "中文目录" 每个字占 2 列，共 8 列；"/x/" 占 3 列，合计 11 列
+        let path = "/x/中文目录";
+        assert_eq!(fit_tail(path, 11), path);
+        // avail=8 -> 留 7 列给尾部：从后往前是 录(2) 目(2) 文(2) = 6 列，
+        // 再取 '中'(2) 会变成 8 列 > 7，故只保留 "文目录"
+        assert_eq!(fit_tail(path, 8), "…文目录");
     }
 }
