@@ -1138,13 +1138,20 @@ static void msgbox_response_handler(GtkDialog *dialog, gint response_id, gpointe
 //如果因为弹窗限量，或者消息内容过长导致不能完整显示在弹窗，则记入g_log. GTK_MESSAGE_QUESTION 类型是同步，且不计入,不受控于RFM_msgbox_throttle，否则是异步
 static GtkResponseType show_msgbox_in_main_thread(MsgBoxData *msg_data) {
     GtkWidget *dialog = NULL;
-    if (window && (RFM_msgbox_throttle > 0 || msg_data->type == GTK_MESSAGE_QUESTION)) { //未到弹窗限量。 或者 问题对话框，通常不容错过。可忽略的问题，直接在终端里面问不是更好吗？
+    /* msg_data 在本函数中间（gtk_dialog_run 之前）就被整体释放了，所以后面还要用的 type
+     * 必须先取出来：原来最后那个 if (msg_data->type == GTK_MESSAGE_QUESTION) 是在
+     * g_free(msg_data) 之后读，属于 use-after-free
+     * （valgrind: Invalid read of size 4 ... 16 bytes inside a block of size 24
+     *  free'd by show_msgbox_in_main_thread）。
+     * 其余字段（msg/buttons）都只在释放之前用，不用另存。 */
+    GtkMessageType msg_type = msg_data->type;
+    if (window && (RFM_msgbox_throttle > 0 || msg_type == GTK_MESSAGE_QUESTION)) { //未到弹窗限量。 或者 问题对话框，通常不容错过。可忽略的问题，直接在终端里面问不是更好吗？
         if (strlen(msg_data->msg) > RFM_MX_MSGBOX_CHARS) {
 	  g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "%s", msg_data->msg);
 	  msg_data->msg[RFM_MX_MSGBOX_CHARS] = '\0';//截断超长内容
 	}
-        dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_DESTROY_WITH_PARENT, msg_data->type, msg_data->buttons, "%s", msg_data->msg);
-        if (msg_data->type != GTK_MESSAGE_QUESTION) g_signal_connect(dialog, "response", G_CALLBACK(msgbox_response_handler), NULL);
+        dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_DESTROY_WITH_PARENT, msg_type, msg_data->buttons, "%s", msg_data->msg);
+        if (msg_type != GTK_MESSAGE_QUESTION) g_signal_connect(dialog, "response", G_CALLBACK(msgbox_response_handler), NULL);
     }else {//弹窗限量
       g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "%s", msg_data->msg);
       if (window && RFM_msgbox_throttle == 0) { //在刚到限量的这个点上弹窗警示用户
@@ -1154,7 +1161,7 @@ static GtkResponseType show_msgbox_in_main_thread(MsgBoxData *msg_data) {
     }
     g_free(msg_data->msg); g_free(msg_data->title); g_free(msg_data);
     if (dialog){
-      if (msg_data->type == GTK_MESSAGE_QUESTION) {
+      if (msg_type == GTK_MESSAGE_QUESTION) {
         GtkResponseType ret = gtk_dialog_run(GTK_DIALOG(dialog));
 	gtk_widget_destroy(GTK_WIDGET(dialog));
 	return ret;
