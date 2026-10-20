@@ -2286,10 +2286,19 @@ static void read_git_status_porcelain_cmd_output_into_hashtable(gpointer *child_
  * 每个文件都漏一个 g_build_filename 的 fullpath（valgrind 里 763 块 / 109KB）。 */
 static void insert_deleted_for_git(const gchar *fullpath, gchar *filename, const gchar *status, gchar *mime_root, gchar *mime_sub) {
       struct stat statbuff;
+      /* g_path_get_dirname() 每次返回新分配的字符串，以前把它直接写在 if 条件里，
+       * 比较完就没人管了：每遇到一个"状态含 D 且文件已不存在"的路径就漏一条目录名。
+       * 这里先把结果算到一个局部变量里、比较完立刻释放；两个 if 拆开写，短路顺序和原来完全一致
+       * （只有前三个条件都成立才会去算 dirname）。 */
+      gboolean same_dir_as_curPath = FALSE;
       if ((SearchResultViewInsteadOfDirectoryView^1)
 	  && (status[1]=='D' || status[0]=='D')
-	  && stat(fullpath, &statbuff)!=0 //file not exists
-	  && g_strcmp0(g_path_get_dirname(fullpath), rfm_curPath)==0){
+	  && stat(fullpath, &statbuff)!=0){ //file not exists
+            gchar *dirname_of_fullpath = g_path_get_dirname(fullpath);
+            same_dir_as_curPath = (g_strcmp0(dirname_of_fullpath, rfm_curPath)==0);
+            g_free(dirname_of_fullpath);
+      }
+      if (same_dir_as_curPath){
 	//add item into fileattributelist so that user can git stage on it
 	RFM_FileAttributes *fileAttributes=malloc_fileAttributes();
 	if (fileAttributes!=NULL){//if the file is rfm ignord file, we still add it into display here,but this may be changed.
