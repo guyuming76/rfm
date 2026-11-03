@@ -464,8 +464,8 @@ static void get_git_root_with_rev_parse(gpointer *child_attribs);
 static gboolean show_gitColumns(RFM_FileAttributes * fileAttributes);
 static gboolean show_gitMenus(RFM_FileAttributes * fileAttributes);
 static void readLatestGitLogForFileAndUpdateStore(RFM_ChildAttribs * childAttribs);
-static void GitStatusForDirectory(gchar * filename, const char* status);
-static void insert_deleted_for_git(const gchar *fullpath, gchar *filename, const gchar *status, gchar *mime_root, gchar *mime_sub);
+static void GitStatusForDirectory(const gchar * filename, const char* status);
+static void insert_deleted_for_git(const gchar *fullpath, const gchar *filename, const gchar *status, const gchar *mime_root, const gchar *mime_sub);
 static void read_git_ls_files_cmd_output_into_hashtable(gpointer *child_attribs);
 static void read_git_status_porcelain_cmd_output_into_hashtable(gpointer *child_attribs);
 static void load_gitTrackedFiles_HashTable();
@@ -2163,13 +2163,22 @@ static void readLatestGitLogForFileAndUpdateStore(RFM_ChildAttribs * childAttrib
 }
 
 //git本身只会给文件设置状态，不考虑目录，这里根据目录中文件的状态为目录也设置一个状态，方便了解哪些子目录有文件变动，需要stage等
-//filename为git ls-files输出格式
-static void GitStatusForDirectory(gchar * filename, const char* status) {
-      gchar *savedptr1=NULL;
-      if (ignored_filename(basename(filename))) return;//防止子目录里添加的隐藏文件影响目录的gitstatus列，引起误解
+//filename为相对当前目录的路径（不是相对git仓库根），格式同git ls-files输出
+static void GitStatusForDirectory(const gchar * filename, const char* status) {
+      gchar *basename_of_filename=g_path_get_basename(filename);
+      gboolean ignored=ignored_filename(basename_of_filename);
+      g_free(basename_of_filename);//g_path_get_basename 返回新分配的字符串，basename() 则会改动传入的路径
+      if (ignored) return;//防止子目录里添加的隐藏文件影响目录的gitstatus列，引起误解
       //TODO:如果文件本身不是隐藏文件，但是位于一个隐藏的子目录，怎么办?得识别路径上各层目录有无隐藏，不过这种情况我这里暂时没遇到
-      gchar *dirname=strtok_r(filename,"/",&savedptr1);//TODO:这里找第一个/符号，实际上找的是当前目录下第一层子目录，再下层的子目录不会显示在当前目录视图里，也就没必要更新gitstatus列了。这里主要是考虑目录视图，搜索结果视图(如git ls-files>0)一般无需显示目录，这里暂不考虑，如果将来有需求，需要找第二，第三个/符号,更新各级目录
-      if (dirname!=NULL){
+      /* 没有"/"就说明filename本身就是当前目录下的一个文件，不是"当前目录下某个子目录里的文件"。
+       * 以前用 strtok_r() 取第一段，路径里没有"/"时它会返回整个字符串，于是这个文件自己
+       * 被当成了一个同名子目录：insert_deleted_for_git 会给它多插一条 mime 为
+       * inode/directory 的记录，目录视图里同一个已删除文件就出现两行
+       * （一行真文件"core"，一行假目录"core"）。这里必须早返回。 */
+      const gchar *slash=strchr(filename,'/');
+      if (slash==NULL) return;
+      gchar *dirname=g_strndup(filename,(gsize)(slash-filename));//TODO:这里找第一个/符号，实际上找的是当前目录下第一层子目录，再下层的子目录不会显示在当前目录视图里，也就没必要更新gitstatus列了。这里主要是考虑目录视图，搜索结果视图(如git ls-files>0)一般无需显示目录，这里暂不考虑，如果将来有需求，需要找第二，第三个/符号,更新各级目录
+      {
 	gchar *status_=g_strdup(status);
         gchar *dir_fullpath=curPathRelativeToGitRoot ? g_build_filename(git_root,curPathRelativeToGitRoot,dirname,NULL) : g_build_filename(git_root,dirname,NULL);
 	gchar* existingStatus=g_hash_table_lookup(gitTrackedFiles, dir_fullpath);
@@ -2191,6 +2200,7 @@ static void GitStatusForDirectory(gchar * filename, const char* status) {
 	insert_deleted_for_git(dir_fullpath, dirname, status, "inode", "directory");
         g_log(RFM_LOG_DATA_GIT,G_LOG_LEVEL_DEBUG,"gitTrackedFile dir:%s, status:%s, status_:%s,%s",dirname, status, status_,dir_fullpath);
       }
+      g_free(dirname);
 }
 
 static void read_git_ls_files_cmd_output_into_hashtable(gpointer *child_attribs) {
@@ -2276,8 +2286,15 @@ static void read_git_status_porcelain_cmd_output_into_hashtable(gpointer *child_
 	//TODO: can there be something like "A "+" D"="AD"?
       }else g_hash_table_insert(gitTrackedFiles,g_strdup(fullpath),g_strdup(status));
 
-      insert_deleted_for_git(fullpath, filenames[i], status, "na", "na");
-      GitStatusForDirectory(curPathRelativeToGitRoot?(filenames[i]+strlen(curPathRelativeToGitRoot)):filenames[i], status);//git status --porcelain 输出的文件名格式同git ls-files --full-name， 所以这里要去掉curPathRelativeToGitRoot前缀。并且上面代码已经过滤掉了输出里面不包含curPathRelativeToGitRoot前缀的路径了
+      /* filenames[i] 是相对 git 仓库根的路径，而 insert_deleted_for_git 只在
+       * "被删东西所在目录 == 当前目录"时才插记录，所以记录里只要本层文件名就够了：
+       * 以前直接把相对仓库根的整条路径当名字，于是同目录下未删除的子目录都只显示本层名，
+       * 唯独已删除的文件显示成 "晶系/三斜/core" 这种带斜杠的路径。 */
+      const gchar *relpath=curPathRelativeToGitRoot?(filenames[i]+strlen(curPathRelativeToGitRoot)):filenames[i];
+      const gchar *last_slash=strrchr(relpath,'/');
+      const gchar *filename_relpath=last_slash?last_slash+1:relpath;
+      insert_deleted_for_git(fullpath, filename_relpath, status, "na", "na");
+      GitStatusForDirectory(relpath, status);//git status --porcelain 输出的文件名格式同git ls-files --full-name， 所以上面要去掉curPathRelativeToGitRoot前缀。并且上面代码已经过滤掉了输出里面不包含curPathRelativeToGitRoot前缀的路径了
       g_free(fullpath); //哈希表里存的是 g_strdup 的副本，insert_deleted_for_git 也不再接管 fullpath，所以这里可以释放
       }
       
@@ -2291,7 +2308,7 @@ static void read_git_status_porcelain_cmd_output_into_hashtable(gpointer *child_
  * 以前是 fileAttributes->path=fullpath 直接接管，调用方无法判断"到底接管了没有"，
  * 只好一律不释放，于是 read_git_status_porcelain_cmd_output_into_hashtable 里
  * 每个文件都漏一个 g_build_filename 的 fullpath（valgrind 里 763 块 / 109KB）。 */
-static void insert_deleted_for_git(const gchar *fullpath, gchar *filename, const gchar *status, gchar *mime_root, gchar *mime_sub) {
+static void insert_deleted_for_git(const gchar *fullpath, const gchar *filename, const gchar *status, const gchar *mime_root, const gchar *mime_sub) {
       struct stat statbuff;
       /* g_path_get_dirname() 每次返回新分配的字符串，以前把它直接写在 if 条件里，
        * 比较完就没人管了：每遇到一个"状态含 D 且文件已不存在"的路径就漏一条目录名。
