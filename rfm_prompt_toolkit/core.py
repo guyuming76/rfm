@@ -331,11 +331,22 @@ class RfmCompleter(Completer):
                     except ValueError:
                         pass  # 路径跨设备等情况，保留原值
                 display, style = _parse_completion_color(result_str)
-                # prompt_toolkit Completion
-                # start_position: 负偏移量，表示从光标前几个字符开始替换
+                # start_position: 负偏移量 = 从光标前几个字符开始替换；0 = 纯插入。
+                # 与 reedline 完全对齐（见 reedline_wrapper/src/lib.rs:183-210）：
+                #   '|'（查询结果列名） '}'（维度名） '='（维度值）
+                #       → Span::new(pos, pos)，即"插入到光标处"，不替换已输入内容。
+                #       ⚠ 这里必须为 0：rfm.c 对 text=="维度" 有特例，会原样返回维度名
+                #       （rfm_filename_completion 开头），而当前词此时就是"维度"；
+                #       若按 -len(word) 替换，"维度"这个命令字就被补全项吃掉了，
+                #       后续 TAB 也因为词变空而拿不到维度值。
+                #   其它（文件路径）→ 从当前词的起点开始替换。
+                if result_str.startswith(("|", "}", "=")):
+                    start_position = 0
+                else:
+                    start_position = -len(word) if word else 0
                 yield Completion(
                     display,
-                    start_position=-len(word) if word else 0,
+                    start_position=start_position,
                     style=style,
                 )
             except Exception:
@@ -527,12 +538,21 @@ class RfmPromptToolkit:
 
         @kb.add(Keys.ControlM, eager=True)
         def _(event):
-            """Enter → 提交"""
-            text = event.current_buffer.text
+            """Enter → 采纳当前补全项；没有选中项时提交"""
+            buf = event.current_buffer
+            state = buf.complete_state
+            if state is not None and state.current_completion is not None:
+                # 与 reedline 的 ColumnarMenu 一致：菜单打开且已用上下键选中某项时，
+                # 回车只"采纳"它（apply_completion 会把 go_to_completion 暂存到
+                # document 里的文本正式落定），不提交整行 —— 否则用户拿不到
+                # 第二次 TAB 去补下一级（如 "维度" → 维度名 → 维度值）。
+                buf.apply_completion(state.current_completion)
+                return
+            text = buf.text
             if text.rstrip().endswith("\\"):
-                event.current_buffer.insert_text("\n")
+                buf.insert_text("\n")
             else:
-                event.current_buffer.validate_and_handle()
+                buf.validate_and_handle()
 
         @kb.add(Keys.Escape, Keys.ControlM, eager=True)
         def _(event):
@@ -546,10 +566,17 @@ class RfmPromptToolkit:
             global _completion_mode
             _completion_mode = "tab"
             b = event.current_buffer
-            # 若自动补全菜单已打开（命令补全），先关闭它，再以"手动补全"重新触发；
-            # 否则 buffer._async_completer 会因 complete_state 已存在而直接返回，
-            # 无法从命令补全切换到文件名补全。
-            if b.complete_state:
+            state = b.complete_state
+            if state is not None:
+                if state.current_completion is not None:
+                    # 已用上下键选中某项：TAB 采纳它（reedline 的 TAB 亦然），
+                    # 而不是 cancel_completion() —— 后者会把已暂存的补全文本
+                    # 回滚成原文本，表现为"按 TAB 什么也没发生"。
+                    b.apply_completion(state.current_completion)
+                    return
+                # 自动补全菜单已打开（命令补全）但未选中任何项：先关闭它，再以
+                # "手动补全"重新触发；否则 buffer._async_completer 会因
+                # complete_state 已存在而直接返回，无法从命令补全切换到文件名补全。
                 b.cancel_completion()
             b.start_completion(
                 select_first=False,
