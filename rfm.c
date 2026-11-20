@@ -4551,7 +4551,7 @@ static void exec_stdin_command_with_SearchResultAsInput(GString * readlineResult
                                                g_spawn_async_callback_to_new_readline_thread; //reedline 下，!from_stdin_readline的时候 readlineThread 也会被interrupt_readline掉
 #endif
 #ifdef GNU_readline
-	                                       from_stdin_readline ? g_spawn_async_callback_to_new_readline_thread : ( SearchResultTypePointer? update_SearchResultFileNameList_and_refresh_store : NULL); //如果不是从readline获取的命令，callback里面就不能包含new readline，否则会超过一个readline线程在运行.
+	                                       from_stdin_readline ? g_spawn_async_callback_to_new_readline_thread : ( childAttribs->SearchResultTypePointer? update_SearchResultFileNameList_and_refresh_store : NULL); //如果不是从readline获取的命令，callback里面就不能包含new readline，否则会超过一个readline线程在运行.
 #endif
 	    if (childAttribs->SearchResultTypePointer) {
               childAttribs->g_idle_add_once_to_run_CallBackFunc = TRUE; //TODO：目前函数是在 gtk main thread 运行的，所以这一行应该可以不要，加一下避免以后改动当前函数运行环境导致出错
