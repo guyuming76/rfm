@@ -186,6 +186,7 @@ endif
 install:
 	@echo installing files to ${DESTDIR}${PREFIX}/{bin,lib}
 	@mkdir -p ${DESTDIR}${PREFIX}/bin
+	@mkdir -p ${DESTDIR}${PREFIX}/include	# 否则下面的 cp 会把 include 建成一个文件
 ifneq ($(RFM_FILE_CHOOSER),)
 	@mkdir -p ${DESTDIR}${PREFIX}/lib64
 	@cp -f ${LIBNAME} ${DESTDIR}${PREFIX}/lib64/${LIBNAME}
@@ -247,7 +248,7 @@ endif
 	@cp -f scripts/rfmConcatVideos.sh ${DESTDIR}${PREFIX}/bin/
 ifneq (${PythonEmbedded}, )
 	@cp -f rfm_pybridge.py ${DESTDIR}${PREFIX}/bin/
-	@cp -f rfm_pybridge.h ${DESTDIR}${PREFIX}/include
+	@cp -f rfm_pybridge.h ${DESTDIR}${PREFIX}/include/
 endif
 ifneq (${RFM_AddOn},)
 	@cp -f scripts/rfmEnsurePythonVenv.sh ${DESTDIR}${PREFIX}/bin/
@@ -256,7 +257,7 @@ endif
 ifneq ($(CalledByEbuild),YES)
 # the CalledByEbuild variable is exported in rfm ebuild
 # there will be sandbox error in gentoo ebuild run
-	@cp -f rfm_addon.h ${DESTDIR}${PREFIX}/include
+	@cp -f rfm_addon.h ${DESTDIR}${PREFIX}/include/
 	@cp -f ${languageInclude} ${DESTDIR}${PREFIX}/include/rfmLanguage.h   # 语言头：安装成 rfmLanguage.h，供 rfm 编译插件时 -include（插件里可用 fld_FileName）
 	-cp -f rfm.svg /usr/share/icons/hicolor/scalable/apps/rfm.svg
 	-gtk-update-icon-cache -f /usr/share/icons/hicolor
